@@ -1,0 +1,33 @@
+version: 0.2
+
+env:
+  variables:
+    SPRING_PROFILES_ACTIVE: "dev"
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17               # Java 버전을 명시
+    commands:
+      - echo 설치 단계 시작...
+      - mvn --version                 # Maven 버전 확인 (선택)
+  pre_build:
+    commands:
+      - echo "pre_build: 의존성 다운로드"
+      - mvn clean
+  build:
+    commands:
+      - echo "build: 단위 테스트 실행"
+      - mvn test                       # 단위 테스트 수행
+      - echo "build: 패키징 시작"
+      - mvn package -DskipTests       # 테스트를 이미 수행했으므로 스킵하여 패키징
+  post_build:
+    commands:
+      - echo "post_build: 산출물 업로드 시작"
+      - aws s3 cp target/sgmrt-server.jar s3://my-eb-artifacts-bucket/sgmrt-${CODEBUILD_RESOLVED_SOURCE_VERSION}.jar
+      - echo "빌드 완료."
+
+artifacts:
+  files:
+    - target/sgmrt-server.jar         # EB 배포용 JAR
+  discard-paths: yes
