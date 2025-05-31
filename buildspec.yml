@@ -7,20 +7,23 @@ env:
 phases:
   install:
     runtime-versions:
-      java: corretto17               # Java 버전을 명시
+      java: corretto17
     commands:
-      - echo 설치 단계 시작...
+      - echo "설치 단계 시작..."
       - mvn --version                 # Maven 버전 확인 (선택)
+
   pre_build:
     commands:
       - echo "pre_build: 의존성 다운로드"
       - mvn clean
+
   build:
     commands:
       - echo "build: 단위 테스트 실행"
       - mvn test                       # 단위 테스트 수행
       - echo "build: 패키징 시작"
       - mvn package -DskipTests       # 테스트를 이미 수행했으므로 스킵하여 패키징
+
   post_build:
     commands:
       - echo "post_build: 산출물 업로드 시작"
@@ -29,5 +32,5 @@ phases:
 
 artifacts:
   files:
-    - target/sgmrt-server.jar         # EB 배포용 JAR
+    - target/sgmrt-server.jar
   discard-paths: yes
