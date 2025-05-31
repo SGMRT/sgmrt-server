@@ -11,13 +11,10 @@ phases:
   pre_build:
     commands:
       - echo Nothing to do in the pre_build phase
-      - mvn clean
   build:
     commands:
       - echo Build Started
-      - mvn test
-      - echo Packaging Started
-      - mvn package -DskipTests
+      - mvn clean package
   post_build:
     commands:
       - echo Build completed on `date`
