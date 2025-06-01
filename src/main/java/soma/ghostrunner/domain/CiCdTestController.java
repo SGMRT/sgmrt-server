@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class CiCdTestController {
     @GetMapping("/test")
     public String test() {
-        return "test";
+        return "this is ci/cd test for swm";
     }
 }
