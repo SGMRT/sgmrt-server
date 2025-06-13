@@ -12,6 +12,6 @@ public class CiCdTestController {
 
     @GetMapping("/test")
     public String test() {
-        return "this is ci/cd test";
+        return "this is dev profile's ci/cd test";
     }
 }
