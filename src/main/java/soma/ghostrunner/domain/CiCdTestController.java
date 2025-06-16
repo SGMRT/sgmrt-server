@@ -1,8 +1,9 @@
 package soma.ghostrunner.domain;
 
-import org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.common.error.exception.BusinessException;
 
 @RestController
 public class CiCdTestController {
@@ -13,6 +14,6 @@ public class CiCdTestController {
 
     @GetMapping("/test")
     public String test() {
-        return "dev profile's ci/cd test";
+        throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
     }
 }
