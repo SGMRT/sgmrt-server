@@ -13,8 +13,8 @@ public enum ErrorCode {
     // Common
     INVALID_REQUEST_VALUE("C-001",  BAD_REQUEST, "잘못된 요청 데이터"),
     MISSING_REQUESTED_DATA("C-002",  BAD_REQUEST, "필수 파라미터 누락"),
-    METHOD_NOT_ALLOWED("C-003",  HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드"),
-    NONE_REQUEST_URI("C-004",  NOT_FOUND, "잘못된 요청 URI"),
+    NONE_REQUEST_URI("C-003",  BAD_REQUEST, "잘못된 요청 URI"),
+    METHOD_NOT_ALLOWED("C-004",  HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드"),
     SERVICE_UNAVAILABLE("C-005",  HttpStatus.SERVICE_UNAVAILABLE, "서비스 문제 발생"),
     TOO_MANY_REQUESTS("C-006",  HttpStatus.TOO_MANY_REQUESTS, "요청 횟수 초과"),
 
