@@ -6,14 +6,3 @@ spring:
         highlight_sql: true
         use_sql_comments: true
         default_batch_fetch_size: 100
-
-aws:
-  cloudwatch:
-    log-group: {CLOUD_WATCH_LOG_GROUP}
-    log-region: {CLOUD_WATCH_LOG_REGION}
-    access-key-id: {CLOUD_WATCH_ACCESS_KEY_ID}
-    secret-access-key: {CLOUD_WATCH_ACCESS_KEY}
-    retention-days: 7
-    max-batch-events: 100
-    max-flush-millis: 30000
-    max-block-millis: 5000
