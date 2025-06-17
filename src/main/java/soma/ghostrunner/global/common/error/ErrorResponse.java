@@ -10,7 +10,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ErrorResponse {
 
     private String code;
@@ -45,8 +44,8 @@ public class ErrorResponse {
     }
 
     @Getter
-    @NoArgsConstructor(access = AccessLevel.PROTECTED)
     public static class FieldErrorInfo {
+
         private String field;
         private String value;
         private String reason;
