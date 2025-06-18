@@ -44,7 +44,7 @@ public class ErrorResponse {
     }
 
     @Getter
-    public static class FieldErrorInfo {
+    private static class FieldErrorInfo {
 
         private String field;
         private String value;
