@@ -86,7 +86,7 @@ public class GlobalExceptionAdvice {
     }
 
     private ResponseEntity<ErrorResponse> createErrorResponse(ErrorCode errorCode) {
-        final ErrorResponse response = ErrorResponse.from(errorCode);
+        final ErrorResponse response = ErrorResponse.of(errorCode);
         return new ResponseEntity<>(response, errorCode.getStatus());
     }
 }

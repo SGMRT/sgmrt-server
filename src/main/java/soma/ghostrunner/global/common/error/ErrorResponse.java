@@ -35,7 +35,7 @@ public class ErrorResponse {
                 .build();
     }
 
-    public static ErrorResponse from(ErrorCode errorCode) {
+    public static ErrorResponse of(ErrorCode errorCode) {
         return ErrorResponse.builder()
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
