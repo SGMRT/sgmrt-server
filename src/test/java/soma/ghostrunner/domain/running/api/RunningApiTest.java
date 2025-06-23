@@ -108,6 +108,9 @@ class RunningApiTest {
                 ),
                 Arguments.of(
                         setRunningRecordDurationMinus(), "duration"
+                ),
+                Arguments.of(
+                        setHasPausedAndIsPublicInvalid(), "hasPausedAndIsPublic"
                 )
         );
     }
@@ -174,6 +177,13 @@ class RunningApiTest {
         return request;
     }
 
+    private static CreateCourseAndRunRequest setHasPausedAndIsPublicInvalid() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.setHasPaused(true);
+        request.setIsPublic(true);
+        return request;
+    }
+
     // ——————————————————————————————————————————————————————————
     // 2) “기존 코스 러닝” API 테스트
     // ——————————————————————————————————————————————————————————
@@ -218,7 +228,7 @@ class RunningApiTest {
 
     }
 
-    @DisplayName("기존 코스를 뛰는 API - 고스트/솔로 모드에 따른 ghostRunningId NULL 검사")
+    @DisplayName("기존 코스를 뛰는 API - 유효성 검사")
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
     @MethodSource("invalidSoloRunOnCourseRequests")
     void testRunExistingCourseValidationError(RunOnCourseRequest payload, String wrongField) throws Exception {
@@ -258,6 +268,9 @@ class RunningApiTest {
                 ),
                 Arguments.of(
                         setInvalidGhostRunOnCourseRequest(), "mode"
+                ),
+                Arguments.of(
+                        setRunOnCourseRequestInvalidPausedAndPublic(), "hasPausedAndIsPublic"
                 )
         );
     }
@@ -270,6 +283,13 @@ class RunningApiTest {
 
     private static RunOnCourseRequest setInvalidGhostRunOnCourseRequest() {
         return validGhostRunOnCourseRequest(null);
+    }
+
+    private static RunOnCourseRequest setRunOnCourseRequestInvalidPausedAndPublic() {
+        RunOnCourseRequest soloRequest = validSoloRunOnCourseRequest();
+        soloRequest.setIsPublic(true);
+        soloRequest.setHasPaused(true);
+        return soloRequest;
     }
 
     private Course setUpCourse() {

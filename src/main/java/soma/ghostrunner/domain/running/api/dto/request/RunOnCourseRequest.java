@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import soma.ghostrunner.domain.running.api.validation.NoPauseForPublic;
 import soma.ghostrunner.domain.running.api.validation.ValidateRunningMode;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.global.common.validator.enums.EnumValid;
@@ -11,6 +12,11 @@ import soma.ghostrunner.global.common.validator.enums.EnumValid;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@NoPauseForPublic(
+        hasPaused = "hasPaused",
+        isPublic = "isPublic",
+        message = "중지한 기록이 있다면 공개 설정이 불가능합니다."
+)
 @ValidateRunningMode(
         modeField = "mode",
         ghostRunningId = "ghostRunningId",
