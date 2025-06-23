@@ -77,7 +77,7 @@ class RunningApiTest {
         Member member = memberRepository.save(Member.of("이복둥1", "URL"));
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/runs/" + member.getId())
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + member.getId())
                         .content(objectMapper.writeValueAsString(request))
                         .contentType(MediaType.APPLICATION_JSON)
                 ).andDo(MockMvcResultHandlers.print())
@@ -89,7 +89,7 @@ class RunningApiTest {
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
     @MethodSource("invalidCreateCourseAndRunRequests")
     void testCreateCourseAndRunValidationError(CreateCourseAndRunRequest payload, String wrongField) throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/runs/1")
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isBadRequest());
@@ -199,7 +199,7 @@ class RunningApiTest {
         RunOnCourseRequest soloRequest = validSoloRunOnCourseRequest();
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/courses/" + course.getId() + "/runs/" + member.getId())
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + course.getId() + "/" + member.getId())
                         .content(objectMapper.writeValueAsString(soloRequest))
                         .contentType(MediaType.APPLICATION_JSON)
                 ).andDo(MockMvcResultHandlers.print())
@@ -220,7 +220,7 @@ class RunningApiTest {
         RunOnCourseRequest ghostRequest = validGhostRunOnCourseRequest(running.getId());
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/courses/" + course.getId() + "/runs/" + member.getId())
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + course.getId() + "/" + member.getId())
                         .content(objectMapper.writeValueAsString(ghostRequest))
                         .contentType(MediaType.APPLICATION_JSON)
                 ).andDo(MockMvcResultHandlers.print())
@@ -232,7 +232,7 @@ class RunningApiTest {
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
     @MethodSource("invalidSoloRunOnCourseRequests")
     void testRunExistingCourseValidationError(RunOnCourseRequest payload, String wrongField) throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/courses/1/runs/1")
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isBadRequest());

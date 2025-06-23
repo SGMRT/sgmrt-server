@@ -21,12 +21,12 @@ public class RunningApi {
         return "Hello World!";
     }
 
-    @PostMapping("/runs/{memberId}")
+    @PostMapping("v1/runs/{memberId}")
     public CreateCourseAndRunResponse createCourseAndRun(@RequestBody @Valid CreateCourseAndRunRequest req, @PathVariable Long memberId) {
         return runningCommandService.createCourseAndRun(mapper.toCommand(req), req.getCourseName(), 1L);
     }
 
-    @PostMapping("/courses/{courseId}/runs/{memberId}")
+    @PostMapping("v1/runs/{courseId}/{memberId}")
     public Long runExistingCourse(@RequestBody @Valid RunOnCourseRequest req,
                                   @PathVariable Long courseId, @PathVariable Long memberId) {
         return runningCommandService.createRun(mapper.toCommand(req), courseId, memberId);
