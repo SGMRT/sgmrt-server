@@ -21,7 +21,7 @@ public class RunningRecord {
     @NotEmpty @Column(name = "average_pace")
     private double avgPace;
 
-    @NotEmpty @Column(name = "total_duration")
+    @NotEmpty @Column(name = "total_duration_sec")
     private long totalDuration;
 
     @NotEmpty @Column(name = "average_calories")
