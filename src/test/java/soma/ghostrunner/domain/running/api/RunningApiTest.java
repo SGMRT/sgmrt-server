@@ -9,7 +9,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -23,14 +25,19 @@ import soma.ghostrunner.domain.course.domain.CourseMetaInfo;
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
+import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.RunRecordDto;
 import soma.ghostrunner.domain.running.api.dto.request.TelemetryDto;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.RunOnCourseRequest;
+import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.global.common.error.GlobalExceptionAdvice;
+import soma.ghostrunner.global.common.log.HttpLogger;
+import soma.ghostrunner.global.common.log.LogFilter;
 import soma.ghostrunner.global.config.AwsConfig;
 
 import java.time.LocalDateTime;
@@ -40,11 +47,11 @@ import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
-@SpringBootTest
-@AutoConfigureMockMvc
+@WebMvcTest(controllers = RunningApi.class)
 class RunningApiTest {
 
     @Autowired
@@ -53,17 +60,12 @@ class RunningApiTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    @Autowired
-    private MemberRepository memberRepository;
-    @Autowired
-    private CourseRepository courseRepository;
-    @Autowired
-    private RunningRepository runningRepository;
-
     @MockitoBean
-    private S3Uploader s3Uploader;
+    RunningCommandService runningCommandService;
     @MockitoBean
-    private AwsConfig awsConfig;
+    RunningApiMapper mapper;
+    @MockitoBean
+    HttpLogger httpLogger;
 
     // ——————————————————————————————————————————————————————————
     // 1) “새 코스 + 러닝 기록” API 테스트
@@ -73,14 +75,13 @@ class RunningApiTest {
     void testCreateCourseAndRun() throws Exception{
         // given
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        given((s3Uploader.uploadTelemetry(any(), any()))).willReturn("fakeS3Url");
-        Member member = memberRepository.save(Member.of("이복둥1", "URL"));
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + member.getId())
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L)
                         .content(objectMapper.writeValueAsString(request))
                         .contentType(MediaType.APPLICATION_JSON)
-                ).andDo(MockMvcResultHandlers.print())
+                )
+                .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
 
     }
@@ -92,7 +93,9 @@ class RunningApiTest {
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
-                .andExpect(status().isBadRequest());
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField));;
     }
 
     private static Stream<Arguments> invalidCreateCourseAndRunRequests() {
@@ -107,10 +110,10 @@ class RunningApiTest {
                         setRunningModeInvalid(), "mode"
                 ),
                 Arguments.of(
-                        setRunningRecordDurationMinus(), "duration"
+                        setRunningRecordDurationMinus(), "record.duration"
                 ),
                 Arguments.of(
-                        setHasPausedAndIsPublicInvalid(), "hasPausedAndIsPublic"
+                        setHasPausedAndIsPublicInvalid(), "hasPaused"
                 )
         );
     }
@@ -191,18 +194,14 @@ class RunningApiTest {
     @Test
     void testSoloRunExistingCourse() throws Exception{
         // given
-        given((s3Uploader.uploadTelemetry(any(), any()))).willReturn("fakeS3Url");
-        Member member = memberRepository.save(Member.of("이복둥2", "URL"));
-        Course course = courseRepository.save(setUpCourse());
-
-        // when
         RunOnCourseRequest soloRequest = validSoloRunOnCourseRequest();
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + course.getId() + "/" + member.getId())
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
                         .content(objectMapper.writeValueAsString(soloRequest))
                         .contentType(MediaType.APPLICATION_JSON)
-                ).andDo(MockMvcResultHandlers.print())
+                )
+                .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
 
     }
@@ -210,20 +209,15 @@ class RunningApiTest {
     @DisplayName("고스트와 기존 코스를 뛰는 API 성공 테스트")
     @Test
     void testGhostRunExistingCourse() throws Exception{
-        // given
-        given((s3Uploader.uploadTelemetry(any(), any()))).willReturn("fakeS3Url");
-        Member member = memberRepository.save(Member.of("이복둥3", "URL"));
-        Course course = courseRepository.save(setUpCourse());
-        Running running = runningRepository.save(setUpRunning(course, member));
-
         // when
-        RunOnCourseRequest ghostRequest = validGhostRunOnCourseRequest(running.getId());
+        RunOnCourseRequest ghostRequest = validGhostRunOnCourseRequest(3L);
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + course.getId() + "/" + member.getId())
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
                         .content(objectMapper.writeValueAsString(ghostRequest))
                         .contentType(MediaType.APPLICATION_JSON)
-                ).andDo(MockMvcResultHandlers.print())
+                )
+                .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
 
     }
@@ -235,7 +229,9 @@ class RunningApiTest {
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
-                .andExpect(status().isBadRequest());
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField));
     }
 
     private static RunOnCourseRequest validSoloRunOnCourseRequest() {
@@ -264,13 +260,13 @@ class RunningApiTest {
     private static Stream<Arguments> invalidSoloRunOnCourseRequests() {
         return Stream.of(
                 Arguments.of(
-                        setInvalidSoloRunOnCourseRequest(), "mode"
+                        setInvalidSoloRunOnCourseRequest(), "ghostRunningId"
                 ),
                 Arguments.of(
-                        setInvalidGhostRunOnCourseRequest(), "mode"
+                        setInvalidGhostRunOnCourseRequest(), "ghostRunningId"
                 ),
                 Arguments.of(
-                        setRunOnCourseRequestInvalidPausedAndPublic(), "hasPausedAndIsPublic"
+                        setRunOnCourseRequestInvalidPausedAndPublic(), "hasPaused"
                 )
         );
     }
@@ -290,18 +286,5 @@ class RunningApiTest {
         soloRequest.setIsPublic(true);
         soloRequest.setHasPaused(true);
         return soloRequest;
-    }
-
-    private Course setUpCourse() {
-        CourseMetaInfo testCourseMetaInfo = CourseMetaInfo.of(5.2, 40);
-        StartPoint testStartPoint = StartPoint.fromCoordinates(37.545354, 34.7878);
-        return Course.of("반포 한강코스", testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
-    }
-
-    private Running setUpRunning(Course course, Member member) {
-        RunningRecord runningRecord = RunningRecord.of(5.2, 40, 6.1, 3423, 302, 120, 56);
-
-        return Running.of(RunningMode.SOLO, 2L, runningRecord, LocalDateTime.now(),
-                true, false, "URL", member, course);
     }
 }
