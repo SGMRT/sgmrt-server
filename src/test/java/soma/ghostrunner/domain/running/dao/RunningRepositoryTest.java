@@ -17,7 +17,6 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @DataJpaTest
@@ -66,7 +65,7 @@ class RunningRepositoryTest {
 
     private Running createRunning(Member testMember, Course testCourse ) {
         RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, 6.1, 3423, 302, 120, 56);
-        return Running.of(RunningMode.SOLO, 2L, testRunningRecord, LocalDateTime.now(),
+        return Running.of(RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
                 true, false, "URL", testMember, testCourse);
     }
 

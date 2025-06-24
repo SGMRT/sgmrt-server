@@ -9,8 +9,6 @@ import soma.ghostrunner.domain.course.domain.CourseMetaInfo;
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 
-import java.time.LocalDateTime;
-
 class RunningTest {
 
     private RunningRecord testRunningRecord;
@@ -28,7 +26,7 @@ class RunningTest {
         testRunningRecord = RunningRecord.of(5.2, 40, 6.1, 3423, 302, 120, 56);
 
         // Running
-        testRunning = Running.of(RunningMode.SOLO, 2L, testRunningRecord, LocalDateTime.now(),
+        testRunning = Running.of(RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
                 true, false, "URL", testMember, testCourse);
     }
 

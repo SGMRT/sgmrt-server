@@ -6,8 +6,6 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "running_record")
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -27,8 +25,8 @@ public class Running extends BaseTimeEntity {
     @Embedded
     private RunningRecord runningRecord;
 
-    @Column(name = "started_at", nullable = false)
-    private LocalDateTime startedAt;
+    @Column(name = "started_at_ms", nullable = false)
+    private Long startedAt;
 
     @Column(name = "is_public", nullable = false)
     private boolean isPublic;
@@ -51,7 +49,7 @@ public class Running extends BaseTimeEntity {
     private Course course;
 
     @Builder
-    private Running(RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, LocalDateTime startedAt,
+    private Running(RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
                     boolean isPublic, boolean hasPaused, String telemetryUrl, Member member, Course course) {
         this.runningMode = runningMode;
         this.ghostRunningId = ghostRunningId;
@@ -64,7 +62,7 @@ public class Running extends BaseTimeEntity {
         this.course = course;
     }
 
-    public static Running of(RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, LocalDateTime startedAt,
+    public static Running of(RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
                              boolean isPublic, boolean hasPaused, String telemetryUrl, Member member, Course course) {
         return Running.builder()
                 .runningMode(runningMode)

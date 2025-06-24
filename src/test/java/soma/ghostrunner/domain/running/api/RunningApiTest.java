@@ -3,50 +3,28 @@ package soma.ghostrunner.domain.running.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
-import soma.ghostrunner.clients.aws.S3Uploader;
-import soma.ghostrunner.domain.course.CourseRepository;
-import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseMetaInfo;
-import soma.ghostrunner.domain.course.domain.StartPoint;
-import soma.ghostrunner.domain.member.Member;
-import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.RunRecordDto;
 import soma.ghostrunner.domain.running.api.dto.request.TelemetryDto;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.RunOnCourseRequest;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
-import soma.ghostrunner.domain.running.dao.RunningRepository;
-import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.RunningMode;
-import soma.ghostrunner.domain.running.domain.RunningRecord;
-import soma.ghostrunner.global.common.error.GlobalExceptionAdvice;
 import soma.ghostrunner.global.common.log.HttpLogger;
-import soma.ghostrunner.global.common.log.LogFilter;
-import soma.ghostrunner.global.config.AwsConfig;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -121,7 +99,7 @@ class RunningApiTest {
         return CreateCourseAndRunRequest.builder()
                 .courseName("반포 코스")
                 .mode("SOLO")
-                .startedAt(LocalDateTime.of(2025, 6, 20, 14, 5, 20))
+                .startedAt(1750729987181L)
                 .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
@@ -145,7 +123,7 @@ class RunningApiTest {
         List<TelemetryDto> telemetryDtos = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             telemetryDtos.add(TelemetryDto.builder()
-                    .timeStamp(LocalDateTime.parse("2025-06-18T08:00:00"))
+                    .timeStamp(1750729987181L)
                     .lat(37.5).lng(127.0)
                     .dist(4.2).pace(5.48).alt(100)
                     .cadence(80).bpm(150)
@@ -236,7 +214,7 @@ class RunningApiTest {
     private static RunOnCourseRequest validSoloRunOnCourseRequest() {
         return RunOnCourseRequest.builder()
                 .mode("SOLO")
-                .startedAt(LocalDateTime.of(2025, 6, 20, 14, 5, 20))
+                .startedAt(1750729987181L)
                 .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
@@ -248,7 +226,7 @@ class RunningApiTest {
         return RunOnCourseRequest.builder()
                 .mode("GHOST")
                 .ghostRunningId(ghostRunningId)
-                .startedAt(LocalDateTime.of(2025, 6, 20, 14, 5, 20))
+                .startedAt(1750729987181L)
                 .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)

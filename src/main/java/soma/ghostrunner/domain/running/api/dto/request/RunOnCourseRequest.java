@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.running.api.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -9,7 +8,6 @@ import soma.ghostrunner.domain.running.api.validation.ValidateRunningMode;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.global.common.validator.enums.EnumValid;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @NoPauseForPublic(
@@ -33,8 +31,7 @@ public class RunOnCourseRequest {
     private Long ghostRunningId;
 
     @NotNull
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Seoul")
-    private LocalDateTime startedAt;
+    private Long startedAt;
 
     @NotNull
     @Valid
