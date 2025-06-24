@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.clients.aws.S3Uploader;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseExtractor;
+import soma.ghostrunner.domain.course.domain.TelemetryParser;
 import soma.ghostrunner.domain.course.domain.CourseMetaInfo;
 import soma.ghostrunner.domain.course.CourseService;
 import soma.ghostrunner.domain.member.Member;
@@ -13,6 +13,7 @@ import soma.ghostrunner.domain.member.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.dto.CreateRunningCommand;
 import soma.ghostrunner.domain.running.application.dto.RunRecordCommand;
+import soma.ghostrunner.domain.running.application.dto.TelemetryCommand;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -37,8 +38,8 @@ public class RunningCommandService {
 
         Member member = memberService.findMemberById(memberId);
 
-        // S3 업로드
-        String url = s3Uploader.uploadTelemetry(command.telemetries(), memberId);
+        // 상대 시간으로 변경 및 S3 업로드
+        String url = s3Uploader.uploadTelemetry(convertTelemetriesToRelativeTimestamp(command), memberId);
 
         // 코스, 러닝 생성 및 저장
         Course course = createAndSaveCourse(command, courseName);
@@ -53,8 +54,8 @@ public class RunningCommandService {
 
         Member member = memberService.findMemberById(memberId);
 
-        // S3 업로드
-        String url = s3Uploader.uploadTelemetry(command.telemetries(), memberId);
+        // 상대 시간으로 변경 및 S3 업로드
+        String url = s3Uploader.uploadTelemetry(convertTelemetriesToRelativeTimestamp(command), memberId);
 
         // 코스 및 고스트가 뛴 기록 검증
         Course course = courseService.findCourseById(courseId);
@@ -65,6 +66,10 @@ public class RunningCommandService {
         Running running = createAndSaveRunning(command, runningRecord, url, member, course);
 
         return running.getId();
+    }
+
+    private List<TelemetryCommand> convertTelemetriesToRelativeTimestamp(CreateRunningCommand command) {
+        return TelemetryParser.convertAbsoluteToRelativeTimestamp(command.telemetries(), command.startedAt());
     }
 
     private void verifyGhostRunningExist(Long ghostRunningId, Long courseId) {
@@ -90,8 +95,8 @@ public class RunningCommandService {
     private Course createAndSaveCourse(CreateRunningCommand command, String courseName) {
         Course course = Course.of(courseName,
                 CourseMetaInfo.of(command.record().distance(), command.record().altitude()),
-                CourseExtractor.extractStartPoint(command.telemetries()),
-                CourseExtractor.extractCourseCoordinates(command.telemetries()));
+                TelemetryParser.extractStartPoint(command.telemetries()),
+                TelemetryParser.extractCourseCoordinates(command.telemetries()));
         courseService.save(course);
         return course;
     }

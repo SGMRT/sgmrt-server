@@ -7,10 +7,17 @@ import lombok.Getter;
 import soma.ghostrunner.domain.running.application.dto.TelemetryCommand;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class CourseExtractor {
+public class TelemetryParser {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    public static List<TelemetryCommand> convertAbsoluteToRelativeTimestamp(List<TelemetryCommand> telemetries, Long startedAt) {
+        return telemetries.stream()
+                .map(t -> t.withTimeStamp(t.timeStamp() - startedAt))
+                .collect(Collectors.toList());
+    }
 
     public static StartPoint extractStartPoint(List<TelemetryCommand> telemetries) {
         TelemetryCommand startPointTelemetry = telemetries.get(0);

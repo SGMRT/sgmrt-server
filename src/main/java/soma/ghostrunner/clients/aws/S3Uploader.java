@@ -48,6 +48,7 @@ public class S3Uploader {
                 .build();
 
         // 업로드
+        log.info("Uploading Telemetry Files : \n{}", jsonlContent);
         s3Client.putObject(putObjectRequest, RequestBody.fromString(jsonlContent));
         log.info("Successfully uploaded file to S3: {}", fileName);
 
