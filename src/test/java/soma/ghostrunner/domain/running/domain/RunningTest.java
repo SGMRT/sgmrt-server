@@ -20,13 +20,13 @@ class RunningTest {
         Member testMember = Member.of("이복둥", "프로필 URL");
         CourseMetaInfo testCourseMetaInfo = CourseMetaInfo.of(5.2, 40);
         StartPoint testStartPoint = StartPoint.fromCoordinates(37.545354, 34.7878);
-        Course testCourse = Course.of("반포 한강코스", testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        Course testCourse = Course.of(testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
 
         // RunningRecord
         testRunningRecord = RunningRecord.of(5.2, 40, 6.1, 3423, 302, 120, 56);
 
         // Running
-        testRunning = Running.of(RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
+        testRunning = Running.of("테스트 러닝제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
                 true, false, "URL", testMember, testCourse);
     }
 

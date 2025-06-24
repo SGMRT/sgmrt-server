@@ -17,7 +17,7 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED("G-004",  HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드"),
     SERVICE_UNAVAILABLE("G-005",  HttpStatus.SERVICE_UNAVAILABLE, "서비스 문제 발생"),
     TOO_MANY_REQUESTS("G-006",  HttpStatus.TOO_MANY_REQUESTS, "요청 횟수 초과"),
-    INVALID_JSON_TYPE("G-006", BAD_REQUEST, "Json 파싱 실패 혹은 올바르지 않은 시간 형식"),
+    INVALID_JSON_TYPE("G-007", BAD_REQUEST, "Json 파싱 실패 혹은 올바르지 않은 시간 형식"),
 
     // Member
     MEMBER_NOT_FOUND("M-001", NOT_FOUND, "존재하지 않는 회원"),

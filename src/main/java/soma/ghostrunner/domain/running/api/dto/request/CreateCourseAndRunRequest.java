@@ -20,7 +20,7 @@ import java.util.List;
 public class CreateCourseAndRunRequest {
 
     @NotBlank
-    private String courseName;
+    private String runningName;
 
     @NotNull
     @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)

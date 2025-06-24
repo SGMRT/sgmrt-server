@@ -26,7 +26,7 @@ public class TelemetryDto {
     @NotNull @Positive
     private Double pace;    // 현재 페이스 (분/km)
 
-    @NotNull @PositiveOrZero
+    @NotNull
     private Integer alt;    // 현재 고도 (m)
 
     @NotNull @PositiveOrZero

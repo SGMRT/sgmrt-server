@@ -15,6 +15,9 @@ public class Running extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "running_name", nullable = false)
+    private String runningName;
+
     @Column(name = "running_mode")
     @Enumerated(EnumType.STRING)
     private RunningMode runningMode;
@@ -49,8 +52,9 @@ public class Running extends BaseTimeEntity {
     private Course course;
 
     @Builder
-    private Running(RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
+    private Running(String runningName, RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
                     boolean isPublic, boolean hasPaused, String telemetryUrl, Member member, Course course) {
+        this.runningName = runningName;
         this.runningMode = runningMode;
         this.ghostRunningId = ghostRunningId;
         this.runningRecord = runningRecord;
@@ -62,9 +66,10 @@ public class Running extends BaseTimeEntity {
         this.course = course;
     }
 
-    public static Running of(RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
+    public static Running of(String runningName, RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
                              boolean isPublic, boolean hasPaused, String telemetryUrl, Member member, Course course) {
         return Running.builder()
+                .runningName(runningName)
                 .runningMode(runningMode)
                 .ghostRunningId(ghostRunningId)
                 .runningRecord(runningRecord)

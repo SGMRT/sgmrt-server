@@ -83,6 +83,7 @@ class RunningApiMapperTest {
     void toCommandFromRunOnCourseRequest() {
         // given
         RunOnCourseRequest soloRequest = RunOnCourseRequest.builder()
+                .runningName("테스트 러닝 이름")
                 .mode("SOLO")
                 .startedAt(1750729987181L)
                 .record(createRunRecordDto())
@@ -91,6 +92,7 @@ class RunningApiMapperTest {
                 .telemetries(createTelemetries())
                 .build();
         RunOnCourseRequest ghostRequest = RunOnCourseRequest.builder()
+                .runningName("테스트 러닝 이름")
                 .mode("GHOST")
                 .ghostRunningId(2L)
                 .startedAt(1750729987181L)
@@ -107,8 +109,10 @@ class RunningApiMapperTest {
         // then
         // RUNNING
         Assertions.assertThat(soloCommand).isNotNull();
+        Assertions.assertThat(soloCommand.runningName()).isEqualTo("테스트 러닝 이름");
         Assertions.assertThat(soloCommand.mode()).isEqualTo("SOLO");
         Assertions.assertThat(soloCommand.startedAt()).isEqualTo(1750729987181L);
+        Assertions.assertThat(ghostCommand.runningName()).isEqualTo("테스트 러닝 이름");
         Assertions.assertThat(ghostCommand).isNotNull();
         Assertions.assertThat(ghostCommand.mode()).isEqualTo("GHOST");
         Assertions.assertThat(ghostCommand.ghostRunningId()).isEqualTo(2L);

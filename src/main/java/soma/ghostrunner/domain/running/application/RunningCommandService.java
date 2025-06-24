@@ -34,7 +34,7 @@ public class RunningCommandService {
     private final MemberService memberService;
 
     @Transactional
-    public CreateCourseAndRunResponse createCourseAndRun(CreateRunningCommand command, String courseName, Long memberId) {
+    public CreateCourseAndRunResponse createCourseAndRun(CreateRunningCommand command, Long memberId) {
 
         Member member = memberService.findMemberById(memberId);
 
@@ -42,7 +42,7 @@ public class RunningCommandService {
         String url = s3Uploader.uploadTelemetry(convertTelemetriesToRelativeTimestamp(command), memberId);
 
         // 코스, 러닝 생성 및 저장
-        Course course = createAndSaveCourse(command, courseName);
+        Course course = createAndSaveCourse(command);
         RunningRecord runningRecord = createRunningRecord(command.record());
         Running running = createAndSaveRunning(command, runningRecord, url, member, course);
 
@@ -82,7 +82,8 @@ public class RunningCommandService {
     }
 
     private Running createAndSaveRunning(CreateRunningCommand command, RunningRecord runningRecord, String url, Member member, Course course) {
-        return runningRepository.save(Running.of(RunningMode.valueOf(command.mode()), command.ghostRunningId(), runningRecord,
+        return runningRepository.save(Running.of(command.runningName(), RunningMode.valueOf(command.mode()),
+                command.ghostRunningId(), runningRecord,
                 command.startedAt(), command.isPublic(), command.hasPaused(), url, member, course));
     }
 
@@ -92,9 +93,8 @@ public class RunningCommandService {
                 command.duration(), command.calories(), command.avgCadence(), command.avgBpm());
     }
 
-    private Course createAndSaveCourse(CreateRunningCommand command, String courseName) {
-        Course course = Course.of(courseName,
-                CourseMetaInfo.of(command.record().distance(), command.record().altitude()),
+    private Course createAndSaveCourse(CreateRunningCommand command) {
+        Course course = Course.of(CourseMetaInfo.of(command.record().distance(), command.record().altitude()),
                 TelemetryParser.extractStartPoint(command.telemetries()),
                 TelemetryParser.extractCourseCoordinates(command.telemetries()));
         courseService.save(course);

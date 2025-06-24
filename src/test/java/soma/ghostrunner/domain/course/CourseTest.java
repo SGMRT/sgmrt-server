@@ -17,12 +17,12 @@ class CourseTest {
     void setUp() {
         testCourseMetaInfo = CourseMetaInfo.of(5.2, 40);
         testStartPoint = StartPoint.fromCoordinates(37.545354, 34.7878);
-        testCourse = Course.of("반포 한강코스", testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        testCourse = Course.of(testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
     }
 
     @Test
     void of() {
-        Assertions.assertThat(testCourse.getName()).isEqualTo("반포 한강코스");
+        Assertions.assertThat(testCourse.getName()).isNull();
         Assertions.assertThat(testCourse.getCourseMetaInfo().getAltitude()).isEqualTo(40);
     }
 }

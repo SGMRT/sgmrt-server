@@ -65,7 +65,7 @@ class RunningRepositoryTest {
 
     private Running createRunning(Member testMember, Course testCourse ) {
         RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, 6.1, 3423, 302, 120, 56);
-        return Running.of(RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
+        return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
                 true, false, "URL", testMember, testCourse);
     }
 
@@ -76,13 +76,21 @@ class RunningRepositoryTest {
     private Course createCourse(String courseName) {
         CourseMetaInfo testCourseMetaInfo = CourseMetaInfo.of(5.2, 40);
         StartPoint testStartPoint = StartPoint.fromCoordinates(37.545354, 34.7878);
-        return Course.of(courseName, testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        return Course.of(testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
     }
 
     @DisplayName("코스에 대해서 고스트가 러닝한 ID가 있는지 확인한다.")
     @Test
     void testFindGhostRunningIdWithCourse() {
+        // given
+        List<Long> course1RunningIds = runningRepository.findIdsByCourseId(savedCourse1.getId());
+        List<Long> course2RunningIds = runningRepository.findIdsByCourseId(savedCourse2.getId());
+        List<Long> noneRunningIds = runningRepository.findIdsByCourseId(10L);
 
+        // then
+        Assertions.assertThat(course1RunningIds).hasSize(2);
+        Assertions.assertThat(course2RunningIds).isNotNull();
+        Assertions.assertThat(noneRunningIds).hasSize(0);
     }
 
 }

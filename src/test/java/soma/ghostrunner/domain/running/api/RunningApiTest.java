@@ -78,7 +78,7 @@ class RunningApiTest {
     private static Stream<Arguments> invalidCreateCourseAndRunRequests() {
         return Stream.of(
                 Arguments.of(
-                        setCourseNameBlank(), "courseName"
+                        setCourseNameBlank(), "runningName"
                 ),
                 Arguments.of(
                         setHasPausedNull(), "hasPaused"
@@ -97,7 +97,7 @@ class RunningApiTest {
 
     private static CreateCourseAndRunRequest validCreateCourseAndRunRequest() {
         return CreateCourseAndRunRequest.builder()
-                .courseName("반포 코스")
+                .runningName("테스트러닝 제목")
                 .mode("SOLO")
                 .startedAt(1750729987181L)
                 .record(validRunRecordDto())
@@ -135,7 +135,7 @@ class RunningApiTest {
 
     private static CreateCourseAndRunRequest setCourseNameBlank() {
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.setCourseName("");
+        request.setRunningName("");
         return request;
     }
 
@@ -213,6 +213,7 @@ class RunningApiTest {
 
     private static RunOnCourseRequest validSoloRunOnCourseRequest() {
         return RunOnCourseRequest.builder()
+                .runningName("테스트 러닝 제목")
                 .mode("SOLO")
                 .startedAt(1750729987181L)
                 .record(validRunRecordDto())
@@ -224,6 +225,7 @@ class RunningApiTest {
 
     private static RunOnCourseRequest validGhostRunOnCourseRequest(Long ghostRunningId) {
         return RunOnCourseRequest.builder()
+                .runningName("테스트 러닝 제목")
                 .mode("GHOST")
                 .ghostRunningId(ghostRunningId)
                 .startedAt(1750729987181L)

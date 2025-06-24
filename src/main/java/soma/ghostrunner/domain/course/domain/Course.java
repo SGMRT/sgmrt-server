@@ -13,7 +13,7 @@ public class Course extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column
     private String name;
 
     @Embedded
@@ -26,16 +26,14 @@ public class Course extends BaseTimeEntity {
     private String pathData;
 
     @Builder
-    private Course(String name, CourseMetaInfo courseMetaInfo, StartPoint startPoint, String pathData) {
-        this.name = name;
+    private Course(CourseMetaInfo courseMetaInfo, StartPoint startPoint, String pathData) {
         this.courseMetaInfo = courseMetaInfo;
         this.startPoint = startPoint;
         this.pathData = pathData;
     }
 
-    public static Course of(String name, CourseMetaInfo courseMetaInfo, StartPoint startPoint, String pathData) {
+    public static Course of(CourseMetaInfo courseMetaInfo, StartPoint startPoint, String pathData) {
         return Course.builder()
-                .name(name)
                 .courseMetaInfo(courseMetaInfo)
                 .startPoint(startPoint)
                 .pathData(pathData)
