@@ -6,17 +6,24 @@ spring:
     password: ${DB_PASSWORD}
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     open-in-view: false
-    properties:
-      hibernate:
-        format_sql: true
-        highlight_sql: true
-        use_sql_comments: true
-        default_batch_fetch_size: 100
-        dialect: org.hibernate.dialect.MySQLDialect
 
 logging:
   level:
     org.springframework.core.LocalVariableTableParameterNameDiscoverer: error
     org.hibernate.SQL: debug
+
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    stack:
+      auto: false
+
+s3:
+  telemetry-bucket-name: ${AWS_TELEMETRY_BUCKET}
+  telemetry-directory-name: ${AWS_TELEMETRY_DIRECTORY}
