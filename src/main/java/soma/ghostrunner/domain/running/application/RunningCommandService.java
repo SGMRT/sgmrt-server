@@ -5,7 +5,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.clients.aws.S3Uploader;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.TelemetryParser;
+import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetryResult;
+import soma.ghostrunner.domain.running.domain.TelemetryProcessor;
 import soma.ghostrunner.domain.course.domain.CourseMetaInfo;
 import soma.ghostrunner.domain.course.CourseService;
 import soma.ghostrunner.domain.member.Member;
@@ -30,6 +31,7 @@ public class RunningCommandService {
     private final S3Uploader s3Uploader;
     private final RunningRepository runningRepository;
 
+    private final RunningQueryService runningQueryService;
     private final CourseService courseService;
     private final MemberService memberService;
 
@@ -38,11 +40,12 @@ public class RunningCommandService {
 
         Member member = memberService.findMemberById(memberId);
 
-        // 상대 시간으로 변경 및 S3 업로드
-        String url = s3Uploader.uploadTelemetry(convertTelemetriesToRelativeTimestamp(command), memberId);
+        // 시계열 가공 및 S3 업로드
+        ProcessedTelemetryResult processedTelemetry = processTelemetry(command);
+        String url = s3Uploader.uploadTelemetry(processedTelemetry.getRelativeTelemetries(), memberId);
 
         // 코스, 러닝 생성 및 저장
-        Course course = createAndSaveCourse(command);
+        Course course = createAndSaveCourse(command, processedTelemetry);
         RunningRecord runningRecord = createRunningRecord(command.record());
         Running running = createAndSaveRunning(command, runningRecord, url, member, course);
 
@@ -55,11 +58,12 @@ public class RunningCommandService {
         Member member = memberService.findMemberById(memberId);
 
         // 상대 시간으로 변경 및 S3 업로드
-        String url = s3Uploader.uploadTelemetry(convertTelemetriesToRelativeTimestamp(command), memberId);
+        ProcessedTelemetryResult processedTelemetry = processTelemetry(command);
+        String url = s3Uploader.uploadTelemetry(processedTelemetry.getRelativeTelemetries(), memberId);
 
         // 코스 및 고스트가 뛴 기록 검증
         Course course = courseService.findCourseById(courseId);
-        verifyGhostRunningExist(command.ghostRunningId(), courseId);
+        runningQueryService.findRunningById(command.ghostRunningId());
 
         // 러닝 생성 및 저장
         RunningRecord runningRecord = createRunningRecord(command.record());
@@ -68,23 +72,19 @@ public class RunningCommandService {
         return running.getId();
     }
 
-    private List<TelemetryCommand> convertTelemetriesToRelativeTimestamp(CreateRunningCommand command) {
-        return TelemetryParser.convertAbsoluteToRelativeTimestamp(command.telemetries(), command.startedAt());
+    @Transactional
+    public void updateRunningName(String name, Long memberId, Long runningId) {
+        Running running = runningQueryService.findRunningBuRunningIdAndMemberId(runningId, memberId);
+        running.updateName(name);
     }
 
-    private void verifyGhostRunningExist(Long ghostRunningId, Long courseId) {
-        if (ghostRunningId != null) {
-            List<Long> runningIds = runningRepository.findIdsByCourseId(courseId);
-            if (!runningIds.contains(ghostRunningId)) {
-                throw new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, ghostRunningId);
-            }
-        }
+    private ProcessedTelemetryResult processTelemetry(CreateRunningCommand command) {
+        return TelemetryProcessor.processTelemetry(command.telemetries(), command.startedAt());
     }
 
     private Running createAndSaveRunning(CreateRunningCommand command, RunningRecord runningRecord, String url, Member member, Course course) {
         return runningRepository.save(Running.of(command.runningName(), RunningMode.valueOf(command.mode()),
-                command.ghostRunningId(), runningRecord,
-                command.startedAt(), command.isPublic(), command.hasPaused(), url, member, course));
+                command.ghostRunningId(), runningRecord, command.startedAt(), command.isPublic(), command.hasPaused(), url, member, course));
     }
 
     private RunningRecord createRunningRecord(RunRecordCommand command) {
@@ -93,10 +93,9 @@ public class RunningCommandService {
                 command.duration(), command.calories(), command.avgCadence(), command.avgBpm());
     }
 
-    private Course createAndSaveCourse(CreateRunningCommand command) {
+    private Course createAndSaveCourse(CreateRunningCommand command, ProcessedTelemetryResult processedTelemetry) {
         Course course = Course.of(CourseMetaInfo.of(command.record().distance(), command.record().altitude()),
-                TelemetryParser.extractStartPoint(command.telemetries()),
-                TelemetryParser.extractCourseCoordinates(command.telemetries()));
+                processedTelemetry.getStartPoint(), processedTelemetry.getCourseCoordinates());
         courseService.save(course);
         return course;
     }

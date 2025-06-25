@@ -3,7 +3,7 @@ package soma.ghostrunner.domain.running.api.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
-import soma.ghostrunner.domain.running.api.dto.request.RunOnCourseRequest;
+import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.application.dto.CreateRunningCommand;
 
 @Mapper(componentModel = "spring")
@@ -12,5 +12,5 @@ public interface RunningApiMapper {
 
     CreateRunningCommand toCommand(CreateCourseAndRunRequest request);
 
-    CreateRunningCommand toCommand(RunOnCourseRequest request);
+    CreateRunningCommand toCommand(CreateRunRequest request);
 }

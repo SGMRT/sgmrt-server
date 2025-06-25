@@ -14,10 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
-import soma.ghostrunner.domain.running.api.dto.request.RunRecordDto;
-import soma.ghostrunner.domain.running.api.dto.request.TelemetryDto;
-import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
-import soma.ghostrunner.domain.running.api.dto.request.RunOnCourseRequest;
+import soma.ghostrunner.domain.running.api.dto.request.*;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.global.common.log.HttpLogger;
 
@@ -66,13 +63,97 @@ class RunningApiTest {
     @DisplayName("CreateRunRequest 유효성 검사 실패")
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
     @MethodSource("invalidCreateCourseAndRunRequests")
-    void testCreateCourseAndRunValidationError(CreateCourseAndRunRequest payload, String wrongField) throws Exception {
+    void testCreateCourseAndRunValidation(CreateCourseAndRunRequest payload, String wrongField) throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField));;
+    }
+
+    // ——————————————————————————————————————————————————————————
+    // 2) “기존 코스 러닝” API 테스트
+    // ——————————————————————————————————————————————————————————
+    @DisplayName("혼자 기존 코스를 뛰는 API 성공 테스트")
+    @Test
+    void testSoloRunExistingCourse() throws Exception{
+        // given
+        CreateRunRequest soloRequest = validSoloRunOnCourseRequest();
+
+        // then
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
+                        .content(objectMapper.writeValueAsString(soloRequest))
+                        .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+
+    }
+
+    @DisplayName("고스트와 기존 코스를 뛰는 API 성공 테스트")
+    @Test
+    void testGhostRunExistingCourse() throws Exception{
+        // when
+        CreateRunRequest ghostRequest = validGhostRunOnCourseRequest(3L);
+
+        // then
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
+                        .content(objectMapper.writeValueAsString(ghostRequest))
+                        .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+
+    }
+
+    @DisplayName("기존 코스를 뛰는 API - 유효성 검사")
+    @ParameterizedTest(name = "[{index}] field `{1}` invalid")
+    @MethodSource("invalidSoloRunOnCourseRequests")
+    void testRunExistingCourseValidation(CreateRunRequest payload, String wrongField) throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField));
+    }
+
+    // ——————————————————————————————————————————————————————————
+    // 3) "러닝 기록 제목 수정" API 테스트
+    // ——————————————————————————————————————————————————————————
+    @DisplayName("새로운 코스를 뛰는 API 성공 테스트")
+    @Test
+    void testUpdateRunningName() throws Exception{
+        // given
+        UpdateRunNameRequest request = new UpdateRunNameRequest("수정할 이름");
+
+        // then
+        mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/name/1")
+                        .content(objectMapper.writeValueAsString(request))
+                        .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+
+    }
+
+    @DisplayName("UpdateRunNameRequest 유효성 검사 실패")
+    @Test
+    void testUpdateRunningNameValidation() throws Exception {
+        // given
+        UpdateRunNameRequest request = new UpdateRunNameRequest("수정할 이름");
+
+        // when
+        request.setName("");
+
+        // then
+        mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/name/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value("name"));;
     }
 
     private static Stream<Arguments> invalidCreateCourseAndRunRequests() {
@@ -164,55 +245,8 @@ class RunningApiTest {
         return request;
     }
 
-    // ——————————————————————————————————————————————————————————
-    // 2) “기존 코스 러닝” API 테스트
-    // ——————————————————————————————————————————————————————————
-    @DisplayName("혼자 기존 코스를 뛰는 API 성공 테스트")
-    @Test
-    void testSoloRunExistingCourse() throws Exception{
-        // given
-        RunOnCourseRequest soloRequest = validSoloRunOnCourseRequest();
-
-        // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
-                        .content(objectMapper.writeValueAsString(soloRequest))
-                        .contentType(MediaType.APPLICATION_JSON)
-                )
-                .andDo(MockMvcResultHandlers.print())
-                .andExpect(status().isOk());
-
-    }
-
-    @DisplayName("고스트와 기존 코스를 뛰는 API 성공 테스트")
-    @Test
-    void testGhostRunExistingCourse() throws Exception{
-        // when
-        RunOnCourseRequest ghostRequest = validGhostRunOnCourseRequest(3L);
-
-        // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
-                        .content(objectMapper.writeValueAsString(ghostRequest))
-                        .contentType(MediaType.APPLICATION_JSON)
-                )
-                .andDo(MockMvcResultHandlers.print())
-                .andExpect(status().isOk());
-
-    }
-
-    @DisplayName("기존 코스를 뛰는 API - 유효성 검사")
-    @ParameterizedTest(name = "[{index}] field `{1}` invalid")
-    @MethodSource("invalidSoloRunOnCourseRequests")
-    void testRunExistingCourseValidationError(RunOnCourseRequest payload, String wrongField) throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1/1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andDo(MockMvcResultHandlers.print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField));
-    }
-
-    private static RunOnCourseRequest validSoloRunOnCourseRequest() {
-        return RunOnCourseRequest.builder()
+    private static CreateRunRequest validSoloRunOnCourseRequest() {
+        return CreateRunRequest.builder()
                 .runningName("테스트 러닝 제목")
                 .mode("SOLO")
                 .startedAt(1750729987181L)
@@ -223,8 +257,8 @@ class RunningApiTest {
                 .build();
     }
 
-    private static RunOnCourseRequest validGhostRunOnCourseRequest(Long ghostRunningId) {
-        return RunOnCourseRequest.builder()
+    private static CreateRunRequest validGhostRunOnCourseRequest(Long ghostRunningId) {
+        return CreateRunRequest.builder()
                 .runningName("테스트 러닝 제목")
                 .mode("GHOST")
                 .ghostRunningId(ghostRunningId)
@@ -250,18 +284,18 @@ class RunningApiTest {
         );
     }
 
-    private static RunOnCourseRequest setInvalidSoloRunOnCourseRequest() {
-        RunOnCourseRequest soloRequest = validSoloRunOnCourseRequest();
+    private static CreateRunRequest setInvalidSoloRunOnCourseRequest() {
+        CreateRunRequest soloRequest = validSoloRunOnCourseRequest();
         soloRequest.setGhostRunningId(2L);
         return soloRequest;
     }
 
-    private static RunOnCourseRequest setInvalidGhostRunOnCourseRequest() {
+    private static CreateRunRequest setInvalidGhostRunOnCourseRequest() {
         return validGhostRunOnCourseRequest(null);
     }
 
-    private static RunOnCourseRequest setRunOnCourseRequestInvalidPausedAndPublic() {
-        RunOnCourseRequest soloRequest = validSoloRunOnCourseRequest();
+    private static CreateRunRequest setRunOnCourseRequestInvalidPausedAndPublic() {
+        CreateRunRequest soloRequest = validSoloRunOnCourseRequest();
         soloRequest.setIsPublic(true);
         soloRequest.setHasPaused(true);
         return soloRequest;

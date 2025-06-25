@@ -42,4 +42,11 @@ class RunningTest {
     void testRunningMode() {
         Assertions.assertThat(RunningMode.valueOf("SOLO")).isEqualTo(RunningMode.SOLO);
     }
+
+    @DisplayName("이름 변경 테스트")
+    @Test
+    void updateName() {
+        testRunning.updateName("업데이트된 이름");
+        Assertions.assertThat(testRunning.getRunningName()).isEqualTo("업데이트된 이름");
+    }
 }

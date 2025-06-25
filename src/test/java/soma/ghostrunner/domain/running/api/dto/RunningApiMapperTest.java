@@ -5,7 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
-import soma.ghostrunner.domain.running.api.dto.request.RunOnCourseRequest;
+import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.RunRecordDto;
 import soma.ghostrunner.domain.running.api.dto.request.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.CreateRunningCommand;
@@ -82,7 +82,7 @@ class RunningApiMapperTest {
     @Test
     void toCommandFromRunOnCourseRequest() {
         // given
-        RunOnCourseRequest soloRequest = RunOnCourseRequest.builder()
+        CreateRunRequest soloRequest = CreateRunRequest.builder()
                 .runningName("테스트 러닝 이름")
                 .mode("SOLO")
                 .startedAt(1750729987181L)
@@ -91,7 +91,7 @@ class RunningApiMapperTest {
                 .isPublic(true)
                 .telemetries(createTelemetries())
                 .build();
-        RunOnCourseRequest ghostRequest = RunOnCourseRequest.builder()
+        CreateRunRequest ghostRequest = CreateRunRequest.builder()
                 .runningName("테스트 러닝 이름")
                 .mode("GHOST")
                 .ghostRunningId(2L)

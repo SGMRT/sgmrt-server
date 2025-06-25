@@ -18,6 +18,7 @@ import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
 import java.util.List;
+import java.util.Optional;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -33,6 +34,13 @@ class RunningRepositoryTest {
     private Course savedCourse1;
     private Course savedCourse2;
 
+    private Member member1;
+    private Member member2;
+
+    private Running running1;
+    private Running running2;
+    private Running running3;
+
     @BeforeEach
     void setUp() {
         // 코스 생성
@@ -40,12 +48,13 @@ class RunningRepositoryTest {
         savedCourse2 = courseRepository.save(createCourse("테스트 코스2"));
 
         // 멤버 생성
-        Member member = memberRepository.save(createMember("멤버"));
+        member1 = memberRepository.save(createMember("멤버1"));
+        member2 = memberRepository.save(createMember("멤버2"));
 
         // 러닝
-        runningRepository.save(createRunning(member, savedCourse1));
-        runningRepository.save(createRunning(member, savedCourse1));
-        runningRepository.save(createRunning(member, savedCourse2));
+        running1 = runningRepository.save(createRunning(member1, savedCourse1));
+        running2 = runningRepository.save(createRunning(member1, savedCourse1));
+        running3 = runningRepository.save(createRunning(member1, savedCourse2));
     }
 
     @DisplayName("특정 코스 ID에 해당하는 모든 러닝 ID 목록을 조회한다")
@@ -58,9 +67,23 @@ class RunningRepositoryTest {
         List<Long> runningIds = runningRepository.findIdsByCourseId(targetCourseId);
 
         // then
-        Assertions.assertThat(runningIds).isNotNull();
+        Assertions.assertThat(runningIds.contains(running1.getId())).isTrue();
         Assertions.assertThat(runningIds).hasSize(2);
         Assertions.assertThat(runningIds.contains(5L)).isFalse();
+    }
+
+    @DisplayName("러닝 ID와 멤버 ID로 러닝을 조회한다.")
+    @Test
+    void testFindByRunningIdAndMemberId() {
+        // when
+        Running existRunning = runningRepository.findByRunningIdAndMemberId(running1.getId(), member1.getId()).get();
+        Optional<Running> nonExistRunning1 = runningRepository.findByRunningIdAndMemberId(running2.getId(), member2.getId());
+        Optional<Running> nonExistRunning2 = runningRepository.findByRunningIdAndMemberId(10L, member1.getId());
+
+        // then
+        Assertions.assertThat(existRunning.getId()).isEqualTo(running1.getId());
+        Assertions.assertThat(nonExistRunning1.isPresent()).isFalse();
+        Assertions.assertThat(nonExistRunning2.isPresent()).isFalse();
     }
 
     private Running createRunning(Member testMember, Course testCourse ) {
