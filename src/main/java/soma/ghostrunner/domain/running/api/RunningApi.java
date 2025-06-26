@@ -28,7 +28,7 @@ public class RunningApi {
     }
 
     @PostMapping("v1/runs/{courseId}/{memberId}")
-    public Long runExistingCourse(@RequestBody @Valid CreateRunRequest req, @PathVariable Long courseId, @PathVariable Long memberId) {
+    public Long createRun(@RequestBody @Valid CreateRunRequest req, @PathVariable Long courseId, @PathVariable Long memberId) {
         return runningCommandService.createRun(mapper.toCommand(req), courseId, memberId);
     }
 
