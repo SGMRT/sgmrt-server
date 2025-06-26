@@ -23,18 +23,21 @@ class TelemetryProcessorTest {
     void processTelemetryTest() {
         // when
         setUp();
-        ProcessedTelemetryResult processedTelemetryResult = TelemetryProcessor.processTelemetry(telemetryList, startedAt);
+        ProcessedTelemetryResult processedTelemetry = TelemetryProcessor.processTelemetry(telemetryList, startedAt);
 
         // then
         // 상대시간
         for (int i = 0; i < telemetryList.size(); i++) {
-            Assertions.assertThat(processedTelemetryResult.getRelativeTelemetries().get(i).timeStamp()).isEqualTo(i*5);
+            Assertions.assertThat(processedTelemetry.getRelativeTelemetries().get(i).timeStamp()).isEqualTo(i*5);
         }
         // 시작점 위도+경도
-        Assertions.assertThat(processedTelemetryResult.getStartPoint().getLatitude()).isEqualTo(37.5665);
-        Assertions.assertThat(processedTelemetryResult.getStartPoint().getLongitude()).isEqualTo(126.9780);
+        Assertions.assertThat(processedTelemetry.getStartPoint().getLatitude()).isEqualTo(37.5665);
+        Assertions.assertThat(processedTelemetry.getStartPoint().getLongitude()).isEqualTo(126.9780);
+        // 최고/최저 페이스
+        Assertions.assertThat(processedTelemetry.getHighestPace()).isEqualTo(14.0);
+        Assertions.assertThat(processedTelemetry.getLowestPace()).isEqualTo(5.0);
         // 코스 STRING
-        System.out.println(processedTelemetryResult.getCourseCoordinates());
+        System.out.println(processedTelemetry.getCourseCoordinates());
     }
 
     private void setUp() {
@@ -46,7 +49,7 @@ class TelemetryProcessorTest {
                     37.5665 + i * 0.0001,         // 위도
                     126.9780 + i * 0.0001,        // 경도
                     i * 10.0,                    // 거리 (예: 10m 단위)
-                    5.0 + (i % 3) * 0.2,         // 페이스
+                    5.0 + i,         // 페이스
                     30 + i,     // 고도
                     150 + random.nextInt(10),    // 케이던스
                     120 + random.nextInt(20),    // 심박수

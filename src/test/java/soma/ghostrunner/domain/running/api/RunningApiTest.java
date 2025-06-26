@@ -188,12 +188,18 @@ class RunningApiTest {
                 ),
                 Arguments.of(
                         setHasPausedAndIsPublicInvalid(), "hasPaused"
+                ),
+                Arguments.of(
+                        setElevationGainInvalid(), "record.elevationGain"
+                ),
+                Arguments.of(
+                        setElevationLossInvalid(), "record.elevationLoss"
                 )
         );
     }
 
     private static CreateRunningCommand validCreateSoloRunningCommand() {
-        RunRecordCommand runRecordCommand = new RunRecordCommand(10.5, 120, 3600L, 5.7, 800, 150, 80);
+        RunRecordCommand runRecordCommand = new RunRecordCommand(10.5, 30, -20, 3600L, 5.7, 800, 150, 80);
         List<TelemetryCommand> telemetryCommands = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             telemetryCommands.add(new TelemetryCommand(1750729987181L, 37.5, 127.0, 4.2, 5.48, 100, 80, 150, true));
@@ -203,7 +209,7 @@ class RunningApiTest {
     }
 
     private static CreateRunningCommand validCreateGhostRunningCommand(Long ghostRunningId) {
-        RunRecordCommand runRecordCommand = new RunRecordCommand(10.5, 120, 3600L, 5.7, 800, 150, 80);
+        RunRecordCommand runRecordCommand = new RunRecordCommand(10.5, 30, -20, 3600L, 5.7, 800, 150, 80);
         List<TelemetryCommand> telemetryCommands = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             telemetryCommands.add(new TelemetryCommand(1750729987181L, 37.5, 127.0, 4.2, 5.48, 100, 80, 150, true));
@@ -230,7 +236,8 @@ class RunningApiTest {
                 .distance(10.5)
                 .avgPace(5.7)
                 .calories(800)
-                .altitude(120)
+                .elevationGain(30)
+                .elevationLoss(-20)
                 .avgBpm(150)
                 .avgCadence(80)
                 .build();
@@ -278,6 +285,18 @@ class RunningApiTest {
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
         request.setHasPaused(true);
         request.setIsPublic(true);
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setElevationGainInvalid() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.getRecord().setElevationGain(null);
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setElevationLossInvalid() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.getRecord().setElevationLoss(20);
         return request;
     }
 

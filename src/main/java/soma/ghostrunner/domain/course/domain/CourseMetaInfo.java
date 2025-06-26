@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.course.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,19 +15,24 @@ public class CourseMetaInfo {
     @Column(name = "distance", nullable = false)
     private double distance;
 
-    @Column(name = "altitude", nullable = false)
-    private int altitude;
+    @NotEmpty @Column(name = "elevation_gain_m")
+    private int elevationGain;
+
+    @NotEmpty @Column(name = "elevation_loss_m")
+    private int elevationLoss;
 
     @Builder
-    private CourseMetaInfo(double distance, int altitude) {
+    private CourseMetaInfo(double distance, int  elevationGain, int elevationLoss) {
         this.distance = distance;
-        this.altitude = altitude;
+        this.elevationGain = elevationGain;
+        this.elevationLoss = elevationLoss;
     }
 
-    public static CourseMetaInfo of(double distance, int altitude) {
+    public static CourseMetaInfo of(double distance, int  elevationGain, int elevationLoss) {
         return CourseMetaInfo.builder()
                 .distance(distance)
-                .altitude(altitude)
+                .elevationGain(elevationGain)
+                .elevationLoss(elevationLoss)
                 .build();
     }
 }

@@ -20,6 +20,8 @@ public class TelemetryProcessor {
 
         List<TelemetryCommand> relativeTelemetries = new ArrayList<>();
         List<Coordinate> coordinates = new ArrayList<>();
+        Double highestPace = Double.MIN_VALUE;
+        Double lowestPace = Double.MAX_VALUE;
 
         for (TelemetryCommand telemetry : telemetries) {
 
@@ -31,6 +33,10 @@ public class TelemetryProcessor {
                     .lat(telemetry.lat())
                     .lng(telemetry.lng())
                     .build());
+
+            // 속도 계산
+            highestPace = Math.max(highestPace, telemetry.pace());
+            lowestPace = Math.min(lowestPace, telemetry.pace());
         }
 
         return ProcessedTelemetryResult.builder()
@@ -40,6 +46,8 @@ public class TelemetryProcessor {
                         .longitude(telemetries.get(0).lng())
                         .build())
                 .courseCoordinates(convertToString(coordinates))
+                .highestPace(highestPace)
+                .lowestPace(lowestPace)
                 .build();
     }
 

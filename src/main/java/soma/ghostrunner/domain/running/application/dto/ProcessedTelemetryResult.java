@@ -13,4 +13,6 @@ public class ProcessedTelemetryResult {
     private List<TelemetryCommand> relativeTelemetries;
     private StartPoint startPoint;
     private String courseCoordinates;
+    private Double highestPace;
+    private Double lowestPace;
 }

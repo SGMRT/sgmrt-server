@@ -87,7 +87,7 @@ class RunningRepositoryTest {
     }
 
     private Running createRunning(Member testMember, Course testCourse ) {
-        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, 6.1, 3423, 302, 120, 56);
+        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423, 302, 120, 56);
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
                 true, false, "URL", testMember, testCourse);
     }
@@ -97,7 +97,7 @@ class RunningRepositoryTest {
     }
 
     private Course createCourse(String courseName) {
-        CourseMetaInfo testCourseMetaInfo = CourseMetaInfo.of(5.2, 40);
+        CourseMetaInfo testCourseMetaInfo = CourseMetaInfo.of(5.2, 40, -10);
         StartPoint testStartPoint = StartPoint.fromCoordinates(37.545354, 34.7878);
         return Course.of(testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
     }
