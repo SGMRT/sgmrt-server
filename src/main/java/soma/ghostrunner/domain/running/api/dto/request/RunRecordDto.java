@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.running.api.dto.request;
 
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +16,10 @@ public class RunRecordDto  {
     private Double distance;    // km
 
     @NotNull @PositiveOrZero
-    private Integer altitude;   // m
+    private Integer elevationGain;      // m, 고도
+
+    @NotNull @NegativeOrZero
+    private Integer elevationLoss;
 
     @NotNull @PositiveOrZero
     private Long duration;      // 초 단위

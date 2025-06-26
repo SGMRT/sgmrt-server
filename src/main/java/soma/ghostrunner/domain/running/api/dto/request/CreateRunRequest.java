@@ -23,7 +23,7 @@ import java.util.List;
 )
 @Data @Builder
 @AllArgsConstructor @NoArgsConstructor
-public class RunOnCourseRequest {
+public class CreateRunRequest {
 
     @NotBlank
     private String runningName;

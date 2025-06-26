@@ -12,4 +12,8 @@ public class RunningNotFoundException extends EntityNotFoundException
     public RunningNotFoundException(ErrorCode errorCode, long id) {
         super(errorCode, id);
     }
+
+    public RunningNotFoundException(ErrorCode errorCode, String message) {
+        super(errorCode, message);
+    }
 }

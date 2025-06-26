@@ -11,9 +11,9 @@ public record TelemetryCommand(
         Integer bpm,
         Boolean isRunning
 ) {
-    public TelemetryCommand withTimeStamp(Long newTimeStamp) {
+    public TelemetryCommand convertToRelativeTs(Long startedAt) {
         return new TelemetryCommand(
-                newTimeStamp,
+                this.timeStamp - startedAt,
                 this.lat,
                 this.lng,
                 this.dist,

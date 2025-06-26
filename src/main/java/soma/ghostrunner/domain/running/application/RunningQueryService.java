@@ -20,4 +20,9 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, id));
     }
 
+    public Running findByRunningIdAndMemberId(Long runningId, Long memberId) {
+        return runningRepository.findByRunningIdAndMemberId(runningId, memberId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, "러닝 ID : " + runningId + ", 멤버 ID : " + memberId + "에 해당하는 엔티티를 찾을 수 없습니다."));
+    }
+
 }
