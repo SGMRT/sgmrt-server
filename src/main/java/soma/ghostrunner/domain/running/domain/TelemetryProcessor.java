@@ -5,25 +5,26 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import soma.ghostrunner.domain.course.domain.StartPoint;
-import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetryResult;
-import soma.ghostrunner.domain.running.application.dto.TelemetryCommand;
+import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
+import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.common.error.exception.ParsingException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class TelemetryProcessor {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    public static ProcessedTelemetryResult processTelemetry(List<TelemetryCommand> telemetries, Long startedAt) {
+    public static ProcessedTelemetriesDto processTelemetry(List<TelemetryDto> telemetries, Long startedAt) {
 
-        List<TelemetryCommand> relativeTelemetries = new ArrayList<>();
+        List<TelemetryDto> relativeTelemetries = new ArrayList<>();
         List<Coordinate> coordinates = new ArrayList<>();
         Double highestPace = Double.MIN_VALUE;
         Double lowestPace = Double.MAX_VALUE;
 
-        for (TelemetryCommand telemetry : telemetries) {
+        for (TelemetryDto telemetry : telemetries) {
 
             // 타임스탬프 상대시간으로 전환
             relativeTelemetries.add(telemetry.convertToRelativeTs(startedAt));
@@ -39,7 +40,7 @@ public class TelemetryProcessor {
             lowestPace = Math.min(lowestPace, telemetry.pace());
         }
 
-        return ProcessedTelemetryResult.builder()
+        return ProcessedTelemetriesDto.builder()
                 .relativeTelemetries(relativeTelemetries)
                 .startPoint(StartPoint.builder()
                         .latitude(telemetries.get(0).lat())
@@ -62,7 +63,7 @@ public class TelemetryProcessor {
         try {
             return objectMapper.writeValueAsString(coordinates);
         } catch (Exception e) {
-            throw new RuntimeException("시계열에서 위경도 데이터 추출을 실패했습니다.");
+            throw new ParsingException(ErrorCode.SERVICE_UNAVAILABLE, "시계열에서 위경도 데이터 추출을 실패했습니다.");
         }
     }
 }

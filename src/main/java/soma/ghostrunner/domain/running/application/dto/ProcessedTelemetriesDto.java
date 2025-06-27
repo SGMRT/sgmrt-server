@@ -9,8 +9,8 @@ import java.util.List;
 
 @Data @Builder
 @AllArgsConstructor
-public class ProcessedTelemetryResult {
-    private List<TelemetryCommand> relativeTelemetries;
+public class ProcessedTelemetriesDto {
+    private List<TelemetryDto> relativeTelemetries;
     private StartPoint startPoint;
     private String courseCoordinates;
     private Double highestPace;

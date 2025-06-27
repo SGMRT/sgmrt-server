@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.running.api.dto.request;
 
-import jakarta.persistence.Column;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RunRecordDto  {
+public class RunRecordRequest {
 
     @NotNull @Positive
     private Double distance;    // km
