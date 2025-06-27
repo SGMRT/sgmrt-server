@@ -13,34 +13,34 @@ import lombok.NoArgsConstructor;
 public class RunningRecord {
 
     @NotEmpty @Column(name = "distance_km")
-    private double distance;
+    private Double distance;
 
     @NotEmpty @Column(name = "elevation_gain_m")
-    private int elevationGain;
+    private Integer elevationGain;
 
     @NotEmpty @Column(name = "elevation_loss_m")
-    private int elevationLoss;
+    private Integer elevationLoss;
 
     @NotEmpty @Column(name = "average_pace_min/km")
-    private double averagePace;
+    private Double averagePace;
 
     @NotEmpty @Column(name = "highest_pace_min/km")
-    private double highestPace;
+    private Double highestPace;
 
     @NotEmpty @Column(name = "lowest_pace_min/km")
-    private double lowestPace;
+    private Double lowestPace;
 
     @NotEmpty @Column(name = "duration_sec")
-    private long duration;
+    private Long duration;
 
     @NotEmpty @Column(name = "burned_calories_kcal")
-    private int burnedCalories;
+    private Integer burnedCalories;
 
     @NotEmpty @Column(name = "average_cadence_spm")
-    private int cadence;
+    private Integer cadence;
 
     @NotEmpty @Column(name = "average_bpm")
-    private int bpm;
+    private Integer bpm;
 
     @Builder
     private RunningRecord(double distance, int elevationGain, int elevationLoss, double averagePace,
@@ -57,8 +57,8 @@ public class RunningRecord {
         this.bpm = bpm;
     }
 
-    public static RunningRecord of(double distance, int elevationGain, int elevationLoss, double averagePace,
-                                   double highestPace, double lowestPace, long duration, int burnedCalories, int cadence, int bpm) {
+    public static RunningRecord of(Double distance, Integer elevationGain, Integer elevationLoss, Double averagePace,
+                                   Double highestPace, Double lowestPace, Long duration, Integer burnedCalories, Integer cadence, Integer bpm) {
         return RunningRecord.builder()
                 .distance(distance)
                 .elevationGain(elevationGain)
