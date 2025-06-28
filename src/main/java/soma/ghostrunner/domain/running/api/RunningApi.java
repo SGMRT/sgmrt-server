@@ -24,6 +24,11 @@ public class RunningApi {
     private final RunningCommandService runningCommandService;
     private final RunningApiMapper mapper;
 
+    @GetMapping("/")
+    public String hello() {
+        return "Hello World";
+    }
+
     @PostMapping("/v1/runs/{memberId}")
     public CreateCourseAndRunResponse createCourseAndRun(@RequestBody @Valid CreateCourseAndRunRequest req, @PathVariable Long memberId) {
         return runningCommandService.createCourseAndRun(mapper.toCommand(req), memberId);
