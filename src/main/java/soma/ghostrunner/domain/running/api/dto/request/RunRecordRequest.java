@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Data @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RunRecordDto  {
+public class RunRecordRequest {
 
     @NotNull @Positive
     private Double distance;    // km

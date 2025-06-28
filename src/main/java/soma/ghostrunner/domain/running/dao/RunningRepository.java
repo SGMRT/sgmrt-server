@@ -10,11 +10,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface RunningRepository extends JpaRepository<Running, Long> {
+public interface RunningRepository extends JpaRepository<Running, Long>, CustomRunningRepository {
 
     @Query("SELECT r.id FROM Running r WHERE r.course.id = :courseId")
     List<Long> findIdsByCourseId(@Param("courseId") Long courseId);
 
-    @Query("SELECT r FROM Running r WHERE r.id = :runningId and r.member.id = :memberId")
-    Optional<Running> findByRunningIdAndMemberId(@Param("runningId") Long runningId, @Param("memberId") Long memberId);
+    Optional<Running> findByIdAndMemberId(Long runningId, Long memberId);
 }

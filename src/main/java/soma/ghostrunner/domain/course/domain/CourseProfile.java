@@ -10,26 +10,26 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Embeddable @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class CourseMetaInfo {
+public class CourseProfile {
 
     @Column(name = "distance", nullable = false)
-    private double distance;
+    private Double distance;
 
     @NotEmpty @Column(name = "elevation_gain_m")
-    private int elevationGain;
+    private Integer elevationGain;
 
     @NotEmpty @Column(name = "elevation_loss_m")
-    private int elevationLoss;
+    private Integer elevationLoss;
 
     @Builder
-    private CourseMetaInfo(double distance, int  elevationGain, int elevationLoss) {
+    private CourseProfile(Double distance, Integer  elevationGain, Integer elevationLoss) {
         this.distance = distance;
         this.elevationGain = elevationGain;
         this.elevationLoss = elevationLoss;
     }
 
-    public static CourseMetaInfo of(double distance, int  elevationGain, int elevationLoss) {
-        return CourseMetaInfo.builder()
+    public static CourseProfile of(Double distance, Integer  elevationGain, Integer elevationLoss) {
+        return CourseProfile.builder()
                 .distance(distance)
                 .elevationGain(elevationGain)
                 .elevationLoss(elevationLoss)

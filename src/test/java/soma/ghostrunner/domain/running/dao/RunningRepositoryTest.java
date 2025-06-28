@@ -6,22 +6,28 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import soma.ghostrunner.domain.course.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseMetaInfo;
+import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
+import soma.ghostrunner.domain.running.application.dto.response.GhostRunInfo;
+import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
+import soma.ghostrunner.domain.running.application.dto.response.SoloRunInfo;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.global.config.QuerydslConfig;
 
 import java.util.List;
 import java.util.Optional;
 
 @DataJpaTest
 @ActiveProfiles("test")
+@Import(QuerydslConfig.class)
 class RunningRepositoryTest {
 
     @Autowired
@@ -33,52 +39,45 @@ class RunningRepositoryTest {
 
     private Course savedCourse1;
     private Course savedCourse2;
-
     private Member member1;
     private Member member2;
-
     private Running running1;
     private Running running2;
     private Running running3;
+    private Running running4;
 
     @BeforeEach
     void setUp() {
-        // 코스 생성
-        savedCourse1 = courseRepository.save(createCourse("테스트 코스1"));
-        savedCourse2 = courseRepository.save(createCourse("테스트 코스2"));
-
-        // 멤버 생성
+        savedCourse1 = courseRepository.save(createCourse());
+        savedCourse2 = courseRepository.save(createCourse());
         member1 = memberRepository.save(createMember("멤버1"));
         member2 = memberRepository.save(createMember("멤버2"));
-
-        // 러닝
         running1 = runningRepository.save(createRunning(member1, savedCourse1));
         running2 = runningRepository.save(createRunning(member1, savedCourse1));
         running3 = runningRepository.save(createRunning(member1, savedCourse2));
+        running4 = runningRepository.save(createRunning(member2, savedCourse2));
     }
+
 
     @DisplayName("특정 코스 ID에 해당하는 모든 러닝 ID 목록을 조회한다")
     @Test
     void testSaveAndSelect() {
-        // given
-        Long targetCourseId = savedCourse1.getId();
-
         // when
+        Long targetCourseId = savedCourse1.getId();
         List<Long> runningIds = runningRepository.findIdsByCourseId(targetCourseId);
 
         // then
         Assertions.assertThat(runningIds.contains(running1.getId())).isTrue();
         Assertions.assertThat(runningIds).hasSize(2);
-        Assertions.assertThat(runningIds.contains(5L)).isFalse();
     }
 
     @DisplayName("러닝 ID와 멤버 ID로 러닝을 조회한다.")
     @Test
-    void testFindByRunningIdAndMemberId() {
+    void testFindByIdAndMemberId() {
         // when
-        Running existRunning = runningRepository.findByRunningIdAndMemberId(running1.getId(), member1.getId()).get();
-        Optional<Running> nonExistRunning1 = runningRepository.findByRunningIdAndMemberId(running2.getId(), member2.getId());
-        Optional<Running> nonExistRunning2 = runningRepository.findByRunningIdAndMemberId(10L, member1.getId());
+        Running existRunning = runningRepository.findByIdAndMemberId(running1.getId(), member1.getId()).get();
+        Optional<Running> nonExistRunning1 = runningRepository.findByIdAndMemberId(running2.getId(), member2.getId());
+        Optional<Running> nonExistRunning2 = runningRepository.findByIdAndMemberId(running4.getId(), member1.getId());
 
         // then
         Assertions.assertThat(existRunning.getId()).isEqualTo(running1.getId());
@@ -86,8 +85,116 @@ class RunningRepositoryTest {
         Assertions.assertThat(nonExistRunning2.isPresent()).isFalse();
     }
 
+    @DisplayName("러닝 ID로 시계열 URL을 조회한다.")
+    @Test
+    void testFindRunningUrlByRunningId() {
+        // when
+        String url = runningRepository.findById(running1.getId()).get().getTelemetryUrl();
+
+        // then
+        Assertions.assertThat(url).isEqualTo(running1.getTelemetryUrl());
+    }
+
+    @DisplayName("코스에 대해서 고스트가 러닝한 ID가 있는지 확인한다.")
+    @Test
+    void testFindGhostRunningIdWithCourse() {
+        // when
+        List<Long> course1RunningIds = runningRepository.findIdsByCourseId(savedCourse1.getId());
+        List<Long> course2RunningIds = runningRepository.findIdsByCourseId(savedCourse2.getId());
+        List<Long> noneRunningIds = runningRepository.findIdsByCourseId(Long.MAX_VALUE);
+
+        // then
+        Assertions.assertThat(course1RunningIds).hasSize(2);
+        Assertions.assertThat(course2RunningIds).hasSize(2);
+        Assertions.assertThat(noneRunningIds).hasSize(0);
+    }
+
+    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
+    @Test
+    void testFindSoloRunInfoByRunningId() {
+        // given
+        Course newCourse = createCourse();
+        newCourse.setName("테스트 코스");
+        courseRepository.save(newCourse);
+        Running newRunning1 = runningRepository.save(createRunning(member1, newCourse));
+        Running newRunning2 = runningRepository.save(createRunning(member1, newCourse));
+
+        // when
+        SoloRunInfo soloRunInfo = runningRepository.findSoloRunInfoById(newRunning1.getId()).get();
+
+        // then
+        Assertions.assertThat(soloRunInfo.getStartedAt()).isEqualTo(newRunning1.getStartedAt());
+        Assertions.assertThat(soloRunInfo.getRunningName()).isEqualTo(newRunning1.getRunningName());
+        Assertions.assertThat(soloRunInfo.getCourseInfo().getId()).isEqualTo(newRunning1.getCourse().getId());
+        Assertions.assertThat(soloRunInfo.getCourseInfo().getName()).isEqualTo(newRunning1.getCourse().getName());
+        Assertions.assertThat(soloRunInfo.getCourseInfo().getRunnersCount()).isEqualTo(2);
+        Assertions.assertThat(soloRunInfo.getTelemetryUrl()).isEqualTo(newRunning1.getTelemetryUrl());
+        Assertions.assertThat(soloRunInfo.getRecordInfo().getDistance()).isEqualTo(newRunning1.getRunningRecord().getDistance());
+        Assertions.assertThat(soloRunInfo.getRecordInfo().getDuration()).isEqualTo(newRunning1.getRunningRecord().getDuration());
+    }
+
+    @DisplayName("혼자 뛴 러닝에 대해 코스를 공개하지 않았다면 코스 정보는 Null이 조회된다.")
+    @Test
+    void testFindSoloRunInfoWithNullCourseInfo() {
+        // when
+        SoloRunInfo soloRunInfo = runningRepository.findSoloRunInfoById(running1.getId()).get();
+
+        // then
+        Assertions.assertThat(soloRunInfo.getCourseInfo()).isNull();
+    }
+
+    @DisplayName("혼자 뛴 러닝에 대해 상세 정보를 조회할 때 없다면 Null이 뜬다.")
+    @Test
+    void testFindSoloRunInfoByRunningIdNull() {
+        // then
+        Assertions.assertThat(runningRepository.findSoloRunInfoById(Long.MAX_VALUE)).isEmpty();
+    }
+
+    @DisplayName("나의 닉네임, 프로필 URL, 러닝, 코스의 상세정보를 조회한다.")
+    @Test
+    void testFindGhostRunInfoByRunningId() {
+        // given
+        Course newCourse = createCourse();
+        newCourse.setName("테스트 코스");
+        courseRepository.save(newCourse);
+        Running newRunning1 = runningRepository.save(createRunning(member1, newCourse));
+
+        // when
+        GhostRunInfo ghostRunInfo = runningRepository.findGhostRunInfoById(newRunning1.getId()).get();
+
+        // then
+        Assertions.assertThat(ghostRunInfo.getStartedAt()).isEqualTo(newRunning1.getStartedAt());
+        Assertions.assertThat(ghostRunInfo.getRunningName()).isEqualTo(newRunning1.getRunningName());
+        Assertions.assertThat(ghostRunInfo.getCourseInfo().getName()).isEqualTo("테스트 코스");
+        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getNickname()).isEqualTo("멤버1");
+        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getProfileUrl()).isEqualTo("프로필 URL");
+        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getRecordInfo().getDistance()).isEqualTo(newRunning1.getRunningRecord().getDistance());
+        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getRecordInfo().getDuration()).isEqualTo(newRunning1.getRunningRecord().getDuration());
+        Assertions.assertThat(ghostRunInfo.getGhostRunInfo()).isNull();
+        Assertions.assertThat(ghostRunInfo.getTelemetryUrl()).isEqualTo(newRunning1.getTelemetryUrl());
+    }
+
+    @DisplayName("나의 닉네임, 프로필 URL, 러닝 상세정보를 조회한다.")
+    @Test
+    void testFindMemberAndRunRecordInfoById() {
+        // when
+        MemberAndRunRecordInfo memberAndRunRecordInfo = runningRepository.findMemberAndRunRecordInfoById(running1.getId()).get();
+
+        // then
+        Assertions.assertThat(memberAndRunRecordInfo.getNickname()).isEqualTo("멤버1");
+        Assertions.assertThat(memberAndRunRecordInfo.getProfileUrl()).isEqualTo("프로필 URL");
+        Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getDistance()).isEqualTo(running1.getRunningRecord().getDistance());
+        Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getDuration()).isEqualTo(running1.getRunningRecord().getDuration());
+    }
+
+    private Running createComparisonRunning(Member testMember, Course testCourse ) {
+        RunningRecord testRunningRecord = RunningRecord.of(6.2, 40, -20, 5.1, 4.9, 6.9, 3423L, 302, 120, 56);
+        return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
+                true, false, "URL", testMember, testCourse);
+    }
+
     private Running createRunning(Member testMember, Course testCourse ) {
-        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423, 302, 120, 56);
+        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
                 true, false, "URL", testMember, testCourse);
     }
@@ -96,24 +203,9 @@ class RunningRepositoryTest {
         return Member.of(name, "프로필 URL");
     }
 
-    private Course createCourse(String courseName) {
-        CourseMetaInfo testCourseMetaInfo = CourseMetaInfo.of(5.2, 40, -10);
+    private Course createCourse() {
+        CourseProfile testCourseProfile = CourseProfile.of(5.2, 40, -10);
         StartPoint testStartPoint = StartPoint.fromCoordinates(37.545354, 34.7878);
-        return Course.of(testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        return Course.of(testCourseProfile, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
     }
-
-    @DisplayName("코스에 대해서 고스트가 러닝한 ID가 있는지 확인한다.")
-    @Test
-    void testFindGhostRunningIdWithCourse() {
-        // given
-        List<Long> course1RunningIds = runningRepository.findIdsByCourseId(savedCourse1.getId());
-        List<Long> course2RunningIds = runningRepository.findIdsByCourseId(savedCourse2.getId());
-        List<Long> noneRunningIds = runningRepository.findIdsByCourseId(10L);
-
-        // then
-        Assertions.assertThat(course1RunningIds).hasSize(2);
-        Assertions.assertThat(course2RunningIds).isNotNull();
-        Assertions.assertThat(noneRunningIds).hasSize(0);
-    }
-
 }

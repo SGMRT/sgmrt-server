@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.application.dto;
+package soma.ghostrunner.domain.running.application.dto.request;
 
 public record RunRecordCommand(
         Double distance,

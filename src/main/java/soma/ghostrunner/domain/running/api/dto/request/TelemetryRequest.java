@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 
 @Data @Builder
 @AllArgsConstructor @NoArgsConstructor
-public class TelemetryDto {
+public class TelemetryRequest {
     @NotNull
     private Long timeStamp;
 

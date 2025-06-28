@@ -1,13 +1,11 @@
 package soma.ghostrunner.domain.course;
 
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetryResult;
+import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
+import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.domain.TelemetryProcessor;
-import soma.ghostrunner.domain.course.domain.StartPoint;
-import soma.ghostrunner.domain.running.application.dto.TelemetryCommand;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,14 +14,14 @@ import java.util.Random;
 class TelemetryProcessorTest {
 
     private final Long startedAt = 1750729987181L;
-    private final List<TelemetryCommand> telemetryList = new ArrayList<>();
+    private final List<TelemetryDto> telemetryList = new ArrayList<>();
 
     @DisplayName("시계열에서 고도, 시작점, 위도+경도를 추출하고 타임스탬프를 상대 시간으로 변경한다.")
     @Test
     void processTelemetryTest() {
         // when
         setUp();
-        ProcessedTelemetryResult processedTelemetry = TelemetryProcessor.processTelemetry(telemetryList, startedAt);
+        ProcessedTelemetriesDto processedTelemetry = TelemetryProcessor.processTelemetry(telemetryList, startedAt);
 
         // then
         // 상대시간
@@ -44,7 +42,7 @@ class TelemetryProcessorTest {
         Random random = new Random();
 
         for (int i = 0; i < 10; i++) {
-            TelemetryCommand telemetry = new TelemetryCommand(
+            TelemetryDto telemetry = new TelemetryDto(
                     startedAt + (i*5),     // 5초 간격
                     37.5665 + i * 0.0001,         // 위도
                     126.9780 + i * 0.0001,        // 경도

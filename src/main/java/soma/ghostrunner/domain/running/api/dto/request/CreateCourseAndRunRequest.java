@@ -31,7 +31,7 @@ public class CreateCourseAndRunRequest {
 
     @NotNull
     @Valid
-    private RunRecordDto record;
+    private RunRecordRequest record;
 
     @NotNull
     private Boolean hasPaused;
@@ -40,5 +40,5 @@ public class CreateCourseAndRunRequest {
     private Boolean isPublic;
 
     @NotNull @Valid
-    private List<TelemetryDto> telemetries;
+    private List<TelemetryRequest> telemetries;
 }

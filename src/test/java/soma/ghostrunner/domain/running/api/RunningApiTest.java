@@ -20,15 +20,16 @@ import soma.ghostrunner.domain.running.api.dto.RunningApiMapperImpl;
 import soma.ghostrunner.domain.running.api.dto.request.*;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
-import soma.ghostrunner.domain.running.application.dto.CreateRunningCommand;
-import soma.ghostrunner.domain.running.application.dto.RunRecordCommand;
-import soma.ghostrunner.domain.running.application.dto.TelemetryCommand;
+import soma.ghostrunner.domain.running.application.RunningQueryService;
+import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.global.common.log.HttpLogger;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = RunningApi.class)
@@ -47,6 +48,8 @@ class RunningApiTest {
     @MockitoBean
     RunningCommandService runningCommandService;
     @MockitoBean
+    RunningQueryService runningQueryService;
+    @MockitoBean
     HttpLogger httpLogger;
 
     // ——————————————————————————————————————————————————————————
@@ -57,8 +60,7 @@ class RunningApiTest {
     void testCreateCourseAndRun() throws Exception{
         // given
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        CreateRunningCommand command = validCreateSoloRunningCommand();
-        BDDMockito.given(runningCommandService.createCourseAndRun(command, 1L)).willReturn(new CreateCourseAndRunResponse(1L, 1l));
+        BDDMockito.given(runningCommandService.createCourseAndRun(any(CreateRunCommand.class), anyLong())).willReturn(new CreateCourseAndRunResponse(1L, 1L));
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L)
@@ -69,7 +71,6 @@ class RunningApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.runningId").value(1L))
                 .andExpect(jsonPath("$.courseId").value(1L));
-
     }
 
     @DisplayName("CreateRunRequest 유효성 검사 실패")
@@ -91,9 +92,8 @@ class RunningApiTest {
     @Test
     void testSoloCreateRun() throws Exception{
         // given
-        CreateRunRequest soloRequest = validSoloRunOnCourseRequest();
-        CreateRunningCommand command = validCreateSoloRunningCommand();
-        BDDMockito.given(runningCommandService.createRun(command, 1L, 1L)).willReturn(2L);
+        CreateRunRequest soloRequest = validSoloCreateRunRequest();
+        BDDMockito.given(runningCommandService.createRun(any(CreateRunCommand.class), anyLong(), anyLong())).willReturn(2L);
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
@@ -109,9 +109,8 @@ class RunningApiTest {
     @Test
     void testGhostCreateRun() throws Exception{
         // when
-        CreateRunRequest ghostRequest = validGhostRunOnCourseRequest(3L);
-        CreateRunningCommand command = validCreateGhostRunningCommand(3L);
-        BDDMockito.given(runningCommandService.createRun(command, 1L, 1L)).willReturn(4L);
+        CreateRunRequest ghostRequest = validGhostCreateRunRequest(3L);
+        BDDMockito.given(runningCommandService.createRun(any(CreateRunCommand.class), anyLong(), anyLong())).willReturn(4L);
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
@@ -125,7 +124,7 @@ class RunningApiTest {
 
     @DisplayName("기존 코스를 뛰는 API - 유효성 검사")
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
-    @MethodSource("invalidSoloRunOnCourseRequests")
+    @MethodSource("invalidSoloCreateRunRequests")
     void testCreateRunValidation(CreateRunRequest payload, String wrongField) throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -140,7 +139,7 @@ class RunningApiTest {
     // ——————————————————————————————————————————————————————————
     @DisplayName("새로운 코스를 뛰는 API 성공 테스트")
     @Test
-    void testUpdateRunningName() throws Exception{
+    void testPatchRunningName() throws Exception{
         // given
         UpdateRunNameRequest request = new UpdateRunNameRequest("수정할 이름");
 
@@ -151,12 +150,11 @@ class RunningApiTest {
                 )
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
-
     }
 
     @DisplayName("UpdateRunNameRequest 유효성 검사 실패")
     @Test
-    void testUpdateRunningNameValidation() throws Exception {
+    void testPatchRunningNameValidation() throws Exception {
         // given
         UpdateRunNameRequest request = new UpdateRunNameRequest("수정할 이름");
 
@@ -170,6 +168,24 @@ class RunningApiTest {
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrorInfos[0].field").value("name"));;
+    }
+
+    // ——————————————————————————————————————————————————————————
+    // 4) "시계열 조회" API 테스트
+    // ——————————————————————————————————————————————————————————
+    @DisplayName("시계열 조회 API 성공 테스트")
+    @Test
+    void testGetTelemetries() throws Exception{
+        // given
+        BDDMockito.given(runningQueryService.findTelemetriesById(anyLong())).willReturn(null);
+
+        // then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/1/telemetries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
     }
 
     private static Stream<Arguments> invalidCreateCourseAndRunRequests() {
@@ -198,26 +214,6 @@ class RunningApiTest {
         );
     }
 
-    private static CreateRunningCommand validCreateSoloRunningCommand() {
-        RunRecordCommand runRecordCommand = new RunRecordCommand(10.5, 30, -20, 3600L, 5.7, 800, 150, 80);
-        List<TelemetryCommand> telemetryCommands = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
-            telemetryCommands.add(new TelemetryCommand(1750729987181L, 37.5, 127.0, 4.2, 5.48, 100, 80, 150, true));
-        }
-        return new CreateRunningCommand("테스트 러닝 제목", null, "SOLO", 1750729987181L,
-                runRecordCommand, false, true, telemetryCommands);
-    }
-
-    private static CreateRunningCommand validCreateGhostRunningCommand(Long ghostRunningId) {
-        RunRecordCommand runRecordCommand = new RunRecordCommand(10.5, 30, -20, 3600L, 5.7, 800, 150, 80);
-        List<TelemetryCommand> telemetryCommands = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
-            telemetryCommands.add(new TelemetryCommand(1750729987181L, 37.5, 127.0, 4.2, 5.48, 100, 80, 150, true));
-        }
-        return new CreateRunningCommand("테스트 러닝 제목", ghostRunningId, "GHOST", 1750729987181L,
-                runRecordCommand, false, true, telemetryCommands);
-    }
-
     private static CreateCourseAndRunRequest validCreateCourseAndRunRequest() {
         return CreateCourseAndRunRequest.builder()
                 .runningName("테스트 러닝 제목")
@@ -230,8 +226,8 @@ class RunningApiTest {
                 .build();
     }
 
-    private static RunRecordDto validRunRecordDto() {
-        return RunRecordDto.builder()
+    private static RunRecordRequest validRunRecordDto() {
+        return RunRecordRequest.builder()
                 .duration(3600L)
                 .distance(10.5)
                 .avgPace(5.7)
@@ -243,10 +239,10 @@ class RunningApiTest {
                 .build();
     }
 
-    private static List<TelemetryDto> validTelemetries() {
-        List<TelemetryDto> telemetryDtos = new ArrayList<>();
+    private static List<TelemetryRequest> validTelemetries() {
+        List<TelemetryRequest> telemetryRequests = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
-            telemetryDtos.add(TelemetryDto.builder()
+            telemetryRequests.add(TelemetryRequest.builder()
                     .timeStamp(1750729987181L)
                     .lat(37.5).lng(127.0)
                     .dist(4.2).pace(5.48).alt(100)
@@ -254,7 +250,7 @@ class RunningApiTest {
                     .isRunning(true)
                     .build());
         }
-        return telemetryDtos;
+        return telemetryRequests;
     }
 
     private static CreateCourseAndRunRequest setCourseNameBlank() {
@@ -300,7 +296,7 @@ class RunningApiTest {
         return request;
     }
 
-    private static CreateRunRequest validSoloRunOnCourseRequest() {
+    private static CreateRunRequest validSoloCreateRunRequest() {
         return CreateRunRequest.builder()
                 .runningName("테스트 러닝 제목")
                 .mode("SOLO")
@@ -312,7 +308,7 @@ class RunningApiTest {
                 .build();
     }
 
-    private static CreateRunRequest validGhostRunOnCourseRequest(Long ghostRunningId) {
+    private static CreateRunRequest validGhostCreateRunRequest(Long ghostRunningId) {
         return CreateRunRequest.builder()
                 .runningName("테스트 러닝 제목")
                 .mode("GHOST")
@@ -325,32 +321,32 @@ class RunningApiTest {
                 .build();
     }
 
-    private static Stream<Arguments> invalidSoloRunOnCourseRequests() {
+    private static Stream<Arguments> invalidSoloCreateRunRequests() {
         return Stream.of(
                 Arguments.of(
-                        setInvalidSoloRunOnCourseRequest(), "ghostRunningId"
+                        setInvalidSoloCreateRunRequest(), "ghostRunningId"
                 ),
                 Arguments.of(
-                        setInvalidGhostRunOnCourseRequest(), "ghostRunningId"
+                        setInvalidGhostCreateRunRequest(), "ghostRunningId"
                 ),
                 Arguments.of(
-                        setRunOnCourseRequestInvalidPausedAndPublic(), "hasPaused"
+                        setCreateRunRequestInvalidPausedAndPublic(), "hasPaused"
                 )
         );
     }
 
-    private static CreateRunRequest setInvalidSoloRunOnCourseRequest() {
-        CreateRunRequest soloRequest = validSoloRunOnCourseRequest();
+    private static CreateRunRequest setInvalidSoloCreateRunRequest() {
+        CreateRunRequest soloRequest = validSoloCreateRunRequest();
         soloRequest.setGhostRunningId(2L);
         return soloRequest;
     }
 
-    private static CreateRunRequest setInvalidGhostRunOnCourseRequest() {
-        return validGhostRunOnCourseRequest(null);
+    private static CreateRunRequest setInvalidGhostCreateRunRequest() {
+        return validGhostCreateRunRequest(null);
     }
 
-    private static CreateRunRequest setRunOnCourseRequestInvalidPausedAndPublic() {
-        CreateRunRequest soloRequest = validSoloRunOnCourseRequest();
+    private static CreateRunRequest setCreateRunRequestInvalidPausedAndPublic() {
+        CreateRunRequest soloRequest = validSoloCreateRunRequest();
         soloRequest.setIsPublic(true);
         soloRequest.setHasPaused(true);
         return soloRequest;

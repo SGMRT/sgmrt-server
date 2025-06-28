@@ -17,7 +17,7 @@ public class Course extends BaseTimeEntity {
     private String name;
 
     @Embedded
-    private CourseMetaInfo courseMetaInfo;
+    private CourseProfile courseProfile;
 
     @Embedded
     private StartPoint startPoint;
@@ -26,17 +26,21 @@ public class Course extends BaseTimeEntity {
     private String pathData;
 
     @Builder
-    private Course(CourseMetaInfo courseMetaInfo, StartPoint startPoint, String pathData) {
-        this.courseMetaInfo = courseMetaInfo;
+    private Course(CourseProfile courseProfile, StartPoint startPoint, String pathData) {
+        this.courseProfile = courseProfile;
         this.startPoint = startPoint;
         this.pathData = pathData;
     }
 
-    public static Course of(CourseMetaInfo courseMetaInfo, StartPoint startPoint, String pathData) {
+    public static Course of(CourseProfile courseProfile, StartPoint startPoint, String pathData) {
         return Course.builder()
-                .courseMetaInfo(courseMetaInfo)
+                .courseProfile(courseProfile)
                 .startPoint(startPoint)
                 .pathData(pathData)
                 .build();
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 }

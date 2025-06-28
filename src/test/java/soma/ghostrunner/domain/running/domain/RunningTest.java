@@ -5,7 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseMetaInfo;
+import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 
@@ -18,12 +18,12 @@ class RunningTest {
     void setUp() {
         // Member, Course
         Member testMember = Member.of("이복둥", "프로필 URL");
-        CourseMetaInfo testCourseMetaInfo = CourseMetaInfo.of(5.2, 40, -20);
+        CourseProfile testCourseProfile = CourseProfile.of(5.2, 40, -20);
         StartPoint testStartPoint = StartPoint.fromCoordinates(37.545354, 34.7878);
-        Course testCourse = Course.of(testCourseMetaInfo, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        Course testCourse = Course.of(testCourseProfile, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
 
         // RunningRecord
-        testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 3423, 302, 120, 56, 100, 120);
+        testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
 
         // Running
         testRunning = Running.of("테스트 러닝제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
