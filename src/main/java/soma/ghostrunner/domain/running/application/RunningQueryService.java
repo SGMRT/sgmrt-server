@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.clients.aws.TelemetryClient;
+import soma.ghostrunner.domain.running.application.dto.response.GhostRunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunInfo;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
@@ -33,15 +34,13 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, id));
     }
 
-    public Running findByRunningIdAndMemberId(Long runningId, Long memberId) {
-        return runningRepository.findByRunningIdAndMemberId(runningId, memberId)
+    public Running findByRunningAndMemberId(Long runningId, Long memberId) {
+        return runningRepository.findByIdAndMemberId(runningId, memberId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, "러닝 ID : " + runningId + ", 멤버 ID : " + memberId + "에 해당하는 엔티티를 찾을 수 없습니다."));
     }
 
     public SoloRunInfo findSoloRunInfoById(Long runningId) {
-        // 러닝 조회
         SoloRunInfo soloRunInfo = findSoloRunInfo(runningId);
-        // 시계열 조회
         try {
             List<TelemetryDto> telemetries = telemetryClient.downloadTelemetryFromUrl(soloRunInfo.getTelemetryUrl());
             soloRunInfo.setTelemetries(telemetries);
@@ -49,6 +48,10 @@ public class RunningQueryService {
             log.error("S3에서 다운로드를 실패했습니다.");
         }
         return soloRunInfo;
+    }
+
+    public GhostRunInfo findGhostRunInfoById(Long myRunningId, Long ghostRunningId) {
+        return null;
     }
 
     private SoloRunInfo findSoloRunInfo(Long runningId) {

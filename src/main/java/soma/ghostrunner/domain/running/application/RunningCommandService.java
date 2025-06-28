@@ -73,7 +73,7 @@ public class RunningCommandService {
 
     @Transactional
     public void updateRunningName(String name, Long memberId, Long runningId) {
-        Running running = runningQueryService.findByRunningIdAndMemberId(runningId, memberId);
+        Running running = runningQueryService.findByRunningAndMemberId(runningId, memberId);
         running.updateName(name);
     }
 

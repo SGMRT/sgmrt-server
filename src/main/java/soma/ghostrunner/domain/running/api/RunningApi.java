@@ -48,4 +48,9 @@ public class RunningApi {
     public SoloRunInfo getSoloRunInfo(@PathVariable Long runningId) {
         return runningQueryService.findSoloRunInfoById(runningId);
     }
+
+    @GetMapping("/v1/runs/{myRunningId}/{ghostRunningID}")
+    public GhostRunInfo getGhostRunInfo(@PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
+        return runningQueryService.findGhostRunInfoById(myRunningId, ghostRunningId);
+    }
 }

@@ -14,6 +14,8 @@ import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
+import soma.ghostrunner.domain.running.application.dto.response.GhostRunInfo;
+import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunInfo;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -71,11 +73,11 @@ class RunningRepositoryTest {
 
     @DisplayName("러닝 ID와 멤버 ID로 러닝을 조회한다.")
     @Test
-    void testFindByRunningIdAndMemberId() {
+    void testFindByIdAndMemberId() {
         // when
-        Running existRunning = runningRepository.findByRunningIdAndMemberId(running1.getId(), member1.getId()).get();
-        Optional<Running> nonExistRunning1 = runningRepository.findByRunningIdAndMemberId(running2.getId(), member2.getId());
-        Optional<Running> nonExistRunning2 = runningRepository.findByRunningIdAndMemberId(running4.getId(), member1.getId());
+        Running existRunning = runningRepository.findByIdAndMemberId(running1.getId(), member1.getId()).get();
+        Optional<Running> nonExistRunning1 = runningRepository.findByIdAndMemberId(running2.getId(), member2.getId());
+        Optional<Running> nonExistRunning2 = runningRepository.findByIdAndMemberId(running4.getId(), member1.getId());
 
         // then
         Assertions.assertThat(existRunning.getId()).isEqualTo(running1.getId());
@@ -146,6 +148,49 @@ class RunningRepositoryTest {
     void testFindSoloRunInfoByRunningIdNull() {
         // then
         Assertions.assertThat(runningRepository.findSoloRunInfoById(Long.MAX_VALUE)).isEmpty();
+    }
+
+    @DisplayName("나의 닉네임, 프로필 URL, 러닝, 코스의 상세정보를 조회한다.")
+    @Test
+    void testFindGhostRunInfoByRunningId() {
+        // given
+        Course newCourse = createCourse();
+        newCourse.setName("테스트 코스");
+        courseRepository.save(newCourse);
+        Running newRunning1 = runningRepository.save(createRunning(member1, newCourse));
+
+        // when
+        GhostRunInfo ghostRunInfo = runningRepository.findGhostRunInfoById(newRunning1.getId()).get();
+
+        // then
+        Assertions.assertThat(ghostRunInfo.getStartedAt()).isEqualTo(newRunning1.getStartedAt());
+        Assertions.assertThat(ghostRunInfo.getRunningName()).isEqualTo(newRunning1.getRunningName());
+        Assertions.assertThat(ghostRunInfo.getCourseInfo().getName()).isEqualTo("테스트 코스");
+        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getNickname()).isEqualTo("멤버1");
+        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getProfileUrl()).isEqualTo("프로필 URL");
+        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getRecordInfo().getDistance()).isEqualTo(newRunning1.getRunningRecord().getDistance());
+        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getRecordInfo().getDuration()).isEqualTo(newRunning1.getRunningRecord().getDuration());
+        Assertions.assertThat(ghostRunInfo.getGhostRunInfo()).isNull();
+        Assertions.assertThat(ghostRunInfo.getTelemetryUrl()).isEqualTo(newRunning1.getTelemetryUrl());
+    }
+
+    @DisplayName("나의 닉네임, 프로필 URL, 러닝 상세정보를 조회한다.")
+    @Test
+    void testFindMemberAndRunRecordInfoById() {
+        // when
+        MemberAndRunRecordInfo memberAndRunRecordInfo = runningRepository.findMemberAndRunRecordInfoById(running1.getId()).get();
+
+        // then
+        Assertions.assertThat(memberAndRunRecordInfo.getNickname()).isEqualTo("멤버1");
+        Assertions.assertThat(memberAndRunRecordInfo.getProfileUrl()).isEqualTo("프로필 URL");
+        Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getDistance()).isEqualTo(running1.getRunningRecord().getDistance());
+        Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getDuration()).isEqualTo(running1.getRunningRecord().getDuration());
+    }
+
+    private Running createComparisonRunning(Member testMember, Course testCourse ) {
+        RunningRecord testRunningRecord = RunningRecord.of(6.2, 40, -20, 5.1, 4.9, 6.9, 3423L, 302, 120, 56);
+        return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
+                true, false, "URL", testMember, testCourse);
     }
 
     private Running createRunning(Member testMember, Course testCourse ) {

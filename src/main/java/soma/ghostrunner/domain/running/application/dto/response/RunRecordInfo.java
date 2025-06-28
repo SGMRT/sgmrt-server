@@ -1,13 +1,11 @@
 package soma.ghostrunner.domain.running.application.dto.response;
 
 import com.querydsl.core.annotations.QueryProjection;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import soma.ghostrunner.domain.running.domain.RunningRecord;
+import lombok.Getter;
 
-@Data
-@NoArgsConstructor
+@Getter
 public class RunRecordInfo {
+
     private Double distance;
     private Long duration;
     private Integer cadence;
@@ -21,17 +19,18 @@ public class RunRecordInfo {
     private Integer totalElevation;
 
     @QueryProjection
-    public RunRecordInfo(RunningRecord runningRecord) {
-        this.distance = runningRecord.getDistance();
-        this.duration = runningRecord.getDuration();
-        this.cadence = runningRecord.getCadence();
-        this.bpm = runningRecord.getBpm();
-        this.calories = runningRecord.getBurnedCalories();
-        this.averagePace = runningRecord.getAveragePace();
-        this.highestPace = runningRecord.getHighestPace();
-        this.lowestPace = runningRecord.getLowestPace();
-        this.elevationGain = runningRecord.getElevationGain();
-        this.elevationLoss = runningRecord.getElevationLoss();
-        this.totalElevation = runningRecord.getElevationGain() + runningRecord.getElevationLoss();
+    public RunRecordInfo(Double distance, Long duration, Integer cadence, Integer bpm, Integer calories,
+                         Double averagePace, Double highestPace, Double lowestPace, Integer elevationGain, Integer elevationLoss) {
+        this.distance = distance;
+        this.duration = duration;
+        this.cadence = cadence;
+        this.bpm = bpm;
+        this.calories = calories;
+        this.averagePace = averagePace;
+        this.highestPace = highestPace;
+        this.lowestPace = lowestPace;
+        this.elevationGain = elevationGain;
+        this.elevationLoss = elevationLoss;
+        this.totalElevation = elevationGain + elevationLoss;
     }
 }
