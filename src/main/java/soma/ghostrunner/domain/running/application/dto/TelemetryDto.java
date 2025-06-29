@@ -1,6 +1,6 @@
 package soma.ghostrunner.domain.running.application.dto;
 
-public record TelemetryCommand(
+public record TelemetryDto(
         Long timeStamp,
         Double lat,
         Double lng,
@@ -11,9 +11,9 @@ public record TelemetryCommand(
         Integer bpm,
         Boolean isRunning
 ) {
-    public TelemetryCommand withTimeStamp(Long newTimeStamp) {
-        return new TelemetryCommand(
-                newTimeStamp,
+    public TelemetryDto convertToRelativeTs(Long startedAt) {
+        return new TelemetryDto(
+                this.timeStamp - startedAt,
                 this.lat,
                 this.lng,
                 this.dist,

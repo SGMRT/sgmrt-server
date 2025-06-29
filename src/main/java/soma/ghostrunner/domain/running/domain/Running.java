@@ -81,4 +81,8 @@ public class Running extends BaseTimeEntity {
                 .course(course)
                 .build();
     }
+
+    public void updateName(String name) {
+        this.runningName = name;
+    }
 }

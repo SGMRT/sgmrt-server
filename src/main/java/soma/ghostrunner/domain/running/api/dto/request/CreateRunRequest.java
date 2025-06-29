@@ -23,7 +23,7 @@ import java.util.List;
 )
 @Data @Builder
 @AllArgsConstructor @NoArgsConstructor
-public class RunOnCourseRequest {
+public class CreateRunRequest {
 
     @NotBlank
     private String runningName;
@@ -39,7 +39,7 @@ public class RunOnCourseRequest {
 
     @NotNull
     @Valid
-    private RunRecordDto record;
+    private RunRecordRequest record;
 
     @NotNull
     private Boolean hasPaused;
@@ -48,5 +48,5 @@ public class RunOnCourseRequest {
     private Boolean isPublic;
 
     @NotNull @Valid
-    private List<TelemetryDto> telemetries;
+    private List<TelemetryRequest> telemetries;
 }

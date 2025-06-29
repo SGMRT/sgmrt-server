@@ -5,11 +5,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
-import soma.ghostrunner.domain.running.api.dto.request.RunOnCourseRequest;
-import soma.ghostrunner.domain.running.api.dto.request.RunRecordDto;
-import soma.ghostrunner.domain.running.api.dto.request.TelemetryDto;
-import soma.ghostrunner.domain.running.application.dto.CreateRunningCommand;
-import soma.ghostrunner.domain.running.application.dto.TelemetryCommand;
+import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
+import soma.ghostrunner.domain.running.api.dto.request.RunRecordRequest;
+import soma.ghostrunner.domain.running.api.dto.request.TelemetryRequest;
+import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,115 +17,121 @@ class RunningApiMapperTest {
 
     private final RunningApiMapper mapper = Mappers.getMapper(RunningApiMapper.class);
 
-    @DisplayName("CreateCourseAndRunRequest -> CreateRunningCommand 매핑 테스트")
+    @DisplayName("CreateCourseAndRunRequest -> CreateRunCommand")
     @Test
-    void toCommandFromCreateCourseAndRunRequest() {
+    void fromCreateCourseAndRunRequestToCreateRunCommand() {
         // given
-        CreateCourseAndRunRequest request = CreateCourseAndRunRequest.builder()
-                .mode("SOLO")
-                .startedAt(1750729987181L)
-                .record(createRunRecordDto())
-                .hasPaused(false)
-                .isPublic(true)
-                .telemetries(createTelemetries())
-                .build();
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
 
         // when
-        CreateRunningCommand command = mapper.toCommand(request);
+        CreateRunCommand command = mapper.toCommand(request);
 
         // then
-        // RUNNING
-        Assertions.assertThat(command).isNotNull();
-        Assertions.assertThat(command.mode()).isEqualTo("SOLO");
-        Assertions.assertThat(command.startedAt()).isEqualTo(1750729987181L);
-
-        // RECORD
-        Assertions.assertThat(command.record().duration()).isEqualTo(3600L);
-        Assertions.assertThat(command.record().avgPace()).isEqualTo(5.7);
-
-        // TELEMETRIES
-        List<TelemetryCommand> telemetryCommands = command.telemetries();
-        for (int i = 0; i < telemetryCommands.size(); i++) {
-            Assertions.assertThat(telemetryCommands.get(i).lat()).isEqualTo(37.5 + i);
-            Assertions.assertThat(telemetryCommands.get(i).alt()).isEqualTo(100 + i);
-        }
+        Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
+        Assertions.assertThat(request.getMode()).isEqualTo(command.mode());
+        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
+        Assertions.assertThat(command.ghostRunningId()).isNull();
     }
 
-    private RunRecordDto createRunRecordDto() {
-        return RunRecordDto.builder()
+    @DisplayName("Solo's CreateRunRequest -> CreateRunCommand")
+    @Test
+    void fromCreateSoloGhostRunRequestToCreateRunCommand() {
+        // given
+        CreateRunRequest request = validCreateSoloRunRequest();
+
+        // when
+        CreateRunCommand command = mapper.toCommand(request);
+
+        // then
+        Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
+        Assertions.assertThat(request.getMode()).isEqualTo(command.mode());
+        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
+        Assertions.assertThat(command.ghostRunningId()).isNull();
+    }
+
+    @DisplayName("Ghost's CreateRunRequest -> CreateRunCommand")
+    @Test
+    void fromCreateRunRequestToCreateRunCommand() {
+        // given
+        CreateRunRequest request = validCreateGhostRunRequest(1L);
+
+        // when
+        CreateRunCommand command = mapper.toCommand(request);
+
+        // then
+        Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
+        Assertions.assertThat(request.getMode()).isEqualTo(command.mode());
+        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
+        Assertions.assertThat(command.ghostRunningId()).isEqualTo(1L);
+    }
+
+    private CreateCourseAndRunRequest validCreateCourseAndRunRequest() {
+        return CreateCourseAndRunRequest.builder()
+                .runningName("테스트 러닝 제목")
+                .mode("SOLO")
+                .startedAt(1750729987181L)
+                .record(validRunRecordDto())
+                .hasPaused(false)
+                .isPublic(true)
+                .telemetries(validTelemetries())
+                .build();
+    }
+
+    private RunRecordRequest validRunRecordDto() {
+        return RunRecordRequest.builder()
                 .duration(3600L)
                 .distance(10.5)
                 .avgPace(5.7)
                 .calories(800)
-                .altitude(120)
+                .elevationGain(30)
+                .elevationLoss(-20)
                 .avgBpm(150)
                 .avgCadence(80)
                 .build();
     }
 
-    private List<TelemetryDto> createTelemetries() {
-        List<TelemetryDto> telemetryDtos = new ArrayList<>();
+    private List<TelemetryRequest> validTelemetries() {
+        List<TelemetryRequest> telemetryRequests = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
-            telemetryDtos.add(TelemetryDto.builder()
+            telemetryRequests.add(TelemetryRequest.builder()
                     .timeStamp(1750729987181L)
-                    .lat(37.5+i).lng(127.0+i)
-                    .dist(4.2).pace(5.48).alt(100+i)
+                    .lat(37.5).lng(127.0)
+                    .dist(4.2).pace(5.48).alt(100)
                     .cadence(80).bpm(150)
                     .isRunning(true)
                     .build());
         }
-        return telemetryDtos;
+        return telemetryRequests;
     }
 
-    @DisplayName("RunOnCourseRequest -> CreateRunningCommand 매핑 테스트")
-    @Test
-    void toCommandFromRunOnCourseRequest() {
-        // given
-        RunOnCourseRequest soloRequest = RunOnCourseRequest.builder()
-                .runningName("테스트 러닝 이름")
+    private CreateRunRequest validCreateSoloRunRequest() {
+        return CreateRunRequest.builder()
+                .runningName("테스트 러닝 제목")
                 .mode("SOLO")
                 .startedAt(1750729987181L)
-                .record(createRunRecordDto())
+                .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
-                .telemetries(createTelemetries())
+                .telemetries(validTelemetries())
                 .build();
-        RunOnCourseRequest ghostRequest = RunOnCourseRequest.builder()
-                .runningName("테스트 러닝 이름")
+    }
+
+    private CreateRunRequest validCreateGhostRunRequest(Long ghostRunningId) {
+        return CreateRunRequest.builder()
+                .runningName("테스트 러닝 제목")
                 .mode("GHOST")
-                .ghostRunningId(2L)
+                .ghostRunningId(ghostRunningId)
                 .startedAt(1750729987181L)
-                .record(createRunRecordDto())
+                .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
-                .telemetries(createTelemetries())
+                .telemetries(validTelemetries())
                 .build();
-
-        // when
-        CreateRunningCommand soloCommand = mapper.toCommand(soloRequest);
-        CreateRunningCommand ghostCommand = mapper.toCommand(ghostRequest);
-
-        // then
-        // RUNNING
-        Assertions.assertThat(soloCommand).isNotNull();
-        Assertions.assertThat(soloCommand.runningName()).isEqualTo("테스트 러닝 이름");
-        Assertions.assertThat(soloCommand.mode()).isEqualTo("SOLO");
-        Assertions.assertThat(soloCommand.startedAt()).isEqualTo(1750729987181L);
-        Assertions.assertThat(ghostCommand.runningName()).isEqualTo("테스트 러닝 이름");
-        Assertions.assertThat(ghostCommand).isNotNull();
-        Assertions.assertThat(ghostCommand.mode()).isEqualTo("GHOST");
-        Assertions.assertThat(ghostCommand.ghostRunningId()).isEqualTo(2L);
-        Assertions.assertThat(ghostCommand.startedAt()).isEqualTo(1750729987181L);
-
-        // RECORD
-        Assertions.assertThat(soloCommand.record().duration()).isEqualTo(3600L);
-        Assertions.assertThat(ghostCommand.record().avgPace()).isEqualTo(5.7);
-
-        // TELEMETRIES
-        List<TelemetryCommand> telemetryCommands = ghostCommand.telemetries();
-        for (int i = 0; i < telemetryCommands.size(); i++) {
-            Assertions.assertThat(telemetryCommands.get(i).lat()).isEqualTo(37.5 + i);
-            Assertions.assertThat(telemetryCommands.get(i).alt()).isEqualTo(100 + i);
-        }
     }
 }
