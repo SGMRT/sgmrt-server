@@ -14,9 +14,9 @@ import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
-import soma.ghostrunner.domain.running.application.dto.response.GhostRunInfo;
+import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
-import soma.ghostrunner.domain.running.application.dto.response.SoloRunInfo;
+import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
@@ -120,27 +120,27 @@ class RunningRepositoryTest {
         Running newRunning2 = runningRepository.save(createRunning(member1, newCourse));
 
         // when
-        SoloRunInfo soloRunInfo = runningRepository.findSoloRunInfoById(newRunning1.getId()).get();
+        SoloRunDetailInfo soloRunDetailInfo = runningRepository.findSoloRunInfoById(newRunning1.getId()).get();
 
         // then
-        Assertions.assertThat(soloRunInfo.getStartedAt()).isEqualTo(newRunning1.getStartedAt());
-        Assertions.assertThat(soloRunInfo.getRunningName()).isEqualTo(newRunning1.getRunningName());
-        Assertions.assertThat(soloRunInfo.getCourseInfo().getId()).isEqualTo(newRunning1.getCourse().getId());
-        Assertions.assertThat(soloRunInfo.getCourseInfo().getName()).isEqualTo(newRunning1.getCourse().getName());
-        Assertions.assertThat(soloRunInfo.getCourseInfo().getRunnersCount()).isEqualTo(2);
-        Assertions.assertThat(soloRunInfo.getTelemetryUrl()).isEqualTo(newRunning1.getTelemetryUrl());
-        Assertions.assertThat(soloRunInfo.getRecordInfo().getDistance()).isEqualTo(newRunning1.getRunningRecord().getDistance());
-        Assertions.assertThat(soloRunInfo.getRecordInfo().getDuration()).isEqualTo(newRunning1.getRunningRecord().getDuration());
+        Assertions.assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(newRunning1.getStartedAt());
+        Assertions.assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(newRunning1.getRunningName());
+        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(newRunning1.getCourse().getId());
+        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getName()).isEqualTo(newRunning1.getCourse().getName());
+        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getRunnersCount()).isEqualTo(2);
+        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(newRunning1.getTelemetryUrl());
+        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(newRunning1.getRunningRecord().getDistance());
+        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(newRunning1.getRunningRecord().getDuration());
     }
 
     @DisplayName("혼자 뛴 러닝에 대해 코스를 공개하지 않았다면 코스 정보는 Null이 조회된다.")
     @Test
     void testFindSoloRunInfoWithNullCourseInfo() {
         // when
-        SoloRunInfo soloRunInfo = runningRepository.findSoloRunInfoById(running1.getId()).get();
+        SoloRunDetailInfo soloRunDetailInfo = runningRepository.findSoloRunInfoById(running1.getId()).get();
 
         // then
-        Assertions.assertThat(soloRunInfo.getCourseInfo()).isNull();
+        Assertions.assertThat(soloRunDetailInfo.getCourseInfo()).isNull();
     }
 
     @DisplayName("혼자 뛴 러닝에 대해 상세 정보를 조회할 때 없다면 Null이 뜬다.")
@@ -160,18 +160,18 @@ class RunningRepositoryTest {
         Running newRunning1 = runningRepository.save(createRunning(member1, newCourse));
 
         // when
-        GhostRunInfo ghostRunInfo = runningRepository.findGhostRunInfoById(newRunning1.getId()).get();
+        GhostRunDetailInfo ghostRunDetailInfo = runningRepository.findGhostRunInfoById(newRunning1.getId()).get();
 
         // then
-        Assertions.assertThat(ghostRunInfo.getStartedAt()).isEqualTo(newRunning1.getStartedAt());
-        Assertions.assertThat(ghostRunInfo.getRunningName()).isEqualTo(newRunning1.getRunningName());
-        Assertions.assertThat(ghostRunInfo.getCourseInfo().getName()).isEqualTo("테스트 코스");
-        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getNickname()).isEqualTo("멤버1");
-        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getProfileUrl()).isEqualTo("프로필 URL");
-        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getRecordInfo().getDistance()).isEqualTo(newRunning1.getRunningRecord().getDistance());
-        Assertions.assertThat(ghostRunInfo.getMyRunInfo().getRecordInfo().getDuration()).isEqualTo(newRunning1.getRunningRecord().getDuration());
-        Assertions.assertThat(ghostRunInfo.getGhostRunInfo()).isNull();
-        Assertions.assertThat(ghostRunInfo.getTelemetryUrl()).isEqualTo(newRunning1.getTelemetryUrl());
+        Assertions.assertThat(ghostRunDetailInfo.getStartedAt()).isEqualTo(newRunning1.getStartedAt());
+        Assertions.assertThat(ghostRunDetailInfo.getRunningName()).isEqualTo(newRunning1.getRunningName());
+        Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getName()).isEqualTo("테스트 코스");
+        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getNickname()).isEqualTo("멤버1");
+        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getProfileUrl()).isEqualTo("프로필 URL");
+        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDistance()).isEqualTo(newRunning1.getRunningRecord().getDistance());
+        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDuration()).isEqualTo(newRunning1.getRunningRecord().getDuration());
+        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo()).isNull();
+        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(newRunning1.getTelemetryUrl());
     }
 
     @DisplayName("나의 닉네임, 프로필 URL, 러닝 상세정보를 조회한다.")
@@ -187,7 +187,28 @@ class RunningRepositoryTest {
         Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getDuration()).isEqualTo(running1.getRunningRecord().getDuration());
     }
 
-    private Running createComparisonRunning(Member testMember, Course testCourse ) {
+    @DisplayName("나와 고스트의 닉네임, 프로필 URL, 러닝 상세정보를 조회한다.")
+    @Test
+    void testGhostRunInfoAndComparison() {
+        // given
+        Course myCourse = createCourse();
+        myCourse.setName("테스트 코스");
+        courseRepository.save(myCourse);
+        Running myRunning = runningRepository.save(createMyRunning(member2, myCourse));
+
+        // when
+        GhostRunDetailInfo ghostRunDetailInfo = runningRepository.findGhostRunInfoById(myRunning.getId()).get();
+        MemberAndRunRecordInfo memberAndRunRecordInfo = runningRepository.findMemberAndRunRecordInfoById(running1.getId()).get();
+        ghostRunDetailInfo.setGhostRunInfo(memberAndRunRecordInfo);
+
+        // then
+        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getNickname()).isEqualTo("멤버2");
+        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getNickname()).isEqualTo("멤버1");
+        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getDuration()).isEqualTo(0L);
+        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getPace()).isEqualTo(-1.0);
+    }
+
+    private Running createMyRunning(Member testMember, Course testCourse ) {
         RunningRecord testRunningRecord = RunningRecord.of(6.2, 40, -20, 5.1, 4.9, 6.9, 3423L, 302, 120, 56);
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
                 true, false, "URL", testMember, testCourse);

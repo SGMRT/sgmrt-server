@@ -5,8 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.clients.aws.TelemetryClient;
-import soma.ghostrunner.domain.running.application.dto.response.GhostRunInfo;
-import soma.ghostrunner.domain.running.application.dto.response.SoloRunInfo;
+import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
+import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
+import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -38,23 +39,38 @@ public class RunningQueryService {
         return runningRepository.findByIdAndMemberId(runningId, memberId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, "러닝 ID : " + runningId + ", 멤버 ID : " + memberId + "에 해당하는 엔티티를 찾을 수 없습니다."));
     }
-
-    public SoloRunInfo findSoloRunInfoById(Long runningId) {
-        SoloRunInfo soloRunInfo = findSoloRunInfo(runningId);
+  
+    public SoloRunDetailInfo findSoloRunInfoById(Long runningId) {
+        SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfo(runningId);
         try {
-            List<TelemetryDto> telemetries = telemetryClient.downloadTelemetryFromUrl(soloRunInfo.getTelemetryUrl());
-            soloRunInfo.setTelemetries(telemetries);
+            List<TelemetryDto> telemetries = telemetryClient.downloadTelemetryFromUrl(soloRunDetailInfo.getTelemetryUrl());
+            soloRunDetailInfo.setTelemetries(telemetries);
         } catch (Exception e) {
-            log.error("S3에서 다운로드를 실패했습니다.");
+            log.error("runningId {}의 요청에 대해 S3에서 다운로드를 실패했습니다.", runningId, e);
         }
-        return soloRunInfo;
+        return soloRunDetailInfo;
     }
 
-    public GhostRunInfo findGhostRunInfoById(Long myRunningId, Long ghostRunningId) {
-        return null;
+    public GhostRunDetailInfo findGhostRunInfoById(Long myRunningId, Long ghostRunningId) {
+        GhostRunDetailInfo myGhostModeRunInfo = findGhostRunInfo(myRunningId);
+        MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfo(ghostRunningId);
+        myGhostModeRunInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
+
+
+        return myGhostModeRunInfo;
     }
 
-    private SoloRunInfo findSoloRunInfo(Long runningId) {
+    private MemberAndRunRecordInfo findGhostMemberAndRunInfo(Long ghostRunningId) {
+        return runningRepository.findMemberAndRunRecordInfoById(ghostRunningId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, ghostRunningId));
+    }
+
+    private GhostRunDetailInfo findGhostRunInfo(Long myRunningId) {
+        return runningRepository.findGhostRunInfoById(myRunningId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, myRunningId));
+    }
+
+    private SoloRunDetailInfo findSoloRunInfo(Long runningId) {
         return runningRepository.findSoloRunInfoById(runningId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, runningId));
     }
