@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.course;
+package soma.ghostrunner.domain.course.dao;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

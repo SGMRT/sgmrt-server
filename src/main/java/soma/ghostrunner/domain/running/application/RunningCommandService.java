@@ -7,7 +7,7 @@ import soma.ghostrunner.clients.aws.S3Uploader;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.TelemetryParser;
 import soma.ghostrunner.domain.course.domain.CourseMetaInfo;
-import soma.ghostrunner.domain.course.CourseService;
+import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
