@@ -8,8 +8,8 @@ import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest
 import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.UpdateRunNameRequest;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.application.dto.response.GhostRunInfo;
-import soma.ghostrunner.domain.running.application.dto.response.SoloRunInfo;
+import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
+import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
@@ -45,12 +45,12 @@ public class RunningApi {
     }
 
     @GetMapping("/v1/runs/{runningId}")
-    public SoloRunInfo getSoloRunInfo(@PathVariable Long runningId) {
+    public SoloRunDetailInfo getSoloRunInfo(@PathVariable Long runningId) {
         return runningQueryService.findSoloRunInfoById(runningId);
     }
 
-    @GetMapping("/v1/runs/{myRunningId}/{ghostRunningID}")
-    public GhostRunInfo getGhostRunInfo(@PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
+    @GetMapping("/v1/runs/{myRunningId}/ghosts/{ghostRunningId}")
+    public GhostRunDetailInfo getGhostRunInfo(@PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
         return runningQueryService.findGhostRunInfoById(myRunningId, ghostRunningId);
     }
 }

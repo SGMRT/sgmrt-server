@@ -20,13 +20,13 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Optional<SoloRunInfo> findSoloRunInfoById(long runningId) {
+    public Optional<SoloRunDetailInfo> findSoloRunInfoById(long runningId) {
 
         QRunning subRunning = new QRunning("subRunning");
 
         return Optional.ofNullable(
                 queryFactory
-                        .select(new QSoloRunInfo(
+                        .select(new QSoloRunDetailInfo(
                                 running.startedAt,
                                 running.runningName,
                                 new QCourseInfo(
@@ -54,13 +54,13 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
     }
 
     @Override
-    public Optional<GhostRunInfo> findGhostRunInfoById(long runningId) {
+    public Optional<GhostRunDetailInfo> findGhostRunInfoById(long runningId) {
 
         QRunning subRunning = new QRunning("subRunning");
 
         return Optional.ofNullable(
                 queryFactory
-                        .select(new QGhostRunInfo(
+                        .select(new QGhostRunDetailInfo(
                                 running.startedAt,
                                 running.runningName,
                                 new QCourseInfo(

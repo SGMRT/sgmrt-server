@@ -9,7 +9,7 @@ import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import java.util.List;
 
 @Getter
-public class SoloRunInfo {
+public class SoloRunDetailInfo {
 
     private Long startedAt;
     private String runningName;
@@ -22,7 +22,7 @@ public class SoloRunInfo {
 
     // TODO : 공개 설정 필드가 생기면 공개 설정 유무로 바꾸기
     @QueryProjection
-    public SoloRunInfo(Long startedAt, String runningName, CourseInfo courseInfo, RunRecordInfo recordInfo, String telemetryUrl) {
+    public SoloRunDetailInfo(Long startedAt, String runningName, CourseInfo courseInfo, RunRecordInfo recordInfo, String telemetryUrl) {
         this.startedAt = startedAt;
         this.runningName = runningName;
         this.courseInfo = courseInfo.getName() == null ? null : courseInfo;
