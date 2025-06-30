@@ -16,4 +16,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
     List<Long> findIdsByCourseId(@Param("courseId") Long courseId);
 
     Optional<Running> findByIdAndMemberId(Long runningId, Long memberId);
+
+    @Query("select r.telemetryUrl from Running r where r.id = :runningId")
+    Optional<String> findTelemetryUrlById(Long runningId);
 }
