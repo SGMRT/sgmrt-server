@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.running.application.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Getter;
 
@@ -11,6 +12,7 @@ public class GhostRunDetailInfo extends RunDetailInfo {
 
     private CourseInfo courseInfo;
     private MemberAndRunRecordInfo myRunInfo;
+    @JsonIgnore
     private Long ghostRunId;
     private MemberAndRunRecordInfo ghostRunInfo;
     private RunComparisonInfo comparisonInfo;
