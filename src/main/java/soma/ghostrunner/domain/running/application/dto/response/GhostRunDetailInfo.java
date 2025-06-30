@@ -1,57 +1,29 @@
 package soma.ghostrunner.domain.running.application.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Getter;
-import lombok.Setter;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 @Getter
-public class GhostRunDetailInfo {
+public class GhostRunDetailInfo extends RunDetailInfo {
 
-    private Long startedAt;
-    private String runningName;
     private CourseInfo courseInfo;
     private MemberAndRunRecordInfo myRunInfo;
-    private GhostMemberAndRunRecordInfo ghostRunInfo;
+    private MemberAndRunRecordInfo ghostRunInfo;
     private RunComparisonInfo comparisonInfo;
-    @JsonIgnore
-    private String telemetryUrl;
-    @Setter
-    private TelemetryDto telemetries;
 
     @QueryProjection
     public GhostRunDetailInfo(Long startedAt, String runningName, CourseInfo courseInfo, MemberAndRunRecordInfo myRunInfo, String telemetryUrl) {
-        this.startedAt = startedAt;
-        this.runningName = runningName;
+        super(startedAt, runningName, telemetryUrl);
         this.courseInfo = courseInfo;
         this.myRunInfo = myRunInfo;
-        this.telemetryUrl = telemetryUrl;
     }
 
     public void setGhostRunInfo(MemberAndRunRecordInfo ghostRunInfo) {
-        this.ghostRunInfo = new GhostMemberAndRunRecordInfo(ghostRunInfo);
+        this.ghostRunInfo = ghostRunInfo;
         this.comparisonInfo = new RunComparisonInfo(myRunInfo.getRecordInfo(), ghostRunInfo.getRecordInfo());
-    }
-
-    @Getter
-    public class GhostMemberAndRunRecordInfo {
-        private String nickname;
-        private String profileUrl;
-        private Long duration;
-        private Integer cadence;
-        private Double pace;
-
-        public GhostMemberAndRunRecordInfo(MemberAndRunRecordInfo ghostInfo) {
-            this.nickname = ghostInfo.getNickname();
-            this.profileUrl = ghostInfo.getProfileUrl();
-            this.duration = ghostInfo.getRecordInfo().getDuration();
-            this.cadence = ghostInfo.getRecordInfo().getCadence();
-            this.pace = ghostInfo.getRecordInfo().getAveragePace();
-        }
     }
 
     @Getter

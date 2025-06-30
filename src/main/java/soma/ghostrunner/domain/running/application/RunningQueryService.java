@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.clients.aws.TelemetryClient;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
+import soma.ghostrunner.domain.running.application.dto.response.RunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
@@ -14,6 +15,7 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
 
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -26,13 +28,8 @@ public class RunningQueryService {
     private final TelemetryClient telemetryClient;
 
     public List<TelemetryDto> findTelemetriesById(Long runningId) {
-        Running running = findRunningById(runningId);
-        return telemetryClient.downloadTelemetryFromUrl(running.getTelemetryUrl());
-    }
-
-    public Running findRunningById(Long id) {
-        return runningRepository.findById(id)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, id));
+        String s3Url = findTelemetryUrl(runningId);
+        return telemetryClient.downloadTelemetryFromUrl(s3Url);
     }
 
     public Running findByRunningAndMemberId(Long runningId, Long memberId) {
@@ -42,12 +39,7 @@ public class RunningQueryService {
   
     public SoloRunDetailInfo findSoloRunInfoById(Long runningId) {
         SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfo(runningId);
-        try {
-            List<TelemetryDto> telemetries = telemetryClient.downloadTelemetryFromUrl(soloRunDetailInfo.getTelemetryUrl());
-            soloRunDetailInfo.setTelemetries(telemetries);
-        } catch (Exception e) {
-            log.error("runningId {}의 요청에 대해 S3에서 다운로드를 실패했습니다.", runningId, e);
-        }
+        downloadTelemetries(runningId, soloRunDetailInfo);
         return soloRunDetailInfo;
     }
 
@@ -55,9 +47,28 @@ public class RunningQueryService {
         GhostRunDetailInfo myGhostModeRunInfo = findGhostRunInfo(myRunningId);
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfo(ghostRunningId);
         myGhostModeRunInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
-
-
+        downloadTelemetries(myRunningId, myGhostModeRunInfo);
         return myGhostModeRunInfo;
+    }
+
+    public Running findRunningById(Long id) {
+        return runningRepository.findById(id)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, id));
+    }
+
+    private String findTelemetryUrl(Long runningId) {
+        return runningRepository.findTelemetryUrlById(runningId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, runningId));
+    }
+
+    private void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
+        try {
+            List<TelemetryDto> telemetries = telemetryClient.downloadTelemetryFromUrl(runDetailInfo.getTelemetryUrl());
+            runDetailInfo.setTelemetries(telemetries);
+        } catch (Exception e) {
+            log.error("runningId {}의 요청에 대해 S3에서 다운로드를 실패했습니다.", runningId, e);
+            runDetailInfo.setTelemetries(Collections.emptyList());
+        }
     }
 
     private MemberAndRunRecordInfo findGhostMemberAndRunInfo(Long ghostRunningId) {

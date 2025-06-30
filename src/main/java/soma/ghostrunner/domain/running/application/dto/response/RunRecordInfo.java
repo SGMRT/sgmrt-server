@@ -1,9 +1,11 @@
 package soma.ghostrunner.domain.running.application.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Getter;
 
 @Getter
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class RunRecordInfo {
 
     private Double distance;
@@ -32,5 +34,12 @@ public class RunRecordInfo {
         this.elevationGain = elevationGain;
         this.elevationLoss = elevationLoss;
         this.totalElevation = elevationGain + elevationLoss;
+    }
+
+    @QueryProjection
+    public RunRecordInfo(Long duration, Integer cadence, Double averagePace) {
+        this.duration = duration;
+        this.cadence = cadence;
+        this.averagePace = averagePace;
     }
 }
