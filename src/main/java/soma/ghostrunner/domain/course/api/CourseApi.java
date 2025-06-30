@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.course.api;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
