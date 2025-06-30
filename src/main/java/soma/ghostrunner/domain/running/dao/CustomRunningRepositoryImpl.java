@@ -82,6 +82,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                                 running.runningRecord.elevationGain,
                                                 running.runningRecord.elevationLoss
                                         )),
+                                running.ghostRunningId,
                                 running.telemetryUrl
                         ))
                         .from(running)
