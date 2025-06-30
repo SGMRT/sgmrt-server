@@ -27,11 +27,18 @@ public class CourseApi {
 
     @PatchMapping("/{courseId}")
     public ResponseEntity<Void> patchCourseName(
-            @PathVariable Long courseId,
+            @PathVariable("courseId") Long courseId,
             @RequestBody CoursePatchRequest request) {
         courseService.updateCourseName(courseId, request.getName());
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/{courseId}")
+    public ResponseEntity<Void> deleteCourse(
+            @PathVariable("courseId") Long courseId
+    ) {
+        courseService.deleteCourse(courseId);
+        return ResponseEntity.ok().build();
+    }
 
 }

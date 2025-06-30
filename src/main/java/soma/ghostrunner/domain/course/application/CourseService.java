@@ -1,8 +1,8 @@
 package soma.ghostrunner.domain.course.application;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -64,5 +64,11 @@ public class CourseService {
         Course course = findCourseById(courseId);
         course.setName(name);
         // @Transactional로 인해 더티체킹되어 자동으로 DB 반영
+    }
+
+    @Transactional
+    public void deleteCourse(Long courseId) {
+        Course course = findCourseById(courseId);
+        courseRepository.delete(course); // 아마 select 두 번 하게 될 거임
     }
 }
