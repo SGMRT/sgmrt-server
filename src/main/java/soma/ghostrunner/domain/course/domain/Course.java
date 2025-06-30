@@ -13,6 +13,7 @@ public class Course extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Setter
     @Column
     private String name;
 
@@ -40,7 +41,4 @@ public class Course extends BaseTimeEntity {
                 .build();
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
 }
