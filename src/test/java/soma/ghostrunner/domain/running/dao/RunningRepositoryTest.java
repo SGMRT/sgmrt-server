@@ -207,6 +207,7 @@ class RunningRepositoryTest {
         Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getNickname()).isEqualTo("멤버1");
         Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getDuration()).isEqualTo(0L);
         Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getPace()).isEqualTo(-1.0);
+        Assertions.assertThat(ghostRunDetailInfo.getGhostRunId()).isEqualTo(myRunning.getGhostRunningId());
     }
 
     @DisplayName("러닝 시계열 url을 조회한다.")

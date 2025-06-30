@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Embeddable @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CourseProfile {
 
-    @Column(name = "distance", nullable = false)
+    @Column(name = "distance_km", nullable = false)
     private Double distance;
 
     @NotEmpty @Column(name = "elevation_gain_m")

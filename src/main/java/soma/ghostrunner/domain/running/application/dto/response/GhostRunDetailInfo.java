@@ -11,13 +11,15 @@ public class GhostRunDetailInfo extends RunDetailInfo {
 
     private CourseInfo courseInfo;
     private MemberAndRunRecordInfo myRunInfo;
+    private Long ghostRunId;
     private MemberAndRunRecordInfo ghostRunInfo;
     private RunComparisonInfo comparisonInfo;
 
     @QueryProjection
-    public GhostRunDetailInfo(Long startedAt, String runningName, CourseInfo courseInfo, MemberAndRunRecordInfo myRunInfo, String telemetryUrl) {
+    public GhostRunDetailInfo(Long startedAt, String runningName, CourseInfo courseInfo, MemberAndRunRecordInfo myRunInfo, Long ghostRunId, String telemetryUrl) {
         super(startedAt, runningName, telemetryUrl);
         this.courseInfo = courseInfo;
+        this.ghostRunId = ghostRunId;
         this.myRunInfo = myRunInfo;
     }
 
