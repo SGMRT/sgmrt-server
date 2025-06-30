@@ -1,13 +1,16 @@
 package soma.ghostrunner.domain.course.api;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseService;
+import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
+import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 
-@Controller
+import java.util.List;
+
+@RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/courses")
 public class CourseApi {
@@ -15,12 +18,20 @@ public class CourseApi {
     private final CourseService courseService;
 
     @GetMapping
-    public Object getCourses(
+    public List<CourseResponse> getCourses(
             @RequestParam Double lat,
             @RequestParam Double lng,
             @RequestParam(required = false, defaultValue = "100") Integer radiusKm,
             @RequestParam(required = false) Long ownerId) {
         return courseService.searchCourses(lat, lng, radiusKm, ownerId);
+    }
+
+    @PatchMapping("/{courseId}")
+    public ResponseEntity<Void> patchCourseName(
+            @PathVariable Long courseId,
+            @RequestBody CoursePatchRequest request) {
+        courseService.updateCourseName(courseId, request.getName());
+        return ResponseEntity.ok().build();
     }
 
 

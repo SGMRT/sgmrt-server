@@ -1,16 +1,25 @@
 package soma.ghostrunner.domain.course.application;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.CourseMapper;
+import soma.ghostrunner.domain.course.dto.response.CourseResponse;
+import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class CourseService {
 
+    private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
 
     public Long save(
@@ -24,11 +33,36 @@ public class CourseService {
                 .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
     }
 
-    public Object searchCourses(
+    public List<CourseResponse> searchCourses(
             Double lat,
             Double lng,
             Integer radiusKm,
             Long ownerId) {
-        return null;
+        // 코스 검색할 직사각형 반경 계산
+        // - 1도 위도 당 111km 가정 (지구 둘레 40,075km / 360도 = 약 111.3km)
+        // - 근사치이며, 적도에서 멀어질 수록 경도 거리 오차가 커짐
+        // - TODO: 추후 Haversine 공식이나 DB 공간 데이터 타입 활용하도록 변경
+        double latDelta = radiusKm.doubleValue() / 111.0;
+        double lngDelta = radiusKm.doubleValue() / (111.0 * Math.cos(Math.toRadians(lat)));
+
+        double minLat = lat - latDelta;
+        double maxLat = lat + latDelta;
+        double minLng = lng - lngDelta;
+        double maxLng = lng + lngDelta;
+
+        List<Course> courses = courseRepository.findCoursesByBoundingBox(minLat, maxLat, minLng, maxLng);
+        return courses.stream()
+                .map(courseMapper::toCourseResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void updateCourseName(
+            Long courseId,
+            String name) {
+        if(!StringUtils.hasText(name)) throw new CourseNameNotValidException(ErrorCode.COURSE_NAME_NOT_VALID);
+        Course course = findCourseById(courseId);
+        course.setName(name);
+        // @Transactional로 인해 더티체킹되어 자동으로 DB 반영
     }
 }
