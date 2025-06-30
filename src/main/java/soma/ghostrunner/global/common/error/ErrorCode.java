@@ -25,6 +25,7 @@ public enum ErrorCode {
 
     // Course
     COURSE_NOT_FOUND("C-001", NOT_FOUND, "존재하지 않는 코스"),
+    COURSE_NAME_NOT_VALID("C-002", BAD_REQUEST, "올바르지 않은 코스명"),
 
     // Running
     RUNNING_NOT_FOUND("R-001", NOT_FOUND, "존재하지 않는 러닝")
