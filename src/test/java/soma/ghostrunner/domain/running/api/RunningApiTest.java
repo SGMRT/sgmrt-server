@@ -245,7 +245,7 @@ class RunningApiTest {
             telemetryRequests.add(TelemetryRequest.builder()
                     .timeStamp(1750729987181L)
                     .lat(37.5).lng(127.0)
-                    .dist(4.2).pace(5.48).alt(100)
+                    .dist(4.2).pace(5.48).alt(0)
                     .cadence(80).bpm(150)
                     .isRunning(true)
                     .build());

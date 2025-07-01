@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.running.api.dto.request;
 
-import jakarta.persistence.Column;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
