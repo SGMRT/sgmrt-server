@@ -26,7 +26,7 @@ public class CourseApi {
     }
 
     @PatchMapping("/{courseId}")
-    public void patchCourseName(
+    public void updateCourse(
             @PathVariable("courseId") Long courseId,
             @RequestBody CoursePatchRequest request) {
         courseService.updateCourse(courseId, request);
