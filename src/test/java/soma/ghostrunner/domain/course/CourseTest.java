@@ -23,6 +23,6 @@ class CourseTest {
     @Test
     void of() {
         Assertions.assertThat(testCourse.getName()).isNull();
-        Assertions.assertThat(testCourse.getCourseProfile().getElevationGainM()).isEqualTo(40);
+        Assertions.assertThat(testCourse.getCourseProfile().getElevationGain()).isEqualTo(40);
     }
 }
