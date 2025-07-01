@@ -29,7 +29,8 @@ public enum ErrorCode {
     COURSE_ALREADY_PUBLIC("C-003", BAD_REQUEST, "코스가 이미 public이므로 수정 불가"),
 
     // Running
-    RUNNING_NOT_FOUND("R-001", NOT_FOUND, "존재하지 않는 러닝")
+    RUNNING_NOT_FOUND("R-001", NOT_FOUND, "존재하지 않는 러닝"),
+    INVALID_GHOST_RUNNING_ID("R-002", BAD_REQUEST, "SOLO 모드의 러닝이거나 함께 뛴 고스트의 러닝 ID가 아닌 경우")
     ;
 
     private final String code;

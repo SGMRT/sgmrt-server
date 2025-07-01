@@ -183,8 +183,9 @@ class RunningRepositoryTest {
         // then
         Assertions.assertThat(memberAndRunRecordInfo.getNickname()).isEqualTo("멤버1");
         Assertions.assertThat(memberAndRunRecordInfo.getProfileUrl()).isEqualTo("프로필 URL");
-        Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getDistance()).isEqualTo(running1.getRunningRecord().getDistance());
+        Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getCadence()).isEqualTo(running1.getRunningRecord().getCadence());
         Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getDuration()).isEqualTo(running1.getRunningRecord().getDuration());
+        Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getAveragePace()).isEqualTo(running1.getRunningRecord().getAveragePace());
     }
 
     @DisplayName("나와 고스트의 닉네임, 프로필 URL, 러닝 상세정보를 조회한다.")
@@ -206,6 +207,17 @@ class RunningRepositoryTest {
         Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getNickname()).isEqualTo("멤버1");
         Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getDuration()).isEqualTo(0L);
         Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getPace()).isEqualTo(-1.0);
+        Assertions.assertThat(ghostRunDetailInfo.getGhostRunId()).isEqualTo(myRunning.getGhostRunningId());
+    }
+
+    @DisplayName("러닝 시계열 url을 조회한다.")
+    @Test
+    void testGetRunningTelemetriesUrl() {
+        // when
+        String url = runningRepository.findTelemetryUrlById(running1.getId()).get();
+
+        // then
+        Assertions.assertThat(url).isEqualTo(running1.getTelemetryUrl());
     }
 
     private Running createMyRunning(Member testMember, Course testCourse ) {

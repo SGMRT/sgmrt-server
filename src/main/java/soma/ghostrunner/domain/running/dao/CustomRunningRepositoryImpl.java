@@ -82,6 +82,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                                 running.runningRecord.elevationGain,
                                                 running.runningRecord.elevationLoss
                                         )),
+                                running.ghostRunningId,
                                 running.telemetryUrl
                         ))
                         .from(running)
@@ -99,16 +100,9 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 member.nickname,
                                 member.profilePictureUrl,
                                 new QRunRecordInfo(
-                                        running.runningRecord.distance,
                                         running.runningRecord.duration,
                                         running.runningRecord.cadence,
-                                        running.runningRecord.bpm,
-                                        running.runningRecord.burnedCalories,
-                                        running.runningRecord.averagePace,
-                                        running.runningRecord.highestPace,
-                                        running.runningRecord.lowestPace,
-                                        running.runningRecord.elevationGain,
-                                        running.runningRecord.elevationLoss
+                                        running.runningRecord.averagePace
                                 )))
                         .from(running)
                         .join(running.member, member)
