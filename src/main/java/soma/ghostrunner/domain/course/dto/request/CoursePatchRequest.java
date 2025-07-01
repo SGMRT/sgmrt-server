@@ -9,6 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CoursePatchRequest {
-    @NotBlank(message = "코스 이름은 비어있을 수 없습니다.")
     private String name;
+    private Boolean isPublic;
 }
