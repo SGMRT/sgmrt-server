@@ -12,27 +12,27 @@ import lombok.NoArgsConstructor;
 @Embeddable @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CourseProfile {
 
-    @Column(name = "distance", nullable = false)
-    private Double distance;
+    @Column(name = "distanceM", nullable = false)
+    private Double distanceM;
 
     @NotEmpty @Column(name = "elevation_gain_m")
-    private Integer elevationGain;
+    private Integer elevationGainM;
 
     @NotEmpty @Column(name = "elevation_loss_m")
-    private Integer elevationLoss;
+    private Integer elevationLossM;
 
     @Builder
-    private CourseProfile(Double distance, Integer  elevationGain, Integer elevationLoss) {
-        this.distance = distance;
-        this.elevationGain = elevationGain;
-        this.elevationLoss = elevationLoss;
+    private CourseProfile(Double distanceM, Integer elevationGainM, Integer elevationLossM) {
+        this.distanceM = distanceM;
+        this.elevationGainM = elevationGainM;
+        this.elevationLossM = elevationLossM;
     }
 
     public static CourseProfile of(Double distance, Integer  elevationGain, Integer elevationLoss) {
         return CourseProfile.builder()
-                .distance(distance)
-                .elevationGain(elevationGain)
-                .elevationLoss(elevationLoss)
+                .distanceM(distance)
+                .elevationGainM(elevationGain)
+                .elevationLossM(elevationLoss)
                 .build();
     }
 }
