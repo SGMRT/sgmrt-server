@@ -1,5 +1,7 @@
 package soma.ghostrunner.domain.running.dao;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,4 +21,6 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
 
     @Query("select r.telemetryUrl from Running r where r.id = :runningId")
     Optional<String> findTelemetryUrlById(Long runningId);
+
+    Page<Running> findByCourse_IdAndIsPublicTrue(Long courseId, Pageable pageable);
 }
