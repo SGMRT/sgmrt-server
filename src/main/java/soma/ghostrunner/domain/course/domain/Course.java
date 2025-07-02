@@ -13,6 +13,7 @@ public class Course extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Setter
     @Column
     private String name;
 
@@ -22,14 +23,20 @@ public class Course extends BaseTimeEntity {
     @Embedded
     private StartPoint startPoint;
 
+    @Setter
+    @Column
+    private Boolean isPublic = false;
+
     @Lob @Column(name = "path_data", columnDefinition = "LONGTEXT")
     private String pathData;
 
     @Builder
-    private Course(CourseProfile courseProfile, StartPoint startPoint, String pathData) {
+    private Course(CourseProfile courseProfile, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
         this.courseProfile = courseProfile;
         this.startPoint = startPoint;
         this.pathData = pathData;
+        this.name = name;
+        this.isPublic = isPublic;
     }
 
     public static Course of(CourseProfile courseProfile, StartPoint startPoint, String pathData) {
@@ -37,10 +44,18 @@ public class Course extends BaseTimeEntity {
                 .courseProfile(courseProfile)
                 .startPoint(startPoint)
                 .pathData(pathData)
+                .isPublic(false)
                 .build();
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public static Course of(CourseProfile courseProfile, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
+        return Course.builder()
+                .courseProfile(courseProfile)
+                .name(name)
+                .startPoint(startPoint)
+                .pathData(pathData)
+                .isPublic(isPublic)
+                .build();
     }
+
 }

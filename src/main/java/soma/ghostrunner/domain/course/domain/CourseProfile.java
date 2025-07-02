@@ -22,7 +22,7 @@ public class CourseProfile {
     private Integer elevationLoss;
 
     @Builder
-    private CourseProfile(Double distance, Integer  elevationGain, Integer elevationLoss) {
+    private CourseProfile(Double distance, Integer elevationGain, Integer elevationLoss) {
         this.distance = distance;
         this.elevationGain = elevationGain;
         this.elevationLoss = elevationLoss;

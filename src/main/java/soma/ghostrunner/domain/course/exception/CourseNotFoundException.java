@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.course;
+package soma.ghostrunner.domain.course.exception;
 
 import soma.ghostrunner.global.common.error.ErrorCode;
 import soma.ghostrunner.global.common.error.exception.EntityNotFoundException;
