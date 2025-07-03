@@ -46,8 +46,22 @@ public class CourseApi {
     @GetMapping("/{courseId}/ghosts")
     public Page<Object> getGhosts(
             @PathVariable("courseId") Long courseId,
-            @PageableDefault(sort = "pace", direction = Direction.DESC) Pageable pageable
-    ) {
+            @PageableDefault(sort = "pace", direction = Direction.DESC) Pageable pageable) {
         return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);
     }
+
+    @GetMapping("/{courseId}/ranking")
+    public Integer getCourseRanking(
+            @PathVariable("courseId") Long courseId,
+            @RequestParam Long userId) {
+        return runningQueryService.findRankingOfUserInCourse(courseId, userId);
+    }
+
+    @GetMapping("/{courseId}/top-ranking")
+    public List<Object> getCourseTopRanking(
+        @PathVariable("courseId") Long courseId,
+        @RequestParam(required = false, defaultValue = "10") Integer count) {
+        return null;
+    }
+
 }

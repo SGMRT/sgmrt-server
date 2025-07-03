@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
@@ -22,5 +23,17 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
     @Query("select r.telemetryUrl from Running r where r.id = :runningId")
     Optional<String> findTelemetryUrlById(Long runningId);
 
+    @Query("SELECT r FROM Running r JOIN FETCH r.member "
+        + "WHERE r.course.id = :courseId AND r.isPublic = true")
     Page<Running> findByCourse_IdAndIsPublicTrue(Long courseId, Pageable pageable);
+
+    List<Running> course(Course course);
+
+    @Query("SELECT MIN(r.runningRecord.averagePace) FROM Running r "
+        + "WHERE r.course.id = :courseId AND r.member.id = :memberId AND r.isPublic = true")
+    Optional<Double> findMinAveragePaceByCourseIdAndMemberIdAndIsPublicTrue(Long courseId, Long memberId);
+
+    @Query("SELECT COUNT(r) FROM Running r "
+        + "WHERE r.course.id = :courseId AND r.isPublic = true AND r.runningRecord.averagePace < :averagePace")
+    Optional<Integer> countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(Long courseId, Double averagePace);
 }
