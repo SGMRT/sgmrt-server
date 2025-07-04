@@ -8,12 +8,12 @@ import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
 import soma.ghostrunner.global.common.error.ErrorCode;
 import soma.ghostrunner.global.common.error.exception.ParsingException;
 
-@Component
-@RequiredArgsConstructor
+//@Component
+// @RequiredArgsConstructor
 public class CourseCoordinateUtil {
-  private final ObjectMapper objectMapper;
+  private static ObjectMapper objectMapper = new ObjectMapper();
 
-  public String convertToString(List<CourseCoordinateDto> coordinates) {
+  public static String convertToString(List<CourseCoordinateDto> coordinates) {
     try {
       return objectMapper.writeValueAsString(coordinates);
     } catch (Exception e) {
@@ -21,7 +21,7 @@ public class CourseCoordinateUtil {
     }
   }
 
-  public List<CourseCoordinateDto> convertToCoordinateList(String jsonListString) {
+  public static List<CourseCoordinateDto> convertToCoordinateList(String jsonListString) {
     try {
       return objectMapper.readValue(jsonListString, objectMapper.getTypeFactory().constructCollectionType(List.class, CourseCoordinateDto.class));
     } catch (Exception e) {
