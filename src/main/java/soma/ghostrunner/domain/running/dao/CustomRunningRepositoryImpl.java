@@ -32,6 +32,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 new QCourseInfo(
                                         course.id,
                                         course.name,
+                                        course.isPublic,
                                         JPAExpressions.select(subRunning.count()).from(subRunning).where(subRunning.course.id.eq(course.id))),
                                 new QRunRecordInfo(
                                         running.runningRecord.distance,
@@ -66,6 +67,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 new QCourseInfo(
                                         course.id,
                                         course.name,
+                                        course.isPublic,
                                         JPAExpressions.select(subRunning.count()).from(subRunning).where(subRunning.course.id.eq(course.id))),
                                 new QMemberAndRunRecordInfo(
                                         member.nickname,

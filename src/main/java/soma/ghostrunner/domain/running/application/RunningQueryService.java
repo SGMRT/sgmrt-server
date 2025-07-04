@@ -45,15 +45,12 @@ public class RunningQueryService {
     }
 
     public GhostRunDetailInfo findGhostRunInfoById(Long myRunningId, Long ghostRunningId) {
-        // 나의 러닝 정보
         GhostRunDetailInfo myGhostModeRunDetailInfo = findGhostRunDetailInfo(myRunningId);
         verifyGhostRunningId(ghostRunningId, myGhostModeRunDetailInfo);
 
-        // 고스트의 러닝 정보
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfo(ghostRunningId);
         myGhostModeRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
 
-        // 시계열
         downloadTelemetries(myRunningId, myGhostModeRunDetailInfo);
         return myGhostModeRunDetailInfo;
     }

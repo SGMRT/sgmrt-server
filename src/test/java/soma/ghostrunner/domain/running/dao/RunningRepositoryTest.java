@@ -133,16 +133,6 @@ class RunningRepositoryTest {
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(newRunning1.getRunningRecord().getDuration());
     }
 
-    @DisplayName("혼자 뛴 러닝에 대해 코스를 공개하지 않았다면 코스 정보는 Null이 조회된다.")
-    @Test
-    void testFindSoloRunInfoWithNullCourseInfo() {
-        // when
-        SoloRunDetailInfo soloRunDetailInfo = runningRepository.findSoloRunInfoById(running1.getId()).get();
-
-        // then
-        Assertions.assertThat(soloRunDetailInfo.getCourseInfo()).isNull();
-    }
-
     @DisplayName("혼자 뛴 러닝에 대해 상세 정보를 조회할 때 없다면 Null이 뜬다.")
     @Test
     void testFindSoloRunInfoByRunningIdNull() {
