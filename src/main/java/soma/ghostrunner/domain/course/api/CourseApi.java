@@ -8,6 +8,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
+import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 
 import java.util.List;
@@ -44,7 +45,7 @@ public class CourseApi {
     }
 
     @GetMapping("/{courseId}/ghosts")
-    public Page<Object> getGhosts(
+    public Page<CourseGhostResponse> getGhosts(
             @PathVariable("courseId") Long courseId,
             @PageableDefault(sort = "pace", direction = Direction.DESC) Pageable pageable) {
         return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);

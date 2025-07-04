@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.clients.aws.TelemetryClient;
+import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
@@ -68,7 +69,7 @@ public class RunningQueryService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Object> findPublicGhostRunsByCourseId(
+    public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
         Long courseId, Pageable pageable) {
         Page<Running> ghostRuns = runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
         return ghostRuns.map(runningApiMapper::toGhostResponse);
