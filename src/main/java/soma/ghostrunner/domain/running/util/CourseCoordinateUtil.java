@@ -2,14 +2,10 @@ package soma.ghostrunner.domain.running.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
 import soma.ghostrunner.global.common.error.ErrorCode;
 import soma.ghostrunner.global.common.error.exception.ParsingException;
 
-//@Component
-// @RequiredArgsConstructor
 public class CourseCoordinateUtil {
   private static ObjectMapper objectMapper = new ObjectMapper();
 
