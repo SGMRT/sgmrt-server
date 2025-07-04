@@ -1,8 +1,11 @@
 package soma.ghostrunner.domain.course.api;
 
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
@@ -47,7 +50,7 @@ public class CourseApi {
     @GetMapping("/{courseId}/ghosts")
     public Page<CourseGhostResponse> getGhosts(
             @PathVariable("courseId") Long courseId,
-            @PageableDefault(sort = "pace", direction = Direction.DESC) Pageable pageable) {
+            @PageableDefault(sort = "runningRecord.averagePace", direction = Direction.ASC) Pageable pageable) {
         return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);
     }
 
@@ -59,10 +62,14 @@ public class CourseApi {
     }
 
     @GetMapping("/{courseId}/top-ranking")
-    public List<Object> getCourseTopRanking(
+    public List<CourseGhostResponse> getCourseTopRanking(
         @PathVariable("courseId") Long courseId,
-        @RequestParam(required = false, defaultValue = "10") Integer count) {
-        return null;
+        @RequestParam(required = false, defaultValue = "10") @Min(value = 1) Integer count) {
+        Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findPublicGhostRunsByCourseId(
+            courseId,
+            PageRequest.of(0, count, Sort.by(Direction.ASC, "runningRecord.averagePace"))
+        );
+        return rankedGhostsPage.getContent();
     }
 
 }
