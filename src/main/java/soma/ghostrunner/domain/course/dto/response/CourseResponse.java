@@ -1,8 +1,10 @@
 package soma.ghostrunner.domain.course.dto.response;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
 
 @Data
 @AllArgsConstructor
@@ -12,7 +14,7 @@ public class CourseResponse {
     private String name;
     private Double startLat;
     private Double startLng;
-    private String pathData; // TODO 프론트 요청 시 String 대신 JSON으로 내려주기
+    private List<CourseCoordinateDto> pathData; // TODO 프론트 요청 시 String 대신 JSON으로 내려주기
     private Integer distance;
     private Integer elevationGain;
     private Integer elevationLoss;
@@ -22,7 +24,7 @@ public class CourseResponse {
             String name,
             Double startLat,
             Double startLng,
-            String pathData,
+            List<CourseCoordinateDto> pathData,
             Integer distance,
             Integer elevationGain,
             Integer elevationLoss) {
