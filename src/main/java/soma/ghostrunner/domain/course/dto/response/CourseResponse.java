@@ -14,7 +14,7 @@ public class CourseResponse {
     private String name;
     private Double startLat;
     private Double startLng;
-    private List<CourseCoordinateDto> pathData; // TODO 프론트 요청 시 String 대신 JSON으로 내려주기
+    private List<CourseCoordinateDto> pathData;
     private Integer distance;
     private Integer elevationGain;
     private Integer elevationLoss;
