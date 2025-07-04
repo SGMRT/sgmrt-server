@@ -76,7 +76,7 @@ public class CourseService {
         }
     }
 
-    public void updateCourseName(
+    private void updateCourseName(
             Course course,
             String name) {
         if(course == null) throw new IllegalArgumentException("Course cannot be null");
@@ -85,7 +85,7 @@ public class CourseService {
         // @Transactional로 인해 더티체킹되어 자동으로 DB 반영
     }
 
-    public void updateCoursePublicity(Course course, Boolean isPublic) {
+    private void updateCoursePublicity(Course course, Boolean isPublic) {
         if(course == null) throw new IllegalArgumentException("Course cannot be null");
         if(isPublic == null) throw new IllegalArgumentException("IsPublic cannot be null");
         if(course.getIsPublic() == true) throw new CourseAlreadyPublicException(ErrorCode.COURSE_ALREADY_PUBLIC, course.getId());

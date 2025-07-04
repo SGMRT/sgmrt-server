@@ -1,7 +1,6 @@
 package soma.ghostrunner.domain.running.api.dto.request;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,10 +22,10 @@ public class TelemetryRequest {
     @NotNull @PositiveOrZero
     private Double dist;    // 누적거리 (m)
 
-    @NotNull @Positive
+    @NotNull @PositiveOrZero
     private Double pace;    // 현재 페이스 (분/km)
 
-    @NotNull
+    @NotNull @PositiveOrZero
     private Integer alt;    // 현재 고도 (m)
 
     @NotNull @PositiveOrZero
