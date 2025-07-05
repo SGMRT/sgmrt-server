@@ -12,7 +12,7 @@ public enum ErrorCode {
 
     // Ghost-Runner Common Errors
     INVALID_REQUEST_VALUE("G-001",  BAD_REQUEST, "잘못된 요청 데이터"),
-    INVALID_REQUEST_PARAMETER("G-002",  BAD_REQUEST, "필수 파라미터 누락"),
+    INVALID_REQUEST_PARAMETER("G-002",  BAD_REQUEST, "잘못된 필수 파라미터"),
     NONE_REQUEST_URI("G-003",  BAD_REQUEST, "잘못된 요청 URI"),
     METHOD_NOT_ALLOWED("G-004",  HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드"),
     SERVICE_UNAVAILABLE("G-005",  HttpStatus.SERVICE_UNAVAILABLE, "서비스 문제 발생"),
@@ -27,6 +27,7 @@ public enum ErrorCode {
     COURSE_NOT_FOUND("C-001", NOT_FOUND, "존재하지 않는 코스"),
     COURSE_NAME_NOT_VALID("C-002", BAD_REQUEST, "올바르지 않은 코스명"),
     COURSE_ALREADY_PUBLIC("C-003", BAD_REQUEST, "코스가 이미 public이므로 수정 불가"),
+    COURSE_RUN_NOT_FOUND("C-004", BAD_REQUEST, "해당 코스를 달린 기록이 없음"),
 
     // Running
     RUNNING_NOT_FOUND("R-001", NOT_FOUND, "존재하지 않는 러닝"),

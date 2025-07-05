@@ -2,9 +2,13 @@ package soma.ghostrunner.domain.running.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.clients.aws.TelemetryClient;
+import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
+import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunDetailInfo;
@@ -27,6 +31,7 @@ public class RunningQueryService {
 
     private final RunningRepository runningRepository;
     private final TelemetryClient telemetryClient;
+    private final RunningApiMapper runningApiMapper;
 
     public List<TelemetryDto> findTelemetriesById(Long runningId) {
         String s3Url = findTelemetryUrl(runningId);
@@ -58,6 +63,22 @@ public class RunningQueryService {
     public Running findRunningById(Long id) {
         return runningRepository.findById(id)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, id));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
+        Long courseId, Pageable pageable) {
+        Page<Running> ghostRuns = runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
+        return ghostRuns.map(runningApiMapper::toGhostResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Integer findRankingOfUserInCourse(Long courseId, Long memberId) {
+        Double bestPace = runningRepository.findMinAveragePaceByCourseIdAndMemberIdAndIsPublicTrue(courseId, memberId)
+            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
+
+        return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(courseId, bestPace)
+            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, courseId));
     }
 
     private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostModeRunInfo) {

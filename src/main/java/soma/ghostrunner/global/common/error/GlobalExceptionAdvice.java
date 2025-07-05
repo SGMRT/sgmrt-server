@@ -10,6 +10,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import soma.ghostrunner.global.common.error.exception.BusinessException;
@@ -74,9 +75,16 @@ public class GlobalExceptionAdvice {
         return createErrorResponse(ErrorCode.METHOD_NOT_ALLOWED);
     }
 
+    // 컨트롤러 메소드 파라미터 @Validated 유효성 검사 실패
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    protected ResponseEntity<ErrorResponse> handleHandlerMethodValidationException(HandlerMethodValidationException e) {
+        log.error("handleHandlerMethodValidationException", e);
+        return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
-        log.error("can't find Handler Entity", e);
+        log.error("can't find Handler Entity ", e);
         return createErrorResponse(ErrorCode.SERVICE_UNAVAILABLE);
     }
 
