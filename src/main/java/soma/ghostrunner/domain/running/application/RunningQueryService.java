@@ -77,14 +77,11 @@ public class RunningQueryService {
 
     @Transactional(readOnly = true)
     public Integer findRankingOfUserInCourse(Long courseId, Long memberId) {
-        // 사용자 본인의 가장 잘 뛴 기록을 가져온다
-        // - 회원 자신의 비공개 러닝은 랭킹에 포함하지 않음
         Double bestPace = runningRepository.findMinAveragePaceByCourseIdAndMemberIdAndIsPublicTrue(courseId, memberId)
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
 
-        // 해당 pace보다 더 빠른 기록이 몇 개 있는지 조회한다
         return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(courseId, bestPace)
-          .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, courseId));
+            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, courseId));
     }
 
     private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostModeRunInfo) {
