@@ -29,9 +29,9 @@ public class CourseApi {
     public List<CourseResponse> getCourses(
             @RequestParam Double lat,
             @RequestParam Double lng,
-            @RequestParam(required = false, defaultValue = "5") Integer radiusKm,
+            @RequestParam(required = false, defaultValue = "5000") Integer radiusM,
             @RequestParam(required = false) Long ownerId) {
-        return courseService.searchCourses(lat, lng, radiusKm, ownerId);
+        return courseService.searchCourses(lat, lng, radiusM, ownerId);
     }
 
     @PatchMapping("/{courseId}")
