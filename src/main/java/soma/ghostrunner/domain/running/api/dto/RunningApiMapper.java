@@ -19,6 +19,7 @@ public interface RunningApiMapper {
 
     @Mapping(source = "member.id", target = "runnerId")
     @Mapping(source = "member.profilePictureUrl", target = "runnerProfileUrl")
+    @Mapping(source = "member.nickname", target = "runnerNickname")
     @Mapping(source = "id", target = "runningId")
     @Mapping(source = "runningRecord.averagePace", target = "averagePace")
     @Mapping(source = "runningRecord.cadence", target = "cadence")
