@@ -30,8 +30,13 @@ public class CourseApi {
             @RequestParam Double lat,
             @RequestParam Double lng,
             @RequestParam(required = false, defaultValue = "5000") Integer radiusM,
-            @RequestParam(required = false) Long ownerId) {
-        return courseService.searchCourses(lat, lng, radiusM, ownerId);
+            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) Integer minDistanceM,
+            @RequestParam(required = false) Integer maxDistanceM,
+            @RequestParam(required = false) Integer minElevationM,
+            @RequestParam(required = false) Integer maxElevationM) {
+        return courseService.searchCourses(lat, lng, radiusM, minDistanceM,
+            maxDistanceM, minElevationM, maxElevationM, ownerId);
     }
 
     @PatchMapping("/{courseId}")
@@ -51,6 +56,7 @@ public class CourseApi {
     public Page<CourseGhostResponse> getGhosts(
             @PathVariable("courseId") Long courseId,
             @PageableDefault(sort = "runningRecord.averagePace", direction = Direction.ASC) Pageable pageable) {
+        // sort 필드명 validation
         return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);
     }
 
@@ -69,6 +75,7 @@ public class CourseApi {
             courseId,
             PageRequest.of(0, count, Sort.by(Direction.ASC, "runningRecord.averagePace"))
         );
+        // max count validation
         return rankedGhostsPage.getContent();
     }
 
