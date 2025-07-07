@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.util;
+package soma.ghostrunner.domain.running.domain.support;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -6,7 +6,8 @@ import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
 import soma.ghostrunner.global.common.error.ErrorCode;
 import soma.ghostrunner.global.common.error.exception.ParsingException;
 
-public class CourseCoordinateUtil {
+public class CourseCoordinateConverter {
+
   private static ObjectMapper objectMapper = new ObjectMapper();
 
   public static String convertToString(List<CourseCoordinateDto> coordinates) {
@@ -24,4 +25,5 @@ public class CourseCoordinateUtil {
       throw new ParsingException(ErrorCode.SERVICE_UNAVAILABLE, "JSON 문자열을 코스 좌표 목록으로 변환하는 데 실패했습니다.");
     }
   }
+
 }

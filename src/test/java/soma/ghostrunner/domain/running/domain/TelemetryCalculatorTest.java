@@ -1,17 +1,17 @@
-package soma.ghostrunner.domain.course;
+package soma.ghostrunner.domain.running.domain;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
-import soma.ghostrunner.domain.running.domain.TelemetryProcessor;
+import soma.ghostrunner.domain.running.domain.support.TelemetryCalculator;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-class TelemetryProcessorTest {
+class TelemetryCalculatorTest {
 
     private final Long startedAt = 1750729987181L;
     private final List<TelemetryDto> telemetryList = new ArrayList<>();
@@ -21,7 +21,7 @@ class TelemetryProcessorTest {
     void processTelemetryTest() {
         // when
         setUp();
-        ProcessedTelemetriesDto processedTelemetry = TelemetryProcessor.processTelemetry(telemetryList, startedAt);
+        ProcessedTelemetriesDto processedTelemetry = TelemetryCalculator.processTelemetry(telemetryList, startedAt);
 
         // then
         // 상대시간
