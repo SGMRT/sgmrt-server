@@ -31,8 +31,8 @@ public enum ErrorCode {
 
     // Running
     RUNNING_NOT_FOUND("R-001", NOT_FOUND, "존재하지 않는 러닝"),
-    INVALID_GHOST_RUNNING_ID("R-002", BAD_REQUEST, "SOLO 모드의 러닝이거나 함께 뛴 고스트의 러닝 ID가 아닌 경우")
-    ;
+    INVALID_GHOST_RUNNING_ID("R-002", BAD_REQUEST, "SOLO 모드의 러닝이거나 함께 뛴 고스트의 러닝 ID가 아닌 경우"),
+    CANNOT_PUBLISH_PAUSED_RUN("R-003", CONFLICT, "정지한 기록이 있어 공개 설정으로 변경 불가능한 경우");
 
     private final String code;
     private final HttpStatus status;

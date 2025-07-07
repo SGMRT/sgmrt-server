@@ -6,8 +6,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
@@ -20,20 +23,18 @@ import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInf
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
-import soma.ghostrunner.global.config.QuerydslConfig;
 
 import java.util.List;
 import java.util.Optional;
 
-@DataJpaTest
-@ActiveProfiles("test")
-@Import(QuerydslConfig.class)
-class RunningRepositoryTest {
+class RunningRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
     private RunningRepository runningRepository;
+
     @Autowired
     private CourseRepository courseRepository;
+
     @Autowired
     private MemberRepository memberRepository;
 

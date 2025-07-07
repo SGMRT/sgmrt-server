@@ -16,7 +16,7 @@ import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInf
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.exception.InvalidGhostRunningException;
+import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
 
@@ -34,13 +34,8 @@ public class RunningQueryService {
     private final RunningApiMapper runningApiMapper;
 
     public List<TelemetryDto> findTelemetriesById(Long runningId) {
-        String s3Url = findTelemetryUrl(runningId);
+        String s3Url = findTelemetryUrlBy(runningId);
         return telemetryClient.downloadTelemetryFromUrl(s3Url);
-    }
-
-    public Running findByRunningAndMemberId(Long runningId, Long memberId) {
-        return runningRepository.findByIdAndMemberId(runningId, memberId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, "러닝 ID : " + runningId + ", 멤버 ID : " + memberId + "에 해당하는 엔티티를 찾을 수 없습니다."));
     }
   
     public SoloRunDetailInfo findSoloRunInfoById(Long runningId) {
@@ -50,29 +45,22 @@ public class RunningQueryService {
     }
 
     public GhostRunDetailInfo findGhostRunInfoById(Long myRunningId, Long ghostRunningId) {
-        GhostRunDetailInfo myGhostModeRunDetailInfo = findGhostRunDetailInfo(myRunningId);
-        verifyGhostRunningId(ghostRunningId, myGhostModeRunDetailInfo);
+        GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunDetailInfo(myRunningId);
+        verifyGhostRunningId(ghostRunningId, myGhostRunDetailInfo);
 
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfo(ghostRunningId);
-        myGhostModeRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
+        myGhostRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
 
-        downloadTelemetries(myRunningId, myGhostModeRunDetailInfo);
-        return myGhostModeRunDetailInfo;
+        downloadTelemetries(myRunningId, myGhostRunDetailInfo);
+        return myGhostRunDetailInfo;
     }
 
-    public Running findRunningById(Long id) {
-        return runningRepository.findById(id)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, id));
-    }
-
-    @Transactional(readOnly = true)
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
         Long courseId, Pageable pageable) {
         Page<Running> ghostRuns = runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
         return ghostRuns.map(runningApiMapper::toGhostResponse);
     }
 
-    @Transactional(readOnly = true)
     public Integer findRankingOfUserInCourse(Long courseId, Long memberId) {
         Double bestPace = runningRepository.findMinAveragePaceByCourseIdAndMemberIdAndIsPublicTrue(courseId, memberId)
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
@@ -81,13 +69,23 @@ public class RunningQueryService {
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, courseId));
     }
 
-    private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostModeRunInfo) {
-        if (myGhostModeRunInfo.getGhostRunId() == null || !myGhostModeRunInfo.getGhostRunId().equals(ghostRunningId)) {
-            throw new InvalidGhostRunningException(ErrorCode.INVALID_GHOST_RUNNING_ID);
+    private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostRunDetailInfo) {
+        if (myGhostRunDetailInfo.getGhostRunId() == null || !myGhostRunDetailInfo.getGhostRunId().equals(ghostRunningId)) {
+            throw new InvalidRunningException(ErrorCode.INVALID_GHOST_RUNNING_ID);
         }
     }
 
-    private String findTelemetryUrl(Long runningId) {
+    public Running findRunningBy(Long id) {
+        return runningRepository.findById(id)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, id));
+    }
+
+    public Running findRunningBy(Long runningId, Long memberId) {
+        return runningRepository.findByIdAndMemberId(runningId, memberId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, "러닝 ID : " + runningId + ", 멤버 ID : " + memberId + "에 해당하는 엔티티를 찾을 수 없습니다."));
+    }
+
+    private String findTelemetryUrlBy(Long runningId) {
         return runningRepository.findTelemetryUrlById(runningId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, runningId));
     }

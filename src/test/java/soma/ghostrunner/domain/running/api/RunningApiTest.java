@@ -1,28 +1,18 @@
 package soma.ghostrunner.domain.running.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.BDDMockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
-import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
-import soma.ghostrunner.domain.running.api.dto.RunningApiMapperImpl;
+import soma.ghostrunner.ApiTestSupport;
 import soma.ghostrunner.domain.running.api.dto.request.*;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.application.RunningCommandService;
-import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
-import soma.ghostrunner.global.common.log.HttpLogger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,27 +20,10 @@ import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = RunningApi.class)
-@Import(RunningApiMapperImpl.class)
-class RunningApiTest {
-
-    @Autowired
-    MockMvc mockMvc;
-
-    @Autowired
-    ObjectMapper objectMapper;
-
-    @Autowired
-    RunningApiMapper runningApiMapper;
-
-    @MockitoBean
-    RunningCommandService runningCommandService;
-    @MockitoBean
-    RunningQueryService runningQueryService;
-    @MockitoBean
-    HttpLogger httpLogger;
+class RunningApiTest extends ApiTestSupport {
 
     // ——————————————————————————————————————————————————————————
     // 1) “새 코스 + 러닝 기록” API 테스트
@@ -60,7 +33,7 @@ class RunningApiTest {
     void testCreateCourseAndRun() throws Exception{
         // given
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        BDDMockito.given(runningCommandService.createCourseAndRun(any(CreateRunCommand.class), anyLong())).willReturn(new CreateCourseAndRunResponse(1L, 1L));
+        given(runningCommandService.createCourseAndRun(any(CreateRunCommand.class), anyLong())).willReturn(new CreateCourseAndRunResponse(1L, 1L));
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L)
@@ -93,7 +66,7 @@ class RunningApiTest {
     void testSoloCreateRun() throws Exception{
         // given
         CreateRunRequest soloRequest = validSoloCreateRunRequest();
-        BDDMockito.given(runningCommandService.createRun(any(CreateRunCommand.class), anyLong(), anyLong())).willReturn(2L);
+        given(runningCommandService.createRun(any(CreateRunCommand.class), anyLong(), anyLong())).willReturn(2L);
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
@@ -110,7 +83,7 @@ class RunningApiTest {
     void testGhostCreateRun() throws Exception{
         // when
         CreateRunRequest ghostRequest = validGhostCreateRunRequest(3L);
-        BDDMockito.given(runningCommandService.createRun(any(CreateRunCommand.class), anyLong(), anyLong())).willReturn(4L);
+        given(runningCommandService.createRun(any(CreateRunCommand.class), anyLong(), anyLong())).willReturn(4L);
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L + "/" + 1L)
@@ -177,7 +150,7 @@ class RunningApiTest {
     @Test
     void testGetTelemetries() throws Exception{
         // given
-        BDDMockito.given(runningQueryService.findTelemetriesById(anyLong())).willReturn(null);
+        given(runningQueryService.findTelemetriesById(anyLong())).willReturn(null);
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/1/telemetries")
@@ -212,6 +185,20 @@ class RunningApiTest {
                         setElevationLossInvalid(), "record.elevationLoss"
                 )
         );
+    }
+
+    // ——————————————————————————————————————————————————————————
+    // 5) 러닝 공개/비공개 설정 API 테스트
+    // ——————————————————————————————————————————————————————————
+    @DisplayName("러닝 공개 상태를 변경한다.")
+    @Test
+    void patchRunningPublicStatus() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/isPublic")
+                        .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
     }
 
     private static CreateCourseAndRunRequest validCreateCourseAndRunRequest() {

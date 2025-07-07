@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.running.domain.Running;
 
 @Mapper(componentModel = "spring")
 public interface RunningApiMapper {
+
     RunningApiMapper INSTANCE = Mappers.getMapper(RunningApiMapper.class);
 
     CreateRunCommand toCommand(CreateCourseAndRunRequest request);
@@ -26,4 +27,5 @@ public interface RunningApiMapper {
     @Mapping(source = "runningRecord.duration", target = "duration")
     @Mapping(source = "createdAt", target = "startedAt")
     CourseGhostResponse toGhostResponse(Running running);
+
 }
