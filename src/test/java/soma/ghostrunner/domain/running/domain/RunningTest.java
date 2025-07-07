@@ -9,14 +9,15 @@ import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 
+import java.lang.reflect.Field;
+
 class RunningTest {
 
     @DisplayName("이름을 변경한다.")
     @Test
     void updateName() {
         // given
-        Running running = Running.of("테스트 러닝제목", RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                true, false, "URL", createMember(), createCourse());
+        Running running = createRunning("테스트 러닝제목");
 
         // when
         running.updateName("업데이트된 이름");
@@ -25,14 +26,17 @@ class RunningTest {
         Assertions.assertThat(running.getRunningName()).isEqualTo("업데이트된 이름");
     }
 
+    private Running createRunning(String runningName) {
+        return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
+                true, false, "URL", createMember(), createCourse());
+    }
+
     @DisplayName("공개/비공개 설정을 변경한다.")
     @Test
     void updatePublicStatus() {
         // given
-        Running publicRunning = Running.of("테스트 러닝제목", RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                true, false, "URL", createMember(), createCourse());
-        Running privateRunning = Running.of("테스트 러닝제목", RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                false, false, "URL", createMember(), createCourse());
+        Running publicRunning = createRunning("테스트 러닝제목", true, false);
+        Running privateRunning = createRunning("테스트 러닝제목", false, false);
 
         // when
         publicRunning.updatePublicStatus();
@@ -45,16 +49,65 @@ class RunningTest {
 
     @DisplayName("정지한 기록이 있다면 공개로 변경할 수 없다.")
     @Test
-    void test() {
+    void cannotUpdatePublicStatusIfHasPaused() {
         // given
-        Running hasPausedAndPrivateRunning = Running.of("테스트 러닝제목", RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                false, true, "URL", createMember(), createCourse());
+        Running hasPausedAndPrivateRunning = createRunning("테스트 러닝제목", false, true);
 
         // when // then
         Assertions.assertThatThrownBy(hasPausedAndPrivateRunning::updatePublicStatus)
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("정지한 기록이 있다면 공개할 수 없습니다.");
-     }
+    }
+
+    private Running createRunning(String runningName, boolean isPublic, boolean hasPaused) {
+        return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
+                isPublic, hasPaused, "URL", createMember(), createCourse());
+    }
+
+    @DisplayName("뛰었던 코스의 ID인지 검증한다.")
+    @Test
+    void verifyCourseId() {
+        // given
+        Course course = createCourse();
+        setCourseId(course, 100L);
+        Running running = createRunning("테스트 러닝제목", course);
+
+        // when // then
+        running.verifyCourseId(100L);
+    }
+
+    @DisplayName("뛰었던 코스의 ID가 아니거나 NULL이라면 예외를 발생한다.")
+    @Test
+    void verifyIncorrectAndNullCourseId() {
+        // given
+        Course course = createCourse();
+        setCourseId(course, 100L);
+        Running running = createRunning("테스트 러닝제목", course);
+
+        // when // then
+        Assertions.assertThatThrownBy(() -> running.verifyCourseId(101L))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessage("고스트가 뛴 코스가 아닙니다.");
+
+        Assertions.assertThatThrownBy(() -> running.verifyCourseId(null))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessage("고스트가 뛴 코스가 아닙니다.");
+    }
+
+    private void setCourseId(Course course, Long id) {
+        try {
+            Field idField = course.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(course, id);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private Running createRunning(String runningName, Course course) {
+        return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
+                true, false, "URL", createMember(), course);
+    }
 
     private Member createMember() {
         return Member.of("이복둥", "프로필 URL");

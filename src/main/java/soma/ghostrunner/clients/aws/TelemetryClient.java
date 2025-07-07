@@ -40,9 +40,9 @@ public class TelemetryClient {
     private String telemetryDirectory;
 
     // 업로드
-    public String uploadTelemetry(List<TelemetryDto> telemetries, Long memberId) {
-        // .jsonl 형식의 문자열 생성
-        String jsonlContent = telemetries.stream()
+    public String uploadTelemetries(List<TelemetryDto> telemetries, Long memberId) {
+        // json -> String
+        String jsonTelemetries = telemetries.stream()
                 .map(this::convertToJson)
                 .collect(Collectors.joining("\n"));
 
@@ -54,13 +54,13 @@ public class TelemetryClient {
                 .bucket(telemetryBucket)
                 .key(fileName)
                 .contentType("application/jsonl")    // 파일 타입 지정
-                .contentLength((long) jsonlContent.getBytes(StandardCharsets.UTF_8).length)
+                .contentLength((long) jsonTelemetries.getBytes(StandardCharsets.UTF_8).length)
                 .build();
 
         // 업로드
         try{
-            log.info("Uploading Telemetry Files : \n{}", jsonlContent);
-            s3Client.putObject(putObjectRequest, RequestBody.fromString(jsonlContent));
+            log.info("Uploading Telemetry Files : \n{}", jsonTelemetries);
+            s3Client.putObject(putObjectRequest, RequestBody.fromString(jsonTelemetries));
         } catch (Exception e) {
             throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3와 통신에 실패했습니다.");
         }
@@ -110,6 +110,10 @@ public class TelemetryClient {
 
             // 읽기
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(s3ObjectStream, StandardCharsets.UTF_8))) {
+                List<String> lines = reader.lines().collect(Collectors.toList());
+                for (String l : lines) {
+                    System.out.println(l);
+                }
                 String line;
                 while ((line = reader.readLine()) != null) {
                     if (!line.trim().isEmpty()) {
