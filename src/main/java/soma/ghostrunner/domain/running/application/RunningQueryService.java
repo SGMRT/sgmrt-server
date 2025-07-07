@@ -67,29 +67,28 @@ public class RunningQueryService {
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
 
         return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(courseId, bestPace)
-            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, courseId));
+            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
     }
 
     private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostRunDetailInfo) {
         if (myGhostRunDetailInfo.getGhostRunId() == null || !myGhostRunDetailInfo.getGhostRunId().equals(ghostRunningId)) {
-            log.error("고스트의 러닝 ID {}가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우", ghostRunningId);
-            throw new InvalidRunningException(ErrorCode.INVALID_GHOST_RUNNING_ID, "고스트의 러닝 ID가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우");
+            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "고스트의 러닝 ID가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우");
         }
     }
 
     public Running findRunningBy(Long id) {
         return runningRepository.findById(id)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, id));
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, id));
     }
 
     public Running findRunningBy(Long runningId, Long memberId) {
         return runningRepository.findByIdAndMemberId(runningId, memberId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, "러닝 ID : " + runningId + ", 멤버 ID : " + memberId + "에 해당하는 엔티티를 찾을 수 없습니다."));
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "러닝 ID : " + runningId + ", 멤버 ID : " + memberId + "에 해당하는 엔티티를 찾을 수 없습니다."));
     }
 
     private String findTelemetryUrlBy(Long runningId) {
         return runningRepository.findTelemetryUrlById(runningId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, runningId));
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
     }
 
     private void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
@@ -109,16 +108,16 @@ public class RunningQueryService {
 
     private MemberAndRunRecordInfo findGhostMemberAndRunInfo(Long ghostRunningId) {
         return runningRepository.findMemberAndRunRecordInfoById(ghostRunningId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, ghostRunningId));
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, ghostRunningId));
     }
 
     private GhostRunDetailInfo findGhostRunDetailInfo(Long myRunningId) {
         return runningRepository.findGhostRunInfoById(myRunningId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, myRunningId));
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, myRunningId));
     }
 
     private SoloRunDetailInfo findSoloRunInfo(Long runningId) {
         return runningRepository.findSoloRunInfoById(runningId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, runningId));
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
     }
 }

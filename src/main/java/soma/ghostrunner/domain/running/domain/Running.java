@@ -107,14 +107,14 @@ public class Running extends BaseTimeEntity {
 
     private void validateCanBePublic() {
         if (this.hasPaused) {
-            throw new InvalidRunningException(ErrorCode.CANNOT_PUBLISH_PAUSED_RUN, "정지한 기록이 있다면 공개할 수 없습니다.");
+            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "정지한 기록이 있다면 공개할 수 없습니다.");
         }
     }
 
     public void verifyCourseId(Long courseId) {
         boolean isInvalid = (courseId == null || !courseId.equals(this.course.getId()));
         if (isInvalid) {
-            throw new InvalidRunningException(ErrorCode.INVALID_GHOST_RUNNING_ID, "고스트가 뛴 코스가 아닙니다.");
+            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "고스트가 뛴 코스가 아닙니다.");
         }
     }
 
