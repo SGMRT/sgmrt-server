@@ -18,6 +18,9 @@ import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.domain.running.domain.support.TelemetryTypeConverter;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -48,8 +51,7 @@ public class RunningCommandService {
     public Long createRun(CreateRunCommand command, Long courseId, Long memberId) {
 
         Member member = memberService.findMemberById(memberId);
-        Running ghostRunning = findRunningBy(command.ghostRunningId());
-        ghostRunning.verifyCourseId(courseId);
+        verifyCourseIdIfGhostMode(command, courseId);
 
         ProcessedTelemetriesDto processedTelemetry = processTelemetry(command);
         String url = uploadTelemetryToS3(memberId, processedTelemetry);
@@ -60,12 +62,20 @@ public class RunningCommandService {
         return running.getId();
     }
 
+    private void verifyCourseIdIfGhostMode(CreateRunCommand command, Long courseId) {
+        if (command.mode().equals("GHOST")) {
+            Running ghostRunning = findRunningBy(command.ghostRunningId());
+            ghostRunning.verifyCourseId(courseId);
+        }
+    }
+
     private ProcessedTelemetriesDto processTelemetry(CreateRunCommand command) {
         return TelemetryCalculator.processTelemetry(command.telemetries(), command.startedAt());
     }
 
     private String uploadTelemetryToS3(Long memberId, ProcessedTelemetriesDto processedTelemetry) {
-        return telemetryClient.uploadTelemetries(processedTelemetry.getRelativeTelemetries(), memberId);
+        String stringTelemetries = TelemetryTypeConverter.convertFromObjectsToString(processedTelemetry.getRelativeTelemetries());
+        return telemetryClient.uploadTelemetries(stringTelemetries, memberId);
     }
 
     private RunningRecord createRunningRecord(RunRecordDto command, ProcessedTelemetriesDto processedTelemetry) {
@@ -77,11 +87,6 @@ public class RunningCommandService {
         RunningRecord runningRecord = createRunningRecord(command.record(), processedTelemetry);
         return runningRepository.save(Running.of(command.runningName(), RunningMode.valueOf(command.mode()),
                 command.ghostRunningId(), runningRecord, command.startedAt(), command.isPublic(), command.hasPaused(), url, member, course));
-    }
-    private void verifyGhostRunningId(CreateRunCommand command) {
-        if (command.ghostRunningId() != null) {
-            findRunningBy(command.ghostRunningId());
-        }
     }
 
     @Transactional

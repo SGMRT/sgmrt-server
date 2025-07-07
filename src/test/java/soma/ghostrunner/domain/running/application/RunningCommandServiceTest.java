@@ -60,7 +60,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createRunCommandRequest("러닝 이름", "SOLO", 100L,
                 runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyList(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
                 .willReturn("Mock Telemetries Url");
 
         // when
@@ -133,7 +133,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "SOLO", null,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyList(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
                 .willReturn("Mock Telemetries Url");
 
         // when
@@ -169,7 +169,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyList(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
                 .willReturn("Mock Telemetries Url");
 
         // when
@@ -207,7 +207,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyList(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
                 .willReturn("Mock Telemetries Url");
 
         // when // then

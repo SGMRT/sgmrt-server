@@ -16,6 +16,7 @@ import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInf
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
+import soma.ghostrunner.domain.running.domain.support.TelemetryTypeConverter;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
@@ -34,8 +35,8 @@ public class RunningQueryService {
     private final RunningApiMapper runningApiMapper;
 
     public List<TelemetryDto> findTelemetriesById(Long runningId) {
-        String s3Url = findTelemetryUrlBy(runningId);
-        return telemetryClient.downloadTelemetryFromUrl(s3Url);
+        String telemetryUrl = findTelemetryUrlBy(runningId);
+        return downloadTelemetries(telemetryUrl);
     }
   
     public SoloRunDetailInfo findSoloRunInfoById(Long runningId) {
@@ -71,7 +72,8 @@ public class RunningQueryService {
 
     private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostRunDetailInfo) {
         if (myGhostRunDetailInfo.getGhostRunId() == null || !myGhostRunDetailInfo.getGhostRunId().equals(ghostRunningId)) {
-            throw new InvalidRunningException(ErrorCode.INVALID_GHOST_RUNNING_ID);
+            log.error("고스트의 러닝 ID {}가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우", ghostRunningId);
+            throw new InvalidRunningException(ErrorCode.INVALID_GHOST_RUNNING_ID, "고스트의 러닝 ID가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우");
         }
     }
 
@@ -92,12 +94,17 @@ public class RunningQueryService {
 
     private void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
         try {
-            List<TelemetryDto> telemetries = telemetryClient.downloadTelemetryFromUrl(runDetailInfo.getTelemetryUrl());
+            List<TelemetryDto> telemetries = downloadTelemetries(runDetailInfo.getTelemetryUrl());
             runDetailInfo.setTelemetries(telemetries);
         } catch (Exception e) {
             log.error("runningId {}의 요청에 대해 S3에서 다운로드를 실패했습니다.", runningId, e);
             runDetailInfo.setTelemetries(Collections.emptyList());
         }
+    }
+
+    private List<TelemetryDto> downloadTelemetries(String url) {
+        List<String> stringTelemetries = telemetryClient.downloadTelemetryFromUrl(url);
+        return TelemetryTypeConverter.convertFromStringToDtos(stringTelemetries);
     }
 
     private MemberAndRunRecordInfo findGhostMemberAndRunInfo(Long ghostRunningId) {
