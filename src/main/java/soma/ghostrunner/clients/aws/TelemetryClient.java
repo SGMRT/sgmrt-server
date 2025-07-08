@@ -53,7 +53,7 @@ public class TelemetryClient {
 
         // 업로드
         try{
-            log.info("Uploading Telemetry Files : \n{}", telemetries);
+            log.info("Attempting to upload telemetry file. FileName: {}, Size: {} bytes", fileName, telemetries.getBytes(StandardCharsets.UTF_8).length);
             s3Client.putObject(putObjectRequest, RequestBody.fromString(telemetries));
         } catch (Exception e) {
             throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3와 통신에 실패했습니다.");

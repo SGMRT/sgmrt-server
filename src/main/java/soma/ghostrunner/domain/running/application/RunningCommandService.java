@@ -20,8 +20,6 @@ import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.domain.support.TelemetryTypeConverter;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class RunningCommandService {

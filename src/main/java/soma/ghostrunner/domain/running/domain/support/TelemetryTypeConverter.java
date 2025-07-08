@@ -9,7 +9,7 @@ import soma.ghostrunner.global.common.error.exception.ParsingException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.StringJoiner;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -18,23 +18,16 @@ public class TelemetryTypeConverter {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public static String convertFromObjectsToString(List<TelemetryDto> telemetries) {
+        StringJoiner jsonJoiner = new StringJoiner("\n");
         try {
-            return telemetries.stream()
-                    .map(TelemetryTypeConverter::convertToJson)
-                    .collect(Collectors.joining("\n"));
+            for (TelemetryDto telemetry : telemetries) {
+                jsonJoiner.add(objectMapper.writeValueAsString(telemetry));
+            }
         } catch (Exception e) {
             log.error("시계열 객체 -> JSON 변환을 실패했습니다.", e);
             throw new ParsingException(ErrorCode.SERVICE_UNAVAILABLE, "저장소에 업로드를 위해 객체에서 JSON으로 변환하는 중 오류가 발생했습니다.");
         }
-    }
-
-    private static String convertToJson(Object object) {
-        try {
-            return objectMapper.writeValueAsString(object);
-        } catch (Exception e) {
-            log.error("객체 -> JSON 변환 실패: {}", object, e);
-            throw new ParsingException(ErrorCode.SERVICE_UNAVAILABLE, "S3에 업로드를 위해 객체에서 JSON으로 변환하는 중 오류가 발생했습니다.");
-        }
+        return jsonJoiner.toString();
     }
 
     public static List<TelemetryDto> convertFromStringToDtos(List<String> stringTelemetries) {
