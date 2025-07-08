@@ -14,6 +14,7 @@ public interface RunningApiMapper {
 
     RunningApiMapper INSTANCE = Mappers.getMapper(RunningApiMapper.class);
 
+    @Mapping(target = "mode", constant = "SOLO")
     CreateRunCommand toCommand(CreateCourseAndRunRequest request);
 
     CreateRunCommand toCommand(CreateRunRequest request);

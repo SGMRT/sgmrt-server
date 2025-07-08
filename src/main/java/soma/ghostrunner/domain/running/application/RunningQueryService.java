@@ -33,27 +33,39 @@ public class RunningQueryService {
     private final RunningRepository runningRepository;
     private final TelemetryClient telemetryClient;
     private final RunningApiMapper runningApiMapper;
-
-    public List<TelemetryDto> findTelemetriesById(Long runningId) {
-        String telemetryUrl = findTelemetryUrlBy(runningId);
-        return downloadTelemetries(telemetryUrl);
-    }
   
-    public SoloRunDetailInfo findSoloRunInfoById(Long runningId) {
-        SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfo(runningId);
+    public SoloRunDetailInfo findSoloRunInfo(Long runningId) {
+        SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId);
         downloadTelemetries(runningId, soloRunDetailInfo);
         return soloRunDetailInfo;
     }
 
-    public GhostRunDetailInfo findGhostRunInfoById(Long myRunningId, Long ghostRunningId) {
-        GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunDetailInfo(myRunningId);
+    private void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
+        try {
+            List<String> stringTelemetries = telemetryClient.downloadTelemetryFromUrl(runDetailInfo.getTelemetryUrl());
+            List<TelemetryDto> telemetries = TelemetryTypeConverter.convertFromStringToDtos(stringTelemetries);
+            runDetailInfo.setTelemetries(telemetries);
+        } catch (Exception e) {
+            log.error("runningId {}의 요청에 대해 S3와 통신/파싱하는 과정에서 문제가 발생했습니다.", runningId, e);
+            runDetailInfo.setTelemetries(Collections.emptyList());
+        }
+    }
+
+    public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId) {
+        GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunInfoByRunningId(myRunningId);
         verifyGhostRunningId(ghostRunningId, myGhostRunDetailInfo);
 
-        MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfo(ghostRunningId);
+        MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfoByRunningId(ghostRunningId);
         myGhostRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
 
         downloadTelemetries(myRunningId, myGhostRunDetailInfo);
         return myGhostRunDetailInfo;
+    }
+
+    private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostRunDetailInfo) {
+        if (myGhostRunDetailInfo.getGhostRunId() == null || !myGhostRunDetailInfo.getGhostRunId().equals(ghostRunningId)) {
+            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "고스트의 러닝 ID가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우");
+        }
     }
 
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
@@ -70,54 +82,29 @@ public class RunningQueryService {
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
     }
 
-    private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostRunDetailInfo) {
-        if (myGhostRunDetailInfo.getGhostRunId() == null || !myGhostRunDetailInfo.getGhostRunId().equals(ghostRunningId)) {
-            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "고스트의 러닝 ID가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우");
-        }
-    }
-
-    public Running findRunningBy(Long id) {
+    public Running findRunningByRunningId(Long id) {
         return runningRepository.findById(id)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, id));
     }
 
-    public Running findRunningBy(Long runningId, Long memberId) {
+    public Running findRunningByRunningId(Long runningId, Long memberId) {
         return runningRepository.findByIdAndMemberId(runningId, memberId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "러닝 ID : " + runningId + ", 멤버 ID : " + memberId + "에 해당하는 엔티티를 찾을 수 없습니다."));
     }
 
-    private String findTelemetryUrlBy(Long runningId) {
-        return runningRepository.findTelemetryUrlById(runningId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
-    }
-
-    private void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
-        try {
-            List<TelemetryDto> telemetries = downloadTelemetries(runDetailInfo.getTelemetryUrl());
-            runDetailInfo.setTelemetries(telemetries);
-        } catch (Exception e) {
-            log.error("runningId {}의 요청에 대해 S3에서 다운로드를 실패했습니다.", runningId, e);
-            runDetailInfo.setTelemetries(Collections.emptyList());
-        }
-    }
-
-    private List<TelemetryDto> downloadTelemetries(String url) {
-        List<String> stringTelemetries = telemetryClient.downloadTelemetryFromUrl(url);
-        return TelemetryTypeConverter.convertFromStringToDtos(stringTelemetries);
-    }
-
-    private MemberAndRunRecordInfo findGhostMemberAndRunInfo(Long ghostRunningId) {
+    private MemberAndRunRecordInfo findGhostMemberAndRunInfoByRunningId(Long ghostRunningId) {
         return runningRepository.findMemberAndRunRecordInfoById(ghostRunningId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, ghostRunningId));
     }
 
-    private GhostRunDetailInfo findGhostRunDetailInfo(Long myRunningId) {
+    private GhostRunDetailInfo findGhostRunInfoByRunningId(Long myRunningId) {
         return runningRepository.findGhostRunInfoById(myRunningId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, myRunningId));
     }
 
-    private SoloRunDetailInfo findSoloRunInfo(Long runningId) {
+    private SoloRunDetailInfo findSoloRunInfoByRunningId(Long runningId) {
         return runningRepository.findSoloRunInfoById(runningId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
     }
+
 }

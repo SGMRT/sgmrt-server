@@ -100,11 +100,11 @@ public class RunningCommandService {
     }
 
     private Running findRunningBy(Long runningId) {
-        return runningQueryService.findRunningBy(runningId);
+        return runningQueryService.findRunningByRunningId(runningId);
     }
 
     private Running findRunningBy(Long memberId, Long runningId) {
-        return runningQueryService.findRunningBy(runningId, memberId);
+        return runningQueryService.findRunningByRunningId(runningId, memberId);
     }
 
     private Course createAndSaveCourse(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry) {

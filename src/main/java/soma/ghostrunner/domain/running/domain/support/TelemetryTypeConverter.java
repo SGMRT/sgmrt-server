@@ -24,7 +24,6 @@ public class TelemetryTypeConverter {
                 jsonJoiner.add(objectMapper.writeValueAsString(telemetry));
             }
         } catch (Exception e) {
-            log.error("시계열 객체 -> JSON 변환을 실패했습니다.", e);
             throw new ParsingException(ErrorCode.SERVICE_UNAVAILABLE, "저장소에 업로드를 위해 객체에서 JSON으로 변환하는 중 오류가 발생했습니다.");
         }
         return jsonJoiner.toString();
@@ -38,7 +37,6 @@ public class TelemetryTypeConverter {
             }
             return result;
         } catch (Exception e) {
-            log.error("시계열 JSON -> 객체 변환을 실패했습니다.", e);
             throw new ParsingException(ErrorCode.SERVICE_UNAVAILABLE, "저장소에서 다운 받은 JSON을 객체로 변환하는 중 오류가 발생했습니다.");
         }
     }

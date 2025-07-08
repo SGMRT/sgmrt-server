@@ -1,11 +1,10 @@
-package soma.ghostrunner.domain.running.domain;
+package soma.ghostrunner.domain.running.domain.support;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
-import soma.ghostrunner.domain.running.domain.support.TelemetryCalculator;
 
 import java.util.ArrayList;
 import java.util.List;

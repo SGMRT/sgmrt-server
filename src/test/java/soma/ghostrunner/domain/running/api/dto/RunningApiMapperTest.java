@@ -17,7 +17,7 @@ class RunningApiMapperTest {
 
     private final RunningApiMapper mapper = Mappers.getMapper(RunningApiMapper.class);
 
-    @DisplayName("CreateCourseAndRunRequest -> CreateRunCommand")
+    @DisplayName("CreateCourseAndRunRequest를 CreateRunCommand로 변환한다.")
     @Test
     void fromCreateCourseAndRunRequestToCreateRunCommand() {
         // given
@@ -28,10 +28,10 @@ class RunningApiMapperTest {
 
         // then
         Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
-        Assertions.assertThat(request.getMode()).isEqualTo(command.mode());
         Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
         Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
         Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
+        Assertions.assertThat(command.mode()).isEqualTo("SOLO");
         Assertions.assertThat(command.ghostRunningId()).isNull();
     }
 
@@ -74,7 +74,6 @@ class RunningApiMapperTest {
     private CreateCourseAndRunRequest validCreateCourseAndRunRequest() {
         return CreateCourseAndRunRequest.builder()
                 .runningName("테스트 러닝 제목")
-                .mode("SOLO")
                 .startedAt(1750729987181L)
                 .record(validRunRecordDto())
                 .hasPaused(false)

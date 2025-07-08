@@ -8,15 +8,13 @@ import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.GetUrlRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.*;
 import soma.ghostrunner.global.common.error.ErrorCode;
 import soma.ghostrunner.global.common.error.exception.ExternalIOException;
 import soma.ghostrunner.global.common.error.exception.ParsingException;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -42,8 +40,6 @@ public class TelemetryClient {
 
         // TODO : 파일 이름에서 유저의 UUID 필드로 저장되도록 수정
         String fileName = telemetryDirectory + "/" + memberId + "/" + UUID.randomUUID() + ".jsonl";
-
-        // 업로드할 객체
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(telemetryBucket)
                 .key(fileName)
@@ -51,15 +47,14 @@ public class TelemetryClient {
                 .contentLength((long) telemetries.getBytes(StandardCharsets.UTF_8).length)
                 .build();
 
-        // 업로드
         try{
-            log.info("Attempting to upload telemetry file. FileName: {}, Size: {} bytes", fileName, telemetries.getBytes(StandardCharsets.UTF_8).length);
+            log.info("시계열 데이터를 업로드중.. 파일 이름: {}, 크기: {} bytes", fileName, telemetries.getBytes(StandardCharsets.UTF_8).length);
             s3Client.putObject(putObjectRequest, RequestBody.fromString(telemetries));
         } catch (Exception e) {
             throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3와 통신에 실패했습니다.");
         }
 
-        log.info("Successfully uploaded file to S3: {}", fileName);
+        log.info("S3에 업로드에 성공했습니다.\n파일 이름: {}", fileName);
         return s3Client.utilities().getUrl(GetUrlRequest.builder().bucket(telemetryBucket).key(fileName).build()).toString();
     }
 
@@ -84,7 +79,7 @@ public class TelemetryClient {
 
             return s3Url.substring(pathStartIndex + 1);
         } catch (Exception e) {
-            log.error("S3 URL({})에서 파일명 추출에 실패했습니다.", s3Url, e);
+            log.error("S3 URL {}에서 파일명 추출에 실패했습니다.", s3Url, e);
             throw new ParsingException(ErrorCode.SERVICE_UNAVAILABLE, "S3 URL에서 파일명을 추출하는 중 오류가 발생했습니다");
         }
     }
@@ -102,15 +97,12 @@ public class TelemetryClient {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(s3ObjectStream, StandardCharsets.UTF_8))) {
                 List<String> result = reader.lines().collect(Collectors.toList());
                 log.info("S3로 부터 다운로드 성공: {}", fileName);
-                System.out.println(result.size());
-                for (String line : result) {
-                    System.out.println(line);
-                }
                 return result;
             }
-        } catch (Exception e) {
-            log.error("S3로 부터 다운로드 실패: {}", fileName, e);
+        } catch (S3Exception e) {
             throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3에서 텔레메트리 데이터를 다운로드하는 중 오류가 발생했습니다.");
+        } catch (IOException e) {
+            throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "다운로드한 S3 데이터를 읽는 중 오류가 발생했습니다.");
         }
     }
 
