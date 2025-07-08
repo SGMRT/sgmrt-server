@@ -66,14 +66,12 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, id));
     }
 
-    @Transactional(readOnly = true)
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
         Long courseId, Pageable pageable) {
         Page<Running> ghostRuns = runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
         return ghostRuns.map(runningApiMapper::toGhostResponse);
     }
 
-    @Transactional(readOnly = true)
     public CourseRankingResponse findUserRankingInCourse(Long courseId, Long memberId) {
         Running bestRun = runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberId)
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
