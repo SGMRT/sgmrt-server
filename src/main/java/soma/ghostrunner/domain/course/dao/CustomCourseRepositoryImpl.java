@@ -3,12 +3,18 @@ package soma.ghostrunner.domain.course.dao;
 import static soma.ghostrunner.domain.course.domain.QCourse.course;
 import static soma.ghostrunner.domain.running.domain.QRunning.running;
 
+import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.QCourse;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
+import soma.ghostrunner.domain.member.QMember;
 
 @Repository
 @RequiredArgsConstructor
@@ -38,4 +44,46 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
             .fetchOne()
     );
   }
+
+  @Override
+  public List<Course> findCoursesWithFilters(Double minLat, Double maxLat,
+      Double minLng, Double maxLng, Integer minDistanceM, Integer maxDistanceM,
+      Integer minElevationM, Integer maxElevationM, Long ownerId) {
+    QCourse course = QCourse.course;
+    QMember member = QMember.member;
+
+    BooleanBuilder builder = new BooleanBuilder();
+
+    // 반경 필터링
+    builder.and(course.startPoint.latitude.between(minLat, maxLat));
+    builder.and(course.startPoint.longitude.between(minLng, maxLng));
+
+    // 거리 필터링 (m 단위 -> km로 변환)
+    if (Objects.nonNull(minDistanceM)) {
+      builder.and(course.courseProfile.distance.goe(minDistanceM / 1000.0));
+    }
+    if (Objects.nonNull(maxDistanceM)) {
+      builder.and(course.courseProfile.distance.loe(maxDistanceM / 1000.0));
+    }
+
+    // 고도 필터링
+    if (Objects.nonNull(minElevationM)) {
+      builder.and(course.courseProfile.elevationGain.goe(minElevationM));
+    }
+    if (Objects.nonNull(maxElevationM)) {
+      builder.and(course.courseProfile.elevationGain.loe(maxElevationM));
+    }
+
+    // ownerId 필터링
+    if (Objects.nonNull(ownerId)) {
+      builder.and(course.owner.id.eq(ownerId)); // member.id를 사용하여 필터링
+    }
+
+    return queryFactory
+        .selectFrom(course)
+        .leftJoin(course.owner, member) // member 조인
+        .where(builder)
+        .fetch();
+  }
+
 }
