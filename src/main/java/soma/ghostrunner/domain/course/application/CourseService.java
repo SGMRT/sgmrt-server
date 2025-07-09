@@ -58,10 +58,18 @@ public class CourseService {
         double minLng = lng - lngDelta;
         double maxLng = lng + lngDelta;
 
+        int minDist = minDistanceM == null ? 0 : minDistanceM;
+        int maxDist = maxDistanceM == null ? Integer.MAX_VALUE : maxDistanceM;
+        int minElevation = minElevationM == null ? 0 : minElevationM;
+        int maxElevation = maxElevationM == null ? Integer.MAX_VALUE : maxElevationM;
 
+        List<Course> courses;
+        if (ownerId != null) {
+            courses = null;
+        } else {
+            courses = courseRepository.findPublicCoursesByBoundingBox(minLat, maxLat, minLng, maxLng);
+        }
 
-
-        List<Course> courses = courseRepository.findPublicCoursesByBoundingBox(minLat, maxLat, minLng, maxLng);
         return courses.stream()
                 .map(courseMapper::toCourseResponse)
                 .collect(Collectors.toList());

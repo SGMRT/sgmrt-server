@@ -36,6 +36,7 @@ public class CourseApi {
             @RequestParam(required = false) Integer maxDistanceM,
             @RequestParam(required = false) Integer minElevationM,
             @RequestParam(required = false) Integer maxElevationM) {
+        // radiusM max값 validation
         return courseService.searchCourses(lat, lng, radiusM, minDistanceM,
             maxDistanceM, minElevationM, maxElevationM, ownerId);
     }
