@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.running.application;
 
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -7,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.clients.aws.TelemetryClient;
+import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
@@ -77,6 +79,10 @@ public class RunningQueryService {
 
         return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(courseId, bestPace)
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, courseId));
+    }
+
+    public Optional<CourseRunStatisticsDto> findCourseRunStatistics(Long courseId) {
+        return runningRepository.findPublicRunStatisticsByCourseId(courseId);
     }
 
     private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostModeRunInfo) {

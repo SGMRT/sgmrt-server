@@ -15,6 +15,7 @@ import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
+import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.global.common.error.ErrorCode;
 
@@ -26,8 +27,8 @@ import java.util.stream.Collectors;
 public class CourseService {
 
     private final CourseMapper courseMapper;
+    private final RunningQueryService runningQueryService;
     private final CourseRepository courseRepository;
-    private final RunningRepository runningRepository;
 
     public Long save(
             Course course) {
@@ -66,7 +67,7 @@ public class CourseService {
     @Transactional(readOnly = true)
     public CourseDetailedResponse getCourse(Long courseId) {
         Course course = findCourseById(courseId);
-        CourseRunStatisticsDto courseStats = runningRepository.findPublicRunStatisticsByCourseId(courseId)
+        CourseRunStatisticsDto courseStats = runningQueryService.findCourseRunStatistics(courseId)
             .orElse(new CourseRunStatisticsDto());
         return courseMapper.toCourseDetailedResponse(
             course,
