@@ -11,14 +11,17 @@ import soma.ghostrunner.domain.running.domain.Running;
 
 @Mapper(componentModel = "spring")
 public interface RunningApiMapper {
+
     RunningApiMapper INSTANCE = Mappers.getMapper(RunningApiMapper.class);
 
+    @Mapping(target = "mode", constant = "SOLO")
     CreateRunCommand toCommand(CreateCourseAndRunRequest request);
 
     CreateRunCommand toCommand(CreateRunRequest request);
 
     @Mapping(source = "member.id", target = "runnerId")
     @Mapping(source = "member.profilePictureUrl", target = "runnerProfileUrl")
+    @Mapping(source = "member.nickname", target = "runnerNickname")
     @Mapping(source = "id", target = "runningId")
     @Mapping(source = "runningRecord.averagePace", target = "averagePace")
     @Mapping(source = "runningRecord.cadence", target = "cadence")
@@ -26,4 +29,5 @@ public interface RunningApiMapper {
     @Mapping(source = "runningRecord.duration", target = "duration")
     @Mapping(source = "createdAt", target = "startedAt")
     CourseGhostResponse toGhostResponse(Running running);
+
 }

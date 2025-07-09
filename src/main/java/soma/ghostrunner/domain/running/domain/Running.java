@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
+import soma.ghostrunner.global.common.error.ErrorCode;
 
 @Entity
 @Table(name = "running_record")
@@ -85,4 +87,35 @@ public class Running extends BaseTimeEntity {
     public void updateName(String name) {
         this.runningName = name;
     }
+
+    public void updatePublicStatus() {
+        if (this.isPublic) {
+            makePrivate();
+        } else {
+            makePublic();
+        }
+    }
+
+    private void makePublic() {
+        validateCanBePublic();
+        this.isPublic = true;
+    }
+
+    private void makePrivate() {
+        this.isPublic = false;
+    }
+
+    private void validateCanBePublic() {
+        if (this.hasPaused) {
+            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "정지한 기록이 있다면 공개할 수 없습니다.");
+        }
+    }
+
+    public void verifyCourseId(Long courseId) {
+        boolean isInvalid = (courseId == null || !courseId.equals(this.course.getId()));
+        if (isInvalid) {
+            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "고스트가 뛴 코스가 아닙니다.");
+        }
+    }
+
 }

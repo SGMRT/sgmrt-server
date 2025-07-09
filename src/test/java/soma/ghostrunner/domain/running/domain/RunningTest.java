@@ -1,52 +1,132 @@
 package soma.ghostrunner.domain.running.domain;
 
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+
+import java.lang.reflect.Field;
 
 class RunningTest {
 
-    private RunningRecord testRunningRecord;
-    private Running testRunning;
-
-    @BeforeEach
-    void setUp() {
-        // Member, Course
-        Member testMember = Member.of("이복둥", "프로필 URL");
-        CourseProfile testCourseProfile = CourseProfile.of(5.2, 40, -20);
-        StartPoint testStartPoint = StartPoint.fromCoordinates(37.545354, 34.7878);
-        Course testCourse = Course.of(testCourseProfile, testStartPoint, "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
-
-        // RunningRecord
-        testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
-
-        // Running
-        testRunning = Running.of("테스트 러닝제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
-                true, false, "URL", testMember, testCourse);
-    }
-
-    @Test
-    void of() {
-        System.out.println(testRunning.getTelemetryUrl());
-        Assertions.assertThat(testRunning.getRunningSummary()).isNull();
-        Assertions.assertThat(testRunning.getGhostRunningId()).isEqualTo(2L);
-    }
-
-    @DisplayName("RunningMode Enum 테스트")
-    @Test
-    void testRunningMode() {
-        Assertions.assertThat(RunningMode.valueOf("SOLO")).isEqualTo(RunningMode.SOLO);
-    }
-
-    @DisplayName("이름 변경 테스트")
+    @DisplayName("이름을 변경한다.")
     @Test
     void updateName() {
-        testRunning.updateName("업데이트된 이름");
-        Assertions.assertThat(testRunning.getRunningName()).isEqualTo("업데이트된 이름");
+        // given
+        Running running = createRunning("테스트 러닝제목");
+
+        // when
+        running.updateName("업데이트된 이름");
+
+        // then
+        Assertions.assertThat(running.getRunningName()).isEqualTo("업데이트된 이름");
     }
+
+    private Running createRunning(String runningName) {
+        return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
+                true, false, "URL", createMember(), createCourse());
+    }
+
+    @DisplayName("공개/비공개 설정을 변경한다.")
+    @Test
+    void updatePublicStatus() {
+        // given
+        Running publicRunning = createRunning("테스트 러닝제목", true, false);
+        Running privateRunning = createRunning("테스트 러닝제목", false, false);
+
+        // when
+        publicRunning.updatePublicStatus();
+        privateRunning.updatePublicStatus();
+
+        // then
+        Assertions.assertThat(publicRunning.isPublic()).isFalse();
+        Assertions.assertThat(privateRunning.isPublic()).isTrue();
+    }
+
+    @DisplayName("정지한 기록이 있다면 공개로 변경할 수 없다.")
+    @Test
+    void cannotUpdatePublicStatusIfHasPaused() {
+        // given
+        Running hasPausedAndPrivateRunning = createRunning("테스트 러닝제목", false, true);
+
+        // when // then
+        Assertions.assertThatThrownBy(hasPausedAndPrivateRunning::updatePublicStatus)
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessage("정지한 기록이 있다면 공개할 수 없습니다.");
+    }
+
+    private Running createRunning(String runningName, boolean isPublic, boolean hasPaused) {
+        return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
+                isPublic, hasPaused, "URL", createMember(), createCourse());
+    }
+
+    @DisplayName("뛰었던 코스의 ID인지 검증한다.")
+    @Test
+    void verifyCourseId() {
+        // given
+        Course course = createCourse();
+        setCourseId(course, 100L);
+        Running running = createRunning("테스트 러닝제목", course);
+
+        // when // then
+        running.verifyCourseId(100L);
+    }
+
+    @DisplayName("뛰었던 코스의 ID가 아니거나 NULL이라면 예외를 발생한다.")
+    @Test
+    void verifyIncorrectAndNullCourseId() {
+        // given
+        Course course = createCourse();
+        setCourseId(course, 100L);
+        Running running = createRunning("테스트 러닝제목", course);
+
+        // when // then
+        Assertions.assertThatThrownBy(() -> running.verifyCourseId(101L))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessage("고스트가 뛴 코스가 아닙니다.");
+
+        Assertions.assertThatThrownBy(() -> running.verifyCourseId(null))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessage("고스트가 뛴 코스가 아닙니다.");
+    }
+
+    private void setCourseId(Course course, Long id) {
+        try {
+            Field idField = course.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(course, id);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private Running createRunning(String runningName, Course course) {
+        return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
+                true, false, "URL", createMember(), course);
+    }
+
+    private Member createMember() {
+        return Member.of("이복둥", "프로필 URL");
+    }
+
+    private Course createCourse() {
+        return Course.of(createCourseProfile(), createStartPoint(), "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+    }
+
+    private StartPoint createStartPoint() {
+        return StartPoint.fromCoordinates(37.545354, 34.7878);
+    }
+
+    private CourseProfile createCourseProfile() {
+        return CourseProfile.of(5.2, 40, -20);
+    }
+
+    private RunningRecord createRunningRecord() {
+        return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
+    }
+  
 }

@@ -18,6 +18,7 @@ public enum ErrorCode {
     SERVICE_UNAVAILABLE("G-005",  HttpStatus.SERVICE_UNAVAILABLE, "서비스 문제 발생"),
     TOO_MANY_REQUESTS("G-006",  HttpStatus.TOO_MANY_REQUESTS, "요청 횟수 초과"),
     INVALID_JSON_TYPE("G-007", BAD_REQUEST, "Json 파싱 실패 혹은 올바르지 않은 시간 형식"),
+    ENTITY_NOT_FOUND("G-008", NOT_FOUND, "존재하지 않는 엔티티"),
 
     // Member
     MEMBER_NOT_FOUND("M-001", NOT_FOUND, "존재하지 않는 회원"),
@@ -27,14 +28,12 @@ public enum ErrorCode {
     COURSE_NOT_FOUND("C-001", NOT_FOUND, "존재하지 않는 코스"),
     COURSE_NAME_NOT_VALID("C-002", BAD_REQUEST, "올바르지 않은 코스명"),
     COURSE_ALREADY_PUBLIC("C-003", BAD_REQUEST, "코스가 이미 public이므로 수정 불가"),
-    COURSE_RUN_NOT_FOUND("C-004", BAD_REQUEST, "해당 코스를 달린 기록이 없음"),
+    COURSE_RUN_NOT_FOUND("C-004", BAD_REQUEST, "해당 코스를 달린 기록이 없음");
 
     // Running
-    RUNNING_NOT_FOUND("R-001", NOT_FOUND, "존재하지 않는 러닝"),
-    INVALID_GHOST_RUNNING_ID("R-002", BAD_REQUEST, "SOLO 모드의 러닝이거나 함께 뛴 고스트의 러닝 ID가 아닌 경우")
-    ;
 
     private final String code;
     private final HttpStatus status;
     private final String message;
+
 }

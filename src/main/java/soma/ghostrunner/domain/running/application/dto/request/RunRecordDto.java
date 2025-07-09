@@ -1,6 +1,6 @@
 package soma.ghostrunner.domain.running.application.dto.request;
 
-public record RunRecordCommand(
+public record RunRecordDto(
         Double distance,
         Integer elevationGain,
         Integer elevationLoss,

@@ -11,6 +11,7 @@ import lombok.Getter;
 public class CourseGhostResponse {
   private Long runnerId;
   private String runnerProfileUrl;
+  private String runnerNickname;
 
   private Long runningId;
   private String runningName;
