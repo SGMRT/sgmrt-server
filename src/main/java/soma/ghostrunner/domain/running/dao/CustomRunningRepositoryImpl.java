@@ -1,9 +1,11 @@
 package soma.ghostrunner.domain.running.dao;
 
+import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.domain.QRunning;
 
@@ -111,4 +113,5 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         .where(running.id.eq(runningId))
                         .fetchOne());
     }
+
 }
