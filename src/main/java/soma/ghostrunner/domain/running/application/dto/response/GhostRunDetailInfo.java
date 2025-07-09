@@ -32,6 +32,7 @@ public class GhostRunDetailInfo extends RunDetailInfo {
 
     @Getter
     public class RunComparisonInfo {
+
         private Double distance;
         private Long duration;
         private Integer cadence;
@@ -62,5 +63,6 @@ public class GhostRunDetailInfo extends RunDetailInfo {
             BigDecimal ghostBigDecimalRecord = BigDecimal.valueOf(ghostPace);
             return myBigDecimalRecord.subtract(ghostBigDecimalRecord).doubleValue();
         }
+
     }
 }

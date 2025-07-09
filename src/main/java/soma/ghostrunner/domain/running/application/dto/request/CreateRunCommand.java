@@ -9,7 +9,7 @@ public record CreateRunCommand(
         Long ghostRunningId,
         String mode,
         Long startedAt,
-        RunRecordCommand record,
+        RunRecordDto record,
         Boolean hasPaused,
         Boolean isPublic,
         List<TelemetryDto> telemetries
