@@ -128,5 +128,5 @@ class RunningTest {
     private RunningRecord createRunningRecord() {
         return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
     }
-
+  
 }

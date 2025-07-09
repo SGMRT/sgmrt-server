@@ -28,7 +28,6 @@ import java.util.List;
 
 import static org.assertj.core.api.BDDAssertions.tuple;
 import static org.mockito.BDDMockito.*;
-
 class RunningCommandServiceTest extends IntegrationTestSupport {
 
     @Autowired
@@ -238,7 +237,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord,
                 1750729987181L, true, false, "URL", member, course);
     }
-
+  
     @DisplayName("러닝 기록을 공개/비공개 상태로 변경한다.")
     @Test
     void setRunningPublic() {
@@ -297,5 +296,5 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     private RunningRecord createRunningRecord() {
         return RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
     }
-
+  
 }

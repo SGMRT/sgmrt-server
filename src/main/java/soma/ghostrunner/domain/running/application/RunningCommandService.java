@@ -56,7 +56,6 @@ public class RunningCommandService {
 
         Course course = courseService.findCourseById(courseId);
         Running running = createAndSaveRunning(command, processedTelemetry, url, member, course);
-
         return running.getId();
     }
 
@@ -105,6 +104,7 @@ public class RunningCommandService {
 
     private Running findRunningBy(Long memberId, Long runningId) {
         return runningQueryService.findRunningByRunningId(runningId, memberId);
+
     }
 
     private Course createAndSaveCourse(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry) {
