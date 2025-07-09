@@ -7,12 +7,20 @@ import soma.ghostrunner.global.common.error.ErrorCode;
 import soma.ghostrunner.global.common.error.exception.ParsingException;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
-public class CourseCoordinateConverter {
+public class CoordinateConverter {
 
     private static ObjectMapper objectMapper = new ObjectMapper();
+
+    private static final int LATITUDE_PART_INDEX = 1;
+    private static final int LONGITUDE_PART_INDEX = 2;
+    private static final int VALUE_INDEX = 1;
+    private static final String MAIN_DELIMITER = ",";
+    private static final String VALUE_DELIMITER = ":";
 
     public static String convertToString(List<CourseCoordinateDto> coordinates) {
         try {
@@ -31,14 +39,24 @@ public class CourseCoordinateConverter {
     }
 
     public static List<CourseCoordinateDto> convertToCoordinateList(List<String> coordinateStringList) {
-        List<CourseCoordinateDto> coordinateList = new ArrayList<>();
-        for (String coordinateString : coordinateStringList) {
-            String[] telemetriesForSec = coordinateString.split(",");
-            double latitude = Double.parseDouble(telemetriesForSec[1].split(":")[1]);
-            double longitude = Double.parseDouble(telemetriesForSec[2].split(":")[1]);
-            coordinateList.add(new CourseCoordinateDto(latitude, longitude));
+        if (coordinateStringList == null) {
+            return Collections.emptyList();
         }
-        return coordinateList;
+        return coordinateStringList.stream()
+                .map(CoordinateConverter::parseStringToCoordinateDto)
+                .collect(Collectors.toList());
+    }
+
+    private static CourseCoordinateDto parseStringToCoordinateDto(String coordinateString) {
+        String[] parts = coordinateString.split(MAIN_DELIMITER);
+
+        String latitudePart = parts[LATITUDE_PART_INDEX];
+        String longitudePart = parts[LONGITUDE_PART_INDEX];
+
+        double latitude = Double.parseDouble(latitudePart.split(VALUE_DELIMITER)[VALUE_INDEX]);
+        double longitude = Double.parseDouble(longitudePart.split(VALUE_DELIMITER)[VALUE_INDEX]);
+
+        return new CourseCoordinateDto(latitude, longitude);
     }
 
 }

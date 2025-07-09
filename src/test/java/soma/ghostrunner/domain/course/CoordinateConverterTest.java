@@ -4,13 +4,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
-import soma.ghostrunner.domain.running.domain.support.CourseCoordinateConverter;
+import soma.ghostrunner.domain.running.domain.support.CoordinateConverter;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.tuple;
 
-class CourseCoordinateConverterTest {
+class CoordinateConverterTest {
 
     @DisplayName("러닝 시계열에서 위도/경도를 추출한다.")
     @Test
@@ -25,7 +25,7 @@ class CourseCoordinateConverterTest {
         );
 
         // when
-        List<CourseCoordinateDto> courseCoordinateDtos = CourseCoordinateConverter.convertToCoordinateList(stringTelemetries);
+        List<CourseCoordinateDto> courseCoordinateDtos = CoordinateConverter.convertToCoordinateList(stringTelemetries);
 
         // then
         Assertions.assertThat(courseCoordinateDtos)

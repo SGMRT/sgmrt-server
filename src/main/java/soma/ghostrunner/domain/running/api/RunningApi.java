@@ -49,7 +49,7 @@ public class RunningApi {
 
     @GetMapping("/v1/runs/{runningId}/telemetries")
     public List<TelemetryDto> getRunningTelemetries(@PathVariable Long runningId) {
-        return runningTelemetryQueryService.findTotalTelemetriesByRunningId(runningId);
+        return runningTelemetryQueryService.findTotalTelemetries(runningId);
     }
 
     @GetMapping("/v1/runs/courses/{courseId}/telemetries")

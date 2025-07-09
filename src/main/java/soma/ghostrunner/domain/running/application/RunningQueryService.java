@@ -6,23 +6,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.clients.aws.TelemetryClient;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
-import soma.ghostrunner.domain.running.application.dto.response.RunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.support.TelemetryTypeConverter;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
-
-import java.util.Collections;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -30,25 +23,16 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class RunningQueryService {
 
+    private final RunningTelemetryQueryService runningTelemetryQueryService;
+
     private final RunningRepository runningRepository;
-    private final TelemetryClient telemetryClient;
+
     private final RunningApiMapper runningApiMapper;
   
     public SoloRunDetailInfo findSoloRunInfo(Long runningId) {
         SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId);
-        downloadTelemetries(runningId, soloRunDetailInfo);
+        runningTelemetryQueryService.downloadTelemetries(runningId, soloRunDetailInfo);
         return soloRunDetailInfo;
-    }
-
-    private void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
-        try {
-            List<String> stringTelemetries = telemetryClient.downloadTelemetryFromUrl(runDetailInfo.getTelemetryUrl());
-            List<TelemetryDto> telemetries = TelemetryTypeConverter.convertFromStringToDtos(stringTelemetries);
-            runDetailInfo.setTelemetries(telemetries);
-        } catch (Exception e) {
-            log.error("runningId {}의 요청에 대해 S3와 통신/파싱하는 과정에서 문제가 발생했습니다.", runningId, e);
-            runDetailInfo.setTelemetries(Collections.emptyList());
-        }
     }
 
     public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId) {
@@ -58,7 +42,7 @@ public class RunningQueryService {
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfoByRunningId(ghostRunningId);
         myGhostRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
 
-        downloadTelemetries(myRunningId, myGhostRunDetailInfo);
+        runningTelemetryQueryService.downloadTelemetries(myRunningId, myGhostRunDetailInfo);
         return myGhostRunDetailInfo;
     }
 

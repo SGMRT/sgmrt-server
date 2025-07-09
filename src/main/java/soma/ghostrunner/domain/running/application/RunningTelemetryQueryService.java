@@ -9,20 +9,21 @@ import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.application.dto.response.RunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.support.CourseCoordinateConverter;
+import soma.ghostrunner.domain.running.domain.support.CoordinateConverter;
 import soma.ghostrunner.domain.running.domain.support.TelemetryTypeConverter;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
 import soma.ghostrunner.global.common.error.exception.ExternalIOException;
 
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class RunningTelemetryQueryService {
 
     private final CourseService courseService;
@@ -30,7 +31,8 @@ public class RunningTelemetryQueryService {
 
     private final TelemetryClient telemetryClient;
 
-    public List<TelemetryDto> findTotalTelemetriesByRunningId(Long runningId) {
+    @Transactional(readOnly = true)
+    public List<TelemetryDto> findTotalTelemetries(Long runningId) {
         String telemetryUrl = findTelemetryUrlByRunningId(runningId);
         return downloadTelemetries(runningId, telemetryUrl);
     }
@@ -50,21 +52,33 @@ public class RunningTelemetryQueryService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<CourseCoordinateDto> findCoordinateTelemetries(Long courseId) {
         Course course = findCourseByCourseId(courseId);
         Running running = findFirstRunning(course.getId());
 
         List<String> stringTelemetries = telemetryClient.downloadTelemetryFromUrl(running.getTelemetryUrl());
-        return CourseCoordinateConverter.convertToCoordinateList(stringTelemetries);
+        return CoordinateConverter.convertToCoordinateList(stringTelemetries);
     }
 
     private Course findCourseByCourseId(Long courseId) {
         return courseService.findCourseById(courseId);
     }
 
-    public Running findFirstRunning(Long courseId) {
+    private Running findFirstRunning(Long courseId) {
         return runningRepository.findFirstRunningByCourseId(courseId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "코스 ID : " + courseId + "를 갖는 러닝이 없습니다."));
+    }
+
+    public void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
+        try {
+            List<String> stringTelemetries = telemetryClient.downloadTelemetryFromUrl(runDetailInfo.getTelemetryUrl());
+            List<TelemetryDto> telemetries = TelemetryTypeConverter.convertFromStringToDtos(stringTelemetries);
+            runDetailInfo.setTelemetries(telemetries);
+        } catch (Exception e) {
+            log.error("runningId {}의 요청에 대해 S3와 통신/파싱하는 과정에서 문제가 발생했습니다.", runningId, e);
+            runDetailInfo.setTelemetries(Collections.emptyList());
+        }
     }
 
 }
