@@ -36,8 +36,9 @@ public class Course extends BaseTimeEntity {
     private String pathData;
 
     @Builder
-    private Course(CourseProfile courseProfile, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
+    private Course(CourseProfile courseProfile, Member owner, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
         this.courseProfile = courseProfile;
+        this.owner = owner;
         this.startPoint = startPoint;
         this.pathData = pathData;
         this.name = name;
@@ -61,6 +62,17 @@ public class Course extends BaseTimeEntity {
                 .pathData(pathData)
                 .isPublic(isPublic)
                 .build();
+    }
+
+    public static Course of(CourseProfile courseProfile, Member owner, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
+        return Course.builder()
+            .courseProfile(courseProfile)
+            .owner(owner)
+            .name(name)
+            .startPoint(startPoint)
+            .pathData(pathData)
+            .isPublic(isPublic)
+            .build();
     }
 
 }
