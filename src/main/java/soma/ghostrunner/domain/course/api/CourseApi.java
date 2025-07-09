@@ -12,6 +12,7 @@ import org.springframework.data.web.PagedModel;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
+import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 
@@ -33,6 +34,12 @@ public class CourseApi {
             @RequestParam(required = false, defaultValue = "5") Integer radiusKm,
             @RequestParam(required = false) Long ownerId) {
         return courseService.searchCourses(lat, lng, radiusKm, ownerId);
+    }
+
+    @GetMapping("/{courseId}")
+    public CourseDetailedResponse getCourse(
+        @PathVariable("courseId") Long courseId) {
+        return courseService.getCourse(courseId);
     }
 
     @PatchMapping("/{courseId}")

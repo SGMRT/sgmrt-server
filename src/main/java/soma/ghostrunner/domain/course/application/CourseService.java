@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.course.application;
 
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -7,11 +8,14 @@ import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
+import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
+import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
+import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.global.common.error.ErrorCode;
 
 import java.util.List;
@@ -23,6 +27,7 @@ public class CourseService {
 
     private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
+    private final RunningRepository runningRepository;
 
     public Long save(
             Course course) {
@@ -56,6 +61,19 @@ public class CourseService {
         return courses.stream()
                 .map(courseMapper::toCourseResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public CourseDetailedResponse getCourse(Long courseId) {
+        Course course = findCourseById(courseId);
+        CourseRunStatisticsDto courseStats = runningRepository.findPublicRunStatisticsByCourseId(courseId)
+            .orElse(new CourseRunStatisticsDto());
+        return courseMapper.toCourseDetailedResponse(
+            course,
+            courseStats.getAvgCompletionTime(),
+            courseStats.getAvgFinisherPace(),
+            courseStats.getAvgFinisherCadence(),
+            courseStats.getLowestFinisherPace());
     }
 
     @Transactional

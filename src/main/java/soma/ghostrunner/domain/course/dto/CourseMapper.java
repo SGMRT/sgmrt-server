@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.course.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 import soma.ghostrunner.domain.running.util.CourseCoordinateUtil;
 
@@ -14,4 +15,8 @@ public interface CourseMapper {
     @Mapping(source = "courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "courseProfile.elevationLoss", target = "elevationLoss")
     CourseResponse toCourseResponse(Course course);
+
+    @Mapping(source = "course.courseProfile.elevationGain", target = "elevationGain")
+    @Mapping(source = "course.courseProfile.elevationLoss", target = "elevationLoss")
+    CourseDetailedResponse toCourseDetailedResponse(Course course, Double averageCompletionTime, Double averageFinisherPace, Double averageFinisherCadence, Double lowestFinisherPace);
 }
