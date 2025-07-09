@@ -36,4 +36,8 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
     @Query("SELECT COUNT(r) FROM Running r "
         + "WHERE r.course.id = :courseId AND r.isPublic = true AND r.runningRecord.averagePace < :averagePace")
     Optional<Integer> countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(Long courseId, Double averagePace);
+
+    @Query("select r from Running r where r.course.id = :courseId order by r.id asc limit 1")
+    Optional<Running> findFirstRunningByCourseId(Long courseId);
+
 }

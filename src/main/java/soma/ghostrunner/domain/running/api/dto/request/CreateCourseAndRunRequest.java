@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import soma.ghostrunner.domain.running.api.validation.NoPauseForPublic;
-import soma.ghostrunner.domain.running.domain.RunningMode;
-import soma.ghostrunner.global.common.validator.enums.EnumValid;
 
 import java.util.List;
 
@@ -23,10 +21,6 @@ public class CreateCourseAndRunRequest {
     private String runningName;
 
     @NotNull
-    @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
-    private String mode;
-
-    @NotNull
     private Long startedAt;
 
     @NotNull
@@ -41,4 +35,5 @@ public class CreateCourseAndRunRequest {
 
     @NotNull @Valid
     private List<TelemetryRequest> telemetries;
+
 }

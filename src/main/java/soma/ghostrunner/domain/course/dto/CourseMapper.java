@@ -4,9 +4,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.response.CourseResponse;
-import soma.ghostrunner.domain.running.util.CourseCoordinateUtil;
+import soma.ghostrunner.domain.running.domain.support.CoordinateConverter;
 
-@Mapper(componentModel = "spring", uses = {CourseCoordinateUtil.class})
+@Mapper(componentModel = "spring", uses = {CoordinateConverter.class})
 public interface CourseMapper {
     @Mapping(source = "startPoint.latitude", target = "startLat")
     @Mapping(source = "startPoint.longitude", target = "startLng")

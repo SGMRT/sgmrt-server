@@ -8,6 +8,8 @@ import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest
 import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.UpdateRunNameRequest;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
+import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
+import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
@@ -20,6 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RunningApi {
 
+    private final RunningTelemetryQueryService runningTelemetryQueryService;
     private final RunningQueryService runningQueryService;
     private final RunningCommandService runningCommandService;
     private final RunningApiMapper mapper;
@@ -34,7 +37,7 @@ public class RunningApi {
         return runningCommandService.createCourseAndRun(mapper.toCommand(req), memberId);
     }
 
-    @PostMapping("/v1/runs/{courseId}/{memberId}")
+    @PostMapping("/v1/runs/courses/{courseId}/{memberId}")
     public Long createRun(@RequestBody @Valid CreateRunRequest req, @PathVariable Long courseId, @PathVariable Long memberId) {
         return runningCommandService.createRun(mapper.toCommand(req), courseId, memberId);
     }
@@ -45,17 +48,28 @@ public class RunningApi {
     }
 
     @GetMapping("/v1/runs/{runningId}/telemetries")
-    public List<TelemetryDto> getTelemetries(@PathVariable Long runningId) {
-        return runningQueryService.findTelemetriesById(runningId);
+    public List<TelemetryDto> getRunningTelemetries(@PathVariable Long runningId) {
+        return runningTelemetryQueryService.findTotalTelemetries(runningId);
+    }
+
+    @GetMapping("/v1/runs/courses/{courseId}/telemetries")
+    public List<CourseCoordinateDto> getCoordinateTelemetries(@PathVariable Long courseId) {
+        return runningTelemetryQueryService.findCoordinateTelemetries(courseId);
     }
 
     @GetMapping("/v1/runs/{runningId}")
     public SoloRunDetailInfo getSoloRunInfo(@PathVariable Long runningId) {
-        return runningQueryService.findSoloRunInfoById(runningId);
+        return runningQueryService.findSoloRunInfo(runningId);
     }
 
     @GetMapping("/v1/runs/{myRunningId}/ghosts/{ghostRunningId}")
     public GhostRunDetailInfo getGhostRunInfo(@PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
-        return runningQueryService.findGhostRunInfoById(myRunningId, ghostRunningId);
+        return runningQueryService.findGhostRunInfo(myRunningId, ghostRunningId);
     }
+
+    @PatchMapping("/v1/runs/{runningId}/isPublic")
+    public void patchRunningPublicStatus(@PathVariable Long runningId) {
+        runningCommandService.updateRunningPublicStatus(runningId);
+    }
+
 }

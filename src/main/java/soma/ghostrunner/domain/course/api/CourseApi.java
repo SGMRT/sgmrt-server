@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
@@ -53,11 +54,11 @@ public class CourseApi {
     }
 
     @GetMapping("/{courseId}/ghosts")
-    public Page<CourseGhostResponse> getGhosts(
+    public PagedModel<CourseGhostResponse> getGhosts(
             @PathVariable("courseId") Long courseId,
             @PageableDefault(sort = "runningRecord.averagePace", direction = Direction.ASC) Pageable pageable) {
+        return new PagedModel<>(runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable));
         // sort 필드명 validation
-        return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);
     }
 
     @GetMapping("/{courseId}/ranking")
