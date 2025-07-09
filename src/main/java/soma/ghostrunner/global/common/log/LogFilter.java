@@ -16,11 +16,6 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 import java.io.IOException;
 import java.util.UUID;
 
-/**
- * HTTP 요청/응답 정보 로깅하는 필터
- *
- * @author ijin
- */
 @Component
 @RequiredArgsConstructor
 @Order(Ordered.HIGHEST_PRECEDENCE)

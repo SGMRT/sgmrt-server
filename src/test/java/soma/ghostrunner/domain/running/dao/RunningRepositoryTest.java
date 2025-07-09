@@ -5,11 +5,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -58,7 +53,6 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         running3 = runningRepository.save(createRunning(member1, savedCourse2));
         running4 = runningRepository.save(createRunning(member2, savedCourse2));
     }
-
 
     @DisplayName("특정 코스 ID에 해당하는 모든 러닝 ID 목록을 조회한다")
     @Test
@@ -210,6 +204,20 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(url).isEqualTo(running1.getTelemetryUrl());
     }
+
+    @DisplayName("코스에 대해 처음으로 뛴 러닝 엔티티를 조회한다.")
+    @Test
+    void test() {
+        // given
+        Running running6 = runningRepository.save(createRunning(member1, savedCourse1));
+        Running running7 = runningRepository.save(createRunning(member2, savedCourse1));
+
+        // when
+        Running firstRunning = runningRepository.findFirstRunningByCourseId(savedCourse1.getId()).get();
+
+        // then
+        Assertions.assertThat(firstRunning.getId()).isEqualTo(running1.getId());
+     }
 
     private Running createMyRunning(Member testMember, Course testCourse ) {
         RunningRecord testRunningRecord = RunningRecord.of(6.2, 40, -20, 5.1, 4.9, 6.9, 3423L, 302, 120, 56);

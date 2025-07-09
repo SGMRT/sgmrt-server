@@ -39,7 +39,7 @@ public class TelemetryCalculator {
                         .latitude(telemetries.get(0).lat())
                         .longitude(telemetries.get(0).lng())
                         .build())
-                .courseCoordinates(CourseCoordinateConverter.convertToString(coordinates))
+                .courseCoordinates(CoordinateConverter.convertToString(coordinates))
                 .highestPace(highestPace)
                 .lowestPace(lowestPace)
                 .build();

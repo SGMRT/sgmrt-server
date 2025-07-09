@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapperImpl;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
+import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.global.common.log.HttpLogger;
 
 @WebMvcTest(controllers = RunningApi.class)
@@ -31,6 +32,9 @@ public abstract class ApiTestSupport {
 
     @MockitoBean
     protected RunningQueryService runningQueryService;
+
+    @MockitoBean
+    protected RunningTelemetryQueryService runningTelemetryQueryService;
 
     @MockitoBean
     protected HttpLogger httpLogger;
