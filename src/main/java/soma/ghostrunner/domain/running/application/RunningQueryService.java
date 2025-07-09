@@ -69,10 +69,6 @@ public class RunningQueryService {
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
     }
 
-    public Optional<CourseRunStatisticsDto> findCourseRunStatistics(Long courseId) {
-        return runningRepository.findPublicRunStatisticsByCourseId(courseId);
-    }
-
     public Running findRunningByRunningId(Long id) {
         return runningRepository.findById(id)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, id));

@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public class CourseService {
 
     private final CourseMapper courseMapper;
-    private final RunningQueryService runningQueryService;
+//    private final RunningQueryService runningQueryService;
     private final CourseRepository courseRepository;
 
     public Long save(
@@ -66,15 +66,17 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public CourseDetailedResponse getCourse(Long courseId) {
-        Course course = findCourseById(courseId);
-        CourseRunStatisticsDto courseStats = runningQueryService.findCourseRunStatistics(courseId)
-            .orElse(new CourseRunStatisticsDto());
-        return courseMapper.toCourseDetailedResponse(
-            course,
-            courseStats.getAvgCompletionTime(),
-            courseStats.getAvgFinisherPace(),
-            courseStats.getAvgFinisherCadence(),
-            courseStats.getLowestFinisherPace());
+      return courseRepository.findCourseDetailedById(courseId)
+          .orElseThrow(() -> new CourseNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
+//        Course course = findCourseById(courseId);
+//        CourseRunStatisticsDto courseStats = runningQueryService.findCourseRunStatistics(courseId)
+//            .orElse(new CourseRunStatisticsDto());
+//        return courseMapper.toCourseDetailedResponse(
+//            course,
+//            courseStats.getAvgCompletionTime(),
+//            courseStats.getAvgFinisherPace(),
+//            courseStats.getAvgFinisherCadence(),
+//            courseStats.getLowestFinisherPace());
     }
 
     @Transactional

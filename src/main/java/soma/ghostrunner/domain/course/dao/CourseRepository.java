@@ -9,7 +9,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import java.util.List;
 
 @Repository
-public interface CourseRepository extends JpaRepository<Course, Long> {
+public interface CourseRepository extends CustomCourseRepository, JpaRepository<Course, Long> {
 
 
     // TODO: owner 필드 포함한 후에는, ownerId가 일치하면 isPublic=false여도 보여줘야 함
