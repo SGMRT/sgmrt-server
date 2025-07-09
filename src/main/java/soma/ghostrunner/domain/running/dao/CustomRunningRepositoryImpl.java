@@ -114,20 +114,4 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         .fetchOne());
     }
 
-  @Override
-  public Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId) {
-    return Optional.ofNullable(
-        queryFactory
-            .select(Projections.constructor(CourseRunStatisticsDto.class,
-                running.runningRecord.duration.avg(),
-                running.runningRecord.averagePace.avg(),
-                running.runningRecord.cadence.avg(),
-                running.runningRecord.averagePace.min()
-            ))
-            .from(running)
-            .where(running.course.id.eq(courseId)
-                .and(running.isPublic.isTrue()))
-            .fetchOne()
-    );
-  }
 }
