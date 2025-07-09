@@ -8,15 +8,12 @@ import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
-import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
-import soma.ghostrunner.domain.running.application.RunningQueryService;
-import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.global.common.error.ErrorCode;
 
 import java.util.List;
@@ -27,7 +24,6 @@ import java.util.stream.Collectors;
 public class CourseService {
 
     private final CourseMapper courseMapper;
-//    private final RunningQueryService runningQueryService;
     private final CourseRepository courseRepository;
 
     public Long save(
@@ -68,15 +64,6 @@ public class CourseService {
     public CourseDetailedResponse getCourse(Long courseId) {
       return courseRepository.findCourseDetailedById(courseId)
           .orElseThrow(() -> new CourseNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
-//        Course course = findCourseById(courseId);
-//        CourseRunStatisticsDto courseStats = runningQueryService.findCourseRunStatistics(courseId)
-//            .orElse(new CourseRunStatisticsDto());
-//        return courseMapper.toCourseDetailedResponse(
-//            course,
-//            courseStats.getAvgCompletionTime(),
-//            courseStats.getAvgFinisherPace(),
-//            courseStats.getAvgFinisherCadence(),
-//            courseStats.getLowestFinisherPace());
     }
 
     @Transactional
