@@ -1,15 +1,14 @@
-package soma.ghostrunner.domain.running.domain;
+package soma.ghostrunner.domain.running.domain.support;
 
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
-import soma.ghostrunner.domain.running.util.CourseCoordinateUtil;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TelemetryProcessor {
+public class TelemetryCalculator {
 
     public static ProcessedTelemetriesDto processTelemetry(List<TelemetryDto> telemetries, Long startedAt) {
 
@@ -40,9 +39,10 @@ public class TelemetryProcessor {
                         .latitude(telemetries.get(0).lat())
                         .longitude(telemetries.get(0).lng())
                         .build())
-                .courseCoordinates(CourseCoordinateUtil.convertToString(coordinates))
+                .courseCoordinates(CourseCoordinateConverter.convertToString(coordinates))
                 .highestPace(highestPace)
                 .lowestPace(lowestPace)
                 .build();
     }
+
 }

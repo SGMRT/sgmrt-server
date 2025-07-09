@@ -58,4 +58,10 @@ public class RunningApi {
     public GhostRunDetailInfo getGhostRunInfo(@PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
         return runningQueryService.findGhostRunInfoById(myRunningId, ghostRunningId);
     }
+
+    @PatchMapping("/v1/runs/{runningId}/isPublic")
+    public void patchRunningPublicStatus(@PathVariable Long runningId) {
+        runningCommandService.updateRunningPublicStatus(runningId);
+    }
+
 }
