@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.course.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 @Entity
@@ -12,6 +13,10 @@ public class Course extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "owner_id")
+    private Member owner;
 
     @Setter
     @Column
