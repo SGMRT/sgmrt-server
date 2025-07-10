@@ -16,7 +16,7 @@ public class Course extends BaseTimeEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "owner_id")
-    private Member owner;
+    private Member member;
 
     @Setter
     @Column
@@ -36,9 +36,9 @@ public class Course extends BaseTimeEntity {
     private String pathData;
 
     @Builder
-    private Course(CourseProfile courseProfile, Member owner, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
+    private Course(CourseProfile courseProfile, Member member, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
         this.courseProfile = courseProfile;
-        this.owner = owner;
+        this.member = member;
         this.startPoint = startPoint;
         this.pathData = pathData;
         this.name = name;
@@ -64,10 +64,10 @@ public class Course extends BaseTimeEntity {
                 .build();
     }
 
-    public static Course of(CourseProfile courseProfile, Member owner, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
+    public static Course of(CourseProfile courseProfile, Member member, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
         return Course.builder()
             .courseProfile(courseProfile)
-            .owner(owner)
+            .member(member)
             .name(name)
             .startPoint(startPoint)
             .pathData(pathData)

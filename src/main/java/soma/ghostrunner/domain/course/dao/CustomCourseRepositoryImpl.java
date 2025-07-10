@@ -76,12 +76,12 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
 
     // ownerId 필터링
     if (Objects.nonNull(ownerId)) {
-      builder.and(course.owner.id.eq(ownerId)); // member.id를 사용하여 필터링
+      builder.and(course.member.id.eq(ownerId)); // member.id를 사용하여 필터링
     }
 
     return queryFactory
         .selectFrom(course)
-        .leftJoin(course.owner, member) // member 조인
+        .leftJoin(course.member, member) // member 조인
         .where(builder)
         .fetch();
   }
