@@ -68,15 +68,9 @@ public class RunningQueryService {
 
         Integer rank = 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(
             courseId, bestRun.getRunningRecord().getAveragePace())
-            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.RUNNING_NOT_FOUND, courseId));
+            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
 
         return runningApiMapper.toRankingResponse(bestRun, rank);
-    }
-
-    private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostModeRunInfo) {
-        if (myGhostModeRunInfo.getGhostRunId() == null || !myGhostModeRunInfo.getGhostRunId().equals(ghostRunningId)) {
-            throw new InvalidGhostRunningException(ErrorCode.INVALID_GHOST_RUNNING_ID);
-        }
     }
 
     public Running findRunningByRunningId(Long id) {
