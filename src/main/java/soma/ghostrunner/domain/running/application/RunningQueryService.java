@@ -8,14 +8,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
+import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
+import soma.ghostrunner.domain.running.application.dto.response.RunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -31,7 +35,7 @@ public class RunningQueryService {
   
     public SoloRunDetailInfo findSoloRunInfo(Long runningId) {
         SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId);
-        runningTelemetryQueryService.downloadTelemetries(runningId, soloRunDetailInfo);
+        downloadTelemetries(runningId, soloRunDetailInfo);
         return soloRunDetailInfo;
     }
 
@@ -42,8 +46,13 @@ public class RunningQueryService {
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfoByRunningId(ghostRunningId);
         myGhostRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
 
-        runningTelemetryQueryService.downloadTelemetries(myRunningId, myGhostRunDetailInfo);
+        downloadTelemetries(myRunningId, myGhostRunDetailInfo);
         return myGhostRunDetailInfo;
+    }
+
+    private void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
+        List<TelemetryDto> telemetries = runningTelemetryQueryService.downloadTelemetries(runningId, runDetailInfo.getTelemetryUrl());
+        runDetailInfo.setTelemetries(telemetries);
     }
 
     private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostRunDetailInfo) {

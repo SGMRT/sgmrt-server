@@ -18,4 +18,5 @@ public class CourseInfo {
         this.isPublic = isPublic;
         this.runnersCount = runnersCount;
     }
+
 }

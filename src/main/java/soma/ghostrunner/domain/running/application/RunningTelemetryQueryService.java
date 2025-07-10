@@ -17,6 +17,7 @@ import soma.ghostrunner.domain.running.domain.support.TelemetryTypeConverter;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
 import soma.ghostrunner.global.common.error.exception.ExternalIOException;
+import soma.ghostrunner.global.common.error.exception.ParsingException;
 
 import java.util.Collections;
 import java.util.List;
@@ -42,7 +43,7 @@ public class RunningTelemetryQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
     }
 
-    private List<TelemetryDto> downloadTelemetries(Long runningId, String telemetryUrl) {
+    public List<TelemetryDto> downloadTelemetries(Long runningId, String telemetryUrl) {
         try {
             List<String> stringTelemetries = telemetryClient.downloadTelemetryFromUrl(telemetryUrl);
             return TelemetryTypeConverter.convertFromStringToDtos(stringTelemetries);
@@ -68,17 +69,6 @@ public class RunningTelemetryQueryService {
     private Running findFirstRunning(Long courseId) {
         return runningRepository.findFirstRunningByCourseId(courseId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "코스 ID : " + courseId + "를 갖는 러닝이 없습니다."));
-    }
-
-    public void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
-        try {
-            List<String> stringTelemetries = telemetryClient.downloadTelemetryFromUrl(runDetailInfo.getTelemetryUrl());
-            List<TelemetryDto> telemetries = TelemetryTypeConverter.convertFromStringToDtos(stringTelemetries);
-            runDetailInfo.setTelemetries(telemetries);
-        } catch (Exception e) {
-            log.error("runningId {}의 요청에 대해 S3와 통신/파싱하는 과정에서 문제가 발생했습니다.", runningId, e);
-            runDetailInfo.setTelemetries(Collections.emptyList());
-        }
     }
 
 }
