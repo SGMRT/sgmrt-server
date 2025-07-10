@@ -2,10 +2,12 @@ package soma.ghostrunner.domain.course.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SoftDelete;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 @Entity
 @Table(name = "course")
+@SoftDelete(columnName = "is_deleted")
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Course extends BaseTimeEntity {
 
