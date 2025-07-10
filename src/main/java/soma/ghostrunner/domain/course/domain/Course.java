@@ -15,7 +15,7 @@ public class Course extends BaseTimeEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "owner_id")
+    @JoinColumn(name = "member_id")
     private Member member;
 
     @Setter
