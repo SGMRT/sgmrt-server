@@ -4,6 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
+import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
@@ -30,4 +31,9 @@ public interface RunningApiMapper {
     @Mapping(source = "createdAt", target = "startedAt")
     CourseGhostResponse toGhostResponse(Running running);
 
+    @Mapping(source = "running.id", target = "runningId")
+    @Mapping(source = "running.runningRecord.duration", target = "duration")
+    @Mapping(source = "running.runningRecord.bpm", target = "bpm")
+    @Mapping(source = "running.runningRecord.averagePace", target = "averagePace")
+    CourseRankingResponse toRankingResponse(Running running, Integer rank);
 }

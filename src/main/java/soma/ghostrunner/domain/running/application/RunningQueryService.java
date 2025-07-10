@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
+import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
@@ -60,12 +61,15 @@ public class RunningQueryService {
         return ghostRuns.map(runningApiMapper::toGhostResponse);
     }
 
-    public Integer findRankingOfUserInCourse(Long courseId, Long memberId) {
-        Double bestPace = runningRepository.findMinAveragePaceByCourseIdAndMemberIdAndIsPublicTrue(courseId, memberId)
+    public CourseRankingResponse findUserRankingInCourse(Long courseId, Long memberId) {
+        Running bestRun = runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberId)
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
 
-        return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(courseId, bestPace)
+        Integer rank = 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(
+            courseId, bestRun.getRunningRecord().getAveragePace())
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
+
+        return runningApiMapper.toRankingResponse(bestRun, rank);
     }
 
     public Running findRunningByRunningId(Long id) {
