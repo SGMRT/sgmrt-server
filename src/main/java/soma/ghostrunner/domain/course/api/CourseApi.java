@@ -15,6 +15,7 @@ import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
+import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 
 import java.util.List;
@@ -70,10 +71,10 @@ public class CourseApi {
     }
 
     @GetMapping("/{courseId}/ranking")
-    public Integer getCourseRanking(
+    public CourseRankingResponse getCourseRanking(
             @PathVariable("courseId") Long courseId,
             @RequestParam Long userId) {
-        return runningQueryService.findRankingOfUserInCourse(courseId, userId);
+        return runningQueryService.findUserRankingInCourse(courseId, userId);
     }
 
     @GetMapping("/{courseId}/top-ranking")
