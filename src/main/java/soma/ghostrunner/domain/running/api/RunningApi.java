@@ -9,7 +9,6 @@ import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.UpdateRunNameRequest;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
-import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
@@ -49,12 +48,7 @@ public class RunningApi {
 
     @GetMapping("/v1/runs/{runningId}/telemetries")
     public List<TelemetryDto> getRunningTelemetries(@PathVariable Long runningId) {
-        return runningTelemetryQueryService.findTotalTelemetries(runningId);
-    }
-
-    @GetMapping("/v1/runs/courses/{courseId}/telemetries")
-    public List<CourseCoordinateDto> getCoordinateTelemetries(@PathVariable Long courseId) {
-        return runningTelemetryQueryService.findCoordinateTelemetries(courseId);
+        return runningQueryService.findRunningTelemetries(runningId);
     }
 
     @GetMapping("/v1/runs/{runningId}")
