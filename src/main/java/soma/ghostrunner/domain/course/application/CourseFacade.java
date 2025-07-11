@@ -22,7 +22,7 @@ public class CourseFacade {
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
 
-    public List<CourseResponse> searchCourses(
+    public List<CourseResponse> findCourses(
             Double lat, Double lng, Integer radiusM,
             Integer minDistanceM, Integer maxDistanceM,
             Integer minElevationM, Integer maxElevationM,
@@ -31,7 +31,7 @@ public class CourseFacade {
                 minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerId);
     }
 
-    public CourseDetailedResponse getCourse(Long courseId) {
+    public CourseDetailedResponse findCourse(Long courseId) {
         // needs refactoring
         return courseService.getCourse(courseId);
     }
@@ -48,11 +48,11 @@ public class CourseFacade {
         return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);
     }
 
-    public CourseRankingResponse getCourseRanking(Long courseId, Long userId) {
+    public CourseRankingResponse findCourseRanking(Long courseId, Long userId) {
         return runningQueryService.findUserRankingInCourse(courseId, userId);
     }
 
-    public List<CourseGhostResponse> getCourseTopRanking(Long courseId, int count) {
+    public List<CourseGhostResponse> findTopRankingGhosts(Long courseId, int count) {
         Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findPublicGhostRunsByCourseId(
                 courseId,
                 PageRequest.of(0, count, Sort.by(Sort.Direction.ASC, "runningRecord.averagePace"))
