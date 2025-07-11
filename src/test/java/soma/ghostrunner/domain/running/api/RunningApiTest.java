@@ -13,6 +13,7 @@ import soma.ghostrunner.domain.running.api.dto.request.*;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -41,13 +42,14 @@ class RunningApiTest extends ApiTestSupport {
     @DisplayName("새로운 코스를 기반으로 러닝할 때 CreateRunRequest 에 대한 검증을 진행한다.")
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
     @MethodSource("invalidCreateCourseAndRunRequests")
-    void testCreateCourseAndRunValidation(CreateCourseAndRunRequest payload, String wrongField) throws Exception {
+    void createInvalidCourseAndRun(CreateCourseAndRunRequest payload, String wrongField, String reason) throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField));;
+                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField))
+                .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value(reason));
     }
 
     private static CreateCourseAndRunRequest validCreateCourseAndRunRequest() {
@@ -64,24 +66,88 @@ class RunningApiTest extends ApiTestSupport {
     private static Stream<Arguments> invalidCreateCourseAndRunRequests() {
         return Stream.of(
                 Arguments.of(
-                        setCourseNameBlank(), "runningName"
+                        setCourseNameBlank(), "runningName", "must not be blank"
                 ),
                 Arguments.of(
-                        setHasPausedNull(), "hasPaused"
+                        setStartedAtNull(), "startedAt", "must not be null"
                 ),
                 Arguments.of(
-                        setRunningRecordDurationMinus(), "record.duration"
+                        setHasPausedNull(), "hasPaused", "must not be null"
                 ),
                 Arguments.of(
-                        setHasPausedAndIsPublicInvalid(), "hasPaused"
+                        setElevationGainNull(), "record.elevationGain", "must not be null"
                 ),
                 Arguments.of(
-                        setElevationGainInvalid(), "record.elevationGain"
+                        setRunningRecordDurationNegative(), "record.duration", "must be greater than or equal to 0"
                 ),
                 Arguments.of(
-                        setElevationLossInvalid(), "record.elevationLoss"
+                        setElevationLossPositive(), "record.elevationLoss", "must be less than or equal to 0"
+                ),
+                Arguments.of(
+                        setHasPausedAndIsPublicInvalid(), "hasPaused", "중지한 기록이 있다면 공개 설정이 불가능합니다."
+                ),
+                Arguments.of(
+                        setEmptyTelemetriesCreateCourseAndRunRequest(), "telemetries", "must not be empty"
+                ),
+                Arguments.of(
+                        setNullTelemetriesCreateCourseAndRunRequest(), "telemetries", "must not be empty"
                 )
         );
+    }
+
+    private static CreateCourseAndRunRequest setCourseNameBlank() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.setRunningName("");
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setStartedAtNull() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.setStartedAt(null);
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setHasPausedNull() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.setHasPaused(null);
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setElevationGainNull() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.getRecord().setElevationGain(null);
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setRunningRecordDurationNegative() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.getRecord().setDuration(-1L);
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setElevationLossPositive() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.getRecord().setElevationLoss(20);
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setHasPausedAndIsPublicInvalid() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.setHasPaused(true);
+        request.setIsPublic(true);
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setEmptyTelemetriesCreateCourseAndRunRequest() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.setTelemetries(Collections.emptyList());
+        return request;
+    }
+
+    private static CreateCourseAndRunRequest setNullTelemetriesCreateCourseAndRunRequest() {
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        request.setTelemetries(null);
+        return request;
     }
 
     @DisplayName("기존 코스를 기반으로 혼자 달린다.")
@@ -119,28 +185,29 @@ class RunningApiTest extends ApiTestSupport {
     @DisplayName("기존 코스를 기반으로 러닝할 때 CreateRunRequest에 대한 유효성 검사를 진행한다.")
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
     @MethodSource("invalidSoloCreateRunRequests")
-    void testCreateRunValidation(CreateRunRequest payload, String wrongField) throws Exception {
+    void testCreateRunValidation(CreateRunRequest payload, String wrongField, String reason) throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/1/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField));
+                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField))
+                .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value(reason));
     }
 
     private static Stream<Arguments> invalidSoloCreateRunRequests() {
         return Stream.of(
                 Arguments.of(
-                        setInvalidSoloCreateRunRequest(), "ghostRunningId"
+                        setInvalidSoloCreateRunRequest(), "ghostRunningId", "러닝 모드에 따라 고스트 ID 값의 규칙이 지켜지지 않았습니다."
                 ),
                 Arguments.of(
-                        setInvalidModeCreateRunRequest(), "mode"
+                        setInvalidModeCreateRunRequest(), "mode", "유효하지 않은 러닝모드입니다."
                 ),
                 Arguments.of(
-                        setInvalidGhostCreateRunRequest(), "ghostRunningId"
+                        setInvalidGhostCreateRunRequest(), "ghostRunningId", "러닝 모드에 따라 고스트 ID 값의 규칙이 지켜지지 않았습니다."
                 ),
                 Arguments.of(
-                        setCreateRunRequestInvalidPausedAndPublic(), "hasPaused"
+                        setCreateRunRequestInvalidPausedAndPublic(), "hasPaused", "중지한 기록이 있다면 공개 설정이 불가능합니다."
                 )
         );
     }
@@ -259,43 +326,6 @@ class RunningApiTest extends ApiTestSupport {
                     .build());
         }
         return telemetryRequests;
-    }
-
-    private static CreateCourseAndRunRequest setCourseNameBlank() {
-        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.setRunningName("");
-        return request;
-    }
-
-    private static CreateCourseAndRunRequest setHasPausedNull() {
-        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.setHasPaused(null);
-        return request;
-    }
-
-    private static CreateCourseAndRunRequest setRunningRecordDurationMinus() {
-        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.getRecord().setDuration(-1L);
-        return request;
-    }
-
-    private static CreateCourseAndRunRequest setHasPausedAndIsPublicInvalid() {
-        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.setHasPaused(true);
-        request.setIsPublic(true);
-        return request;
-    }
-
-    private static CreateCourseAndRunRequest setElevationGainInvalid() {
-        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.getRecord().setElevationGain(null);
-        return request;
-    }
-
-    private static CreateCourseAndRunRequest setElevationLossInvalid() {
-        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.getRecord().setElevationLoss(20);
-        return request;
     }
 
     private static CreateRunRequest validSoloCreateRunRequest() {

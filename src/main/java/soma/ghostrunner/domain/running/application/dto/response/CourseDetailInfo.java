@@ -4,7 +4,7 @@ import com.querydsl.core.annotations.QueryProjection;
 import lombok.Getter;
 
 @Getter
-public class CourseInfo {
+public class CourseDetailInfo {
 
     private Long id;
     private String name;
@@ -12,7 +12,7 @@ public class CourseInfo {
     private Long runnersCount;
 
     @QueryProjection
-    public CourseInfo(Long id, String name, Boolean isPublic, Long runnersCount) {
+    public CourseDetailInfo(Long id, String name, Boolean isPublic, Long runnersCount) {
         this.id = id;
         this.name = name;
         this.isPublic = isPublic;

@@ -35,4 +35,5 @@ public class RunRecordRequest {
     @NotNull
     @PositiveOrZero
     private Integer avgCadence; // spm
+
 }
