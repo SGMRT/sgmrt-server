@@ -13,7 +13,6 @@ import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
-import soma.ghostrunner.domain.running.application.dto.response.RunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -81,15 +80,22 @@ public class RunningQueryService {
         return ghostRuns.map(runningApiMapper::toGhostResponse);
     }
 
-    public CourseRankingResponse findUserRankingInCourse(Long courseId, Long memberId) {
-        Running bestRun = runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberId)
-            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
-
-        Integer rank = 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(
-            courseId, bestRun.getRunningRecord().getAveragePace())
-            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
+    public CourseRankingResponse findUserRankingDetailForCourse(Long courseId, Long memberId) {
+        Running bestRun = findBestPublicRunForCourse(courseId, memberId);
+        Integer rank = findPublicRankForCourse(courseId, bestRun);
 
         return runningApiMapper.toRankingResponse(bestRun, rank);
+    }
+
+    public Integer findPublicRankForCourse(Long courseId, Running running) {
+        return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(
+                        courseId, running.getRunningRecord().getAveragePace())
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
+    }
+
+    public Running findBestPublicRunForCourse(Long courseId, Long memberId) {
+        return runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
     }
 
     public Running findRunningByRunningId(Long id) {

@@ -48,8 +48,8 @@ public class CourseFacade {
         return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);
     }
 
-    public CourseRankingResponse findCourseRanking(Long courseId, Long userId) {
-        return runningQueryService.findUserRankingInCourse(courseId, userId);
+    public CourseRankingResponse findCourseRankingDetail(Long courseId, Long userId) {
+        return runningQueryService.findUserRankingDetailForCourse(courseId, userId);
     }
 
     public List<CourseGhostResponse> findTopRankingGhosts(Long courseId, int count) {
