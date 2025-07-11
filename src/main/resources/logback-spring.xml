@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration packagingData="true">
+
+
+    <!-- Time Stamp -->
+    <timestamp key="timestamp" datePattern="yyyy-MM-dd-HH-mm-ssSSS"/>
+    <!-- aws account -->
+    <springProperty scope="context" name="aws_access_key" source="cloud.aws.credentials.access-key"/>
+    <springProperty scope="context" name="aws_secret_key" source="cloud.aws.credentials.secret-key"/>
+
+
+    <!-- Color Converter -->
+    <conversionRule conversionWord="clr"
+                    converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
+    <conversionRule conversionWord="wex"
+                    converterClass="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter"/>
+    <conversionRule conversionWord="wEx"
+                    converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter"/>
+
+
+    <!-- Colored Logging Pattern -->
+    <property name="COLORED_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %clr(%5level) [%thread] [%X{requestId}] %clr(%-40.40logger{39}){cyan} : %msg%n"/>
+
+    <!-- UnColored Logging Pattern -->
+    <property name="UNCOLORED_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread] [%X{requestId}] %-40.40logger{39} : %msg%n"/>
+
+
+    <!-- Local Console Appender -->
+    <appender name="LOCAL_CONSOLE_APPENDER" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${COLORED_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Dev Console Appender -->
+    <appender name="DEV_CONSOLE_APPENDER" class="ca.pjer.logback.AwsLogsAppender">
+        <layout class="soma.ghostrunner.global.common.log.MaskingPatternLayout">
+            <pattern>${UNCOLORED_LOG_PATTERN}</pattern>
+        </layout>
+        <logGroupName>GhostRunner-Dev-Log-Group</logGroupName>
+        <logStreamUuidPrefix>GhostRunner-${spring.profiles.active}-${timestamp}</logStreamUuidPrefix>
+        <logRegion>ap-northeast-2</logRegion>
+        <maxBatchLogEvents>100</maxBatchLogEvents>
+        <maxFlushTimeMillis>10000</maxFlushTimeMillis>
+        <retentionTimeDays>7</retentionTimeDays>
+        <accessKeyId>${aws_access_key}</accessKeyId>
+        <secretAccessKey>${aws_secret_key}</secretAccessKey>
+    </appender>
+
+    <!-- Prod Console Appender -->
+    <appender name="PROD_CONSOLE_APPENDER" class="ca.pjer.logback.AwsLogsAppender">
+        <layout class="soma.ghostrunner.global.common.log.MaskingPatternLayout">
+            <pattern>${UNCOLORED_LOG_PATTERN}</pattern>
+            <maskPattern>"averagePace"\s*:\s*(\d+(\.\d+)?)</maskPattern>
+            <maskPattern>"startedAt"\s*:\s*(\d+)</maskPattern>
+            <maskPattern>"bpm"\s*:\s*(\d+)</maskPattern>
+            <maskPattern>"cadence"\s*:\s*(\d+)</maskPattern>
+            <maskPattern>"telemetries"\s*:\s*(\[[\s\S]*?\])</maskPattern>
+            <maskPattern>"recordInfo"\s*:\s*(\{[\s\S]*?\})</maskPattern>
+            <maskPattern>"record"\s*:\s*(\{[\s\S]*?\})</maskPattern>
+            <maskPattern>"runningName"\s*:\s*(\"([^"]+)")</maskPattern>
+        </layout>
+        <logGroupName>GhostRunner-Prod-Log-Group</logGroupName>
+        <logStreamUuidPrefix>GhostRunner-${spring.profiles.active}-${timestamp}</logStreamUuidPrefix>
+        <logRegion>ap-northeast-2</logRegion>
+        <maxBatchLogEvents>500</maxBatchLogEvents>
+        <maxFlushTimeMillis>30000</maxFlushTimeMillis>
+        <retentionTimeDays>7</retentionTimeDays>
+        <accessKeyId>${aws_access_key}</accessKeyId>
+        <secretAccessKey>${aws_secret_key}</secretAccessKey>
+    </appender>
+
+
+    <!-- 로컬 환경 -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="LOCAL_CONSOLE_APPENDER"/>
+        </root>
+    </springProfile>
+
+    <!-- 개발 환경 -->
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="DEV_CONSOLE_APPENDER"/>
+        </root>
+    </springProfile>
+
+    <!-- 운영 환경 -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="PROD_CONSOLE_APPENDER"/>
+        </root>
+    </springProfile>
+
+
+</configuration>
