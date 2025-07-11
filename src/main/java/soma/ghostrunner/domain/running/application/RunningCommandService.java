@@ -33,7 +33,6 @@ public class RunningCommandService {
 
     @Transactional
     public CreateCourseAndRunResponse createCourseAndRun(CreateRunCommand command, Long memberId) {
-
         Member member = memberService.findMemberById(memberId);
 
         ProcessedTelemetriesDto processedTelemetry = processTelemetry(command);
@@ -47,7 +46,6 @@ public class RunningCommandService {
 
     @Transactional
     public Long createRun(CreateRunCommand command, Long courseId, Long memberId) {
-
         Member member = memberService.findMemberById(memberId);
         verifyCourseIdIfGhostMode(command, courseId);
 
@@ -61,7 +59,7 @@ public class RunningCommandService {
 
     private void verifyCourseIdIfGhostMode(CreateRunCommand command, Long courseId) {
         if (command.mode().equals("GHOST")) {
-            Running ghostRunning = findRunningBy(command.ghostRunningId());
+            Running ghostRunning = findRunning(command.ghostRunningId());
             ghostRunning.verifyCourseId(courseId);
         }
     }
@@ -88,23 +86,22 @@ public class RunningCommandService {
 
     @Transactional
     public void updateRunningName(String name, Long memberId, Long runningId) {
-        Running running = findRunningBy(memberId, runningId);
+        Running running = findRunning(memberId, runningId);
         running.updateName(name);
     }
 
     @Transactional
     public void updateRunningPublicStatus(Long runningId) {
-        Running running = findRunningBy(runningId);
+        Running running = findRunning(runningId);
         running.updatePublicStatus();
     }
 
-    private Running findRunningBy(Long runningId) {
+    private Running findRunning(Long runningId) {
         return runningQueryService.findRunningByRunningId(runningId);
     }
 
-    private Running findRunningBy(Long memberId, Long runningId) {
+    private Running findRunning(Long memberId, Long runningId) {
         return runningQueryService.findRunningByRunningId(runningId, memberId);
-
     }
 
     private Course createAndSaveCourse(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry) {

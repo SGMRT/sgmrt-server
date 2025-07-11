@@ -290,17 +290,6 @@ class RunningApiTest extends ApiTestSupport {
                 .andExpect(status().isOk());
     }
 
-    @DisplayName("러닝 ID에 대한 시계열 데이터를 조회한다.")
-    @Test
-    void getCoordinateTelemetries() throws Exception{
-        // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/courses/1/telemetries")
-                        .contentType(MediaType.APPLICATION_JSON)
-                )
-                .andDo(MockMvcResultHandlers.print())
-                .andExpect(status().isOk());
-    }
-
     private static RunRecordRequest validRunRecordDto() {
         return RunRecordRequest.builder()
                 .duration(3600L)

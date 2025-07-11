@@ -219,7 +219,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     }
 
     private StartPoint createStartPoint() {
-        return StartPoint.fromCoordinates(37.545354, 34.7878);
+        return StartPoint.of(37.545354, 34.7878);
     }
 
     private CourseProfile createCourseProfile() {
