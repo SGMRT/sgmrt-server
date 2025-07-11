@@ -1,6 +1,6 @@
 package soma.ghostrunner.domain.running.application.dto;
 
-public record TelemetryDto(
+public record TelemetryDto (
         Long timeStamp,
         Double lat,
         Double lng,
