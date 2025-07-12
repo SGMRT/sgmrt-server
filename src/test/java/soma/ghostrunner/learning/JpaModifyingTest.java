@@ -30,6 +30,28 @@ public class JpaModifyingTest extends IntegrationTestSupport {
     @Autowired
     CourseRepository courseRepository;
 
+    @DisplayName("JPA deleteAll()은 N번 만큼 삭제 쿼리가 날라간다.")
+    @Test
+    void deleteAll() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse();
+        courseRepository.save(course);
+
+        Running running1 = createRunning(member, course);
+        Running running2 = createRunning(member, course);
+        Running running3 = createRunning(member, course);
+        runningRepository.saveAll(List.of(running1, running2, running3));
+
+        // when
+        runningRepository.deleteAll(List.of(running1, running2, running3));
+
+        // then
+        runningRepository.flush();
+     }
+
     @DisplayName("@Modifying을 clearAutomatically 없이 적용하면 1차 캐시를 타지 않고 DB에 직접 WRITE를 찌르기 때문에 " +
             "다시 조회한다면 1차 캐시에서 조회하여 DB와 동기화 문제가 발생한다.")
     @Test
