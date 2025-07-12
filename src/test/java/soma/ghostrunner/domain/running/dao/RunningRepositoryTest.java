@@ -21,6 +21,8 @@ import soma.ghostrunner.domain.running.domain.RunningRecord;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.tuple;
+
 class RunningRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
@@ -301,5 +303,79 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(firstRunning.getId()).isEqualTo(running1.getId());
     }
+
+    @DisplayName("러닝ID 리스트에 있는 러닝 기록을 조회한다.")
+    @Test
+    void findByIds() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse("테스트 코스");
+        courseRepository.save(course);
+
+        Running running1 = createRunning(member, course, "러닝 제목1");
+        Running running2 = createRunning(member, course, "러닝 제목2");
+        Running running3 = createRunning(member, course, "러닝 제목3");
+        Running running4 = createRunning(member, course, "러닝 제목4");
+        runningRepository.saveAll(List.of(running1, running2, running3, running4));
+
+        // when
+        List<Running> runnings = runningRepository.findByIds(List.of(running1.getId(), running2.getId(), running3.getId(), Long.MAX_VALUE));
+
+        // then
+        Assertions.assertThat(runnings)
+                .hasSize(3)
+                .extracting("id", "runningName")
+                .containsExactlyInAnyOrder(
+                        tuple(running1.getId(), "러닝 제목1"),
+                        tuple(running2.getId(), "러닝 제목2"),
+                        tuple(running3.getId(), "러닝 제목3")
+                );
+    }
+
+    private Running createRunning(Member testMember, Course testCourse, String runningName) {
+        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
+        return Running.of(runningName, RunningMode.SOLO, null, testRunningRecord, 1750729987181L,
+                true, false, "URL", testMember, testCourse);
+    }
+
+    @DisplayName("러닝 기록을 삭제한다.")
+    @Test
+    void deleteRunnings() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse("테스트 코스");
+        courseRepository.save(course);
+
+        Running running1 = createRunning(member, course, "러닝 제목1");
+        Running running2 = createRunning(member, course, "러닝 제목2");
+        Running running3 = createRunning(member, course, "러닝 제목3");
+        Running running4 = createRunning(member, course, "러닝 제목4");
+        runningRepository.saveAll(List.of(running1, running2, running3, running4));
+
+        // when
+        runningRepository.deleteAllByIdIn(List.of(running1.getId(), running2.getId(), running3.getId(), running4.getId()));
+
+        // then
+        List<Running> runnings = runningRepository.findByIds(List.of(running1.getId(), running2.getId(),
+                running3.getId(), running4.getId()));
+        Assertions.assertThat(runnings)
+                .hasSize(0);
+
+        List<Running> deletedRunnings = runningRepository.findByIdsNoMatterDeleted(List.of(running1.getId(),
+                running2.getId(), running3.getId(), running4.getId()));
+        Assertions.assertThat(deletedRunnings)
+                .hasSize(4)
+                .extracting("id", "runningName")
+                .containsExactlyInAnyOrder(
+                        tuple(running1.getId(), "러닝 제목1"),
+                        tuple(running2.getId(), "러닝 제목2"),
+                        tuple(running3.getId(), "러닝 제목3"),
+                        tuple(running4.getId(), "러닝 제목4")
+                );
+     }
 
 }

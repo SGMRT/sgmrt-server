@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
+import soma.ghostrunner.domain.running.api.dto.request.DeleteRunningRequest;
 import soma.ghostrunner.domain.running.api.dto.request.UpdateRunNameRequest;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
@@ -21,7 +21,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RunningApi {
 
-    private final RunningTelemetryQueryService runningTelemetryQueryService;
     private final RunningQueryService runningQueryService;
     private final RunningCommandService runningCommandService;
     private final RunningApiMapper mapper;
@@ -64,6 +63,11 @@ public class RunningApi {
     @PatchMapping("/v1/runs/{runningId}/isPublic")
     public void patchRunningPublicStatus(@PathVariable Long runningId) {
         runningCommandService.updateRunningPublicStatus(runningId);
+    }
+
+    @DeleteMapping("/v1/runs")
+    public void deleteRunnings(@RequestBody @Valid DeleteRunningRequest request) {
+        runningCommandService.deleteRunnings(request.getRunningIds());
     }
 
 }

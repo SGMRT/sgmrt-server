@@ -26,8 +26,8 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.assertj.core.api.BDDAssertions.tuple;
 import static org.mockito.BDDMockito.*;
+
 class RunningCommandServiceTest extends IntegrationTestSupport {
 
     @Autowired
@@ -296,5 +296,30 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     private RunningRecord createRunningRecord() {
         return RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
     }
-  
+
+    @DisplayName("N개의 러닝 데이터를 삭제한다.")
+    @Test
+    void deleteRunnings() {
+        // given
+        Member member = createMember("테스트 유저");
+        memberRepository.save(member);
+
+        Course course1 = createCourse();
+        Course course2 = createCourse();
+        courseRepository.saveAll(List.of(course1, course2));
+
+        Running running1 = createRunning(member, course1);
+        Running running2 = createRunning(member, course1);
+        Running running3 = createRunning(member, course2);
+        runningRepository.saveAll(List.of(running1, running2, running3));
+
+        // when
+        List<Long> runningIds = List.of(running1.getId(), running2.getId(), running3.getId());
+        runningCommandService.deleteRunnings(runningIds);
+
+        // then
+        List<Running> runnings = runningRepository.findByIds(List.of(running1.getId(), running2.getId(), running3.getId()));
+        Assertions.assertThat(runnings.size()).isEqualTo(0);
+    }
+
 }

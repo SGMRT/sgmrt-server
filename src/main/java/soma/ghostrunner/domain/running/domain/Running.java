@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.running.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SoftDelete;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
@@ -10,6 +11,7 @@ import soma.ghostrunner.global.common.error.ErrorCode;
 
 @Entity
 @Table(name = "running_record")
+@SoftDelete
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Running extends BaseTimeEntity {
 
