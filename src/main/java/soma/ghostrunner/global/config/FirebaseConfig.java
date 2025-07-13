@@ -17,7 +17,6 @@ public class FirebaseConfig {
     FirebaseOptions options = FirebaseOptions.builder()
         .setCredentials(GoogleCredentials.fromStream(new ClassPathResource("firebase-private-key.json").getInputStream()))
         .build();
-
     if (FirebaseApp.getApps().isEmpty()) {
       return FirebaseApp.initializeApp(options);
     } else {
