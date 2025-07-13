@@ -10,7 +10,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 import soma.ghostrunner.domain.auth.AuthIdResolver;
 import soma.ghostrunner.domain.auth.SignUpRequest;
-import soma.ghostrunner.domain.member.MemberService;
+import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberNotFoundException;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;

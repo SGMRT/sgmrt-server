@@ -12,7 +12,7 @@ import soma.ghostrunner.domain.running.application.dto.request.RunRecordDto;
 import soma.ghostrunner.domain.running.domain.support.TelemetryCalculator;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.Member;
-import soma.ghostrunner.domain.member.MemberService;
+import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;

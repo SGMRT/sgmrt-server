@@ -1,8 +1,11 @@
-package soma.ghostrunner.domain.member;
+package soma.ghostrunner.domain.member.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.member.MemberNotFoundException;
+import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.global.common.error.ErrorCode;
 
 @Service
