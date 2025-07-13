@@ -95,13 +95,6 @@ public class RunningQueryService {
         return runningRepository.findPublicRunStatisticsByCourseId(courseId);
     }
 
-    public CourseRankingResponse findUserRankingDetailForCourse(Long courseId, Long memberId) {
-        Running bestRun = findBestPublicRunForCourse(courseId, memberId);
-        Integer rank = findPublicRankForCourse(courseId, bestRun);
-
-        return runningApiMapper.toRankingResponse(bestRun, rank);
-    }
-
     public Integer findPublicRankForCourse(Long courseId, Running running) {
         return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(
                         courseId, running.getRunningRecord().getAveragePace())

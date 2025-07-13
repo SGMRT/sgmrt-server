@@ -3,10 +3,9 @@ package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
@@ -16,6 +15,7 @@ import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
+import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
 
@@ -36,12 +36,14 @@ public class CourseFacade {
                 minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerId);
     }
 
+    @Transactional(readOnly = true)
     public CourseDetailedResponse findCourse(Long courseId) {
         Course course = courseService.findCourseById(courseId);
         CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseId)
                 .orElse(new CourseRunStatisticsDto());
 
-        return courseMapper.toCourseDetailedResponse(course,
+        return courseMapper.toCourseDetailedResponse(
+                course,
                 courseStatistics.getAvgCompletionTime(), courseStatistics.getAvgFinisherPace(),
                 courseStatistics.getAvgFinisherCadence(), courseStatistics.getLowestFinisherPace());
     }
@@ -58,14 +60,17 @@ public class CourseFacade {
         return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);
     }
 
+    @Transactional(readOnly = true)
     public CourseRankingResponse findCourseRankingDetail(Long courseId, Long userId) {
-        return runningQueryService.findUserRankingDetailForCourse(courseId, userId);
+        Running running = runningQueryService.findBestPublicRunForCourse(courseId, userId);
+        Integer ranking = runningQueryService.findPublicRankForCourse(courseId, running);
+
+        return courseMapper.toRankingResponse(running, ranking);
     }
 
     public List<CourseGhostResponse> findTopRankingGhosts(Long courseId, int count) {
         Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findTopRankingGhostsByCourseId(courseId, count);
         return rankedGhostsPage.getContent();
     }
-
 
 }
