@@ -16,4 +16,13 @@ public class MemberService {
         return memberRepository.findById(id)
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, id));
     }
+
+    public Member findMemberByAuthUid(String authUid) {
+        return memberRepository.findByAuthUid(authUid)
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    public boolean isMemberExistsByAuthUid(String firebaseUid) {
+        return memberRepository.existsByAuthUid(firebaseUid);
+    }
 }
