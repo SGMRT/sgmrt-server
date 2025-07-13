@@ -20,6 +20,10 @@ public enum ErrorCode {
     INVALID_JSON_TYPE("G-007", BAD_REQUEST, "Json 파싱 실패 혹은 올바르지 않은 시간 형식"),
     ENTITY_NOT_FOUND("G-008", NOT_FOUND, "존재하지 않는 엔티티"),
 
+    // Auth
+    AUTHENTICATION_FAILED("A-001", UNAUTHORIZED, "인증 실패"),
+    ACCESS_DENIED("A-002", FORBIDDEN, "허용되지 않은 접근"),
+
     // Member
     MEMBER_NOT_FOUND("M-001", NOT_FOUND, "존재하지 않는 회원"),
     MEMBER_ALREADY_EXISTED("M-002", CONFLICT, "이미 존재하는 회원"),
