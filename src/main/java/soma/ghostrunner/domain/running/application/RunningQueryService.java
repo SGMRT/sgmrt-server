@@ -3,9 +3,12 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
 import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
@@ -21,6 +24,7 @@ import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
 
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -78,6 +82,17 @@ public class RunningQueryService {
         validateSortProperty(pageable);
         Page<Running> ghostRuns = runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
         return ghostRuns.map(runningApiMapper::toGhostResponse);
+    }
+
+    public Page<CourseGhostResponse> findTopRankingGhostsByCourseId(
+            Long courseId, Integer count) {
+        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
+        Pageable topNPageable = PageRequest.of(0, count, defaultSort);
+        return findPublicGhostRunsByCourseId(courseId, topNPageable);
+    }
+
+    public Optional<CourseRunStatisticsDto> findCourseRunStatistics(Long courseId) {
+        return runningRepository.findPublicRunStatisticsByCourseId(courseId);
     }
 
     public CourseRankingResponse findUserRankingDetailForCourse(Long courseId, Long memberId) {

@@ -7,6 +7,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.CourseMapper;
+import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
@@ -22,6 +25,8 @@ public class CourseFacade {
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
 
+    private final CourseMapper courseMapper;
+
     public List<CourseResponse> findCourses(
             Double lat, Double lng, Integer radiusM,
             Integer minDistanceM, Integer maxDistanceM,
@@ -32,8 +37,13 @@ public class CourseFacade {
     }
 
     public CourseDetailedResponse findCourse(Long courseId) {
-        // needs refactoring
-        return courseService.getCourse(courseId);
+        Course course = courseService.findCourseById(courseId);
+        CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseId)
+                .orElse(new CourseRunStatisticsDto());
+
+        return courseMapper.toCourseDetailedResponse(course,
+                courseStatistics.getAvgCompletionTime(), courseStatistics.getAvgFinisherPace(),
+                courseStatistics.getAvgFinisherCadence(), courseStatistics.getLowestFinisherPace());
     }
 
     public void updateCourse(Long courseId, CoursePatchRequest request) {
@@ -53,10 +63,7 @@ public class CourseFacade {
     }
 
     public List<CourseGhostResponse> findTopRankingGhosts(Long courseId, int count) {
-        Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findPublicGhostRunsByCourseId(
-                courseId,
-                PageRequest.of(0, count, Sort.by(Sort.Direction.ASC, "runningRecord.averagePace"))
-        );
+        Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findTopRankingGhostsByCourseId(courseId, count);
         return rankedGhostsPage.getContent();
     }
 
