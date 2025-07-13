@@ -9,14 +9,9 @@ import org.springframework.data.web.PagedModel;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseFacade;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
-import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
-import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
-import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
-import soma.ghostrunner.domain.course.dto.response.CourseResponse;
+import soma.ghostrunner.domain.course.dto.response.*;
 
 import java.util.List;
-
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 
 @RestController
 @RequiredArgsConstructor
@@ -80,9 +75,10 @@ public class CourseApi {
         return courseFacade.findTopRankingGhosts(courseId, count);
     }
 
-    @GetMapping("/...")
-    public List<TelemetryDto> findCourseTelemetry() {
-        return null;
+    @GetMapping("/{courseId}/first-telemetry")
+    public CourseCoordinatesResponse getCourseCoordinates(
+            @PathVariable("courseId") Long courseId) {
+        return courseFacade.findCourseFirstRunCoordinatesWithDetails(courseId);
     }
 
 }
