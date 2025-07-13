@@ -25,6 +25,9 @@ public class Member extends BaseTimeEntity {
     @Column(name = "profile_picture_url", length = 2048)
     private String profilePictureUrl;
 
+    @Column(name = "auth_uid", unique = true)
+    private String authUid;
+
     @Builder
     public Member(String nickname, String profilePictureUrl) {
         this.nickname = nickname;
