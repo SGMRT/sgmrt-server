@@ -4,8 +4,16 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.checkerframework.checker.units.qual.A;
 
 @Embeddable
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class MemberBioInfo {
 
     @Column(name = "gender")
@@ -13,8 +21,8 @@ public class MemberBioInfo {
     private Gender gender;
 
     @Column(name = "weight")
-    private double weight;
+    private Integer weight;
 
     @Column(name = "height")
-    private double height;
+    private Integer height;
 }
