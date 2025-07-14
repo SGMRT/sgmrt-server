@@ -15,14 +15,14 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/firebase-sign-in")
+    @PostMapping("/firebase-signin")
     public SignInResponse firebaseSignIn(
             @RequestHeader("Authorization") String authorizationHeader) {
         return authService.signIn(authorizationHeader);
     }
 
 
-    @PostMapping("/firebase-sign-up")
+    @PostMapping("/firebase-signup")
     public SignUpResponse firebaseSignUp(
             @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody SignUpRequest signUpRequest) {
