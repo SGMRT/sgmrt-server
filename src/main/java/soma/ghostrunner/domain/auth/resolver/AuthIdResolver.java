@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.auth;
+package soma.ghostrunner.domain.auth.resolver;
 
 import org.springframework.security.core.AuthenticationException;
 

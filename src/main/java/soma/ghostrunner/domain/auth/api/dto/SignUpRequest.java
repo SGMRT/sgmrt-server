@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.auth;
+package soma.ghostrunner.domain.auth.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

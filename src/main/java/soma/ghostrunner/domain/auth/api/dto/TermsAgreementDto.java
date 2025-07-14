@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.auth;
+package soma.ghostrunner.domain.auth.api.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
