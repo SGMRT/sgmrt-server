@@ -10,9 +10,11 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 import soma.ghostrunner.domain.auth.AuthIdResolver;
 import soma.ghostrunner.domain.auth.SignUpRequest;
+import soma.ghostrunner.domain.auth.TermsAgreementDto;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberNotFoundException;
+import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 
 import java.time.LocalDateTime;
@@ -36,31 +38,47 @@ public class AuthService {
         }
     }
 
-    // todo
-    // 헤더에 firebase id token을 입력으로 받음
-    // 추가적으로 약관 동의 여부, 닉네임, 프로필 사진 url (presigned url), 성별, 그리고 nullable한 키 몸무게를 입력으로 받음
-    // - firebase uuid가 존재하는 경우 예외 반환
-    // - 회원 생성 후 필요하다고 판단되는 데이터 반환
     @Transactional
     public Object signUp(String authorizationHeader, SignUpRequest signUpRequest) {
         String externalAuthId = resolveAuthIdOrThrow(authorizationHeader);
         if(memberService.isMemberExistsByAuthUid(externalAuthId))
             throw new AccessDeniedException("이미 존재하는 사용자");
 
-        TermsAgreement termsAgreement = TermsAgreement.builder()
-                .isServiceTermsAgreed(signUpRequest.getAgreement().isServiceTermsAgreed())
-                .isDataConsignmentAgreed(signUpRequest.getAgreement().isDataConsignmentAgreed())
-                .isPrivacyPolicyAgreed(signUpRequest.getAgreement().isPrivacyPolicyAgreed())
-                .isThirdPartyDataSharingAgreed(signUpRequest.getAgreement().isThirdPartyDataSharingAgreed())
-                .isMarketingAgreed(signUpRequest.getAgreement().isMarketingAgreed())
-                .agreedAt(LocalDateTime.now())
-                .build();
+        TermsAgreement termsAgreement = createTermsAgreement(signUpRequest.getAgreement());
         if(!termsAgreement.areAllMandatoryTermsAgreed())
             throw new IllegalArgumentException("모든 필수 약관이 동의되어야 함");
 
+        MemberCreationRequest creationRequest = createMemberCreationRequest(externalAuthId, signUpRequest, termsAgreement);
+        Member newMember = memberService.createMember(creationRequest);
 
-        Member newMember = memberService.createMember(externalAuthId, signUpRequest);
+        // todo 토큰 발급 후 dto에 member id, access token, refresh token 받아 반환
+        return null;
+    }
 
+    private TermsAgreement createTermsAgreement(TermsAgreementDto agreementDto) {
+        return TermsAgreement.builder()
+                .isServiceTermsAgreed(agreementDto.isServiceTermsAgreed())
+                .isPrivacyPolicyAgreed(agreementDto.isPrivacyPolicyAgreed())
+                .isDataConsignmentAgreed(agreementDto.isDataConsignmentAgreed())
+                .isThirdPartyDataSharingAgreed(agreementDto.isThirdPartyDataSharingAgreed())
+                .isMarketingAgreed(agreementDto.isMarketingAgreed())
+                .agreedAt(LocalDateTime.now())
+                .build();
+    }
+
+    private MemberCreationRequest createMemberCreationRequest(
+            String externalAuthId,
+            SignUpRequest signUpRequest,
+            TermsAgreement termsAgreement) {
+        return MemberCreationRequest.builder()
+                .externalAuthId(externalAuthId)
+                .profileImageUrl(signUpRequest.getProfileImageUrl())
+                .nickname(signUpRequest.getNickname())
+                .gender(signUpRequest.getGender())
+                .height(signUpRequest.getHeight())
+                .weight(signUpRequest.getWeight())
+                .termsAgreement(termsAgreement)
+                .build();
     }
 
     private String resolveAuthIdOrThrow(String authorizationHeader) {
