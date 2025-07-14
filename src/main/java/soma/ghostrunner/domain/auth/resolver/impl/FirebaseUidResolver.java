@@ -20,7 +20,7 @@ public class FirebaseUidResolver implements AuthIdResolver {
             FirebaseToken decodedToken = firebaseAuth.verifyIdToken(firebaseToken);
             return decodedToken.getUid();
         } catch (FirebaseAuthException e) {
-            throw new AuthenticationServiceException("Firebase ID 토큰 해석에 실패했습니다.");
+            throw new AuthenticationServiceException("Firebase ID 토큰 해석 실패 : " + firebaseToken);
         }
     }
 }

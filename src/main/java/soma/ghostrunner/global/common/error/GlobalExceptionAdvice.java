@@ -84,14 +84,14 @@ public class GlobalExceptionAdvice {
         return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
     }
 
-    // Spring Security 상에서의 인증 실패
+    // 인증 실패
     @ExceptionHandler(AuthenticationException.class)
     protected ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException e) {
         log.error("handleAuthenticationException", e);
         return createErrorResponse(ErrorCode.AUTHENTICATION_FAILED);
     }
 
-    // Spring Security 상에서의 인가 실패
+    // 인가 실패
     @ExceptionHandler(AccessDeniedException.class)
     protected ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
         log.error("handleAccessDeniedException", e);
