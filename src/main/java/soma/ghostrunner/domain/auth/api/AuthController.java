@@ -19,7 +19,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // 로그인 -> fb id token 기반
     @PostMapping("/firebase-sign-in")
     public SignInResponse firebaseSignIn(
             @RequestHeader("Authorization") String authorizationHeader) {
@@ -27,7 +26,6 @@ public class AuthController {
     }
 
 
-    // 회원가입 -> 입력한 정보를 받아서 회원 삽입
     @PostMapping("/firebase-sign-up")
     public SignUpResponse firebaseSignUp(
             @RequestHeader("Authorization") String authorizationHeader,
