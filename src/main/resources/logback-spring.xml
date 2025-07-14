@@ -38,7 +38,7 @@
             <pattern>${UNCOLORED_LOG_PATTERN}</pattern>
         </layout>
         <logGroupName>GhostRunner-Dev-Log-Group</logGroupName>
-        <logStreamUuidPrefix>GhostRunner-${spring.profiles.active}-${timestamp}</logStreamUuidPrefix>
+        <logStreamUuidPrefix>GhostRunner-Dev-LogStream-${timestamp}</logStreamUuidPrefix>
         <logRegion>ap-northeast-2</logRegion>
         <maxBatchLogEvents>100</maxBatchLogEvents>
         <maxFlushTimeMillis>10000</maxFlushTimeMillis>
@@ -61,7 +61,7 @@
             <maskPattern>"runningName"\s*:\s*(\"([^"]+)")</maskPattern>
         </layout>
         <logGroupName>GhostRunner-Prod-Log-Group</logGroupName>
-        <logStreamUuidPrefix>GhostRunner-${spring.profiles.active}-${timestamp}</logStreamUuidPrefix>
+        <logStreamUuidPrefix>GhostRunner-Prod-LogStream-${timestamp}</logStreamUuidPrefix>
         <logRegion>ap-northeast-2</logRegion>
         <maxBatchLogEvents>500</maxBatchLogEvents>
         <maxFlushTimeMillis>30000</maxFlushTimeMillis>
