@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
+import soma.ghostrunner.domain.auth.api.dto.AuthMapper;
+import soma.ghostrunner.domain.auth.api.dto.response.SignInResponse;
+import soma.ghostrunner.domain.auth.api.dto.response.SignUpResponse;
 import soma.ghostrunner.domain.auth.resolver.AuthIdResolver;
 import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
 import soma.ghostrunner.domain.auth.api.dto.TermsAgreementDto;
@@ -26,21 +29,22 @@ public class AuthService {
 
     private final MemberService memberService;
     private final AuthIdResolver authIdResolver;
+    private final AuthMapper authMapper;
 
-    public Object signIn(String authorizationHeader) {
+    public SignInResponse signIn(String authorizationHeader) {
         String externalAuthId = resolveAuthIdOrThrow(authorizationHeader);
         try {
             Member member = memberService.findMemberByAuthUid(externalAuthId);
             // todo access token & refresh token 반환
 
-            return null;
+            return authMapper.toSignInResponse(member.getUuid(), "accessToken", "refreshToken");
         } catch (MemberNotFoundException e) {
             throw new AuthenticationServiceException("존재하지 않는 사용자");
         }
     }
 
     @Transactional
-    public Object signUp(String authorizationHeader, SignUpRequest signUpRequest) {
+    public SignUpResponse signUp(String authorizationHeader, SignUpRequest signUpRequest) {
         String externalAuthId = resolveAuthIdOrThrow(authorizationHeader);
         if(memberService.isMemberExistsByAuthUid(externalAuthId))
             throw new AccessDeniedException("이미 존재하는 사용자");
@@ -55,7 +59,7 @@ public class AuthService {
         Member newMember = memberService.createMember(creationRequest);
 
         // todo 토큰 발급 후 dto에 member id, access token, refresh token 받아 반환
-        return null;
+        return authMapper.toSignUpResponse(newMember.getUuid(), "accessToken", "refreshToken");
     }
 
     private TermsAgreement createTermsAgreement(TermsAgreementDto agreementDto) {
