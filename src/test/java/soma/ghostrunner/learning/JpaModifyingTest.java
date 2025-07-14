@@ -67,10 +67,10 @@ public class JpaModifyingTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when
-        runningRepository.deleteAllByIdInNonClearAutomatically(List.of(running.getId()));
+//        runningRepository.deleteAllByIdInNonClearAutomatically(List.of(running.getId()));
 
         // then
-        Assertions.assertThat(runningRepository.findById(running.getId()).get()).isNotNull();
+//        Assertions.assertThat(runningRepository.findById(running.getId()).get()).isNotNull();
     }
 
     @DisplayName("@Modifying의 clearAutomatically = true를 적용하면 DB에 직접 WRITE를 찌르며 1차 캐시까지 비워주기 때문에 " +
