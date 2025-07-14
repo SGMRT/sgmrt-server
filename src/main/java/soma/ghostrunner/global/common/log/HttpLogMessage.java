@@ -79,15 +79,27 @@ public class HttpLogMessage {
         return (ip == null || ip.isEmpty()) ? request.getRemoteAddr() : ip;
     }
 
+//    private static Map<String, String> extractHeaders(ContentCachingRequestWrapper request) {
+//        Map<String, String> result = new HashMap<>();
+//        for (String header : LOGGABLE_HEADERS) {
+//            if (request.getHeader(header) != null) {
+//                result.put(header, request.getHeader(header));
+//            } else {
+//                result.put(header, "EMPTY");
+//            }
+//        }
+//        return result;
+//    }
+
     private static Map<String, String> extractHeaders(ContentCachingRequestWrapper request) {
         Map<String, String> result = new HashMap<>();
-        for (String header : LOGGABLE_HEADERS) {
-            if (request.getHeader(header) != null) {
-                result.put(header, request.getHeader(header));
-            } else {
-                result.put(header, "EMPTY");
-            }
-        }
+        LOGGABLE_HEADERS.forEach(lh -> {
+                    if (request.getHeader(lh) != null) {
+                        result.put(lh, request.getHeader(lh));
+                    } else {
+                        result.put(lh, EMPTY_BODY_MESSAGE);
+                    }
+                });
         return result;
     }
 
