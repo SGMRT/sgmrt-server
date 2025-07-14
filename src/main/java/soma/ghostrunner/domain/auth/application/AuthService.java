@@ -39,7 +39,7 @@ public class AuthService {
 
             return authMapper.toSignInResponse(member.getUuid(), "accessToken", "refreshToken");
         } catch (MemberNotFoundException e) {
-            throw new AuthenticationServiceException("존재하지 않는 사용자");
+            throw new AccessDeniedException("존재하지 않는 사용자");
         }
     }
 
