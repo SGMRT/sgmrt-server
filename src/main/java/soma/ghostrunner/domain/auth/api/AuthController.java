@@ -2,17 +2,13 @@ package soma.ghostrunner.domain.auth.api;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
 import soma.ghostrunner.domain.auth.api.dto.response.SignInResponse;
 import soma.ghostrunner.domain.auth.api.dto.response.SignUpResponse;
 import soma.ghostrunner.domain.auth.application.AuthService;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/auth")
 public class AuthController {
