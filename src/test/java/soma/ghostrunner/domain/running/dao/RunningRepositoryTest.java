@@ -13,13 +13,14 @@ import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
+import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -376,6 +377,57 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                         tuple(running3.getId(), "러닝 제목3"),
                         tuple(running4.getId(), "러닝 제목4")
                 );
-     }
+    }
+
+    @DisplayName("시간, 러닝 ID를 기준으로 커서 페이징 방식을 활용해 조회한다.")
+    @Test
+    void findRunInfosByCursorIds() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course1 = createCourse();
+        Course course2 = createCourse();
+        Course course3 = createCourse();
+        List<Course> courses = List.of(course1, course2, course3);
+        courseRepository.saveAll(courses);
+
+        Random random = new Random();
+        List<Running> runnings = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 3)), member, random.nextLong()));
+        }
+        runningRepository.saveAll(runnings);
+
+        List<Running> sortedRunnings = runnings.stream()
+                .sorted(Comparator.comparing(Running::getStartedAt).reversed())
+                .toList();
+
+        // when
+        List<RunInfo> firstRunInfos = runningRepository.findRunInfosByCursorIds(null, null);
+        RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
+        List<RunInfo> secondRunInfos = runningRepository.findRunInfosByCursorIds(lastOfFirstRunInfo.getStartedAt(), lastOfFirstRunInfo.getRunningId());
+
+        // then
+        IntStream.range(0, firstRunInfos.size()).forEach(idx -> {
+            Assertions.assertThat(firstRunInfos.get(idx).getRunningId()).isEqualTo(sortedRunnings.get(idx).getId());
+            Assertions.assertThat(firstRunInfos.get(idx).getName()).isEqualTo(sortedRunnings.get(idx).getRunningName());
+            Assertions.assertThat(firstRunInfos.get(idx).getStartedAt()).isEqualTo(sortedRunnings.get(idx).getStartedAt());
+        });
+        IntStream.range(0, secondRunInfos.size()).forEach(idx -> {
+            Assertions.assertThat(secondRunInfos.get(idx).getRunningId()).isEqualTo(sortedRunnings.get(20 + idx).getId());
+            Assertions.assertThat(secondRunInfos.get(idx).getName()).isEqualTo(sortedRunnings.get(20 + idx).getRunningName());
+            Assertions.assertThat(secondRunInfos.get(idx).getStartedAt()).isEqualTo(sortedRunnings.get(20 + idx).getStartedAt());
+        });
+    }
+
+    private Running createRunning(String runningName, Course course, Member member, Long startedAt) {
+        return Running.of(runningName, RunningMode.SOLO, null, createRunningRecord(), startedAt,
+                true, false, "시계열 URL", member, course);
+    }
+
+    private RunningRecord createRunningRecord() {
+        return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
+    }
 
 }

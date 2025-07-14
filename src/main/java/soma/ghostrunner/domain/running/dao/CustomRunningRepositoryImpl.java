@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.running.dao;
 
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.domain.QRunning;
 
+import java.util.List;
 import java.util.Optional;
 
 import static soma.ghostrunner.domain.course.domain.QCourse.course;
@@ -16,6 +18,8 @@ import static soma.ghostrunner.domain.running.domain.QRunning.running;
 @Repository
 @RequiredArgsConstructor
 public class CustomRunningRepositoryImpl implements CustomRunningRepository {
+
+    private final int DEFAULT_PAGE_SIZE = 20;
 
     private final JPAQueryFactory queryFactory;
 
@@ -110,6 +114,32 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         .join(running.member, member)
                         .where(running.id.eq(runningId))
                         .fetchOne());
+    }
+
+    @Override
+    public List<RunInfo> findRunInfosByCursorIds(Long cursorStartedAt, Long cursorRunningId) {
+        return queryFactory
+                .select(new QRunInfo(
+                        running.id, running.runningName, running.startedAt,
+                        new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
+                                running.runningRecord.averagePace, running.runningRecord.cadence),
+                        new QCourseInfo(running.course.id, running.course.name, running.course.isPublic)
+                ))
+                .from(running)
+                .join(running.course, course)
+                .where(cursorCondition(cursorRunningId, cursorStartedAt))
+                .orderBy(running.startedAt.desc(), running.id.desc())
+                .limit(DEFAULT_PAGE_SIZE)
+                .fetch();
+    }
+
+    private BooleanExpression cursorCondition(Long cursorRunningId, Long cursorStartedAt) {
+        if (cursorRunningId == null || cursorStartedAt == null) {
+            return null;
+        }
+        return running.startedAt.lt(cursorStartedAt)
+                .or(running.startedAt.eq(cursorStartedAt)
+                        .and(running.id.lt(cursorRunningId)));
     }
 
 }

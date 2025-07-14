@@ -11,10 +11,7 @@ import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
 import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
-import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
-import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
-import soma.ghostrunner.domain.running.application.dto.response.RunDetailInfo;
-import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
+import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
@@ -129,6 +126,10 @@ public class RunningQueryService {
                     throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
                 };
             });
+    }
+
+    public List<RunInfo> findRunnings(Long cursorStartedAt, Long cursorRunningId) {
+        return runningRepository.findRunInfosByCursorIds(cursorStartedAt, cursorRunningId);
     }
 
 }

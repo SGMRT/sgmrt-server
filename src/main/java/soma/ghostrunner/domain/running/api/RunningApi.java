@@ -10,6 +10,7 @@ import soma.ghostrunner.domain.running.api.dto.request.DeleteRunningRequest;
 import soma.ghostrunner.domain.running.api.dto.request.UpdateRunNameRequest;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
+import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
@@ -68,6 +69,12 @@ public class RunningApi {
     @DeleteMapping("/v1/runs")
     public void deleteRunnings(@RequestBody @Valid DeleteRunningRequest request) {
         runningCommandService.deleteRunnings(request.getRunningIds());
+    }
+
+    @GetMapping("/v1/runs")
+    public List<RunInfo> getRunInfos(@RequestParam(required = false) Long cursorStartedAt,
+                                     @RequestParam(required = false) Long cursorRunningId) {
+        return runningQueryService.findRunnings(cursorStartedAt, cursorRunningId);
     }
 
 }

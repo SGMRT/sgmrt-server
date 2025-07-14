@@ -14,12 +14,17 @@ import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.*;
@@ -104,6 +109,144 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
 
     private RunningRecord createRunningRecord() {
         return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
+    }
+
+    @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 러닝 시작순으로 정렬된다.")
+    @Test
+    void findRunningsSortedByStartedAt() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course1 = createCourse();
+        Course course2 = createCourse();
+        Course course3 = createCourse();
+        List<Course> courses = List.of(course1, course2, course3);
+        courseRepository.saveAll(courses);
+
+        Random random = new Random();
+        List<Running> runnings = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 3)), member, random.nextLong()));
+        }
+        runningRepository.saveAll(runnings);
+
+        List<Running> sortedRunnings = runnings.stream()
+                .sorted(Comparator.comparing(Running::getStartedAt).reversed())
+                .toList();
+
+        // when
+        List<RunInfo> runInfos = new ArrayList<>();
+        runInfos.addAll(runningQueryService.findRunnings(null, null));
+        for (int i = 0; i < 4; i++) {
+            RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
+            runInfos.addAll(runningQueryService.findRunnings(lastRunInfo.getStartedAt(), lastRunInfo.getRunningId()));
+        }
+
+        // then
+        Assertions.assertThat(runInfos).hasSize(100);
+        IntStream.range(0, runInfos.size()).forEach(idx -> {
+            Assertions.assertThat(runInfos.get(idx).getRunningId()).isEqualTo(sortedRunnings.get(idx).getId());
+            Assertions.assertThat(runInfos.get(idx).getName()).isEqualTo(sortedRunnings.get(idx).getRunningName());
+            Assertions.assertThat(runInfos.get(idx).getStartedAt()).isEqualTo(sortedRunnings.get(idx).getStartedAt());
+        });
+    }
+
+    private Running createRunning(String runningName, Course course, Member member, Long startedAt) {
+        return Running.of(runningName, RunningMode.SOLO, null, createRunningRecord(), startedAt,
+                true, false, "시계열 URL", member, course);
+    }
+
+    @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 시작시간이 같다면 ID를 기반으로 정렬된다.")
+    @Test
+    void findRunningsSortedByIdWhenSameStartedAt() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course1 = createCourse();
+        Course course2 = createCourse();
+        Course course3 = createCourse();
+        List<Course> courses = List.of(course1, course2, course3);
+        courseRepository.saveAll(courses);
+
+        Random random = new Random();
+        List<Running> runnings = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 3)), member, 20L - (long) i));
+        }
+        runningRepository.saveAll(runnings);
+
+        Running lastRunning = runnings.get(runnings.size() - 1);
+        runningRepository.save(createRunning(lastRunning.getRunningName(), lastRunning.getCourse(), member, lastRunning.getStartedAt()));
+
+        // when
+        List<RunInfo> firstRunInfos = runningQueryService.findRunnings(null, null);
+        RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
+        List<RunInfo> secondRunInfos = runningQueryService.findRunnings(lastOfFirstRunInfo.getStartedAt(), lastOfFirstRunInfo.getRunningId());
+
+        // then
+        for (RunInfo firstRunInfo : firstRunInfos) {
+            System.out.println(firstRunInfo.getRunningId());
+        }
+        System.out.println(secondRunInfos.get(0).getRunningId());
+        Assertions.assertThat(secondRunInfos).hasSize(1);
+        Assertions.assertThat(lastOfFirstRunInfo.getStartedAt()).isEqualTo(secondRunInfos.get(0).getStartedAt());
+        Assertions.assertThat(lastOfFirstRunInfo.getRunningId()).isEqualTo(secondRunInfos.get(0).getRunningId()+1L);
+    }
+
+    @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 비공개 코스라면 코스 정보는 Null로 조회된다.")
+    @Test
+    void findRunningsWithNullCourse() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course privateCourse = createCourse();
+        privateCourse.setName("비공개 코스 러닝");
+        Course publicCourse = createCourse();
+        publicCourse.setIsPublic(true);
+        publicCourse.setName("공개 코스 러닝");
+        List<Course> courses = List.of(privateCourse, publicCourse);
+        courseRepository.saveAll(courses);
+
+        Running publicRunning = createRunning("공개 코스 러닝", publicCourse, member, 20L);
+        Running privateRunning = createRunning("비공개 코스 러닝", privateCourse, member, 20L);
+        runningRepository.saveAll(List.of(publicRunning, privateRunning));
+
+        // when
+        List<RunInfo> runInfos = runningQueryService.findRunnings(null, null);
+
+        // then
+        RunInfo privateRunInfo = runInfos.get(0);
+        Assertions.assertThat(privateRunInfo.getRunningId()).isEqualTo(privateRunning.getId());
+        Assertions.assertThat(privateRunInfo.getCourseInfo().getName()).isNull();
+
+        RunInfo publicRunInfo = runInfos.get(1);
+        Assertions.assertThat(publicRunInfo.getRunningId()).isEqualTo(publicRunning.getId());
+        Assertions.assertThat(publicRunInfo.getCourseInfo().getName()).isEqualTo("공개 코스 러닝");
+    }
+
+    @DisplayName("코스 보기 방식으로 러닝 기록을 조회한다.")
+    @Test
+    void findRunningsGroupedByCourse() {
+        // given
+
+        // when
+
+        // then
+
+    }
+
+    @DisplayName("갤러리 보기 방식으로 러닝 기록을 조회한다.")
+    @Test
+    void findRunningsGroupedByGalleries() {
+        // given
+
+        // when
+
+        // then
+
     }
 
 }
