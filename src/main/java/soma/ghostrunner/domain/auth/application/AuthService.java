@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 import soma.ghostrunner.domain.auth.resolver.AuthIdResolver;
-import soma.ghostrunner.domain.auth.api.dto.SignUpRequest;
+import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
 import soma.ghostrunner.domain.auth.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.Member;
@@ -18,6 +18,7 @@ import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -48,7 +49,9 @@ public class AuthService {
         if(!termsAgreement.areAllMandatoryTermsAgreed())
             throw new IllegalArgumentException("모든 필수 약관이 동의되어야 함");
 
-        MemberCreationRequest creationRequest = createMemberCreationRequest(externalAuthId, signUpRequest, termsAgreement);
+        String memberUuid = UUID.randomUUID().toString();
+        MemberCreationRequest creationRequest = createMemberCreationRequest(
+                memberUuid, externalAuthId, signUpRequest, termsAgreement);
         Member newMember = memberService.createMember(creationRequest);
 
         // todo 토큰 발급 후 dto에 member id, access token, refresh token 받아 반환
@@ -67,10 +70,12 @@ public class AuthService {
     }
 
     private MemberCreationRequest createMemberCreationRequest(
+            String uuid,
             String externalAuthId,
             SignUpRequest signUpRequest,
             TermsAgreement termsAgreement) {
         return MemberCreationRequest.builder()
+                .uuid(uuid)
                 .externalAuthId(externalAuthId)
                 .profileImageUrl(signUpRequest.getProfileImageUrl())
                 .nickname(signUpRequest.getNickname())

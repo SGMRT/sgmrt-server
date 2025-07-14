@@ -15,6 +15,9 @@ public class Member extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "uuid", nullable = false, unique = true)
+    private String uuid;
+
     @Column(name = "nickname", nullable = false, unique = true)
     private String nickname;
 
@@ -32,10 +35,11 @@ public class Member extends BaseTimeEntity {
     private LocalDateTime lastLoginAt;
 
     @Builder
-    public Member(String nickname, String profilePictureUrl, MemberBioInfo bioInfo,
-                  String externalAuthUid, LocalDateTime lastLoginAt) {
+    public Member(String nickname, String profilePictureUrl, String uuid,
+                  MemberBioInfo bioInfo, String externalAuthUid, LocalDateTime lastLoginAt) {
         this.nickname = nickname;
         this.profilePictureUrl = profilePictureUrl;
+        this.uuid = uuid;
         this.bioInfo = bioInfo;
         this.externalAuthUid = externalAuthUid;
         this.lastLoginAt = lastLoginAt;

@@ -1,10 +1,11 @@
-package soma.ghostrunner.domain.auth.api.dto;
+package soma.ghostrunner.domain.auth.api.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 import org.hibernate.validator.constraints.URL;
+import soma.ghostrunner.domain.auth.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.Gender;
 
 @Getter

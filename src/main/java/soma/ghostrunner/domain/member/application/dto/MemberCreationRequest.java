@@ -9,6 +9,7 @@ import soma.ghostrunner.domain.member.domain.TermsAgreement;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class MemberCreationRequest {
+    private String uuid;
     private String externalAuthId;
     private String profileImageUrl;
     private String nickname;

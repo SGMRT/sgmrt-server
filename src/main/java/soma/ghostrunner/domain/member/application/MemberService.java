@@ -26,18 +26,19 @@ public class MemberService {
     }
 
     public Member findMemberByAuthUid(String authUid) {
-        return memberRepository.findByAuthUid(authUid)
+        return memberRepository.findByExternalAuthUid(authUid)
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND));
     }
 
     public boolean isMemberExistsByAuthUid(String firebaseUid) {
-        return memberRepository.existsByAuthUid(firebaseUid);
+        return memberRepository.existsByExternalAuthUid(firebaseUid);
     }
 
     @Transactional
     public Member createMember(MemberCreationRequest creationRequest) {
         Member member = Member.builder()
                 .nickname(creationRequest.getNickname())
+                .uuid(creationRequest.getUuid())
                 .externalAuthUid(creationRequest.getExternalAuthId())
                 .bioInfo(new MemberBioInfo(creationRequest.getGender(),
                                            creationRequest.getWeight(),
