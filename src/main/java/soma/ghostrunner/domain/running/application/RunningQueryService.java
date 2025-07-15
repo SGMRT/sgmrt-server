@@ -1,15 +1,13 @@
 package soma.ghostrunner.domain.running.application;
 
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.clients.aws.TelemetryClient;
-import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
+import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
 import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
@@ -67,6 +65,7 @@ public class RunningQueryService {
 
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
         Long courseId, Pageable pageable) {
+        validateSortProperty(pageable);
         Page<Running> ghostRuns = runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
         return ghostRuns.map(runningApiMapper::toGhostResponse);
     }
@@ -105,6 +104,15 @@ public class RunningQueryService {
     private SoloRunDetailInfo findSoloRunInfoByRunningId(Long runningId) {
         return runningRepository.findSoloRunInfoById(runningId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
+    }
+
+    private void validateSortProperty(Pageable pageable) {
+        pageable.getSort().stream()
+            .forEach(order -> {
+                if(!AvailableGhostSortField.isValidField(order.getProperty())){
+                    throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
+                };
+            });
     }
 
 }

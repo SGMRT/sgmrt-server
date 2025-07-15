@@ -82,6 +82,13 @@ public class GlobalExceptionAdvice {
         return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
     }
 
+    // 잘못된 데이터 혹은 인자
+    @ExceptionHandler(IllegalArgumentException.class)
+    protected ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.error("handleIllegalArgumentException", e);
+        return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
         log.error("can't find Handler Entity ", e);

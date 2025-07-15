@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.course.application;
 
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,21 +39,27 @@ public class CourseService {
     public List<CourseResponse> searchCourses(
             Double lat,
             Double lng,
-            Integer radiusKm,
+            Integer radiusM,
+            Integer minDistanceM,
+            Integer maxDistanceM,
+            Integer minElevationM,
+            Integer maxElevationM,
             Long ownerId) {
         // 코스 검색할 직사각형 반경 계산
         // - 1도 위도 당 111km 가정 (지구 둘레 40,075km / 360도 = 약 111.3km)
-        // - 근사치이며, 적도에서 멀어질 수록 경도 거리 오차가 커짐
-        // - TODO: 추후 Haversine 공식이나 DB 공간 데이터 타입 활용하도록 변경
-        double latDelta = radiusKm.doubleValue() / 111.0;
-        double lngDelta = radiusKm.doubleValue() / (111.0 * Math.cos(Math.toRadians(lat)));
+        // - 근사치이며, 적도에서 멀어질 수록 경도 거리 오차가 커짐 -> TODO: 추후 Haversine 공식이나 DB 공간 데이터 타입 활용하도록 변경
+        double radiusKm = radiusM / 1000d;
+        double latDelta = radiusKm / 111.0;
+        double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
 
         double minLat = lat - latDelta;
         double maxLat = lat + latDelta;
         double minLng = lng - lngDelta;
         double maxLng = lng + lngDelta;
 
-        List<Course> courses = courseRepository.findPublicCoursesByBoundingBox(minLat, maxLat, minLng, maxLng);
+        List<Course> courses = courseRepository.findCoursesWithFilters(minLat, maxLat, minLng, maxLng,
+            minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerId);
+
         return courses.stream()
                 .map(courseMapper::toCourseResponse)
                 .collect(Collectors.toList());
@@ -82,6 +87,7 @@ public class CourseService {
         if (request.getIsPublic() != null) {
             updateCoursePublicity(course, request.getIsPublic());
         }
+        courseRepository.save(course);
     }
 
     private void updateCourseName(
@@ -90,7 +96,6 @@ public class CourseService {
         if(course == null) throw new IllegalArgumentException("Course cannot be null");
         if(!StringUtils.hasText(name)) throw new CourseNameNotValidException(ErrorCode.COURSE_NAME_NOT_VALID);
         course.setName(name);
-        // @Transactional로 인해 더티체킹되어 자동으로 DB 반영
     }
 
     private void updateCoursePublicity(Course course, Boolean isPublic) {
