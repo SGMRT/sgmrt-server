@@ -3,9 +3,12 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
 import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
@@ -13,7 +16,6 @@ import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
-import soma.ghostrunner.domain.running.application.dto.response.RunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -22,6 +24,7 @@ import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
 
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -81,15 +84,26 @@ public class RunningQueryService {
         return ghostRuns.map(runningApiMapper::toGhostResponse);
     }
 
-    public CourseRankingResponse findUserRankingInCourse(Long courseId, Long memberId) {
-        Running bestRun = runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberId)
-            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
+    public Page<CourseGhostResponse> findTopRankingGhostsByCourseId(
+            Long courseId, Integer count) {
+        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
+        Pageable topNPageable = PageRequest.of(0, count, defaultSort);
+        return findPublicGhostRunsByCourseId(courseId, topNPageable);
+    }
 
-        Integer rank = 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(
-            courseId, bestRun.getRunningRecord().getAveragePace())
-            .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
+    public Optional<CourseRunStatisticsDto> findCourseRunStatistics(Long courseId) {
+        return runningRepository.findPublicRunStatisticsByCourseId(courseId);
+    }
 
-        return runningApiMapper.toRankingResponse(bestRun, rank);
+    public Integer findPublicRankForCourse(Long courseId, Running running) {
+        return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(
+                        courseId, running.getRunningRecord().getAveragePace())
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
+    }
+
+    public Running findBestPublicRunForCourse(Long courseId, Long memberId) {
+        return runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
     }
 
     public Running findRunningByRunningId(Long id) {

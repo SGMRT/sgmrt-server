@@ -9,6 +9,7 @@ import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.DeleteRunningRequest;
 import soma.ghostrunner.domain.running.api.dto.request.UpdateRunNameRequest;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
+import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.RunningCommandService;

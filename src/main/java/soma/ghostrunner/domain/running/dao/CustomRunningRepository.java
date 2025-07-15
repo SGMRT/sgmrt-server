@@ -14,4 +14,5 @@ public interface CustomRunningRepository {
 
     Optional<MemberAndRunRecordInfo> findMemberAndRunRecordInfoById(long id);
 
+    Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId);
 }
