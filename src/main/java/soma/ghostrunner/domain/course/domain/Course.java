@@ -7,7 +7,7 @@ import soma.ghostrunner.global.common.BaseTimeEntity;
 
 @Entity
 @Table(name = "course")
-@SoftDelete(columnName = "is_deleted")
+@SoftDelete
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Course extends BaseTimeEntity {
 
