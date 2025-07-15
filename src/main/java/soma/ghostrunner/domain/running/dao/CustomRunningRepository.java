@@ -25,4 +25,6 @@ public interface CustomRunningRepository {
     List<RunInfo> findRunInfosForGalleryViewByCursorIds(RunningMode runningMode, Long cursorStartedAt,
                                                         Long cursorRunningId, Long memberId);
 
+    Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId);
+
 }

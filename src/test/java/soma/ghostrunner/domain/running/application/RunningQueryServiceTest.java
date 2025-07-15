@@ -29,8 +29,7 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.*;
 
-class
-RunningQueryServiceTest extends IntegrationTestSupport {
+class RunningQueryServiceTest extends IntegrationTestSupport {
 
     @Autowired
     private RunningQueryService runningQueryService;

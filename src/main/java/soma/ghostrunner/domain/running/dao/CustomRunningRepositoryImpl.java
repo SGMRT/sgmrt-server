@@ -1,10 +1,12 @@
 package soma.ghostrunner.domain.running.dao;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.domain.QRunning;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -139,7 +141,6 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
 
     private BooleanExpression cursorCondition(Long cursorStartedAt, Long cursorRunningId) {
         if (cursorRunningId == null || cursorStartedAt == null) {
-            System.out.println("~~~~~~~~~~");
             return null;
         }
         return running.startedAt.lt(cursorStartedAt)
@@ -193,6 +194,22 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                 .orderBy(running.startedAt.desc(), running.id.desc())
                 .limit(GALLERY_VIEW_PAGE_SIZE)
                 .fetch();
+
+    @Override
+    public Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId) {
+        return Optional.ofNullable(
+                queryFactory
+                        .select(Projections.constructor(CourseRunStatisticsDto.class,
+                                running.runningRecord.duration.avg(),
+                                running.runningRecord.averagePace.avg(),
+                                running.runningRecord.cadence.avg(),
+                                running.runningRecord.averagePace.min()
+                        ))
+                        .from(running)
+                        .where(running.course.id.eq(courseId)
+                                .and(running.isPublic.isTrue()))
+                        .fetchOne()
+        );
     }
 
 }

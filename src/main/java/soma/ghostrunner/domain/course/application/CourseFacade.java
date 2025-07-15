@@ -1,0 +1,82 @@
+package soma.ghostrunner.domain.course.application;
+
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.CourseMapper;
+import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
+import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
+import soma.ghostrunner.domain.course.dto.response.*;
+import soma.ghostrunner.domain.running.application.RunningQueryService;
+import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
+import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.domain.Running;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CourseFacade {
+    private final CourseService courseService;
+    private final RunningQueryService runningQueryService;
+    private final RunningTelemetryQueryService runningTelemetryQueryService;
+
+    private final CourseMapper courseMapper;
+
+    public List<CourseResponse> findCourses(
+            Double lat, Double lng, Integer radiusM,
+            Integer minDistanceM, Integer maxDistanceM,
+            Integer minElevationM, Integer maxElevationM,
+            Long ownerId) {
+        return courseService.searchCourses(lat, lng, radiusM,
+                minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerId);
+    }
+
+    @Transactional(readOnly = true)
+    public CourseDetailedResponse findCourse(Long courseId) {
+        Course course = courseService.findCourseById(courseId);
+        CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseId)
+                .orElse(new CourseRunStatisticsDto());
+        return courseMapper.toCourseDetailedResponse(
+                course,
+                courseStatistics.getAvgCompletionTime(), courseStatistics.getAvgFinisherPace(),
+                courseStatistics.getAvgFinisherCadence(), courseStatistics.getLowestFinisherPace());
+    }
+
+    public void updateCourse(Long courseId, CoursePatchRequest request) {
+        courseService.updateCourse(courseId, request);
+    }
+
+    public void deleteCourse(Long courseId) {
+        courseService.deleteCourse(courseId);
+    }
+
+    public Page<CourseGhostResponse> findPublicGhosts(Long courseId, Pageable pageable) {
+        return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public CourseRankingResponse findCourseRankingDetail(Long courseId, Long userId) {
+        Running running = runningQueryService.findBestPublicRunForCourse(courseId, userId);
+        Integer ranking = runningQueryService.findPublicRankForCourse(courseId, running);
+        return courseMapper.toRankingResponse(running, ranking);
+    }
+
+    public List<CourseGhostResponse> findTopRankingGhosts(Long courseId, int count) {
+        Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findTopRankingGhostsByCourseId(courseId, count);
+        return rankedGhostsPage.getContent();
+    }
+
+    @Transactional(readOnly = true)
+    public CourseCoordinatesResponse findCourseFirstRunCoordinatesWithDetails(Long courseId) {
+        Course course = courseService.findCourseById(courseId);
+        Running firstRun = runningQueryService.findFirstRunning(courseId);
+        List<CoordinateDto> coordinates = runningTelemetryQueryService.findCoordinateTelemetries(firstRun.getTelemetryUrl());
+        return courseMapper.toCoordinatesResponse(course, coordinates);
+    }
+
+}

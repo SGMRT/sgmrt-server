@@ -24,6 +24,8 @@ import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.tuple;
 
+import static org.assertj.core.api.Assertions.tuple;
+
 class RunningRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
@@ -532,5 +534,5 @@ class RunningRepositoryTest extends IntegrationTestSupport {
             Assertions.assertThat(secondRunInfos.get(idx).getStartedAt()).isEqualTo(sortedRunnings.get(8 + idx).getStartedAt());
         });
     }
-
+  
 }

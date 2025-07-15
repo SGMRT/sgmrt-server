@@ -3,9 +3,15 @@ package soma.ghostrunner.domain.course.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.response.CourseCoordinatesResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
+import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseResponse;
+import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.support.CoordinateConverter;
+
+import java.util.List;
 
 @Mapper(componentModel = "spring", uses = {CoordinateConverter.class})
 public interface CourseMapper {
@@ -19,4 +25,13 @@ public interface CourseMapper {
     @Mapping(source = "course.courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "course.courseProfile.elevationLoss", target = "elevationLoss")
     CourseDetailedResponse toCourseDetailedResponse(Course course, Double averageCompletionTime, Double averageFinisherPace, Double averageFinisherCadence, Double lowestFinisherPace);
+
+    @Mapping(source = "running.id", target = "runningId")
+    @Mapping(source = "running.runningRecord.duration", target = "duration")
+    @Mapping(source = "running.runningRecord.bpm", target = "bpm")
+    @Mapping(source = "running.runningRecord.averagePace", target = "averagePace")
+    CourseRankingResponse toRankingResponse(Running running, Integer rank);
+
+    CourseCoordinatesResponse toCoordinatesResponse(Course course, List<CoordinateDto> coordinates);
+
 }

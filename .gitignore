@@ -43,3 +43,6 @@ out/
 ### DS STORE ###
 **/.DS_Store
 .DS_Store
+
+### Secrets ###
+firebase-private-key.json
