@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.running.api;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -341,4 +342,58 @@ class RunningApiTest extends ApiTestSupport {
                 .telemetries(validTelemetries())
                 .build();
     }
+
+    @DisplayName("러닝 기록을 삭제한다.")
+    @Test
+    void deleteRunnings() throws Exception {
+        // given
+        DeleteRunningRequest request = DeleteRunningRequest.builder()
+                .runningIds(List.of(1L, 2L, 3L))
+                .build();
+
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.delete("/v1/runs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                )
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+    }
+
+    @DisplayName("삭제할 러닝 기록의 ID 리스트가 Null이거나 비어서는 안된다.")
+    @Test
+    void deleteRunningsCannotBeEmpty() throws Exception {
+        // given
+        DeleteRunningRequest request = DeleteRunningRequest.builder()
+                .runningIds(List.of())
+                .build();
+
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.delete("/v1/runs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                )
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value("runningIds"))
+                .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value("must not be empty"));
+    }
+
+    private static Stream<Arguments> createInvalidDeleteRunningRequest() {
+        return Stream.of(
+                Arguments.of(
+                        setInvalidSoloCreateRunRequest(), "ghostRunningId", "러닝 모드에 따라 고스트 ID 값의 규칙이 지켜지지 않았습니다."
+                ),
+                Arguments.of(
+                        setInvalidModeCreateRunRequest(), "mode", "유효하지 않은 러닝모드입니다."
+                ),
+                Arguments.of(
+                        setInvalidGhostCreateRunRequest(), "ghostRunningId", "러닝 모드에 따라 고스트 ID 값의 규칙이 지켜지지 않았습니다."
+                ),
+                Arguments.of(
+                        setCreateRunRequestInvalidPausedAndPublic(), "hasPaused", "중지한 기록이 있다면 공개 설정이 불가능합니다."
+                )
+        );
+    }
+
 }

@@ -21,6 +21,8 @@ import soma.ghostrunner.domain.running.domain.RunningRecord;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.tuple;
+
 class RunningRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
@@ -260,7 +262,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Assertions.assertThat(memberAndRunRecordInfo.getRecordInfo().getAveragePace()).isEqualTo(running.getRunningRecord().getAveragePace());
     }
 
-    @DisplayName("러닝 시계열 url을 조회한다.")
+    @DisplayName("코스에 대해 첫 번째 러닝 기록을 조회한다.")
     @Test
     void testGetRunningTelemetriesUrl() {
         // given
@@ -289,7 +291,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         Course course = createCourse("테스트 코스");
         courseRepository.save(course);
-
+      
         Running running1 = createSoloRunning(member, course);
         Running running2 = createSoloRunning(member, course);
         Running running3 = createSoloRunning(member, course);
@@ -301,5 +303,5 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(firstRunning.getId()).isEqualTo(running1.getId());
     }
-
+  
 }
