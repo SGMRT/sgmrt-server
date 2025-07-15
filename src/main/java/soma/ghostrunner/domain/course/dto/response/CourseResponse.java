@@ -1,14 +1,14 @@
 package soma.ghostrunner.domain.course.dto.response;
 
 import java.util.List;
-import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
+import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 
 public record CourseResponse (
     Long id,
     String name,
     Double startLat,
     Double startLng,
-    List<CourseCoordinateDto> pathData,
+    List<CoordinateDto> pathData,
     Integer distance,
     Integer elevationGain,
     Integer elevationLoss
