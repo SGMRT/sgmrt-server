@@ -1,24 +1,27 @@
 package soma.ghostrunner.domain.running.application;
 
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.clients.aws.TelemetryClient;
-import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
+import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
+import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
+import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
+import soma.ghostrunner.domain.running.application.dto.response.RunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -34,7 +37,7 @@ public class RunningQueryService {
   
     public SoloRunDetailInfo findSoloRunInfo(Long runningId) {
         SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId);
-        runningTelemetryQueryService.downloadTelemetries(runningId, soloRunDetailInfo);
+        downloadTelemetries(runningId, soloRunDetailInfo);
         return soloRunDetailInfo;
     }
 
@@ -45,8 +48,13 @@ public class RunningQueryService {
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfoByRunningId(ghostRunningId);
         myGhostRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
 
-        runningTelemetryQueryService.downloadTelemetries(myRunningId, myGhostRunDetailInfo);
+        downloadTelemetries(myRunningId, myGhostRunDetailInfo);
         return myGhostRunDetailInfo;
+    }
+
+    private void downloadTelemetries(Long runningId, RunDetailInfo runDetailInfo) {
+        List<TelemetryDto> telemetries = runningTelemetryQueryService.downloadTelemetries(runningId, runDetailInfo.getTelemetryUrl());
+        runDetailInfo.setTelemetries(telemetries);
     }
 
     private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostRunDetailInfo) {
@@ -57,16 +65,20 @@ public class RunningQueryService {
 
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
         Long courseId, Pageable pageable) {
+        validateSortProperty(pageable);
         Page<Running> ghostRuns = runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
         return ghostRuns.map(runningApiMapper::toGhostResponse);
     }
 
-    public Integer findRankingOfUserInCourse(Long courseId, Long memberId) {
-        Double bestPace = runningRepository.findMinAveragePaceByCourseIdAndMemberIdAndIsPublicTrue(courseId, memberId)
+    public CourseRankingResponse findUserRankingInCourse(Long courseId, Long memberId) {
+        Running bestRun = runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberId)
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
 
-        return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(courseId, bestPace)
+        Integer rank = 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(
+            courseId, bestRun.getRunningRecord().getAveragePace())
             .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
+
+        return runningApiMapper.toRankingResponse(bestRun, rank);
     }
 
     public Running findRunningByRunningId(Long id) {
@@ -92,6 +104,15 @@ public class RunningQueryService {
     private SoloRunDetailInfo findSoloRunInfoByRunningId(Long runningId) {
         return runningRepository.findSoloRunInfoById(runningId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
+    }
+
+    private void validateSortProperty(Pageable pageable) {
+        pageable.getSort().stream()
+            .forEach(order -> {
+                if(!AvailableGhostSortField.isValidField(order.getProperty())){
+                    throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
+                };
+            });
     }
 
 }
