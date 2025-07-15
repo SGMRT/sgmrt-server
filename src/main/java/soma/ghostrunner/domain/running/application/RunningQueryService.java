@@ -14,6 +14,7 @@ import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
+import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
@@ -128,8 +129,9 @@ public class RunningQueryService {
             });
     }
 
-    public List<RunInfo> findRunnings(Long cursorStartedAt, Long cursorRunningId) {
-        return runningRepository.findRunInfosByCursorIds(cursorStartedAt, cursorRunningId);
+    public List<RunInfo> findRunnings(String runningMode, Long cursorStartedAt, Long cursorRunningId, Long memberId) {
+        return runningRepository.findRunInfosByCursorIds(
+                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberId);
     }
 
 }

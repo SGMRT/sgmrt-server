@@ -15,6 +15,8 @@ import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInf
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.global.common.validator.enums.EnumValid;
 
 import java.util.List;
 
@@ -72,9 +74,12 @@ public class RunningApi {
     }
 
     @GetMapping("/v1/runs")
-    public List<RunInfo> getRunInfos(@RequestParam(required = false) Long cursorStartedAt,
-                                     @RequestParam(required = false) Long cursorRunningId) {
-        return runningQueryService.findRunnings(cursorStartedAt, cursorRunningId);
+    public List<RunInfo> getRunInfos(
+            @RequestParam
+            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
+            String runningMode,
+            @RequestParam(required = false) Long cursorStartedAt, @RequestParam(required = false) Long cursorRunningId) {
+        return runningQueryService.findRunnings(runningMode, cursorStartedAt, cursorRunningId, 1L);
     }
 
 }

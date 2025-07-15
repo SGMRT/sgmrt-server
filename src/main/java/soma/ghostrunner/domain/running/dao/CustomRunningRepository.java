@@ -4,6 +4,7 @@ import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailIn
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
+import soma.ghostrunner.domain.running.domain.RunningMode;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +17,6 @@ public interface CustomRunningRepository {
 
     Optional<MemberAndRunRecordInfo> findMemberAndRunRecordInfoById(long id);
 
-    List<RunInfo> findRunInfosByCursorIds(Long cursorStartedAt, Long cursorRunningId);
+    List<RunInfo> findRunInfosByCursorIds(RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, Long memberId);
 
 }

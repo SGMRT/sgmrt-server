@@ -8,6 +8,7 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -54,10 +55,17 @@ public class GlobalExceptionAdvice {
         return createErrorResponse(ErrorCode.INVALID_JSON_TYPE);
     }
 
-    // @RequestParam, @PathVariable 검증 실패
+    // @PathVariable 검증 실패
     @ExceptionHandler(ConstraintViolationException.class)
     protected ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException e) {
         log.warn("handleConstraintViolationException", e);
+        return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
+    }
+
+    // @RequestParam 검증 실패
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    protected ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
+        log.warn("handleMissingServletRequestParameterException", e);
         return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
     }
 

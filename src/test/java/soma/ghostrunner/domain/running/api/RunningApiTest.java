@@ -379,21 +379,39 @@ class RunningApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value("must not be empty"));
     }
 
-    private static Stream<Arguments> createInvalidDeleteRunningRequest() {
-        return Stream.of(
-                Arguments.of(
-                        setInvalidSoloCreateRunRequest(), "ghostRunningId", "러닝 모드에 따라 고스트 ID 값의 규칙이 지켜지지 않았습니다."
-                ),
-                Arguments.of(
-                        setInvalidModeCreateRunRequest(), "mode", "유효하지 않은 러닝모드입니다."
-                ),
-                Arguments.of(
-                        setInvalidGhostCreateRunRequest(), "ghostRunningId", "러닝 모드에 따라 고스트 ID 값의 규칙이 지켜지지 않았습니다."
-                ),
-                Arguments.of(
-                        setCreateRunRequestInvalidPausedAndPublic(), "hasPaused", "중지한 기록이 있다면 공개 설정이 불가능합니다."
-                )
-        );
+    @DisplayName("러닝 기록을 조회한다.")
+    @Test
+    void getRunInfos() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+                        .queryParam("runningMode", "SOLO")
+                        .queryParam("cursorStartedAt", "1")
+                        .queryParam("cursorRunningId", "2"))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+    }
+
+    @DisplayName("러닝 기록을 조회할 떄 러닝 모드는 필수 파라미터이다.")
+    @Test
+    void runningModeCannotBeNullWhenGetRunInfos() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs"))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("G-002"))
+                .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
+    }
+
+    @DisplayName("러닝 기록을 조회할 떄 러닝 모드는 GHOST 또는 SOLO이어야 한다.")
+    @Test
+    void runningModeMustBeInRunningModeWhenGetRunInfos() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+                        .queryParam("runningMode", "FAKE_SOLO"))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("G-002"))
+                .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
     }
 
 }

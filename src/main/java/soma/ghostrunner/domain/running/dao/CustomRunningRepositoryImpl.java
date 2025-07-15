@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.domain.QRunning;
+import soma.ghostrunner.domain.running.domain.RunningMode;
 
 import java.util.List;
 import java.util.Optional;
@@ -117,7 +118,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
     }
 
     @Override
-    public List<RunInfo> findRunInfosByCursorIds(Long cursorStartedAt, Long cursorRunningId) {
+    public List<RunInfo> findRunInfosByCursorIds(RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, Long memberId) {
         return queryFactory
                 .select(new QRunInfo(
                         running.id, running.runningName, running.startedAt,
@@ -128,6 +129,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                 .from(running)
                 .join(running.course, course)
                 .where(cursorCondition(cursorRunningId, cursorStartedAt))
+                .where(running.member.id.eq(memberId), running.runningMode.eq(runningMode))
                 .orderBy(running.startedAt.desc(), running.id.desc())
                 .limit(DEFAULT_PAGE_SIZE)
                 .fetch();

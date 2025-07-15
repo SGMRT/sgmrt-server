@@ -404,9 +404,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 .toList();
 
         // when
-        List<RunInfo> firstRunInfos = runningRepository.findRunInfosByCursorIds(null, null);
+        List<RunInfo> firstRunInfos = runningRepository.findRunInfosByCursorIds(RunningMode.SOLO, null, null, member.getId());
         RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
-        List<RunInfo> secondRunInfos = runningRepository.findRunInfosByCursorIds(lastOfFirstRunInfo.getStartedAt(), lastOfFirstRunInfo.getRunningId());
+        List<RunInfo> secondRunInfos = runningRepository.findRunInfosByCursorIds(RunningMode.SOLO, lastOfFirstRunInfo.getStartedAt(),
+                lastOfFirstRunInfo.getRunningId(), member.getId());
 
         // then
         IntStream.range(0, firstRunInfos.size()).forEach(idx -> {
