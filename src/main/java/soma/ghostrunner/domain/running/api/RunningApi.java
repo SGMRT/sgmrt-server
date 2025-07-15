@@ -82,4 +82,22 @@ public class RunningApi {
         return runningQueryService.findRunnings(runningMode, cursorStartedAt, cursorRunningId, 1L);
     }
 
+    @GetMapping("/v1/runs/by-course")
+    public List<RunInfo> getRunInfosFilteredByCourse(
+            @RequestParam
+            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
+            String runningMode,
+            @RequestParam(required = false) String cursorCourseName, @RequestParam(required = false) Long cursorRunningId) {
+        return runningQueryService.findRunningsFilteredByCourse(runningMode, cursorCourseName, cursorRunningId, 1L);
+    }
+
+    @GetMapping("/v1/runs/gallery-view")
+    public List<RunInfo> getRunInfosForGalleryView(
+            @RequestParam
+            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
+            String runningMode,
+            @RequestParam(required = false) Long cursorStartedAt, @RequestParam(required = false) Long cursorRunningId) {
+        return runningQueryService.findRunningsForGalleryView(runningMode, cursorStartedAt, cursorRunningId, 1L);
+    }
+
 }

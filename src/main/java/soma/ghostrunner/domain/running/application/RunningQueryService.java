@@ -19,6 +19,7 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.common.error.ErrorCode;
 
+import java.util.Collection;
 import java.util.List;
 
 @Slf4j
@@ -134,4 +135,13 @@ public class RunningQueryService {
                 RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberId);
     }
 
+    public List<RunInfo> findRunningsFilteredByCourse(String runningMode, String courseName, Long cursorRunningId, Long memberId) {
+        return runningRepository.findRunInfosFilteredByCoursesByCursorIds(
+                RunningMode.valueOf(runningMode), courseName, cursorRunningId, memberId);
+    }
+
+    public List<RunInfo> findRunningsForGalleryView(String runningMode, Long cursorStartedAt, Long cursorRunningId, Long memberId) {
+        return runningRepository.findRunInfosForGalleryViewByCursorIds(
+                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberId);
+    }
 }

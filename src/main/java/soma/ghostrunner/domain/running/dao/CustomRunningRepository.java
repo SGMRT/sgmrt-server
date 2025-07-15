@@ -19,4 +19,10 @@ public interface CustomRunningRepository {
 
     List<RunInfo> findRunInfosByCursorIds(RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, Long memberId);
 
+    List<RunInfo> findRunInfosFilteredByCoursesByCursorIds(RunningMode runningMode, String cursorCourseName,
+                                                           Long cursorRunningId, Long memberId);
+
+    List<RunInfo> findRunInfosForGalleryViewByCursorIds(RunningMode runningMode, Long cursorStartedAt,
+                                                        Long cursorRunningId, Long memberId);
+
 }

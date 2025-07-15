@@ -238,26 +238,114 @@ RunningQueryServiceTest extends IntegrationTestSupport {
         Assertions.assertThat(publicRunInfo.getCourseInfo().getName()).isEqualTo("공개 코스 러닝");
     }
 
-    @DisplayName("코스 보기 방식으로 러닝 기록을 조회한다.")
+    @DisplayName("코스별 러닝 기록을 조회한다.")
     @Test
     void findRunningsGroupedByCourse() {
         // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
+        List<Course> courses = new ArrayList<>();
+        randomCourseNames.forEach(name -> {
+            Course newCourse = createCourse(name);
+            newCourse.setIsPublic(true);
+            courses.add(newCourse);
+        });
+        courseRepository.saveAll(courses);
+
+        Random random = new Random();
+        List<Running> runnings = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 5)),
+                    member, random.nextLong(), RunningMode.SOLO));
+        }
+        for (int i = 100; i < 200; i++) {
+            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 5)),
+                    member, random.nextLong(), RunningMode.GHOST));
+        }
+        runningRepository.saveAll(runnings);
+
+        List<Running> sortedSoloRunnings = runnings.stream()
+                .filter(running -> running.getRunningMode().equals(RunningMode.SOLO))
+                .sorted(Comparator.comparing((Running r) -> r.getCourse().getName())
+                        .thenComparing(Running::getId, Comparator.reverseOrder()))
+                .toList();
 
         // when
+        List<RunInfo> runInfos = new ArrayList<>();
+        runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO", null, null, member.getId()));
+        for (int i = 0; i < 4; i++) {
+            RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
+            runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO",
+                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getId()));
+        }
 
         // then
+        Assertions.assertThat(runInfos).hasSize(100);
+        IntStream.range(0, runInfos.size()).forEach(idx -> {
+             Assertions.assertThat(runInfos.get(idx).getCourseInfo().getName()).isEqualTo(sortedSoloRunnings.get(idx).getCourse().getName());
+            Assertions.assertThat(runInfos.get(idx).getRunningId()).isEqualTo(sortedSoloRunnings.get(idx).getId());
+            Assertions.assertThat(runInfos.get(idx).getName()).isEqualTo(sortedSoloRunnings.get(idx).getRunningName());
+            Assertions.assertThat(runInfos.get(idx).getStartedAt()).isEqualTo(sortedSoloRunnings.get(idx).getStartedAt());
+        });
+    }
 
+    private Course createCourse(String courseName) {
+        Course course = Course.of(createCourseProfile(), createStartPoint(),
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        course.setName(courseName);
+        return course;
     }
 
     @DisplayName("갤러리 보기 방식으로 러닝 기록을 조회한다.")
     @Test
-    void findRunningsGroupedByGalleries() {
+    void findRunningsForGalleryView() {
         // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Random random = new Random();
+        List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
+        List<Course> courses = new ArrayList<>();
+        randomCourseNames.forEach(name -> {
+            Course newCourse = createCourse(name);
+            courses.add(newCourse);
+        });
+        courseRepository.saveAll(courses);
+
+        List<Running> runnings = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 3)),
+                    member, random.nextLong(), RunningMode.SOLO));
+        }
+        for (int i = 100; i < 200; i++) {
+            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 3)),
+                    member, random.nextLong(), RunningMode.GHOST));
+        }
+        runningRepository.saveAll(runnings);
+
+        List<Running> sortedSoloRunnings = runnings.stream()
+                .filter(running -> running.getRunningMode().equals(RunningMode.SOLO))
+                .sorted(Comparator.comparing(Running::getStartedAt).reversed())
+                .toList();
 
         // when
+        List<RunInfo> runInfos = new ArrayList<>();
+        runInfos.addAll(runningQueryService.findRunningsForGalleryView("SOLO", null, null, member.getId()));
+        for (int i = 0; i < 4; i++) {
+            RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
+            runInfos.addAll(runningQueryService.findRunningsForGalleryView("SOLO", lastRunInfo.getStartedAt(),
+                    lastRunInfo.getRunningId(), member.getId()));
+        }
 
         // then
-
+        Assertions.assertThat(runInfos).hasSize(40);
+        IntStream.range(0, runInfos.size()).forEach(idx -> {
+            Assertions.assertThat(runInfos.get(idx).getRunningId()).isEqualTo(sortedSoloRunnings.get(idx).getId());
+            Assertions.assertThat(runInfos.get(idx).getName()).isEqualTo(sortedSoloRunnings.get(idx).getRunningName());
+            Assertions.assertThat(runInfos.get(idx).getStartedAt()).isEqualTo(sortedSoloRunnings.get(idx).getStartedAt());
+        });
     }
 
 }

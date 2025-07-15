@@ -414,4 +414,28 @@ class RunningApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
     }
 
+    @DisplayName("코스별 러닝 기록을 조회한다.")
+    @Test
+    void getRunInfosFilteredByCourse() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/by-course")
+                        .queryParam("runningMode", "SOLO")
+                        .queryParam("cursorCourseName", "태화강 러닝")
+                        .queryParam("cursorRunningId", "2"))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+    }
+
+    @DisplayName("갤러리 보기 방식을 위해 러닝 기록을 조회한다.")
+    @Test
+    void getRunInfosForGalleryView() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/gallery-view")
+                        .queryParam("runningMode", "SOLO")
+                        .queryParam("cursorStartedAt", "1")
+                        .queryParam("cursorRunningId", "2"))
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+    }
+
 }
