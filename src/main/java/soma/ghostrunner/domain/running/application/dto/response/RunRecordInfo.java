@@ -42,4 +42,13 @@ public class RunRecordInfo {
         this.cadence = cadence;
         this.averagePace = averagePace;
     }
+
+    @QueryProjection
+    public RunRecordInfo(Double distance, Long duration, Double averagePace, Integer cadence) {
+        this.distance = distance;
+        this.duration = duration;
+        this.averagePace = averagePace;
+        this.cadence = cadence;
+    }
+
 }

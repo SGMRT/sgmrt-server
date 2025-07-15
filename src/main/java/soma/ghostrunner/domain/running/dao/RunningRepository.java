@@ -52,8 +52,4 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
     @Query("delete from Running r where r.id in :runningIds")
     void deleteAllByIdIn(@Param("runningIds") List<Long> runningIds);
 
-    @Modifying
-    @Query("delete from Running r where r.id in :runningIds")
-    void deleteAllByIdInNonClearAutomatically(@Param("runningIds") List<Long> runningIds);
-
 }

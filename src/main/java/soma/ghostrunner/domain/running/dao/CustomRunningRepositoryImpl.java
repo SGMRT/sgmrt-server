@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.running.dao;
 
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -8,7 +9,9 @@ import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.domain.QRunning;
+import soma.ghostrunner.domain.running.domain.RunningMode;
 
+import java.util.List;
 import java.util.Optional;
 
 import static soma.ghostrunner.domain.course.domain.QCourse.course;
@@ -18,6 +21,9 @@ import static soma.ghostrunner.domain.running.domain.QRunning.running;
 @Repository
 @RequiredArgsConstructor
 public class CustomRunningRepositoryImpl implements CustomRunningRepository {
+
+    private final int DEFAULT_PAGE_SIZE = 20;
+    private final int GALLERY_VIEW_PAGE_SIZE = 8;
 
     private final JPAQueryFactory queryFactory;
 
@@ -113,6 +119,81 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         .where(running.id.eq(runningId))
                         .fetchOne());
     }
+
+    @Override
+    public List<RunInfo> findRunInfosByCursorIds(RunningMode runningMode, Long cursorStartedAt,
+                                                 Long cursorRunningId, Long memberId) {
+        return queryFactory
+                .select(new QRunInfo(
+                        running.id, running.runningName, running.startedAt,
+                        new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
+                                running.runningRecord.averagePace, running.runningRecord.cadence),
+                        new QCourseInfo(running.course.id, running.course.name, running.course.isPublic)
+                ))
+                .from(running)
+                .join(running.course, course)
+                .where(cursorCondition(cursorStartedAt, cursorRunningId))
+                .where(running.member.id.eq(memberId), running.runningMode.eq(runningMode))
+                .orderBy(running.startedAt.desc(), running.id.desc())
+                .limit(DEFAULT_PAGE_SIZE)
+                .fetch();
+    }
+
+    private BooleanExpression cursorCondition(Long cursorStartedAt, Long cursorRunningId) {
+        if (cursorRunningId == null || cursorStartedAt == null) {
+            return null;
+        }
+        return running.startedAt.lt(cursorStartedAt)
+                .or(running.startedAt.eq(cursorStartedAt)
+                        .and(running.id.lt(cursorRunningId)));
+    }
+
+    @Override
+    public List<RunInfo> findRunInfosFilteredByCoursesByCursorIds(RunningMode runningMode, String cursorCourseName,
+                                                                  Long cursorRunningId, Long memberId) {
+        return queryFactory
+                .select(new QRunInfo(
+                        running.id, running.runningName, running.startedAt,
+                        new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
+                                running.runningRecord.averagePace, running.runningRecord.cadence),
+                        new QCourseInfo(running.course.id, running.course.name)
+                ))
+                .from(running)
+                .join(running.course, course)
+                .where(cursorCondition(cursorCourseName, cursorRunningId))
+                .where(running.member.id.eq(memberId), running.runningMode.eq(runningMode), running.course.isPublic.eq(true))
+                .orderBy(running.course.name.asc(), running.id.desc())
+                .limit(DEFAULT_PAGE_SIZE)
+                .fetch();
+    }
+
+    private BooleanExpression cursorCondition(String cursorCourseName, Long cursorRunningId) {
+        if (cursorRunningId == null || cursorCourseName == null) {
+            return null;
+        }
+        return running.course.name.gt(cursorCourseName)
+                .or(running.course.name.eq(cursorCourseName)
+                        .and(running.id.lt(cursorRunningId)));
+    }
+
+    @Override
+    public List<RunInfo> findRunInfosForGalleryViewByCursorIds(RunningMode runningMode, Long cursorStartedAt,
+                                                 Long cursorRunningId, Long memberId) {
+        return queryFactory
+                .select(new QRunInfo(
+                        running.id, running.runningName, running.startedAt,
+                        new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
+                                running.runningRecord.averagePace, running.runningRecord.cadence),
+                        new QCourseInfo(running.course.id, running.course.name,
+                                running.course.isPublic, running.course.pathData)
+                ))
+                .from(running)
+                .join(running.course, course)
+                .where(cursorCondition(cursorStartedAt, cursorRunningId))
+                .where(running.member.id.eq(memberId), running.runningMode.eq(runningMode))
+                .orderBy(running.startedAt.desc(), running.id.desc())
+                .limit(GALLERY_VIEW_PAGE_SIZE)
+                .fetch();
 
     @Override
     public Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId) {
