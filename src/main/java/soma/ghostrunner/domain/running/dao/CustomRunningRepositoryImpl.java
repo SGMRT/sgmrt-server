@@ -194,6 +194,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                 .orderBy(running.startedAt.desc(), running.id.desc())
                 .limit(GALLERY_VIEW_PAGE_SIZE)
                 .fetch();
+    }
 
     @Override
     public Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId) {
