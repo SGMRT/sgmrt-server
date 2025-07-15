@@ -84,7 +84,14 @@ public class GlobalExceptionAdvice {
         return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
     }
 
-    // 인증 실패
+    // 잘못된 데이터 혹은 인자
+    @ExceptionHandler(IllegalArgumentException.class)
+    protected ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.error("handleIllegalArgumentException", e);
+        return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
+    }
+  
+   // 인증 실패
     @ExceptionHandler(AuthenticationException.class)
     protected ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException e) {
         log.error("handleAuthenticationException", e);

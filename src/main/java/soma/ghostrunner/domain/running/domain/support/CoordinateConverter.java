@@ -2,11 +2,10 @@ package soma.ghostrunner.domain.running.domain.support;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
+import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.global.common.error.ErrorCode;
 import soma.ghostrunner.global.common.error.exception.ParsingException;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,7 +21,7 @@ public class CoordinateConverter {
     private static final String MAIN_DELIMITER = ",";
     private static final String VALUE_DELIMITER = ":";
 
-    public static String convertToString(List<CourseCoordinateDto> coordinates) {
+    public static String convertToString(List<CoordinateDto> coordinates) {
         try {
             return objectMapper.writeValueAsString(coordinates);
         } catch (Exception e) {
@@ -30,15 +29,15 @@ public class CoordinateConverter {
         }
     }
 
-    public static List<CourseCoordinateDto> convertToCoordinateList(String jsonListString) {
+    public static List<CoordinateDto> convertToCoordinateList(String jsonListString) {
         try {
-            return objectMapper.readValue(jsonListString, objectMapper.getTypeFactory().constructCollectionType(List.class, CourseCoordinateDto.class));
+            return objectMapper.readValue(jsonListString, objectMapper.getTypeFactory().constructCollectionType(List.class, CoordinateDto.class));
         } catch (Exception e) {
             throw new ParsingException(ErrorCode.SERVICE_UNAVAILABLE, "JSON 문자열을 코스 좌표 목록으로 변환하는 데 실패했습니다.");
         }
     }
 
-    public static List<CourseCoordinateDto> convertToCoordinateList(List<String> coordinateStringList) {
+    public static List<CoordinateDto> convertToCoordinateList(List<String> coordinateStringList) {
         if (coordinateStringList == null) {
             return Collections.emptyList();
         }
@@ -47,7 +46,7 @@ public class CoordinateConverter {
                 .collect(Collectors.toList());
     }
 
-    private static CourseCoordinateDto parseStringToCoordinateDto(String coordinateString) {
+    private static CoordinateDto parseStringToCoordinateDto(String coordinateString) {
         String[] parts = coordinateString.split(MAIN_DELIMITER);
 
         String latitudePart = parts[LATITUDE_PART_INDEX];
@@ -56,7 +55,7 @@ public class CoordinateConverter {
         double latitude = Double.parseDouble(latitudePart.split(VALUE_DELIMITER)[VALUE_INDEX]);
         double longitude = Double.parseDouble(longitudePart.split(VALUE_DELIMITER)[VALUE_INDEX]);
 
-        return new CourseCoordinateDto(latitude, longitude);
+        return new CoordinateDto(latitude, longitude);
     }
 
 }

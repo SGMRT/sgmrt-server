@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @Builder
 @AllArgsConstructor @NoArgsConstructor
-public class CourseCoordinateDto {
+public class CoordinateDto {
 
   private double lat;
   private double lng;

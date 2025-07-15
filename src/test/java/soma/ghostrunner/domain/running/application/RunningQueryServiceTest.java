@@ -13,7 +13,7 @@ import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -22,9 +22,12 @@ import soma.ghostrunner.domain.running.domain.RunningRecord;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.tuple;
-import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.*;
 
-class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
+class RunningQueryServiceTest extends IntegrationTestSupport {
+
+    @Autowired
+    private RunningQueryService runningQueryService;
 
     @Autowired
     private RunningTelemetryQueryService runningTelemetryQueryService;
@@ -41,7 +44,7 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
     @MockitoBean
     TelemetryClient telemetryClient;
 
-    @DisplayName("러닝의 위치 시계열을 조회한다.")
+    @DisplayName("러닝의 전체 시계열을 조회한다.")
     @Test
     void findRunningTelemetries() {
         // given
@@ -64,17 +67,17 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
         given(telemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
-        List<CoordinateDto> telemetries = runningTelemetryQueryService.findCoordinateTelemetries(running.getTelemetryUrl());
+        List<TelemetryDto> telemetries = runningQueryService.findRunningTelemetries(running.getId());
 
         // then
         Assertions.assertThat(telemetries)
                 .hasSize(4)
-                .extracting("lat", "lng")
+                .extracting("timeStamp", "lat", "lng", "dist", "pace", "alt", "cadence", "bpm", "isRunning")
                 .containsExactly(
-                        tuple(37.2, 37.5),
-                        tuple(  37.3, 37.6),
-                        tuple(37.4, 37.7),
-                        tuple(37.5, 37.8)
+                        tuple(0L, 37.2, 37.5, 110.0, 6.0, 100, 120, 110, true),
+                        tuple(  1L, 37.3, 37.6, 110.1, 6.1, 101, 121, 111, true),
+                        tuple(2L, 37.4, 37.7, 110.2, 6.2, 102, 122, 112, true),
+                        tuple(3L, 37.5, 37.8, 110.3, 6.3, 103, 123, 113, false)
                 );
     }
 

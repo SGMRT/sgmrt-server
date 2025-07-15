@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.running.dao;
 
-import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
@@ -15,4 +14,5 @@ public interface CustomRunningRepository {
 
     Optional<MemberAndRunRecordInfo> findMemberAndRunRecordInfoById(long id);
 
+    Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId);
 }
