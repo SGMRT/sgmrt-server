@@ -23,10 +23,11 @@ public class StartPoint {
         this.longitude = longitude;
     }
 
-    public static StartPoint fromCoordinates(double latitude, double longitude) {
+    public static StartPoint of(double latitude, double longitude) {
         return StartPoint.builder()
                 .latitude(latitude)
                 .longitude(longitude)
                 .build();
     }
+
 }

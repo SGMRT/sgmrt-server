@@ -1,7 +1,7 @@
 package soma.ghostrunner.domain.running.domain.support;
 
 import soma.ghostrunner.domain.course.domain.StartPoint;
-import soma.ghostrunner.domain.running.application.dto.CourseCoordinateDto;
+import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 
@@ -13,7 +13,7 @@ public class TelemetryCalculator {
     public static ProcessedTelemetriesDto processTelemetry(List<TelemetryDto> telemetries, Long startedAt) {
 
         List<TelemetryDto> relativeTelemetries = new ArrayList<>();
-        List<CourseCoordinateDto> coordinates = new ArrayList<>();
+        List<CoordinateDto> coordinates = new ArrayList<>();
         Double highestPace = Double.MIN_VALUE;
         Double lowestPace = Double.MAX_VALUE;
 
@@ -23,7 +23,7 @@ public class TelemetryCalculator {
             relativeTelemetries.add(telemetry.convertToRelativeTs(startedAt));
 
             // 좌표 수집
-            coordinates.add(CourseCoordinateDto.builder()
+            coordinates.add(CoordinateDto.builder()
                     .lat(telemetry.lat())
                     .lng(telemetry.lng())
                     .build());

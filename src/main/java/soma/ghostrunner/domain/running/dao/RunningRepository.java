@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.running.dao;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -37,5 +38,22 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
 
     @Query("select r from Running r where r.course.id = :courseId order by r.id asc limit 1")
     Optional<Running> findFirstRunningByCourseId(Long courseId);
+
+    @Query("select r from Running r where r.id in :runningIds")
+    List<Running> findByIds(List<Long> runningIds);
+
+    @Query(
+            value = "select * from running_record r where r.id in :runningIds",
+            nativeQuery = true
+    )
+    List<Running> findByIdsNoMatterDeleted(@Param("runningIds") List<Long> runningIds);
+
+    @Modifying(clearAutomatically = true)
+    @Query("delete from Running r where r.id in :runningIds")
+    void deleteAllByIdIn(@Param("runningIds") List<Long> runningIds);
+
+    @Modifying
+    @Query("delete from Running r where r.id in :runningIds")
+    void deleteAllByIdInNonClearAutomatically(@Param("runningIds") List<Long> runningIds);
 
 }
