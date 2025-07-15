@@ -9,12 +9,14 @@ import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.DeleteRunningRequest;
 import soma.ghostrunner.domain.running.api.dto.request.UpdateRunNameRequest;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
+import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.global.common.validator.enums.EnumValid;
 
 import java.util.List;
 
@@ -69,6 +71,33 @@ public class RunningApi {
     @DeleteMapping("/v1/runs")
     public void deleteRunnings(@RequestBody @Valid DeleteRunningRequest request) {
         runningCommandService.deleteRunnings(request.getRunningIds());
+    }
+
+    @GetMapping("/v1/runs")
+    public List<RunInfo> getRunInfos(
+            @RequestParam
+            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
+            String runningMode,
+            @RequestParam(required = false) Long cursorStartedAt, @RequestParam(required = false) Long cursorRunningId) {
+        return runningQueryService.findRunnings(runningMode, cursorStartedAt, cursorRunningId, 1L);
+    }
+
+    @GetMapping("/v1/runs/by-course")
+    public List<RunInfo> getRunInfosFilteredByCourse(
+            @RequestParam
+            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
+            String runningMode,
+            @RequestParam(required = false) String cursorCourseName, @RequestParam(required = false) Long cursorRunningId) {
+        return runningQueryService.findRunningsFilteredByCourse(runningMode, cursorCourseName, cursorRunningId, 1L);
+    }
+
+    @GetMapping("/v1/runs/gallery-view")
+    public List<RunInfo> getRunInfosForGalleryView(
+            @RequestParam
+            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
+            String runningMode,
+            @RequestParam(required = false) Long cursorStartedAt, @RequestParam(required = false) Long cursorRunningId) {
+        return runningQueryService.findRunningsForGalleryView(runningMode, cursorStartedAt, cursorRunningId, 1L);
     }
 
 }
