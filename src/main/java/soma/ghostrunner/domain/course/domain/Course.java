@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.course.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 @Entity
@@ -12,6 +13,10 @@ public class Course extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "member_id")
+    private Member member;
 
     @Setter
     @Column
@@ -31,8 +36,9 @@ public class Course extends BaseTimeEntity {
     private String pathData;
 
     @Builder
-    private Course(CourseProfile courseProfile, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
+    private Course(CourseProfile courseProfile, Member member, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
         this.courseProfile = courseProfile;
+        this.member = member;
         this.startPoint = startPoint;
         this.pathData = pathData;
         this.name = name;
@@ -56,6 +62,17 @@ public class Course extends BaseTimeEntity {
                 .pathData(pathData)
                 .isPublic(isPublic)
                 .build();
+    }
+
+    public static Course of(CourseProfile courseProfile, Member member, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
+        return Course.builder()
+            .courseProfile(courseProfile)
+            .member(member)
+            .name(name)
+            .startPoint(startPoint)
+            .pathData(pathData)
+            .isPublic(isPublic)
+            .build();
     }
 
 }
