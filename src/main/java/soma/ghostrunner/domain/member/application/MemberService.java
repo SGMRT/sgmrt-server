@@ -52,13 +52,15 @@ public class MemberService {
                 .profilePictureUrl(creationRequest.getProfileImageUrl())
                 .build();
 
+        member = memberRepository.save(member);
+
         TermsAgreement termsAgreement = creationRequest.getTermsAgreement();
         if (termsAgreement != null) {
             termsAgreement.setMember(member);
             termsAgreementRepository.save(termsAgreement);
         }
 
-        return memberRepository.save(member);
+        return member;
     }
 
     public String generateProfileImageUploadUrl(String memberUuid, ProfileImageUploadRequest request) {
