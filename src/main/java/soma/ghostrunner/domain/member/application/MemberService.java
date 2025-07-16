@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.member.application;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,7 +61,7 @@ public class MemberService {
         return memberRepository.save(member);
     }
 
-    public Object generateProfileImageUploadUrl(String memberUuid, ProfileImageUploadRequest request) {
+    public String generateProfileImageUploadUrl(String memberUuid, ProfileImageUploadRequest request) {
         // todo: memberuuid가 현재 로그인한 사용자인지 확인
         // todo: content-type 검증 로직 Enum으로 변경
         if (!isAllowedImageContentType(request.getContentType())) {

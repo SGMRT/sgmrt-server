@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.member.api.dto.ProfileImageUploadRequest;
 import soma.ghostrunner.domain.member.application.MemberService;
-import soma.ghostrunner.clients.aws.S3PresignProvider;
 
 @RestController
 @RequiredArgsConstructor
@@ -15,7 +14,7 @@ public class MemberController {
     private final MemberService memberService;
 
     @PostMapping("/{memberUuid}/profile-image/upload-url")
-    public Object generateProfileImageUploadUrl(
+    public String generateProfileImageUploadUrl(
             @PathVariable("memberUuid") String memberUuid,
             @RequestBody @Valid ProfileImageUploadRequest request) {
         return memberService.generateProfileImageUploadUrl(memberUuid, request);
