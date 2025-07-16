@@ -69,10 +69,9 @@ public class MemberService {
         }
 
         String cleansedFilename = sanitizeFilename(request.getFilename());
-
         String fileExt = getFileExtension(cleansedFilename);
         String objectKey = String.format("profiles/%s/%s.%s",
-                memberUuid, UUID.randomUUID().toString(), fileExt);
+                memberUuid, UUID.randomUUID(), fileExt);
 
         return s3PresignProvider.generatePresignedPutUrl(objectKey, request.getContentType(), Duration.ofMinutes(5));
     }
