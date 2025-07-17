@@ -17,6 +17,7 @@ import soma.ghostrunner.global.security.exception.ParsingTokenException;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
 import java.io.IOException;
+import java.util.List;
 
 import static soma.ghostrunner.global.error.ErrorCode.*;
 
@@ -27,12 +28,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final String AUTH_EXCEPTION_ATTRIBUTE = "authentication";
 
+    private static final List<String> PERMIT_URLS = List.of(
+            "/v1/auth", "/swagger"
+    );
+
     private final JwtProvider jwtProvider;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
+            if (hasPermittedUris(request)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             String token = jwtProvider.extractTokenFromHeader(request);
             Claims claims = jwtProvider.parseClaims(token);
 
@@ -52,6 +62,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean hasPermittedUris(HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        return PERMIT_URLS.stream()
+                .anyMatch(requestURI::startsWith);
     }
 
     private void setAuthentication(UsernamePasswordAuthenticationToken authentication) {
