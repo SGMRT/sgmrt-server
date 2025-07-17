@@ -11,7 +11,6 @@ import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
 import soma.ghostrunner.domain.auth.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.Member;
-import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.global.security.jwt.factory.JwtTokenFactory;
@@ -48,30 +47,24 @@ public class AuthService {
     @Transactional
     public AuthenticationResponse signUp(String firebaseToken, SignUpRequest signUpRequest) {
         String externalAuthId = authIdResolver.resolveAuthId(firebaseToken);
-        verifyMemberAlreadyExists(externalAuthId);
+        memberService.verifyMemberExistsByAuthUid(externalAuthId);
 
         TermsAgreement termsAgreement = createTermsAgreement(signUpRequest.getAgreement());
-        termsAgreement.verifyAllMandatoryTermsAgreed();
-
-        Member member = memberService.createMember(toMemberCreationRequest(signUpRequest, externalAuthId, termsAgreement));
+        Member member = createMember(signUpRequest, externalAuthId, termsAgreement);
 
         String memberUuid = member.getUuid();
         return authMapper.toAuthenticationResponse(memberUuid, createTokens(memberUuid));
     }
 
-    private MemberCreationRequest toMemberCreationRequest(SignUpRequest signUpRequest,
-                                                          String externalAuthId, TermsAgreement termsAgreement) {
-        return memberMapper.toMemberCreationRequest(externalAuthId, signUpRequest, termsAgreement);
-    }
-
-    private void verifyMemberAlreadyExists(String externalAuthId) {
-        memberService.verifyMemberExistsByAuthUid(externalAuthId);
-    }
-
     private TermsAgreement createTermsAgreement(TermsAgreementDto agreementDto) {
-        return TermsAgreement.of(agreementDto.isServiceTermsAgreed(), agreementDto.isPrivacyPolicyAgreed(),
+        return TermsAgreement.createIfAllMandatoryTermsAgreed(agreementDto.isServiceTermsAgreed(), agreementDto.isPrivacyPolicyAgreed(),
                 agreementDto.isDataConsignmentAgreed(), agreementDto.isThirdPartyDataSharingAgreed(),
                 agreementDto.isMarketingAgreed(), LocalDateTime.now());
+    }
+
+    private Member createMember(SignUpRequest signUpRequest, String externalAuthId, TermsAgreement termsAgreement) {
+        return memberService.createMember(
+                memberMapper.toMemberCreationRequest(externalAuthId, signUpRequest, termsAgreement));
     }
 
 }

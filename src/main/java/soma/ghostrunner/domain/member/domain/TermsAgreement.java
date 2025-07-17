@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TermsAgreement {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -38,10 +39,10 @@ public class TermsAgreement {
         this.agreedAt = agreedAt;
     }
 
-    public static TermsAgreement of(boolean isServiceTermsAgreed, boolean isPrivacyPolicyAgreed,
-                                    boolean isDataConsignmentAgreed, boolean isThirdPartyDataSharingAgreed,
-                                    boolean isMarketingAgreed, LocalDateTime agreedAt) {
-        return TermsAgreement.builder()
+    public static TermsAgreement createIfAllMandatoryTermsAgreed(boolean isServiceTermsAgreed, boolean isPrivacyPolicyAgreed,
+                                                                 boolean isDataConsignmentAgreed, boolean isThirdPartyDataSharingAgreed,
+                                                                 boolean isMarketingAgreed, LocalDateTime agreedAt) {
+        TermsAgreement termsAgreement = TermsAgreement.builder()
                 .isServiceTermsAgreed(isServiceTermsAgreed)
                 .isPrivacyPolicyAgreed(isPrivacyPolicyAgreed)
                 .isDataConsignmentAgreed(isDataConsignmentAgreed)
@@ -49,14 +50,15 @@ public class TermsAgreement {
                 .isMarketingAgreed(isMarketingAgreed)
                 .agreedAt(agreedAt)
                 .build();
-    }
-
-    public void verifyAllMandatoryTermsAgreed() {
-        boolean isAgreed = isServiceTermsAgreed && isPrivacyPolicyAgreed && isDataConsignmentAgreed
-                && isThirdPartyDataSharingAgreed;
-        if (!isAgreed) {
+        if (termsAgreement.allMandatoryTermsAgreed()) {
+            return termsAgreement;
+        } else {
             throw new IllegalArgumentException("모든 필수 약관이 동의되어야 함");
         }
+    }
+
+    private boolean allMandatoryTermsAgreed() {
+        return isServiceTermsAgreed && isPrivacyPolicyAgreed && isDataConsignmentAgreed && isThirdPartyDataSharingAgreed;
     }
 
 }
