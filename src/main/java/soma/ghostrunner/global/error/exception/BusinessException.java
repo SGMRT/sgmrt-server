@@ -1,7 +1,7 @@
-package soma.ghostrunner.global.common.error.exception;
+package soma.ghostrunner.global.error.exception;
 
 import lombok.Getter;
-import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.error.ErrorCode;
 
 @Getter
 public class BusinessException extends RuntimeException {

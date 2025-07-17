@@ -1,6 +1,6 @@
-package soma.ghostrunner.global.common.error.exception;
+package soma.ghostrunner.global.error.exception;
 
-import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.error.ErrorCode;
 
 public class ParsingException extends BusinessException {
     public ParsingException(ErrorCode errorCode) {

@@ -110,7 +110,7 @@ class RunningTest {
     }
 
     private Member createMember() {
-        return Member.of("이복둥", "프로필 URL");
+        return Member.of("이복둥", "프로필 URL", "외부 UUID");
     }
 
     private Course createCourse() {

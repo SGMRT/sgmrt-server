@@ -2,8 +2,6 @@ package soma.ghostrunner.domain.auth.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -39,7 +37,7 @@ public class AuthService {
 
             return authMapper.toSignInResponse(member.getUuid(), "accessToken", "refreshToken");
         } catch (MemberNotFoundException e) {
-            throw new AccessDeniedException("존재하지 않는 사용자");
+            throw new IllegalArgumentException("존재하지 않는 사용자");
         }
     }
 
@@ -47,7 +45,7 @@ public class AuthService {
     public SignUpResponse signUp(String authorizationHeader, SignUpRequest signUpRequest) {
         String externalAuthId = resolveAuthIdOrThrow(authorizationHeader);
         if(memberService.isMemberExistsByAuthUid(externalAuthId))
-            throw new AccessDeniedException("이미 존재하는 사용자");
+            throw new IllegalArgumentException("이미 존재하는 사용자");
 
         TermsAgreement termsAgreement = createTermsAgreement(signUpRequest.getAgreement());
         if(!termsAgreement.areAllMandatoryTermsAgreed())

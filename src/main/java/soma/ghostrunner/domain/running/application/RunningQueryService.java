@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
-import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
@@ -20,9 +19,8 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
-import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.error.ErrorCode;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 

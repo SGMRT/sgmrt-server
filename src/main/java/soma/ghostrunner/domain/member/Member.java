@@ -5,6 +5,7 @@ import lombok.*;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "member")
@@ -45,10 +46,12 @@ public class Member extends BaseTimeEntity {
         this.lastLoginAt = lastLoginAt;
     }
 
-    public static Member of(String nickname, String profilePictureUrl) {
+    public static Member of(String nickname, String profilePictureUrl, String externalAuthUid) {
         return Member.builder()
                 .nickname(nickname)
+                .uuid(UUID.randomUUID().toString())
                 .profilePictureUrl(profilePictureUrl)
+                .externalAuthUid(externalAuthUid)
                 .build();
     }
 }

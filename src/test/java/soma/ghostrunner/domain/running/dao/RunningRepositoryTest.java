@@ -24,8 +24,6 @@ import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.tuple;
 
-import static org.assertj.core.api.Assertions.tuple;
-
 class RunningRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
@@ -68,7 +66,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     }
 
     private Member createMember(String name) {
-        return Member.of(name, "프로필 URL");
+        return Member.of(name, "프로필 URL", "externalAuthUuid");
     }
 
     private Course createCourse() {
@@ -113,8 +111,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     @Test
     void findByIdAndFakeMemberId() {
         // given
-        Member member = createMember("이복둥");
-        Member fakeMember = createMember("페이크 이복둥");
+        Member member = createMember("이복둥", UUID.randomUUID().toString());
+        Member fakeMember = createMember("페이크 이복둥", UUID.randomUUID().toString());
         memberRepository.saveAll(List.of(member, fakeMember));
 
         Course course = createCourse();
@@ -128,6 +126,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // then
         Assertions.assertThat(savedRunning).isEmpty();
+    }
+
+    private Member createMember(String name, String externalAuthUuid) {
+        return Member.of(name, "프로필 URL", externalAuthUuid);
     }
 
     @DisplayName("러닝 ID로 시계열 URL을 조회한다.")
@@ -204,8 +206,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     @Test
     void findGhostRunInfoById() {
         // given
-        Member ghostMember = createMember("고스트 이복둥");
-        Member member = createMember("이복둥");
+        Member ghostMember = createMember("고스트 이복둥", UUID.randomUUID().toString());
+        Member member = createMember("이복둥", UUID.randomUUID().toString());
         memberRepository.saveAll(List.of(member, ghostMember));
 
         Course course = createCourse("테스트 코스");

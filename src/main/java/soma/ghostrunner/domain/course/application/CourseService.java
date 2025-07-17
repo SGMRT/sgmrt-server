@@ -13,7 +13,7 @@ import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
-import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.List;
 import java.util.stream.Collectors;

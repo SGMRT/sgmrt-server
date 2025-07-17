@@ -38,6 +38,7 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testCompileOnly 'org.junit.jupiter:junit-jupiter-params:5.9.2'
+	testImplementation 'org.springframework.security:spring-security-test'
 
 	// RDB
 	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
@@ -78,6 +79,11 @@ dependencies {
 
 	// Firebase Admin SDK
 	implementation 'com.google.firebase:firebase-admin:9.5.0'
+
+	// jwt
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+	implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
+	implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 }
 
 tasks.named('test') {

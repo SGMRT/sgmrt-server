@@ -10,7 +10,7 @@ import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.dao.TermsAgreementRepository;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
-import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.error.ErrorCode;
 
 @Service
 @RequiredArgsConstructor

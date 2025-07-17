@@ -3,8 +3,8 @@ package soma.ghostrunner.domain.running.domain.support;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
-import soma.ghostrunner.global.common.error.ErrorCode;
-import soma.ghostrunner.global.common.error.exception.ParsingException;
+import soma.ghostrunner.global.error.ErrorCode;
+import soma.ghostrunner.global.error.exception.ParsingException;
 
 import java.util.Collections;
 import java.util.List;

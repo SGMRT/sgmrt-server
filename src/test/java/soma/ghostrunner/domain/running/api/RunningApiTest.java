@@ -1,12 +1,13 @@
 package soma.ghostrunner.domain.running.api;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import soma.ghostrunner.ApiTestSupport;
@@ -23,6 +24,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@WithMockUser
 class RunningApiTest extends ApiTestSupport {
 
     @DisplayName("새로운 코스를 기반으로 달린다.")
@@ -33,6 +35,7 @@ class RunningApiTest extends ApiTestSupport {
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .content(objectMapper.writeValueAsString(request))
                         .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -45,6 +48,7 @@ class RunningApiTest extends ApiTestSupport {
     @MethodSource("invalidCreateCourseAndRunRequests")
     void createInvalidCourseAndRun(CreateCourseAndRunRequest payload, String wrongField, String reason) throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
                 .andDo(MockMvcResultHandlers.print())
@@ -160,6 +164,7 @@ class RunningApiTest extends ApiTestSupport {
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/" + 1L + "/" + 1L)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .content(objectMapper.writeValueAsString(soloRequest))
                         .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -176,6 +181,7 @@ class RunningApiTest extends ApiTestSupport {
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/" + 1L + "/" + 1L)
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .content(objectMapper.writeValueAsString(ghostRequest))
                         .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -188,6 +194,7 @@ class RunningApiTest extends ApiTestSupport {
     @MethodSource("invalidSoloCreateRunRequests")
     void testCreateRunValidation(CreateRunRequest payload, String wrongField, String reason) throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/1/1")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
                 .andDo(MockMvcResultHandlers.print())
@@ -244,6 +251,7 @@ class RunningApiTest extends ApiTestSupport {
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/name/1")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .content(objectMapper.writeValueAsString(request))
                         .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -262,6 +270,7 @@ class RunningApiTest extends ApiTestSupport {
 
         // then
         mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/name/1")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andDo(MockMvcResultHandlers.print())
@@ -285,6 +294,7 @@ class RunningApiTest extends ApiTestSupport {
     void patchRunningPublicStatus() throws Exception {
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/isPublic")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                 )
                 .andDo(MockMvcResultHandlers.print())
@@ -353,6 +363,7 @@ class RunningApiTest extends ApiTestSupport {
 
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.delete("/v1/runs")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                 )
@@ -370,6 +381,7 @@ class RunningApiTest extends ApiTestSupport {
 
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.delete("/v1/runs")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                 )

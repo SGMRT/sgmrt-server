@@ -35,9 +35,6 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     private RunningQueryService runningQueryService;
 
     @Autowired
-    private RunningTelemetryQueryService runningTelemetryQueryService;
-
-    @Autowired
     private MemberRepository memberRepository;
 
     @Autowired
@@ -92,7 +89,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     }
 
     private Member createMember(String name) {
-        return Member.of(name, "프로필 URL");
+        return Member.of(name, "프로필 URL", "외부 UUID");
     }
 
     private Course createCourse() {

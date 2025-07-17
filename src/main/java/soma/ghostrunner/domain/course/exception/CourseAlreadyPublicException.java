@@ -1,7 +1,7 @@
 package soma.ghostrunner.domain.course.exception;
 
-import soma.ghostrunner.global.common.error.ErrorCode;
-import soma.ghostrunner.global.common.error.exception.BusinessException;
+import soma.ghostrunner.global.error.ErrorCode;
+import soma.ghostrunner.global.error.exception.BusinessException;
 
 public class CourseAlreadyPublicException extends BusinessException {
     public CourseAlreadyPublicException(ErrorCode errorCode) {

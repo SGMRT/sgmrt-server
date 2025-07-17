@@ -4,7 +4,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.auth.resolver.AuthIdResolver;
 
@@ -20,7 +19,7 @@ public class FirebaseUidResolver implements AuthIdResolver {
             FirebaseToken decodedToken = firebaseAuth.verifyIdToken(firebaseToken);
             return decodedToken.getUid();
         } catch (FirebaseAuthException e) {
-            throw new AuthenticationServiceException("Firebase ID 토큰 해석 실패 : " + firebaseToken);
+            throw new IllegalArgumentException("Firebase ID 토큰 해석 실패 : " + firebaseToken);
         }
     }
 }

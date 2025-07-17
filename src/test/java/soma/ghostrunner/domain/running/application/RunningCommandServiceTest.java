@@ -92,7 +92,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
      }
 
     private Member createMember(String name) {
-        return Member.of(name, "프로필 URL");
+        return Member.of(name, "프로필 URL", "AUTH UUID");
     }
 
     private CreateRunCommand createRunCommandRequest(String runningName, String runningMode, Long startedAt,

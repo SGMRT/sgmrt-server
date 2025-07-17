@@ -1,4 +1,4 @@
-package soma.ghostrunner.global.common.error;
+package soma.ghostrunner.global.error;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,6 +23,8 @@ public enum ErrorCode {
     // Auth
     AUTHENTICATION_FAILED("A-001", UNAUTHORIZED, "인증 실패"),
     ACCESS_DENIED("A-002", FORBIDDEN, "허용되지 않은 접근"),
+    EXPIRED_TOKEN("A-003", UNAUTHORIZED, "만료된 토큰"),
+    INVALID_TOKEN("A-004", UNAUTHORIZED, "유효하지 않은 토큰"),
 
     // Member
     MEMBER_NOT_FOUND("M-001", NOT_FOUND, "존재하지 않는 회원"),

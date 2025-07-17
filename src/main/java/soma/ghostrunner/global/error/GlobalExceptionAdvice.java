@@ -1,4 +1,4 @@
-package soma.ghostrunner.global.common.error;
+package soma.ghostrunner.global.error;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import soma.ghostrunner.global.common.error.exception.BusinessException;
+import soma.ghostrunner.global.error.exception.BusinessException;
 
 @Slf4j
 @RestControllerAdvice

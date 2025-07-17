@@ -9,9 +9,9 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
-import soma.ghostrunner.global.common.error.ErrorCode;
-import soma.ghostrunner.global.common.error.exception.ExternalIOException;
-import soma.ghostrunner.global.common.error.exception.ParsingException;
+import soma.ghostrunner.global.error.ErrorCode;
+import soma.ghostrunner.global.error.exception.ExternalIOException;
+import soma.ghostrunner.global.error.exception.ParsingException;
 
 import java.io.BufferedReader;
 import java.io.IOException;

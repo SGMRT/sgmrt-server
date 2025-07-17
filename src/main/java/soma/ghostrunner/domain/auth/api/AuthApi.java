@@ -11,7 +11,7 @@ import soma.ghostrunner.domain.auth.application.AuthService;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/auth")
-public class AuthController {
+public class AuthApi {
 
     private final AuthService authService;
 

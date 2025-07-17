@@ -7,7 +7,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
-import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.error.ErrorCode;
 
 @Entity
 @Table(name = "running_record")

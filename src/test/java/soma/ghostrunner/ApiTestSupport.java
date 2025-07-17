@@ -13,6 +13,7 @@ import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.global.common.log.HttpLogger;
+import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
 @WebMvcTest(controllers = RunningApi.class)
 @Import(RunningApiMapperImpl.class)
@@ -38,5 +39,8 @@ public abstract class ApiTestSupport {
 
     @MockitoBean
     protected HttpLogger httpLogger;
+
+    @MockitoBean
+    protected JwtProvider jwtProvider;
 
 }
