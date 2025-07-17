@@ -1,8 +1,6 @@
 package soma.ghostrunner.global.security.exception;
 
-import soma.ghostrunner.global.error.exception.AuthException;
-
-public class ParsingTokenException extends AuthException {
+public class ParsingTokenException extends RuntimeException {
 
     public ParsingTokenException(String message) {
         super(message);

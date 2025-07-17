@@ -1,4 +1,4 @@
-package soma.ghostrunner.global.security.handler;
+package soma.ghostrunner.global.security.jwt.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;

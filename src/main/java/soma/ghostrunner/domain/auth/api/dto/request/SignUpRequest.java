@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.member.Gender;
 @Getter
 @AllArgsConstructor
 public class SignUpRequest {
+
     @NotBlank
     private String nickname;
 
@@ -28,4 +29,5 @@ public class SignUpRequest {
 
     @NotNull
     private TermsAgreementDto agreement;
+
 }

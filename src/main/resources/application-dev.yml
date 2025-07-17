@@ -34,3 +34,9 @@ cloud:
 s3:
   telemetry-bucket-name: ${AWS_TELEMETRY_BUCKET}
   telemetry-directory-name: ${AWS_TELEMETRY_DIRECTORY}
+
+jwt:
+  secret: ${DEV_JWT_SECRET_KEY}
+  expiration_time:
+    access_token: 1200000
+    refresh_token: 604800000

@@ -9,8 +9,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import soma.ghostrunner.global.security.handler.GhostRunAccessDeniedHandler;
-import soma.ghostrunner.global.security.handler.GhostRunAuthenticationEntryPoint;
+import soma.ghostrunner.global.security.jwt.handler.GhostRunAccessDeniedHandler;
+import soma.ghostrunner.global.security.jwt.handler.GhostRunAuthenticationEntryPoint;
 import soma.ghostrunner.global.security.jwt.JwtAuthFilter;
 
 @Configuration

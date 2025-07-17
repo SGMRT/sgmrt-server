@@ -4,9 +4,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
-import soma.ghostrunner.domain.auth.api.dto.response.SignInResponse;
-import soma.ghostrunner.domain.auth.api.dto.response.SignUpResponse;
+import soma.ghostrunner.domain.auth.api.dto.response.AuthenticationResponse;
 import soma.ghostrunner.domain.auth.application.AuthService;
+import soma.ghostrunner.domain.auth.exception.InvalidTokenException;
+import soma.ghostrunner.global.error.ErrorCode;
 
 @RestController
 @RequiredArgsConstructor
@@ -16,24 +17,23 @@ public class AuthApi {
     private final AuthService authService;
 
     @PostMapping("/firebase-signin")
-    public SignInResponse firebaseSignIn(
-            @RequestHeader("Authorization") String authorizationHeader) {
-        return authService.signIn(authorizationHeader);
+    public AuthenticationResponse firebaseSignIn(@RequestHeader("Authorization") String authorizationHeader) {
+        String firebaseToken = extractToken(authorizationHeader);
+        return authService.signIn(firebaseToken);
     }
-
 
     @PostMapping("/firebase-signup")
-    public SignUpResponse firebaseSignUp(
-            @RequestHeader("Authorization") String authorizationHeader,
-            @Valid @RequestBody SignUpRequest signUpRequest) {
-        return authService.signUp(authorizationHeader, signUpRequest);
+    public AuthenticationResponse firebaseSignUp (
+            @RequestHeader("Authorization") String authorizationHeader, @Valid @RequestBody SignUpRequest signUpRequest) {
+        String firebaseToken = extractToken(authorizationHeader);
+        return authService.signUp(firebaseToken, signUpRequest);
     }
 
-
-    // 토큰 갱신
-
-
-    // (선택) 로그아웃
-
+    private String extractToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new InvalidTokenException(ErrorCode.INVALID_TOKEN, "유효하지 않은 Bearer 토큰입니다.");
+        }
+        return authorizationHeader.substring(7);
+    }
 
 }

@@ -1,9 +1,11 @@
 package soma.ghostrunner.global.error.exception;
 
-public class AuthException extends RuntimeException  {
+import soma.ghostrunner.global.error.ErrorCode;
 
-    public AuthException(String message) {
-        super(message);
+public class AuthException extends BusinessException {
+
+    public AuthException(ErrorCode errorCode, String message) {
+        super(errorCode, message);
     }
 
 }

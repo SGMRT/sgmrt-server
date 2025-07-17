@@ -9,8 +9,6 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
-@AllArgsConstructor
 public class TermsAgreement {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,7 +27,36 @@ public class TermsAgreement {
 
     private LocalDateTime agreedAt;
 
-    public boolean areAllMandatoryTermsAgreed() {
-        return isServiceTermsAgreed && isPrivacyPolicyAgreed && isDataConsignmentAgreed && isThirdPartyDataSharingAgreed;
+    @Builder(access = AccessLevel.PRIVATE)
+    public TermsAgreement(boolean isServiceTermsAgreed, boolean isPrivacyPolicyAgreed, boolean isDataConsignmentAgreed,
+                          boolean isThirdPartyDataSharingAgreed, boolean isMarketingAgreed, LocalDateTime agreedAt) {
+        this.isServiceTermsAgreed = isServiceTermsAgreed;
+        this.isPrivacyPolicyAgreed = isPrivacyPolicyAgreed;
+        this.isDataConsignmentAgreed = isDataConsignmentAgreed;
+        this.isThirdPartyDataSharingAgreed = isThirdPartyDataSharingAgreed;
+        this.isMarketingAgreed = isMarketingAgreed;
+        this.agreedAt = agreedAt;
     }
+
+    public static TermsAgreement of(boolean isServiceTermsAgreed, boolean isPrivacyPolicyAgreed,
+                                    boolean isDataConsignmentAgreed, boolean isThirdPartyDataSharingAgreed,
+                                    boolean isMarketingAgreed, LocalDateTime agreedAt) {
+        return TermsAgreement.builder()
+                .isServiceTermsAgreed(isServiceTermsAgreed)
+                .isPrivacyPolicyAgreed(isPrivacyPolicyAgreed)
+                .isDataConsignmentAgreed(isDataConsignmentAgreed)
+                .isThirdPartyDataSharingAgreed(isThirdPartyDataSharingAgreed)
+                .isMarketingAgreed(isMarketingAgreed)
+                .agreedAt(agreedAt)
+                .build();
+    }
+
+    public void verifyAllMandatoryTermsAgreed() {
+        boolean isAgreed = isServiceTermsAgreed && isPrivacyPolicyAgreed && isDataConsignmentAgreed
+                && isThirdPartyDataSharingAgreed;
+        if (!isAgreed) {
+            throw new IllegalArgumentException("모든 필수 약관이 동의되어야 함");
+        }
+    }
+
 }

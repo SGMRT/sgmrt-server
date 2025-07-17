@@ -1,107 +1,77 @@
 package soma.ghostrunner.domain.auth.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-import org.springframework.web.server.ResponseStatusException;
 import soma.ghostrunner.domain.auth.api.dto.AuthMapper;
-import soma.ghostrunner.domain.auth.api.dto.response.SignInResponse;
-import soma.ghostrunner.domain.auth.api.dto.response.SignUpResponse;
+import soma.ghostrunner.domain.auth.api.dto.response.AuthenticationResponse;
+import soma.ghostrunner.domain.auth.application.dto.JwtTokens;
 import soma.ghostrunner.domain.auth.resolver.AuthIdResolver;
 import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
 import soma.ghostrunner.domain.auth.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.Member;
-import soma.ghostrunner.domain.member.MemberNotFoundException;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
+import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
+import soma.ghostrunner.global.security.jwt.factory.JwtTokenFactory;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final MemberService memberService;
+    private final MemberMapper memberMapper;
+
     private final AuthIdResolver authIdResolver;
     private final AuthMapper authMapper;
 
-    public SignInResponse signIn(String authorizationHeader) {
-        String externalAuthId = resolveAuthIdOrThrow(authorizationHeader);
-        try {
-            Member member = memberService.findMemberByAuthUid(externalAuthId);
-            // todo access token & refresh token 반환
+    private final JwtTokenFactory jwtTokenFactory;
 
-            return authMapper.toSignInResponse(member.getUuid(), "accessToken", "refreshToken");
-        } catch (MemberNotFoundException e) {
-            throw new IllegalArgumentException("존재하지 않는 사용자");
-        }
+    // TODO : 리프레쉬 토큰을 레디스에 저장한다.
+    public AuthenticationResponse signIn(String firebaseToken) {
+        String externalAuthId = authIdResolver.resolveAuthId(firebaseToken);
+        String memberUuid = findMemberUuid(externalAuthId);
+        return authMapper.toAuthenticationResponse(memberUuid, createTokens(memberUuid));
+    }
+
+    private String findMemberUuid(String externalAuthId) {
+        return memberService.findUuidByAuthUid(externalAuthId);
+    }
+
+    private JwtTokens createTokens(String memberUuid) {
+        return jwtTokenFactory.createTokens(memberUuid);
     }
 
     @Transactional
-    public SignUpResponse signUp(String authorizationHeader, SignUpRequest signUpRequest) {
-        String externalAuthId = resolveAuthIdOrThrow(authorizationHeader);
-        if(memberService.isMemberExistsByAuthUid(externalAuthId))
-            throw new IllegalArgumentException("이미 존재하는 사용자");
+    public AuthenticationResponse signUp(String firebaseToken, SignUpRequest signUpRequest) {
+        String externalAuthId = authIdResolver.resolveAuthId(firebaseToken);
+        verifyMemberAlreadyExists(externalAuthId);
 
         TermsAgreement termsAgreement = createTermsAgreement(signUpRequest.getAgreement());
-        if(!termsAgreement.areAllMandatoryTermsAgreed())
-            throw new IllegalArgumentException("모든 필수 약관이 동의되어야 함");
+        termsAgreement.verifyAllMandatoryTermsAgreed();
 
-        String memberUuid = UUID.randomUUID().toString();
-        MemberCreationRequest creationRequest = createMemberCreationRequest(
-                memberUuid, externalAuthId, signUpRequest, termsAgreement);
-        Member newMember = memberService.createMember(creationRequest);
+        Member member = memberService.createMember(toMemberCreationRequest(signUpRequest, externalAuthId, termsAgreement));
 
-        // todo 토큰 발급 후 dto에 member id, access token, refresh token 받아 반환
-        return authMapper.toSignUpResponse(newMember.getUuid(), "accessToken", "refreshToken");
+        String memberUuid = member.getUuid();
+        return authMapper.toAuthenticationResponse(memberUuid, createTokens(memberUuid));
+    }
+
+    private MemberCreationRequest toMemberCreationRequest(SignUpRequest signUpRequest,
+                                                          String externalAuthId, TermsAgreement termsAgreement) {
+        return memberMapper.toMemberCreationRequest(externalAuthId, signUpRequest, termsAgreement);
+    }
+
+    private void verifyMemberAlreadyExists(String externalAuthId) {
+        memberService.verifyMemberExistsByAuthUid(externalAuthId);
     }
 
     private TermsAgreement createTermsAgreement(TermsAgreementDto agreementDto) {
-        return TermsAgreement.builder()
-                .isServiceTermsAgreed(agreementDto.isServiceTermsAgreed())
-                .isPrivacyPolicyAgreed(agreementDto.isPrivacyPolicyAgreed())
-                .isDataConsignmentAgreed(agreementDto.isDataConsignmentAgreed())
-                .isThirdPartyDataSharingAgreed(agreementDto.isThirdPartyDataSharingAgreed())
-                .isMarketingAgreed(agreementDto.isMarketingAgreed())
-                .agreedAt(LocalDateTime.now())
-                .build();
-    }
-
-    private MemberCreationRequest createMemberCreationRequest(
-            String uuid,
-            String externalAuthId,
-            SignUpRequest signUpRequest,
-            TermsAgreement termsAgreement) {
-        return MemberCreationRequest.builder()
-                .uuid(uuid)
-                .externalAuthId(externalAuthId)
-                .profileImageUrl(signUpRequest.getProfileImageUrl())
-                .nickname(signUpRequest.getNickname())
-                .gender(signUpRequest.getGender())
-                .height(signUpRequest.getHeight())
-                .weight(signUpRequest.getWeight())
-                .termsAgreement(termsAgreement)
-                .build();
-    }
-
-    private String resolveAuthIdOrThrow(String authorizationHeader) {
-        String authToken = extractAuthTokenOrThrow(authorizationHeader);
-        return authIdResolver.resolveAuthId(authToken);
-    }
-
-    private String extractAuthTokenOrThrow(String authorizationHeader) {
-        if(!StringUtils.hasText(authorizationHeader) || !authorizationHeader.startsWith("Bearer "))
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Empty authorization header");
-
-        String token = authorizationHeader.substring("Bearer ".length());
-        if(!StringUtils.hasText(token))
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Empty token");
-
-        return token;
+        return TermsAgreement.of(agreementDto.isServiceTermsAgreed(), agreementDto.isPrivacyPolicyAgreed(),
+                agreementDto.isDataConsignmentAgreed(), agreementDto.isThirdPartyDataSharingAgreed(),
+                agreementDto.isMarketingAgreed(), LocalDateTime.now());
     }
 
 }

@@ -66,7 +66,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     }
 
     private Member createMember(String name) {
-        return Member.of(name, "프로필 URL", "externalAuthUuid");
+        return Member.of(name, "프로필 URL");
     }
 
     private Course createCourse() {
@@ -129,7 +129,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     }
 
     private Member createMember(String name, String externalAuthUuid) {
-        return Member.of(name, "프로필 URL", externalAuthUuid);
+        return Member.of(name, "프로필 URL");
     }
 
     @DisplayName("러닝 ID로 시계열 URL을 조회한다.")

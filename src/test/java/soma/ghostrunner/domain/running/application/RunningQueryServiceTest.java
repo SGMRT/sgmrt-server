@@ -89,7 +89,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     }
 
     private Member createMember(String name) {
-        return Member.of(name, "프로필 URL", "외부 UUID");
+        return Member.of(name, "프로필 URL");
     }
 
     private Course createCourse() {

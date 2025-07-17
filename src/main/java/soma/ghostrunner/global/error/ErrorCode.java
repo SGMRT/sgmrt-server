@@ -19,6 +19,7 @@ public enum ErrorCode {
     TOO_MANY_REQUESTS("G-006",  HttpStatus.TOO_MANY_REQUESTS, "요청 횟수 초과"),
     INVALID_JSON_TYPE("G-007", BAD_REQUEST, "Json 파싱 실패 혹은 올바르지 않은 시간 형식"),
     ENTITY_NOT_FOUND("G-008", NOT_FOUND, "존재하지 않는 엔티티"),
+    INVALID_REQUEST_HEADER("G-009",  BAD_REQUEST, "잘못되거나 비어있는 헤더"),
 
     // Auth
     AUTHENTICATION_FAILED("A-001", UNAUTHORIZED, "인증 실패"),
