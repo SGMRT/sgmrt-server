@@ -21,7 +21,7 @@ public class CourseApi {
     private final CourseFacade courseFacade;
 
     @GetMapping
-    public List<CourseResponse> getCourses(
+    public List<CourseResponse> getCoursesByPosition(
             @RequestParam Double lat,
             @RequestParam Double lng,
             @RequestParam(required = false, defaultValue = "2000") @Max(value = 20000) Integer radiusM,
