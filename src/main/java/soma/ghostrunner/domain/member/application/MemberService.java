@@ -81,6 +81,7 @@ public class MemberService {
         if (alreadyExist) {
             throw new InvalidMemberException(ErrorCode.NICKNAME_ALREADY_EXIST, "이미 존재하는 닉네임인 경우");
         }
+    }
   
     public String generateProfileImageUploadUrl(String memberUuid, ProfileImageUploadRequest request) {
         // todo: memberuuid가 현재 로그인한 사용자인지 확인
