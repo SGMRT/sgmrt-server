@@ -16,7 +16,7 @@ import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.clients.aws.S3PresignProvider;
-import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.error.ErrorCode;
 
 import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 
