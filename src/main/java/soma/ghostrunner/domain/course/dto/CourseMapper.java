@@ -45,15 +45,16 @@ public interface CourseMapper {
     @Mapping(source = "course.name", target = "courseName")
     @Mapping(source = "course.startPoint.latitude", target = "startLat")
     @Mapping(source = "course.startPoint.longitude", target = "startLng")
-    @Mapping(source = "course.courseProfile.distance", target = "distance")
-    @Mapping(source = "course.isPublic", target = "isPublic")
-    @Mapping(target = "courseCreatedAt",
-             expression = "java(LocalDateTime.ofInstant(Instant.ofEpochMilli(course.createdAt), " +
-                                                        "ZoneId.of(\"Asia/Seoul\")")
+    @Mapping(target = "distance",
+            expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
+                    "? (int) (course.getCourseProfile().getDistance() * 1000) " +
+                    ": null)")
+    @Mapping(source = "course.isPublic", target = "courseIsPublic")
+    @Mapping(source = "course.createdAt", target = "courseCreatedAt")
     @Mapping(source = "member.id", target = "memberId")
     @Mapping(source = "member.uuid", target = "memberUuid")
     @Mapping(source = "member.nickname", target = "memberNickname")
-    @Mapping(source = "member.profilePictureUrl", target = "memberProfilePictureUrl")
+    @Mapping(source = "member.profilePictureUrl", target = "memberProfileImageUrl")
     CourseWithMemberDetailsDto toCourseWithMemberDetailsDto(Course course, Member member);
 
     @Mapping(source = "courseDto.courseId", target = "id")
@@ -62,7 +63,7 @@ public interface CourseMapper {
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")
     CourseSummaryResponse toCourseSummaryResponse(CourseWithMemberDetailsDto courseDto, Integer uniqueRunnersCount, Integer totalRunsCount,
-                                                  Integer averageCompletionTime, Double averageFinisherPace,
-                                                  Integer averageFinisherCadence);
+                                                  Double averageCompletionTime, Double averageFinisherPace,
+                                                  Double averageFinisherCadence);
 
 }
