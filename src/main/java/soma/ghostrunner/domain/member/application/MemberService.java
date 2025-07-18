@@ -32,9 +32,9 @@ public class MemberService {
     private final MemberAuthInfoRepository memberAuthInfoRepository;
 
     @Transactional(readOnly = true)
-    public Member findMemberById(Long id) {
-        return memberRepository.findById(id)
-                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, id));
+    public Member findMemberByUuid(String uuid) {
+        return memberRepository.findByUuid(uuid)
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find member uuid: " + uuid));
     }
 
     public String findUuidByAuthUid(String authUid) {

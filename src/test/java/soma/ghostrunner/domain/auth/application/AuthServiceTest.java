@@ -11,13 +11,13 @@ import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
 import soma.ghostrunner.domain.auth.api.dto.response.AuthenticationResponse;
 import soma.ghostrunner.domain.auth.application.dto.JwtTokens;
 import soma.ghostrunner.domain.auth.resolver.impl.FirebaseUidResolver;
-import soma.ghostrunner.domain.member.Gender;
 import soma.ghostrunner.domain.member.InvalidMemberException;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
+import soma.ghostrunner.domain.member.enums.Gender;
 import soma.ghostrunner.global.security.jwt.factory.JwtTokenFactory;
 
 import java.time.LocalDateTime;

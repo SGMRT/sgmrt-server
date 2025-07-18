@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.member;
 import jakarta.persistence.*;
 import lombok.*;
 import soma.ghostrunner.global.common.BaseTimeEntity;
+import soma.ghostrunner.global.common.document.TestOnly;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -47,6 +48,11 @@ public class Member extends BaseTimeEntity {
                 .nickname(nickname)
                 .profilePictureUrl(profilePictureUrl)
                 .build();
+    }
+
+    @TestOnly
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
 
 }

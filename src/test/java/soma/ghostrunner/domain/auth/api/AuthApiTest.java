@@ -9,7 +9,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import soma.ghostrunner.ApiTestSupport;
 import soma.ghostrunner.domain.auth.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
-import soma.ghostrunner.domain.member.Gender;
+import soma.ghostrunner.domain.member.enums.Gender;
 
 import java.time.LocalDateTime;
 

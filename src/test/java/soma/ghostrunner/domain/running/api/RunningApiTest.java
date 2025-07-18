@@ -32,7 +32,7 @@ class RunningApiTest extends ApiTestSupport {
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/" + 1L)
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .content(objectMapper.writeValueAsString(request))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -45,7 +45,7 @@ class RunningApiTest extends ApiTestSupport {
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
     @MethodSource("invalidCreateCourseAndRunRequests")
     void createInvalidCourseAndRun(CreateCourseAndRunRequest payload, String wrongField, String reason) throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/1")
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
@@ -158,10 +158,10 @@ class RunningApiTest extends ApiTestSupport {
     void testSoloCreateRun() throws Exception{
         // given
         CreateRunRequest soloRequest = validSoloCreateRunRequest();
-        given(runningCommandService.createRun(any(CreateRunCommand.class), anyLong(), anyLong())).willReturn(2L);
+        given(runningCommandService.createRun(any(CreateRunCommand.class), anyLong(), any())).willReturn(2L);
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/" + 1L + "/" + 1L)
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/" + 1L)
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .content(objectMapper.writeValueAsString(soloRequest))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -178,7 +178,7 @@ class RunningApiTest extends ApiTestSupport {
         CreateRunRequest ghostRequest = validGhostCreateRunRequest(3L);
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/" + 1L + "/" + 1L)
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/" + 1L)
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .content(objectMapper.writeValueAsString(ghostRequest))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -191,7 +191,7 @@ class RunningApiTest extends ApiTestSupport {
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
     @MethodSource("invalidSoloCreateRunRequests")
     void testCreateRunValidation(CreateRunRequest payload, String wrongField, String reason) throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/1/1")
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/1")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
@@ -248,7 +248,7 @@ class RunningApiTest extends ApiTestSupport {
         UpdateRunNameRequest request = new UpdateRunNameRequest("수정할 이름");
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/name/1")
+        mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/name")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .content(objectMapper.writeValueAsString(request))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -267,7 +267,7 @@ class RunningApiTest extends ApiTestSupport {
         request.setName("");
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/name/1")
+        mockMvc.perform(MockMvcRequestBuilders.patch("/v1/runs/1/name")
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

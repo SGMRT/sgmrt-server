@@ -69,7 +69,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         given(telemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
-        List<TelemetryDto> telemetries = runningQueryService.findRunningTelemetries(running.getId());
+        List<TelemetryDto> telemetries = runningQueryService.findRunningTelemetries(running.getId(), member.getUuid());
 
         // then
         Assertions.assertThat(telemetries)
@@ -140,11 +140,11 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningQueryService.findRunnings("SOLO", null, null, member.getId()));
+        runInfos.addAll(runningQueryService.findRunnings("SOLO", null, null, member.getUuid()));
         for (int i = 0; i < 4; i++) {
             RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
             runInfos.addAll(runningQueryService.findRunnings("SOLO", lastRunInfo.getStartedAt(),
-                    lastRunInfo.getRunningId(), member.getId()));
+                    lastRunInfo.getRunningId(), member.getUuid()));
         }
 
         // then
@@ -187,10 +187,10 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 member, lastRunning.getStartedAt(), RunningMode.SOLO));
 
         // when
-        List<RunInfo> firstRunInfos = runningQueryService.findRunnings("SOLO", null, null, member.getId());
+        List<RunInfo> firstRunInfos = runningQueryService.findRunnings("SOLO", null, null, member.getUuid());
         RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
         List<RunInfo> secondRunInfos = runningQueryService.findRunnings("SOLO", lastOfFirstRunInfo.getStartedAt(),
-                lastOfFirstRunInfo.getRunningId(), member.getId());
+                lastOfFirstRunInfo.getRunningId(), member.getUuid());
 
         // then
         for (RunInfo firstRunInfo : firstRunInfos) {
@@ -222,7 +222,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.saveAll(List.of(publicRunning, privateRunning));
 
         // when
-        List<RunInfo> runInfos = runningQueryService.findRunnings("SOLO", null, null, member.getId());
+        List<RunInfo> runInfos = runningQueryService.findRunnings("SOLO", null, null, member.getUuid());
 
         // then
         RunInfo privateRunInfo = runInfos.get(0);
@@ -270,11 +270,11 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO", null, null, member.getId()));
+        runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO", null, null, member.getUuid()));
         for (int i = 0; i < 4; i++) {
             RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
             runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO",
-                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getId()));
+                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getUuid()));
         }
 
         // then
@@ -328,11 +328,11 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningQueryService.findRunningsForGalleryView("SOLO", null, null, member.getId()));
+        runInfos.addAll(runningQueryService.findRunningsForGalleryView("SOLO", null, null, member.getUuid()));
         for (int i = 0; i < 4; i++) {
             RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
             runInfos.addAll(runningQueryService.findRunningsForGalleryView("SOLO", lastRunInfo.getStartedAt(),
-                    lastRunInfo.getRunningId(), member.getId()));
+                    lastRunInfo.getRunningId(), member.getUuid()));
         }
 
         // then

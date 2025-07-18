@@ -34,11 +34,11 @@ public class RunningCommandService {
     private final MemberService memberService;
 
     @Transactional
-    public CreateCourseAndRunResponse createCourseAndRun(CreateRunCommand command, Long memberId) {
-        Member member = memberService.findMemberById(memberId);
+    public CreateCourseAndRunResponse createCourseAndRun(CreateRunCommand command, String memberUuid) {
+        Member member = memberService.findMemberByUuid(memberUuid);
 
         ProcessedTelemetriesDto processedTelemetry = processTelemetry(command);
-        String url = uploadTelemetryToS3(memberId, processedTelemetry);
+        String url = uploadTelemetryToS3(memberUuid, processedTelemetry);
 
         Course course = createAndSaveCourse(command, processedTelemetry);
         Running running = createAndSaveRunning(command, processedTelemetry, url, member, course);
@@ -47,12 +47,12 @@ public class RunningCommandService {
     }
 
     @Transactional
-    public Long createRun(CreateRunCommand command, Long courseId, Long memberId) {
-        Member member = memberService.findMemberById(memberId);
+    public Long createRun(CreateRunCommand command, Long courseId, String memberUuid) {
+        Member member = memberService.findMemberByUuid(memberUuid);
         verifyCourseIdIfGhostMode(command, courseId);
 
         ProcessedTelemetriesDto processedTelemetry = processTelemetry(command);
-        String url = uploadTelemetryToS3(memberId, processedTelemetry);
+        String url = uploadTelemetryToS3(memberUuid, processedTelemetry);
 
         Course course = courseService.findCourseById(courseId);
         Running running = createAndSaveRunning(command, processedTelemetry, url, member, course);
@@ -70,9 +70,9 @@ public class RunningCommandService {
         return TelemetryCalculator.processTelemetry(command.telemetries(), command.startedAt());
     }
 
-    private String uploadTelemetryToS3(Long memberId, ProcessedTelemetriesDto processedTelemetry) {
+    private String uploadTelemetryToS3(String memberUuid, ProcessedTelemetriesDto processedTelemetry) {
         String stringTelemetries = TelemetryTypeConverter.convertFromObjectsToString(processedTelemetry.getRelativeTelemetries());
-        return telemetryClient.uploadTelemetries(stringTelemetries, memberId);
+        return telemetryClient.uploadTelemetries(stringTelemetries, memberUuid);
     }
 
     private RunningRecord createRunningRecord(RunRecordDto command, ProcessedTelemetriesDto processedTelemetry) {
@@ -87,23 +87,19 @@ public class RunningCommandService {
     }
 
     @Transactional
-    public void updateRunningName(String name, Long memberId, Long runningId) {
-        Running running = findRunning(memberId, runningId);
+    public void updateRunningName(String name, Long runningId, String memberUuid) {
+        Running running = findRunning(runningId);
         running.updateName(name);
     }
 
     @Transactional
-    public void updateRunningPublicStatus(Long runningId) {
+    public void updateRunningPublicStatus(Long runningId, String memberUuid) {
         Running running = findRunning(runningId);
         running.updatePublicStatus();
     }
 
     private Running findRunning(Long runningId) {
         return runningQueryService.findRunningByRunningId(runningId);
-    }
-
-    private Running findRunning(Long memberId, Long runningId) {
-        return runningQueryService.findRunningByRunningId(runningId, memberId);
     }
 
     private Course createAndSaveCourse(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry) {
@@ -114,7 +110,7 @@ public class RunningCommandService {
     }
 
     @Transactional
-    public void deleteRunnings(List<Long> runningIds) {
+    public void deleteRunnings(List<Long> runningIds, String memberUuid) {
         runningRepository.deleteAllByIdIn(runningIds);
     }
 

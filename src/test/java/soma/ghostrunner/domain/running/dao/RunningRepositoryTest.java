@@ -408,10 +408,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 .toList();
 
         // when
-        List<RunInfo> firstRunInfos = runningRepository.findRunInfosByCursorIds(RunningMode.SOLO, null, null, member.getId());
+        List<RunInfo> firstRunInfos = runningRepository.findRunInfosByCursorIds(RunningMode.SOLO, null, null, member.getUuid());
         RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
         List<RunInfo> secondRunInfos = runningRepository.findRunInfosByCursorIds(RunningMode.SOLO, lastOfFirstRunInfo.getStartedAt(),
-                lastOfFirstRunInfo.getRunningId(), member.getId());
+                lastOfFirstRunInfo.getRunningId(), member.getUuid());
 
         // then
         IntStream.range(0, firstRunInfos.size()).forEach(idx -> {
@@ -471,11 +471,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningRepository.findRunInfosFilteredByCoursesByCursorIds(RunningMode.SOLO, null, null, member.getId()));
+        runInfos.addAll(runningRepository.findRunInfosFilteredByCoursesByCursorIds(RunningMode.SOLO, null, null, member.getUuid()));
         for (int i = 0; i < 4; i++) {
             RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
             runInfos.addAll(runningRepository.findRunInfosFilteredByCoursesByCursorIds(RunningMode.SOLO,
-                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getId()));
+                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getUuid()));
         }
 
         // then
@@ -519,10 +519,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> firstRunInfos = runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.SOLO, null, null, member.getId());
+                RunningMode.SOLO, null, null, member.getUuid());
         RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
         List<RunInfo> secondRunInfos = runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.SOLO, lastOfFirstRunInfo.getStartedAt(), lastOfFirstRunInfo.getRunningId(), member.getId());
+                RunningMode.SOLO, lastOfFirstRunInfo.getStartedAt(), lastOfFirstRunInfo.getRunningId(), member.getUuid());
 
         // then
         IntStream.range(0, firstRunInfos.size()).forEach(idx -> {

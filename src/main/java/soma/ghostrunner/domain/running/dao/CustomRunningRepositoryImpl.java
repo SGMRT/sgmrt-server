@@ -121,8 +121,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
     }
 
     @Override
-    public List<RunInfo> findRunInfosByCursorIds(RunningMode runningMode, Long cursorStartedAt,
-                                                 Long cursorRunningId, Long memberId) {
+    public List<RunInfo> findRunInfosByCursorIds(
+            RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
         return queryFactory
                 .select(new QRunInfo(
                         running.id, running.runningName, running.startedAt,
@@ -133,7 +133,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                 .from(running)
                 .join(running.course, course)
                 .where(cursorCondition(cursorStartedAt, cursorRunningId))
-                .where(running.member.id.eq(memberId), running.runningMode.eq(runningMode))
+                .where(running.member.uuid.eq(memberUuid), running.runningMode.eq(runningMode))
                 .orderBy(running.startedAt.desc(), running.id.desc())
                 .limit(DEFAULT_PAGE_SIZE)
                 .fetch();
@@ -149,8 +149,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
     }
 
     @Override
-    public List<RunInfo> findRunInfosFilteredByCoursesByCursorIds(RunningMode runningMode, String cursorCourseName,
-                                                                  Long cursorRunningId, Long memberId) {
+    public List<RunInfo> findRunInfosFilteredByCoursesByCursorIds(
+            RunningMode runningMode, String cursorCourseName, Long cursorRunningId, String memberUuid) {
         return queryFactory
                 .select(new QRunInfo(
                         running.id, running.runningName, running.startedAt,
@@ -161,7 +161,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                 .from(running)
                 .join(running.course, course)
                 .where(cursorCondition(cursorCourseName, cursorRunningId))
-                .where(running.member.id.eq(memberId), running.runningMode.eq(runningMode), running.course.isPublic.eq(true))
+                .where(running.member.uuid.eq(memberUuid), running.runningMode.eq(runningMode), running.course.isPublic.eq(true))
                 .orderBy(running.course.name.asc(), running.id.desc())
                 .limit(DEFAULT_PAGE_SIZE)
                 .fetch();
@@ -177,8 +177,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
     }
 
     @Override
-    public List<RunInfo> findRunInfosForGalleryViewByCursorIds(RunningMode runningMode, Long cursorStartedAt,
-                                                 Long cursorRunningId, Long memberId) {
+    public List<RunInfo> findRunInfosForGalleryViewByCursorIds(
+            RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
         return queryFactory
                 .select(new QRunInfo(
                         running.id, running.runningName, running.startedAt,
@@ -190,7 +190,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                 .from(running)
                 .join(running.course, course)
                 .where(cursorCondition(cursorStartedAt, cursorRunningId))
-                .where(running.member.id.eq(memberId), running.runningMode.eq(runningMode))
+                .where(running.member.uuid.eq(memberUuid), running.runningMode.eq(runningMode))
                 .orderBy(running.startedAt.desc(), running.id.desc())
                 .limit(GALLERY_VIEW_PAGE_SIZE)
                 .fetch();

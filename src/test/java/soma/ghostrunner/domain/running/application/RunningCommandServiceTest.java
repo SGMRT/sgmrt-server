@@ -57,11 +57,11 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createRunCommandRequest("러닝 이름", "SOLO", 100L,
                 runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when
-        CreateCourseAndRunResponse response = runningCommandService.createCourseAndRun(request, member.getId());
+        CreateCourseAndRunResponse response = runningCommandService.createCourseAndRun(request, member.getUuid());
 
         // then
         Running savedRunning = runningRepository.findById(response.getRunningId()).get();
@@ -130,11 +130,11 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "SOLO", null,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when
-        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getId());
+        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getUuid());
 
         // then
         Running savedRunning = runningRepository.findById(savedRunningId).get();
@@ -166,11 +166,11 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when
-        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getId());
+        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getUuid());
 
         // then
         Running savedRunning = runningRepository.findById(savedRunningId).get();
@@ -189,7 +189,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     void throwExceptionIfCourseNotRunByGhost() {
         // given
         Member member = createMember("테스트 유저");
-        Long savedMemberId = memberRepository.save(member).getId();
+        String savedMemberUuid = memberRepository.save(member).getUuid();
 
         Course ghostCourse = createCourse();
         Long savedCourseId = courseRepository.save(ghostCourse).getId();
@@ -204,11 +204,11 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when // then
-        Assertions.assertThatThrownBy(() -> runningCommandService.createRun(request, savedFakeCourseId, savedMemberId))
+        Assertions.assertThatThrownBy(() -> runningCommandService.createRun(request, savedFakeCourseId, savedMemberUuid))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("고스트가 뛴 코스가 아닙니다.");
     }
@@ -252,8 +252,8 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Running privateRunning = runningRepository.save(createRunning(member, course, false));
 
         // when
-        runningCommandService.updateRunningPublicStatus(publicRunning.getId());
-        runningCommandService.updateRunningPublicStatus(privateRunning.getId());
+        runningCommandService.updateRunningPublicStatus(publicRunning.getId(), member.getUuid());
+        runningCommandService.updateRunningPublicStatus(privateRunning.getId(), member.getUuid());
 
         // then
         Running updatedToPublicRunning = runningRepository.findById(privateRunning.getId()).get();
@@ -277,7 +277,8 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         runningRepository.save(hasPausedRunning);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> runningCommandService.updateRunningPublicStatus(hasPausedRunning.getId()))
+        Assertions.assertThatThrownBy(
+                () -> runningCommandService.updateRunningPublicStatus(hasPausedRunning.getId(), member.getUuid()))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("정지한 기록이 있다면 공개할 수 없습니다.");
      }
@@ -315,7 +316,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 
         // when
         List<Long> runningIds = List.of(running1.getId(), running2.getId(), running3.getId());
-        runningCommandService.deleteRunnings(runningIds);
+        runningCommandService.deleteRunnings(runningIds, member.getUuid());
 
         // then
         List<Running> runnings = runningRepository.findByIds(List.of(running1.getId(), running2.getId(), running3.getId()));

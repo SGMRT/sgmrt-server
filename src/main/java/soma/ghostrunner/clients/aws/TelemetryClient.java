@@ -36,10 +36,9 @@ public class TelemetryClient {
     private String telemetryDirectory;
 
     // 업로드
-    public String uploadTelemetries(String telemetries, Long memberId) {
+    public String uploadTelemetries(String telemetries, String memberUuid) {
 
-        // TODO : 파일 이름에서 유저의 UUID 필드로 저장되도록 수정
-        String fileName = telemetryDirectory + "/" + memberId + "/" + UUID.randomUUID() + ".jsonl";
+        String fileName = telemetryDirectory + "/" + memberUuid + "/" + UUID.randomUUID() + ".jsonl";
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(telemetryBucket)
                 .key(fileName)
