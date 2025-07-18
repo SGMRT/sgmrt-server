@@ -12,15 +12,22 @@ public class CourseRunStatisticsDto {
   private Double avgFinisherCadence;
   private Double lowestFinisherPace;
 
+  private Integer uniqueRunnersCount;
+  private Integer totalRunsCount;
+
   @QueryProjection
   public CourseRunStatisticsDto(
       Double avgCompletionTime,
       Double avgFinisherPace,
       Double avgFinisherCadence,
-      Double lowestFinisherPace) {
+      Double lowestFinisherPace,
+      Integer uniqueRunnersCount,
+      Integer totalRunsCount) {
     this.avgCompletionTime = avgCompletionTime;
     this.avgFinisherPace = avgFinisherPace;
     this.avgFinisherCadence = avgFinisherCadence;
     this.lowestFinisherPace = lowestFinisherPace;
+    this.uniqueRunnersCount = uniqueRunnersCount;
+    this.totalRunsCount = totalRunsCount;
   }
 }
