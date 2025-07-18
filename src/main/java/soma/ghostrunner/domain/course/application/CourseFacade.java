@@ -3,12 +3,14 @@ package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
+import soma.ghostrunner.domain.course.dto.CourseWithMemberDetailsDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
@@ -16,6 +18,7 @@ import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.domain.Running;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -27,7 +30,7 @@ public class CourseFacade {
 
     private final CourseMapper courseMapper;
 
-    public List<CourseResponse> findCourses(
+    public List<CourseResponse> findCoursesByPosition(
             Double lat, Double lng, Integer radiusM,
             Integer minDistanceM, Integer maxDistanceM,
             Integer minElevationM, Integer maxElevationM,
@@ -77,6 +80,22 @@ public class CourseFacade {
         Running firstRun = runningQueryService.findFirstRunning(courseId);
         List<CoordinateDto> coordinates = runningTelemetryQueryService.findCoordinateTelemetries(firstRun.getTelemetryUrl());
         return courseMapper.toCoordinatesResponse(course, coordinates);
+    }
+
+    public Page<CourseSummaryResponse> findCourseSummariesOfMember(String memberUuid, Pageable pageable) {
+        // todo: 평균 데이터 캐싱 (Course 테이블에 저장 혹은 캐싱)
+        Page<CourseWithMemberDetailsDto> courseDetails = courseService.findCoursesByMemberUuid(memberUuid, pageable);
+        List<CourseSummaryResponse> results = new ArrayList<>();
+
+        for(CourseWithMemberDetailsDto courseDto : courseDetails.getContent()) {
+            CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseDto.getCourseId())
+                    .orElse(new CourseRunStatisticsDto());
+            results.add(courseMapper.toCourseSummaryResponse(courseDto, courseStatistics.getUniqueRunnersCount(),
+                    courseStatistics.getTotalRunsCount(), courseStatistics.getAvgCompletionTime(),
+                    courseStatistics.getAvgFinisherPace(), courseStatistics.getAvgFinisherCadence()));
+        }
+
+        return new PageImpl<>(results, pageable, courseDetails.getTotalElements());
     }
 
 }

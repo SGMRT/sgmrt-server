@@ -1,9 +1,12 @@
 package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import soma.ghostrunner.domain.course.dto.CourseWithMemberDetailsDto;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
@@ -69,6 +72,12 @@ public class CourseService {
     public CourseDetailedResponse getCourse(Long courseId) {
       return courseRepository.findCourseDetailedById(courseId)
           .orElseThrow(() -> new CourseNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
+    }
+
+    public Page<CourseWithMemberDetailsDto> findCoursesByMemberUuid(
+            String memberUuid, Pageable pageable) {
+        Page<Course> courses = courseRepository.findCoursesFetchJoinMembersByMemberUuid(memberUuid, pageable);
+        return courses.map(c -> courseMapper.toCourseWithMemberDetailsDto(c, c.getMember()));
     }
 
     @Transactional

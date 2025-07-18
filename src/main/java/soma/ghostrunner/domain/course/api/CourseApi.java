@@ -15,12 +15,12 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/courses")
+@RequestMapping("/v1")
 public class CourseApi {
 
     private final CourseFacade courseFacade;
 
-    @GetMapping
+    @GetMapping("/courses")
     public List<CourseResponse> getCoursesByPosition(
             @RequestParam Double lat,
             @RequestParam Double lng,
@@ -30,30 +30,30 @@ public class CourseApi {
             @RequestParam(required = false) Integer maxDistanceM,
             @RequestParam(required = false) Integer minElevationM,
             @RequestParam(required = false) Integer maxElevationM) {
-        return courseFacade.findCourses(lat, lng, radiusM,
+        return courseFacade.findCoursesByPosition(lat, lng, radiusM,
                 minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerId);
     }
 
-    @GetMapping("/{courseId}")
+    @GetMapping("/courses/{courseId}")
     public CourseDetailedResponse getCourse(
         @PathVariable("courseId") Long courseId) {
         return courseFacade.findCourse(courseId);
     }
 
-    @PatchMapping("/{courseId}")
+    @PatchMapping("/courses/{courseId}")
     public void updateCourse(
             @PathVariable("courseId") Long courseId,
             @RequestBody CoursePatchRequest request) {
         courseFacade.updateCourse(courseId, request);
     }
 
-    @DeleteMapping("/{courseId}")
+    @DeleteMapping("/courses/{courseId}")
     public void deleteCourse(
             @PathVariable("courseId") Long courseId) {
         courseFacade.deleteCourse(courseId);
     }
 
-    @GetMapping("/{courseId}/ghosts")
+    @GetMapping("/courses/{courseId}/ghosts")
     public PagedModel<CourseGhostResponse> getGhosts(
             @PathVariable("courseId") Long courseId,
             @PageableDefault(sort = "runningRecord.averagePace") Pageable pageable) {
@@ -61,24 +61,31 @@ public class CourseApi {
         // max 페이지 크기 설정
     }
 
-    @GetMapping("/{courseId}/ranking")
+    @GetMapping("/courses/{courseId}/ranking")
     public CourseRankingResponse getCourseRanking(
             @PathVariable("courseId") Long courseId,
             @RequestParam Long userId) {
         return courseFacade.findCourseRankingDetail(courseId, userId);
     }
 
-    @GetMapping("/{courseId}/top-ranking")
+    @GetMapping("/courses/{courseId}/top-ranking")
     public List<CourseGhostResponse> getTopRankingGhosts(
-        @PathVariable("courseId") Long courseId,
-        @RequestParam(required = false, defaultValue = "10") @Min(value = 1) @Max(value = 50) Integer count) {
+            @PathVariable("courseId") Long courseId,
+            @RequestParam(required = false, defaultValue = "10") @Min(value = 1) @Max(value = 50) Integer count) {
         return courseFacade.findTopRankingGhosts(courseId, count);
     }
 
-    @GetMapping("/{courseId}/first-telemetry")
+    @GetMapping("/courses/{courseId}/first-telemetry")
     public CourseCoordinatesResponse getCourseCoordinates(
             @PathVariable("courseId") Long courseId) {
         return courseFacade.findCourseFirstRunCoordinatesWithDetails(courseId);
+    }
+
+    @GetMapping("/members/{memberUuid}/courses")
+    public PagedModel<CourseSummaryResponse> getMemberCourses(
+            @PathVariable("memberUuid") String memberUuid,
+            @PageableDefault Pageable pageable) {
+        return new PagedModel<>(courseFacade.findCourseSummariesOfMember(memberUuid, pageable));
     }
 
 }
