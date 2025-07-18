@@ -3,10 +3,7 @@ package soma.ghostrunner.domain.member.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.domain.member.Member;
-import soma.ghostrunner.domain.member.MemberBioInfo;
-import soma.ghostrunner.domain.member.MemberNotFoundException;
-import soma.ghostrunner.domain.member.MemberRepository;
+import soma.ghostrunner.domain.member.*;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.dao.TermsAgreementRepository;
@@ -15,6 +12,8 @@ import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.Optional;
+
+import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +37,7 @@ public class MemberService {
     public void verifyMemberExistsByAuthUid(String authUid) {
         boolean isExist = memberAuthInfoRepository.existsByExternalAuthUid(authUid);
         if (isExist) {
-            throw new IllegalArgumentException("이미 존재하는 사용자");
+            throw new InvalidMemberException(MEMBER_ALREADY_EXISTED, "이미 존재하는 회원인 경우");
         }
     }
 
@@ -51,6 +50,7 @@ public class MemberService {
                                            creationRequest.getHeight()))
                 .profilePictureUrl(creationRequest.getProfileImageUrl())
                 .build();
+        verifyAlreadyExistNickname(creationRequest);
         member = memberRepository.save(member);
 
         MemberAuthInfo memberAuthInfo = MemberAuthInfo.of(member, creationRequest.getExternalAuthId());
@@ -63,5 +63,12 @@ public class MemberService {
         }
 
         return member;
+    }
+
+    private void verifyAlreadyExistNickname(MemberCreationRequest creationRequest) {
+        boolean alreadyExist = memberRepository.existsByNickname(creationRequest.getNickname());
+        if (alreadyExist) {
+            throw new InvalidMemberException(ErrorCode.NICKNAME_ALREADY_EXIST, "이미 존재하는 닉네임인 경우");
+        }
     }
 }

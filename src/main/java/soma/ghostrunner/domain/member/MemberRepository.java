@@ -13,4 +13,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             "inner join MemberAuthInfo mai on m.id = mai.member.id where mai.externalAuthUid = :authUid")
     Optional<Member> findByExternalAuthUid(String authUid);
 
+    boolean existsByNickname(String nickname);
+
 }

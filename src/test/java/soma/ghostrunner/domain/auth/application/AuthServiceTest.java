@@ -1,7 +1,6 @@
 package soma.ghostrunner.domain.auth.application;
 
 import org.assertj.core.api.Assertions;
-import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +12,7 @@ import soma.ghostrunner.domain.auth.api.dto.response.AuthenticationResponse;
 import soma.ghostrunner.domain.auth.application.dto.JwtTokens;
 import soma.ghostrunner.domain.auth.resolver.impl.FirebaseUidResolver;
 import soma.ghostrunner.domain.member.Gender;
+import soma.ghostrunner.domain.member.InvalidMemberException;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.domain.member.application.MemberService;
@@ -114,8 +114,8 @@ class AuthServiceTest extends IntegrationTestSupport {
 
         // when // then
         Assertions.assertThatThrownBy(() -> authService.signUp("Firebase Token", request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("이미 존재하는 사용자");
+                .isInstanceOf(InvalidMemberException.class)
+                .hasMessage("이미 존재하는 회원인 경우");
     }
 
     private MemberAuthInfo createMemberAuthInfo(Member existMember, String authUid) {
@@ -152,6 +152,22 @@ class AuthServiceTest extends IntegrationTestSupport {
     private TermsAgreementDto createInvalidTermsAgreementDto() {
         return new TermsAgreementDto(true, false, false,
                 true, false, LocalDateTime.now());
+    }
+
+    @DisplayName("이미 존재하는 닉네임을 가진 사용자가 있다면 회원가입에 실패한다.")
+    @Test
+    void singUpWithAlreadyExistNickname() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        TermsAgreementDto agreement = createTermsAgreementDto();
+        SignUpRequest request = createSignUpRequest("이복둥", agreement);
+
+        // when // then
+        Assertions.assertThatThrownBy(() -> authService.signUp("Firebase Token", request))
+                .isInstanceOf(InvalidMemberException.class)
+                .hasMessage("이미 존재하는 닉네임인 경우");
     }
 
 }

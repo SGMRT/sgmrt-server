@@ -30,6 +30,7 @@ public enum ErrorCode {
     // Member
     MEMBER_NOT_FOUND("M-001", NOT_FOUND, "존재하지 않는 회원"),
     MEMBER_ALREADY_EXISTED("M-002", CONFLICT, "이미 존재하는 회원"),
+    NICKNAME_ALREADY_EXIST("M-003", CONFLICT, "이미 존재하는 닉네임"),
 
     // Course
     COURSE_NOT_FOUND("C-001", NOT_FOUND, "존재하지 않는 코스"),
