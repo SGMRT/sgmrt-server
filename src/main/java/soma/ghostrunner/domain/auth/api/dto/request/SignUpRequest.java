@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.*;
 import org.hibernate.validator.constraints.URL;
 import soma.ghostrunner.domain.auth.api.dto.TermsAgreementDto;
-import soma.ghostrunner.domain.member.Gender;
+import soma.ghostrunner.domain.member.enums.Gender;
 
 @Getter
 @AllArgsConstructor

@@ -1,7 +1,7 @@
 package soma.ghostrunner.domain.member.application.dto;
 
 import lombok.*;
-import soma.ghostrunner.domain.member.Gender;
+import soma.ghostrunner.domain.member.enums.Gender;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 
 @Getter
