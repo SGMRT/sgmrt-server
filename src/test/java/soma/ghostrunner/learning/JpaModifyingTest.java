@@ -37,7 +37,7 @@ public class JpaModifyingTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course);
@@ -60,7 +60,7 @@ public class JpaModifyingTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning(member, course);
@@ -81,7 +81,7 @@ public class JpaModifyingTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning(member, course);
@@ -106,10 +106,10 @@ public class JpaModifyingTest extends IntegrationTestSupport {
         return Member.of(name, "프로필 URL");
     }
 
-    private Course createCourse() {
+    private Course createCourse(Member member) {
         CourseProfile testCourseProfile = createCourseProfile();
         StartPoint testStartPoint = createStartPoint();
-        return Course.of(testCourseProfile, testStartPoint, createCoordinatesTelemetries());
+        return Course.of(member, testCourseProfile, testStartPoint, createCoordinatesTelemetries());
     }
 
     private String createCoordinatesTelemetries() {

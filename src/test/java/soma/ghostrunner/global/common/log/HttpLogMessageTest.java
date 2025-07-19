@@ -44,5 +44,4 @@ class HttpLogMessageTest {
         }
     }
 
-    // TODO : 엣지케이스 테스트로 검증
 }

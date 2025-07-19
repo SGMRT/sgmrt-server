@@ -40,7 +40,7 @@ public class RunningCommandService {
         ProcessedTelemetriesDto processedTelemetry = processTelemetry(command);
         String url = uploadTelemetryToS3(memberUuid, processedTelemetry);
 
-        Course course = createAndSaveCourse(command, processedTelemetry);
+        Course course = createAndSaveCourse(member, command, processedTelemetry);
         Running running = createAndSaveRunning(command, processedTelemetry, url, member, course);
 
         return CreateCourseAndRunResponse.of(running.getId(), course.getId());
@@ -89,12 +89,14 @@ public class RunningCommandService {
     @Transactional
     public void updateRunningName(String name, Long runningId, String memberUuid) {
         Running running = findRunning(runningId);
+        running.verifyMember(memberUuid);
         running.updateName(name);
     }
 
     @Transactional
     public void updateRunningPublicStatus(Long runningId, String memberUuid) {
         Running running = findRunning(runningId);
+        running.verifyMember(memberUuid);
         running.updatePublicStatus();
     }
 
@@ -102,15 +104,20 @@ public class RunningCommandService {
         return runningQueryService.findRunningByRunningId(runningId);
     }
 
-    private Course createAndSaveCourse(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry) {
-        Course course = Course.of(CourseProfile.of(command.record().distance(), command.record().elevationGain(),
-                        command.record().elevationLoss()), processedTelemetry.getStartPoint(), processedTelemetry.getCourseCoordinates());
+    private Course createAndSaveCourse(
+            Member member, CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry) {
+        Course course = Course.of(member, CourseProfile.of(
+                command.record().distance(), command.record().elevationGain(),
+                command.record().elevationLoss()), processedTelemetry.getStartPoint(),
+                processedTelemetry.getCourseCoordinates());
         courseService.save(course);
         return course;
     }
 
     @Transactional
     public void deleteRunnings(List<Long> runningIds, String memberUuid) {
+        List<Running> runnings = runningRepository.findByIds(runningIds);
+        runnings.forEach(running -> running.verifyMember(memberUuid));
         runningRepository.deleteAllByIdIn(runningIds);
     }
 

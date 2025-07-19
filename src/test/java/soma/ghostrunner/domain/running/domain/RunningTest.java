@@ -17,7 +17,9 @@ class RunningTest {
     @Test
     void updateName() {
         // given
-        Running running = createRunning("테스트 러닝제목");
+        Member member = createMember();
+        Course course = createCourse(member);
+        Running running = createRunning("테스트 러닝제목", member, course);
 
         // when
         running.updateName("업데이트된 이름");
@@ -26,17 +28,45 @@ class RunningTest {
         Assertions.assertThat(running.getRunningName()).isEqualTo("업데이트된 이름");
     }
 
-    private Running createRunning(String runningName) {
+    private Member createMember() {
+        return Member.of("이복둥", "프로필 URL");
+    }
+
+    private Course createCourse(Member member) {
+        return Course.of(
+                member, createCourseProfile(), createStartPoint(),
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+    }
+
+    private StartPoint createStartPoint() {
+        return StartPoint.of(37.545354, 34.7878);
+    }
+
+    private CourseProfile createCourseProfile() {
+        return CourseProfile.of(5.2, 40, -20);
+    }
+
+    private Running createRunning(String runningName, Member testMember, Course testCourse) {
         return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                true, false, "URL", createMember(), createCourse());
+                true, false, "URL", testMember, testCourse);
+    }
+
+    private RunningRecord createRunningRecord() {
+        return RunningRecord.of(
+                5.2, 40, -20, 6.1, 3423.2,
+                302.2, 120L, 56, 100, 120);
     }
 
     @DisplayName("공개/비공개 설정을 변경한다.")
     @Test
     void updatePublicStatus() {
         // given
-        Running publicRunning = createRunning("테스트 러닝제목", true, false);
-        Running privateRunning = createRunning("테스트 러닝제목", false, false);
+        Member member = createMember();
+        Course course = createCourse(member);
+        Running publicRunning = createRunning(
+                "테스트 러닝제목", member, course, true, false);
+        Running privateRunning = createRunning(
+                "테스트 러닝제목", member, course, false, false);
 
         // when
         publicRunning.updatePublicStatus();
@@ -51,7 +81,9 @@ class RunningTest {
     @Test
     void cannotUpdatePublicStatusIfHasPaused() {
         // given
-        Running hasPausedAndPrivateRunning = createRunning("테스트 러닝제목", false, true);
+        Member member = createMember();
+        Course course = createCourse(member);
+        Running hasPausedAndPrivateRunning = createRunning("테스트 러닝제목", member, course, false, true);
 
         // when // then
         Assertions.assertThatThrownBy(hasPausedAndPrivateRunning::updatePublicStatus)
@@ -59,18 +91,20 @@ class RunningTest {
                 .hasMessage("정지한 기록이 있다면 공개할 수 없습니다.");
     }
 
-    private Running createRunning(String runningName, boolean isPublic, boolean hasPaused) {
+    private Running createRunning(
+            String runningName, Member testMember, Course testCourse, boolean isPublic, boolean hasPaused) {
         return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                isPublic, hasPaused, "URL", createMember(), createCourse());
+                isPublic, hasPaused, "URL", testMember, testCourse);
     }
 
     @DisplayName("뛰었던 코스의 ID인지 검증한다.")
     @Test
     void verifyCourseId() {
         // given
-        Course course = createCourse();
+        Member member = createMember();
+        Course course = createCourse(member);
         setCourseId(course, 100L);
-        Running running = createRunning("테스트 러닝제목", course);
+        Running running = createRunning("테스트 러닝제목", member, course);
 
         // when // then
         running.verifyCourseId(100L);
@@ -80,9 +114,10 @@ class RunningTest {
     @Test
     void verifyIncorrectAndNullCourseId() {
         // given
-        Course course = createCourse();
+        Member member = createMember();
+        Course course = createCourse(member);
         setCourseId(course, 100L);
-        Running running = createRunning("테스트 러닝제목", course);
+        Running running = createRunning("테스트 러닝제목", member, course);
 
         // when // then
         Assertions.assertThatThrownBy(() -> running.verifyCourseId(101L))
@@ -102,31 +137,6 @@ class RunningTest {
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private Running createRunning(String runningName, Course course) {
-        return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                true, false, "URL", createMember(), course);
-    }
-
-    private Member createMember() {
-        return Member.of("이복둥", "프로필 URL");
-    }
-
-    private Course createCourse() {
-        return Course.of(createCourseProfile(), createStartPoint(), "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
-    }
-
-    private StartPoint createStartPoint() {
-        return StartPoint.of(37.545354, 34.7878);
-    }
-
-    private CourseProfile createCourseProfile() {
-        return CourseProfile.of(5.2, 40, -20);
-    }
-
-    private RunningRecord createRunningRecord() {
-        return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
     }
   
 }

@@ -42,7 +42,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course);
@@ -69,10 +69,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         return Member.of(name, "프로필 URL");
     }
 
-    private Course createCourse() {
+    private Course createCourse(Member testMember) {
         CourseProfile testCourseProfile = createCourseProfile();
         StartPoint testStartPoint = createStartPoint();
-        return Course.of(testCourseProfile, testStartPoint, createCoordinatesTelemetries());
+        return Course.of(testMember, testCourseProfile, testStartPoint, createCoordinatesTelemetries());
     }
 
     private String createCoordinatesTelemetries() {
@@ -94,7 +94,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning(member, course);
@@ -115,7 +115,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member fakeMember = createMember("페이크 이복둥", UUID.randomUUID().toString());
         memberRepository.saveAll(List.of(member, fakeMember));
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning(member, course);
@@ -139,7 +139,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning(member, course);
@@ -160,7 +160,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createSoloRunning(member, course);
@@ -187,11 +187,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 true, false, "URL", testMember, testCourse);
     }
 
-    private Course createCourse(String name) {
+    private Course createCourse(Member testMember, String courseName) {
         CourseProfile testCourseProfile = createCourseProfile();
         StartPoint testStartPoint = createStartPoint();
-        Course course = Course.of(testCourseProfile, testStartPoint, createCoordinatesTelemetries());
-        course.setName(name);
+        Course course = Course.of(testMember, testCourseProfile, testStartPoint, createCoordinatesTelemetries());
+        course.setName(courseName);
         return course;
     }
 
@@ -210,7 +210,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥", UUID.randomUUID().toString());
         memberRepository.saveAll(List.of(member, ghostMember));
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running ghostRunning = createRunning(ghostMember, course);
@@ -250,7 +250,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running = createSoloRunning(member, course);
@@ -274,7 +274,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running = createSoloRunning(member, course);
@@ -294,7 +294,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createSoloRunning(member, course);
@@ -316,7 +316,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course, "러닝 제목1");
@@ -352,7 +352,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course, "러닝 제목1");
@@ -390,9 +390,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse();
-        Course course2 = createCourse();
-        Course course3 = createCourse();
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
+        Course course3 = createCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 
@@ -445,7 +445,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
         List<Course> courses = new ArrayList<>();
         randomCourseNames.forEach(name -> {
-            Course newCourse = createCourse(name);
+            Course newCourse = createCourse(member, name);
             newCourse.setIsPublic(true);
             courses.add(newCourse);
         });
@@ -500,9 +500,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse();
-        Course course2 = createCourse();
-        Course course3 = createCourse();
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
+        Course course3 = createCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 

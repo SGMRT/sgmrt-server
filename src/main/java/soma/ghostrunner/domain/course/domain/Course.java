@@ -17,7 +17,7 @@ public class Course extends BaseTimeEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "member_id")
+    @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
     @Setter
@@ -37,7 +37,7 @@ public class Course extends BaseTimeEntity {
     @Lob @Column(name = "path_data", columnDefinition = "LONGTEXT")
     private String pathData;
 
-    @Builder
+    @Builder(access = AccessLevel.PRIVATE)
     private Course(CourseProfile courseProfile, Member member, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
         this.courseProfile = courseProfile;
         this.member = member;
@@ -47,34 +47,14 @@ public class Course extends BaseTimeEntity {
         this.isPublic = isPublic;
     }
 
-    public static Course of(CourseProfile courseProfile, StartPoint startPoint, String pathData) {
+    public static Course of(Member member, CourseProfile courseProfile, StartPoint startPoint, String pathData) {
         return Course.builder()
+                .member(member)
                 .courseProfile(courseProfile)
                 .startPoint(startPoint)
                 .pathData(pathData)
                 .isPublic(false)
                 .build();
-    }
-
-    public static Course of(CourseProfile courseProfile, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
-        return Course.builder()
-                .courseProfile(courseProfile)
-                .name(name)
-                .startPoint(startPoint)
-                .pathData(pathData)
-                .isPublic(isPublic)
-                .build();
-    }
-
-    public static Course of(CourseProfile courseProfile, Member member, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
-        return Course.builder()
-            .courseProfile(courseProfile)
-            .member(member)
-            .name(name)
-            .startPoint(startPoint)
-            .pathData(pathData)
-            .isPublic(isPublic)
-            .build();
     }
 
 }

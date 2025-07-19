@@ -53,7 +53,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning("러닝", course, member, "러닝의 URL");
@@ -92,8 +92,10 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         return Member.of(name, "프로필 URL");
     }
 
-    private Course createCourse() {
-        return Course.of(createCourseProfile(), createStartPoint(), "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+    private Course createCourse(Member testMember) {
+        return Course.of(
+                testMember, createCourseProfile(), createStartPoint(),
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
     }
 
     private StartPoint createStartPoint() {
@@ -115,9 +117,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse();
-        Course course2 = createCourse();
-        Course course3 = createCourse();
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
+        Course course3 = createCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 
@@ -168,9 +170,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse();
-        Course course2 = createCourse();
-        Course course3 = createCourse();
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
+        Course course3 = createCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 
@@ -209,9 +211,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course privateCourse = createCourse();
+        Course privateCourse = createCourse(member);
         privateCourse.setName("비공개 코스 러닝");
-        Course publicCourse = createCourse();
+        Course publicCourse = createCourse(member);
         publicCourse.setIsPublic(true);
         publicCourse.setName("공개 코스 러닝");
         List<Course> courses = List.of(privateCourse, publicCourse);
@@ -244,7 +246,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
         List<Course> courses = new ArrayList<>();
         randomCourseNames.forEach(name -> {
-            Course newCourse = createCourse(name);
+            Course newCourse = createCourse(member, name);
             newCourse.setIsPublic(true);
             courses.add(newCourse);
         });
@@ -287,8 +289,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         });
     }
 
-    private Course createCourse(String courseName) {
-        Course course = Course.of(createCourseProfile(), createStartPoint(),
+    private Course createCourse(Member testMember, String courseName) {
+        Course course = Course.of(
+                testMember, createCourseProfile(), createStartPoint(),
                 "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
         course.setName(courseName);
         return course;
@@ -305,7 +308,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
         List<Course> courses = new ArrayList<>();
         randomCourseNames.forEach(name -> {
-            Course newCourse = createCourse(name);
+            Course newCourse = createCourse(member, name);
             courses.add(newCourse);
         });
         courseRepository.saveAll(courses);
