@@ -6,13 +6,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import soma.ghostrunner.domain.course.dto.CourseWithCoordinatesDto;
 import soma.ghostrunner.domain.course.dto.CourseWithMemberDetailsDto;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
-import soma.ghostrunner.domain.course.dto.response.CourseResponse;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
@@ -39,7 +39,7 @@ public class CourseService {
                 .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
     }
 
-    public List<CourseResponse> searchCourses(
+    public List<CourseWithCoordinatesDto> searchCourses(
             Double lat,
             Double lng,
             Integer radiusM,
@@ -64,7 +64,7 @@ public class CourseService {
             minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerId);
 
         return courses.stream()
-                .map(courseMapper::toCourseResponse)
+                .map(courseMapper::toCourseWithCoordinateDto)
                 .collect(Collectors.toList());
     }
 
