@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
+import org.jboss.logging.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
@@ -53,7 +54,9 @@ public class HttpLogMessage {
         this.responseBody = responseBody;
     }
 
-    public static HttpLogMessage of(ContentCachingRequestWrapper request, ContentCachingResponseWrapper response, Double elapsedTime) {
+    public static HttpLogMessage of(
+            ContentCachingRequestWrapper request, ContentCachingResponseWrapper response, Double elapsedTime) {
+
         String requestUri = request.getRequestURI();
         boolean isLoggableUri = isLoggableUri(requestUri);
 
@@ -66,7 +69,7 @@ public class HttpLogMessage {
                 .httpStatus(String.valueOf(HttpStatus.valueOf(response.getStatus())))
                 .elapsedTime(elapsedTime)
                 .clientIp(extractClientIp(request))
-                .memberUuid("FAKE_UUID") // TODO: 실제 멤버 UUID 추출 로직 필요
+                .memberUuid(MDC.get("userId") != null ? (String) MDC.get("userId") : "anonymous")
                 .headers(extractHeaders(request))
                 .queryParameters(request.getQueryString())
                 .requestBody(reqBody)

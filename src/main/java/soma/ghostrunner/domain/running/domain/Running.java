@@ -3,11 +3,12 @@ package soma.ghostrunner.domain.running.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SoftDelete;
+import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
-import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.error.ErrorCode;
 
 @Entity
 @Table(name = "running_record")
@@ -117,6 +118,12 @@ public class Running extends BaseTimeEntity {
         boolean isInvalid = (courseId == null || !courseId.equals(this.course.getId()));
         if (isInvalid) {
             throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "고스트가 뛴 코스가 아닙니다.");
+        }
+    }
+
+    public void verifyMember(String memberUuid) {
+        if (!this.member.getUuid().equals(memberUuid)) {
+            throw new AccessDeniedException("접근할 수 없는 러닝 데이터입니다.");
         }
     }
 

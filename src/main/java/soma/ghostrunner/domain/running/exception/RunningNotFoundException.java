@@ -1,7 +1,7 @@
 package soma.ghostrunner.domain.running.exception;
 
-import soma.ghostrunner.global.common.error.ErrorCode;
-import soma.ghostrunner.global.common.error.exception.EntityNotFoundException;
+import soma.ghostrunner.global.error.ErrorCode;
+import soma.ghostrunner.global.error.exception.EntityNotFoundException;
 
 public class RunningNotFoundException extends EntityNotFoundException {
 

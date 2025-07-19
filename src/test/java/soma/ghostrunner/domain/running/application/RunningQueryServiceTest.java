@@ -35,9 +35,6 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     private RunningQueryService runningQueryService;
 
     @Autowired
-    private RunningTelemetryQueryService runningTelemetryQueryService;
-
-    @Autowired
     private MemberRepository memberRepository;
 
     @Autowired
@@ -56,7 +53,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning("러닝", course, member, "러닝의 URL");
@@ -72,7 +69,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         given(telemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
-        List<TelemetryDto> telemetries = runningQueryService.findRunningTelemetries(running.getId());
+        List<TelemetryDto> telemetries = runningQueryService.findRunningTelemetries(running.getId(), member.getUuid());
 
         // then
         Assertions.assertThat(telemetries)
@@ -95,8 +92,10 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         return Member.of(name, "프로필 URL");
     }
 
-    private Course createCourse() {
-        return Course.of(createCourseProfile(), createStartPoint(), "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+    private Course createCourse(Member testMember) {
+        return Course.of(
+                testMember, createCourseProfile(), createStartPoint(),
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
     }
 
     private StartPoint createStartPoint() {
@@ -118,9 +117,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse();
-        Course course2 = createCourse();
-        Course course3 = createCourse();
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
+        Course course3 = createCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 
@@ -143,11 +142,11 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningQueryService.findRunnings("SOLO", null, null, member.getId()));
+        runInfos.addAll(runningQueryService.findRunnings("SOLO", null, null, member.getUuid()));
         for (int i = 0; i < 4; i++) {
             RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
             runInfos.addAll(runningQueryService.findRunnings("SOLO", lastRunInfo.getStartedAt(),
-                    lastRunInfo.getRunningId(), member.getId()));
+                    lastRunInfo.getRunningId(), member.getUuid()));
         }
 
         // then
@@ -171,9 +170,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse();
-        Course course2 = createCourse();
-        Course course3 = createCourse();
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
+        Course course3 = createCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 
@@ -190,10 +189,10 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 member, lastRunning.getStartedAt(), RunningMode.SOLO));
 
         // when
-        List<RunInfo> firstRunInfos = runningQueryService.findRunnings("SOLO", null, null, member.getId());
+        List<RunInfo> firstRunInfos = runningQueryService.findRunnings("SOLO", null, null, member.getUuid());
         RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
         List<RunInfo> secondRunInfos = runningQueryService.findRunnings("SOLO", lastOfFirstRunInfo.getStartedAt(),
-                lastOfFirstRunInfo.getRunningId(), member.getId());
+                lastOfFirstRunInfo.getRunningId(), member.getUuid());
 
         // then
         for (RunInfo firstRunInfo : firstRunInfos) {
@@ -212,9 +211,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course privateCourse = createCourse();
+        Course privateCourse = createCourse(member);
         privateCourse.setName("비공개 코스 러닝");
-        Course publicCourse = createCourse();
+        Course publicCourse = createCourse(member);
         publicCourse.setIsPublic(true);
         publicCourse.setName("공개 코스 러닝");
         List<Course> courses = List.of(privateCourse, publicCourse);
@@ -225,7 +224,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.saveAll(List.of(publicRunning, privateRunning));
 
         // when
-        List<RunInfo> runInfos = runningQueryService.findRunnings("SOLO", null, null, member.getId());
+        List<RunInfo> runInfos = runningQueryService.findRunnings("SOLO", null, null, member.getUuid());
 
         // then
         RunInfo privateRunInfo = runInfos.get(0);
@@ -247,7 +246,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
         List<Course> courses = new ArrayList<>();
         randomCourseNames.forEach(name -> {
-            Course newCourse = createCourse(name);
+            Course newCourse = createCourse(member, name);
             newCourse.setIsPublic(true);
             courses.add(newCourse);
         });
@@ -273,11 +272,11 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO", null, null, member.getId()));
+        runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO", null, null, member.getUuid()));
         for (int i = 0; i < 4; i++) {
             RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
             runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO",
-                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getId()));
+                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getUuid()));
         }
 
         // then
@@ -290,8 +289,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         });
     }
 
-    private Course createCourse(String courseName) {
-        Course course = Course.of(createCourseProfile(), createStartPoint(),
+    private Course createCourse(Member testMember, String courseName) {
+        Course course = Course.of(
+                testMember, createCourseProfile(), createStartPoint(),
                 "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
         course.setName(courseName);
         return course;
@@ -308,7 +308,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
         List<Course> courses = new ArrayList<>();
         randomCourseNames.forEach(name -> {
-            Course newCourse = createCourse(name);
+            Course newCourse = createCourse(member, name);
             courses.add(newCourse);
         });
         courseRepository.saveAll(courses);
@@ -331,11 +331,11 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningQueryService.findRunningsForGalleryView("SOLO", null, null, member.getId()));
+        runInfos.addAll(runningQueryService.findRunningsForGalleryView("SOLO", null, null, member.getUuid()));
         for (int i = 0; i < 4; i++) {
             RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
             runInfos.addAll(runningQueryService.findRunningsForGalleryView("SOLO", lastRunInfo.getStartedAt(),
-                    lastRunInfo.getRunningId(), member.getId()));
+                    lastRunInfo.getRunningId(), member.getUuid()));
         }
 
         // then

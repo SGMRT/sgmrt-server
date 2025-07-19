@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
-import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
@@ -20,9 +19,8 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
-import soma.ghostrunner.global.common.error.ErrorCode;
+import soma.ghostrunner.global.error.ErrorCode;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,14 +36,14 @@ public class RunningQueryService {
 
     private final RunningApiMapper runningApiMapper;
 
-    public SoloRunDetailInfo findSoloRunInfo(Long runningId) {
+    public SoloRunDetailInfo findSoloRunInfo(Long runningId, String memberUuid) {
         SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId);
         List<TelemetryDto> telemetries = downloadTelemetries(runningId, soloRunDetailInfo.getTelemetryUrl());
         soloRunDetailInfo.setTelemetries(telemetries);
         return soloRunDetailInfo;
     }
 
-    public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId) {
+    public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId, String memberUuid) {
         GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunInfoByRunningId(myRunningId);
         verifyGhostRunningId(ghostRunningId, myGhostRunDetailInfo);
 
@@ -67,7 +65,7 @@ public class RunningQueryService {
         }
     }
 
-    public List<TelemetryDto> findRunningTelemetries(Long runningId) {
+    public List<TelemetryDto> findRunningTelemetries(Long runningId, String memberId) {
         String telemetryUrl = findTelemetryUrlByRunningId(runningId);
         return downloadTelemetries(runningId, telemetryUrl);
     }
@@ -111,11 +109,6 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, id));
     }
 
-    public Running findRunningByRunningId(Long runningId, Long memberId) {
-        return runningRepository.findByIdAndMemberId(runningId, memberId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "러닝 ID : " + runningId + ", 멤버 ID : " + memberId + "에 해당하는 엔티티를 찾을 수 없습니다."));
-    }
-
     public Running findFirstRunning(Long courseId) {
         return runningRepository.findFirstRunningByCourseId(courseId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "코스 ID : " + courseId + "를 갖는 러닝이 없습니다."));
@@ -145,19 +138,22 @@ public class RunningQueryService {
             });
     }
 
-    public List<RunInfo> findRunnings(String runningMode, Long cursorStartedAt, Long cursorRunningId, Long memberId) {
+    public List<RunInfo> findRunnings(
+            String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
         return runningRepository.findRunInfosByCursorIds(
-                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberId);
+                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
     }
 
-    public List<RunInfo> findRunningsFilteredByCourse(String runningMode, String courseName, Long cursorRunningId, Long memberId) {
+    public List<RunInfo> findRunningsFilteredByCourse(
+            String runningMode, String courseName, Long cursorRunningId, String memberUuid) {
         return runningRepository.findRunInfosFilteredByCoursesByCursorIds(
-                RunningMode.valueOf(runningMode), courseName, cursorRunningId, memberId);
+                RunningMode.valueOf(runningMode), courseName, cursorRunningId, memberUuid);
     }
 
-    public List<RunInfo> findRunningsForGalleryView(String runningMode, Long cursorStartedAt, Long cursorRunningId, Long memberId) {
+    public List<RunInfo> findRunningsForGalleryView(
+            String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
         return runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberId);
+                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
     }
   
 }

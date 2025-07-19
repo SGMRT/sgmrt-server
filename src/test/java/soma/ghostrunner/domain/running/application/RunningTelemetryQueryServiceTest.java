@@ -48,7 +48,7 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning("러닝", course, member, "러닝의 URL");
@@ -87,8 +87,10 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
         return Member.of(name, "프로필 URL");
     }
 
-    private Course createCourse() {
-        return Course.of(createCourseProfile(), createStartPoint(), "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+    private Course createCourse(Member testMember) {
+        return Course.of(
+                testMember, createCourseProfile(), createStartPoint(),
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
     }
 
     private StartPoint createStartPoint() {

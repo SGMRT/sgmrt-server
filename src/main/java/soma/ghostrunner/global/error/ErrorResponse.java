@@ -1,4 +1,4 @@
-package soma.ghostrunner.global.common.error;
+package soma.ghostrunner.global.error;
 
 import lombok.*;
 import org.springframework.validation.BindingResult;

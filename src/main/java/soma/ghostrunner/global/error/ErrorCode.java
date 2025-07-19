@@ -1,4 +1,4 @@
-package soma.ghostrunner.global.common.error;
+package soma.ghostrunner.global.error;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,14 +19,18 @@ public enum ErrorCode {
     TOO_MANY_REQUESTS("G-006",  HttpStatus.TOO_MANY_REQUESTS, "요청 횟수 초과"),
     INVALID_JSON_TYPE("G-007", BAD_REQUEST, "Json 파싱 실패 혹은 올바르지 않은 시간 형식"),
     ENTITY_NOT_FOUND("G-008", NOT_FOUND, "존재하지 않는 엔티티"),
+    INVALID_REQUEST_HEADER("G-009",  BAD_REQUEST, "잘못되거나 비어있는 헤더"),
 
     // Auth
     AUTHENTICATION_FAILED("A-001", UNAUTHORIZED, "인증 실패"),
     ACCESS_DENIED("A-002", FORBIDDEN, "허용되지 않은 접근"),
+    EXPIRED_TOKEN("A-003", UNAUTHORIZED, "만료된 토큰"),
+    INVALID_TOKEN("A-004", UNAUTHORIZED, "유효하지 않은 토큰"),
 
     // Member
     MEMBER_NOT_FOUND("M-001", NOT_FOUND, "존재하지 않는 회원"),
     MEMBER_ALREADY_EXISTED("M-002", CONFLICT, "이미 존재하는 회원"),
+    NICKNAME_ALREADY_EXIST("M-003", CONFLICT, "이미 존재하는 닉네임"),
 
     // Course
     COURSE_NOT_FOUND("C-001", NOT_FOUND, "존재하지 않는 코스"),

@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.clients.aws.TelemetryClient;
@@ -25,6 +26,7 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.BDDMockito.*;
 
@@ -57,11 +59,11 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createRunCommandRequest("러닝 이름", "SOLO", 100L,
                 runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when
-        CreateCourseAndRunResponse response = runningCommandService.createCourseAndRun(request, member.getId());
+        CreateCourseAndRunResponse response = runningCommandService.createCourseAndRun(request, member.getUuid());
 
         // then
         Running savedRunning = runningRepository.findById(response.getRunningId()).get();
@@ -83,6 +85,12 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
                 .isNotNull()
                 .extracting(Course::getName, Course::getIsPublic)
                 .containsExactly(null, false);
+
+        CourseProfile savedCourseProfile = savedCourse.getCourseProfile();
+        Assertions.assertThat(savedCourseProfile)
+                .isNotNull()
+                .extracting(CourseProfile::getDistance, CourseProfile::getElevationGain, CourseProfile::getElevationLoss)
+                .containsExactly(5.1, 130, -120);
 
         StartPoint savedStartPoint = savedCourse.getStartPoint();
         Assertions.assertThat(savedStartPoint)
@@ -122,7 +130,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Member member = createMember("테스트 유저");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         Long savedCourseId = courseRepository.save(course).getId();
 
         RunRecordDto runRecordDto = createRunRecordDto(5.1, 130, -120, 3600L);
@@ -130,11 +138,11 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "SOLO", null,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when
-        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getId());
+        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getUuid());
 
         // then
         Running savedRunning = runningRepository.findById(savedRunningId).get();
@@ -155,7 +163,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Member member = createMember("테스트 유저");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         Long savedCourseId = courseRepository.save(course).getId();
 
         Running ghostRunning = createRunning(member, course);
@@ -166,11 +174,11 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when
-        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getId());
+        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getUuid());
 
         // then
         Running savedRunning = runningRepository.findById(savedRunningId).get();
@@ -189,11 +197,11 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     void throwExceptionIfCourseNotRunByGhost() {
         // given
         Member member = createMember("테스트 유저");
-        Long savedMemberId = memberRepository.save(member).getId();
+        String savedMemberUuid = memberRepository.save(member).getUuid();
 
-        Course ghostCourse = createCourse();
+        Course ghostCourse = createCourse(member);
         Long savedCourseId = courseRepository.save(ghostCourse).getId();
-        Course fakeCourse = createCourse();
+        Course fakeCourse = createCourse(member);
         Long savedFakeCourseId = courseRepository.save(fakeCourse).getId();
 
         Running ghostRunning = createRunning(member, ghostCourse);
@@ -204,17 +212,17 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyLong()))
+        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when // then
-        Assertions.assertThatThrownBy(() -> runningCommandService.createRun(request, savedFakeCourseId, savedMemberId))
+        Assertions.assertThatThrownBy(() -> runningCommandService.createRun(request, savedFakeCourseId, savedMemberUuid))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("고스트가 뛴 코스가 아닙니다.");
     }
 
-    private Course createCourse() {
-        return Course.of(createCourseProfile(), createStartPoint(),
+    private Course createCourse(Member member) {
+        return Course.of(member, createCourseProfile(), createStartPoint(),
                 "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
     }
 
@@ -245,15 +253,15 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Member member = createMember("테스트 유저");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running publicRunning = runningRepository.save(createRunning(member, course, true));
         Running privateRunning = runningRepository.save(createRunning(member, course, false));
 
         // when
-        runningCommandService.updateRunningPublicStatus(publicRunning.getId());
-        runningCommandService.updateRunningPublicStatus(privateRunning.getId());
+        runningCommandService.updateRunningPublicStatus(publicRunning.getId(), member.getUuid());
+        runningCommandService.updateRunningPublicStatus(privateRunning.getId(), member.getUuid());
 
         // then
         Running updatedToPublicRunning = runningRepository.findById(privateRunning.getId()).get();
@@ -270,17 +278,37 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Member member = createMember("테스트 유저");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running hasPausedRunning = runningRepository.save(createHasPausedRunning(member, course));
         runningRepository.save(hasPausedRunning);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> runningCommandService.updateRunningPublicStatus(hasPausedRunning.getId()))
+        Assertions.assertThatThrownBy(
+                () -> runningCommandService.updateRunningPublicStatus(hasPausedRunning.getId(), member.getUuid()))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("정지한 기록이 있다면 공개할 수 없습니다.");
-     }
+    }
+
+    @DisplayName("자신의 러닝 데이터가 아니라면 공개 설정을 수정할 수 없다.")
+    @Test
+    void cannotUpdateIsPublicIfNotOwner() {
+        // given
+        Member member = createMember("테스트 유저");
+        memberRepository.save(member);
+
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        Running publicRunning = runningRepository.save(createRunning(member, course, true));
+
+        // when // then
+        Assertions.assertThatThrownBy(
+                        () -> runningCommandService.updateRunningPublicStatus(publicRunning.getId(), UUID.randomUUID().toString()))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("접근할 수 없는 러닝 데이터입니다.");
+    }
 
     private Running createRunning(Member member, Course course, Boolean isPublic) {
         RunningRecord testRunningRecord = createRunningRecord();
@@ -304,8 +332,8 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Member member = createMember("테스트 유저");
         memberRepository.save(member);
 
-        Course course1 = createCourse();
-        Course course2 = createCourse();
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
         courseRepository.saveAll(List.of(course1, course2));
 
         Running running1 = createRunning(member, course1);
@@ -315,11 +343,77 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 
         // when
         List<Long> runningIds = List.of(running1.getId(), running2.getId(), running3.getId());
-        runningCommandService.deleteRunnings(runningIds);
+        runningCommandService.deleteRunnings(runningIds, member.getUuid());
 
         // then
         List<Running> runnings = runningRepository.findByIds(List.of(running1.getId(), running2.getId(), running3.getId()));
         Assertions.assertThat(runnings.size()).isEqualTo(0);
+    }
+
+    @DisplayName("자신의 러닝 데이터가 아니라면 삭제할 수 없다.")
+    @Test
+    void cannotDeleteRunningsIfNotOwner() {
+        // given
+        Member member = createMember("테스트 유저");
+        memberRepository.save(member);
+
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
+        courseRepository.saveAll(List.of(course1, course2));
+
+        Running running1 = createRunning(member, course1);
+        Running running2 = createRunning(member, course1);
+        Running running3 = createRunning(member, course2);
+        runningRepository.saveAll(List.of(running1, running2, running3));
+
+        // when // then
+        List<Long> runningIds = List.of(running1.getId(), running2.getId(), running3.getId());
+        Assertions.assertThatThrownBy(
+                () -> runningCommandService.deleteRunnings(runningIds, UUID.randomUUID().toString()))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("접근할 수 없는 러닝 데이터입니다.");
+    }
+
+    @DisplayName("러닝 이름을 변경한다.")
+    @Test
+    void updateRunningName() {
+        // given
+        Member member = createMember("테스트 유저");
+        memberRepository.save(member);
+
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        Running running = createRunning(member, course);
+        runningRepository.save(running);
+
+        // when
+        runningCommandService.updateRunningName("변경할 러닝명", running.getId(), member.getUuid());
+
+        // then
+        Running updatedRunning = runningRepository.findById(running.getId()).get();
+        Assertions.assertThat(updatedRunning.getRunningName()).isEqualTo("변경할 러닝명");
+    }
+
+    @DisplayName("자신의 러닝이 아니라면 이름을 변경하지 못한다.")
+    @Test
+    void cannotUpdateRunningNameIfNotOwner() {
+        // given
+        Member member = createMember("테스트 유저");
+        memberRepository.save(member);
+
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        Running running = createRunning(member, course);
+        runningRepository.save(running);
+
+        // when // then
+        Assertions.assertThatThrownBy(
+                () -> runningCommandService.updateRunningName(
+                        "변경할 러닝명", running.getId(), UUID.randomUUID().toString()))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("접근할 수 없는 러닝 데이터입니다.");
     }
 
 }

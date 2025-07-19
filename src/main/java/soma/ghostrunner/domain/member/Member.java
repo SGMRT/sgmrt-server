@@ -3,8 +3,10 @@ package soma.ghostrunner.domain.member;
 import jakarta.persistence.*;
 import lombok.*;
 import soma.ghostrunner.global.common.BaseTimeEntity;
+import soma.ghostrunner.global.common.document.TestOnly;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "member")
@@ -27,21 +29,17 @@ public class Member extends BaseTimeEntity {
     @Column(name = "profile_picture_url", length = 2048)
     private String profilePictureUrl;
 
-    @Column(name = "external_auth_uid", nullable = false, unique = true)
-    private String externalAuthUid;
-
     @Column(name = "last_login_at")
     @Setter
     private LocalDateTime lastLoginAt;
 
     @Builder
-    public Member(String nickname, String profilePictureUrl, String uuid,
-                  MemberBioInfo bioInfo, String externalAuthUid, LocalDateTime lastLoginAt) {
+    public Member(String nickname, String profilePictureUrl,
+                  MemberBioInfo bioInfo, LocalDateTime lastLoginAt) {
         this.nickname = nickname;
         this.profilePictureUrl = profilePictureUrl;
-        this.uuid = uuid;
+        this.uuid = UUID.randomUUID().toString();
         this.bioInfo = bioInfo;
-        this.externalAuthUid = externalAuthUid;
         this.lastLoginAt = lastLoginAt;
     }
 
@@ -51,4 +49,10 @@ public class Member extends BaseTimeEntity {
                 .profilePictureUrl(profilePictureUrl)
                 .build();
     }
+
+    @TestOnly
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
 }

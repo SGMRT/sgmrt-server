@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.running.api;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
@@ -17,6 +18,7 @@ import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.global.common.validator.enums.EnumValid;
+import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.util.List;
 
@@ -33,71 +35,96 @@ public class RunningApi {
         return "Hello World";
     }
   
-    @PostMapping("/v1/runs/{memberId}")
-    public CreateCourseAndRunResponse createCourseAndRun(@RequestBody @Valid CreateCourseAndRunRequest req, @PathVariable Long memberId) {
-        return runningCommandService.createCourseAndRun(mapper.toCommand(req), memberId);
+    @PostMapping("/v1/runs")
+    public CreateCourseAndRunResponse createCourseAndRun(
+            @AuthenticationPrincipal JwtUserDetails userDetails, @RequestBody @Valid CreateCourseAndRunRequest req) {
+        String memberUuid = userDetails.getUserId();
+        return runningCommandService.createCourseAndRun(mapper.toCommand(req), memberUuid);
     }
 
-    @PostMapping("/v1/runs/courses/{courseId}/{memberId}")
-    public Long createRun(@RequestBody @Valid CreateRunRequest req, @PathVariable Long courseId, @PathVariable Long memberId) {
-        return runningCommandService.createRun(mapper.toCommand(req), courseId, memberId);
+    @PostMapping("/v1/runs/courses/{courseId}")
+    public Long createRun(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @RequestBody @Valid CreateRunRequest req, @PathVariable Long courseId) {
+        String memberUuid = userDetails.getUserId();
+        return runningCommandService.createRun(mapper.toCommand(req), courseId, memberUuid);
     }
 
-    @PatchMapping("/v1/runs/{runningId}/name/{memberId}")
-    public void patchRunningName(@RequestBody @Valid UpdateRunNameRequest req, @PathVariable Long runningId, @PathVariable Long memberId) {
-        runningCommandService.updateRunningName(req.getName(), memberId, runningId);
+    @PatchMapping("/v1/runs/{runningId}/name")
+    public void patchRunningName(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @RequestBody @Valid UpdateRunNameRequest req, @PathVariable Long runningId) {
+        String memberUuid = userDetails.getUserId();
+        runningCommandService.updateRunningName(req.getName(), runningId, memberUuid);
     }
 
     @GetMapping("/v1/runs/{runningId}/telemetries")
-    public List<TelemetryDto> getRunningTelemetries(@PathVariable Long runningId) {
-        return runningQueryService.findRunningTelemetries(runningId);
+    public List<TelemetryDto> getRunningTelemetries(
+            @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long runningId) {
+        String memberUuid = userDetails.getUserId();
+        return runningQueryService.findRunningTelemetries(runningId, memberUuid);
     }
 
     @GetMapping("/v1/runs/{runningId}")
-    public SoloRunDetailInfo getSoloRunInfo(@PathVariable Long runningId) {
-        return runningQueryService.findSoloRunInfo(runningId);
+    public SoloRunDetailInfo getSoloRunInfo(
+            @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long runningId) {
+        String memberUuid = userDetails.getUserId();
+        return runningQueryService.findSoloRunInfo(runningId, memberUuid);
     }
 
     @GetMapping("/v1/runs/{myRunningId}/ghosts/{ghostRunningId}")
-    public GhostRunDetailInfo getGhostRunInfo(@PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
-        return runningQueryService.findGhostRunInfo(myRunningId, ghostRunningId);
+    public GhostRunDetailInfo getGhostRunInfo(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
+        String memberUuid = userDetails.getUserId();
+        return runningQueryService.findGhostRunInfo(myRunningId, ghostRunningId, memberUuid);
     }
 
     @PatchMapping("/v1/runs/{runningId}/isPublic")
-    public void patchRunningPublicStatus(@PathVariable Long runningId) {
-        runningCommandService.updateRunningPublicStatus(runningId);
+    public void patchRunningPublicStatus(
+            @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long runningId) {
+        String memberUuid = userDetails.getUserId();
+        runningCommandService.updateRunningPublicStatus(runningId, memberUuid);
     }
 
     @DeleteMapping("/v1/runs")
-    public void deleteRunnings(@RequestBody @Valid DeleteRunningRequest request) {
-        runningCommandService.deleteRunnings(request.getRunningIds());
+    public void deleteRunnings(
+            @AuthenticationPrincipal JwtUserDetails userDetails, @RequestBody @Valid DeleteRunningRequest request) {
+        String memberUuid = userDetails.getUserId();
+        runningCommandService.deleteRunnings(request.getRunningIds(), memberUuid);
     }
 
     @GetMapping("/v1/runs")
     public List<RunInfo> getRunInfos(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
             @RequestParam
             @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
             String runningMode,
             @RequestParam(required = false) Long cursorStartedAt, @RequestParam(required = false) Long cursorRunningId) {
-        return runningQueryService.findRunnings(runningMode, cursorStartedAt, cursorRunningId, 1L);
+        String memberUuid = userDetails.getUserId();
+        return runningQueryService.findRunnings(runningMode, cursorStartedAt, cursorRunningId, memberUuid);
     }
 
     @GetMapping("/v1/runs/by-course")
     public List<RunInfo> getRunInfosFilteredByCourse(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
             @RequestParam
             @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
             String runningMode,
             @RequestParam(required = false) String cursorCourseName, @RequestParam(required = false) Long cursorRunningId) {
-        return runningQueryService.findRunningsFilteredByCourse(runningMode, cursorCourseName, cursorRunningId, 1L);
+        String memberUuid = userDetails.getUserId();
+        return runningQueryService.findRunningsFilteredByCourse(runningMode, cursorCourseName, cursorRunningId, memberUuid);
     }
 
     @GetMapping("/v1/runs/gallery-view")
     public List<RunInfo> getRunInfosForGalleryView(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
             @RequestParam
             @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
             String runningMode,
             @RequestParam(required = false) Long cursorStartedAt, @RequestParam(required = false) Long cursorRunningId) {
-        return runningQueryService.findRunningsForGalleryView(runningMode, cursorStartedAt, cursorRunningId, 1L);
+        String memberUuid = userDetails.getUserId();
+        return runningQueryService.findRunningsForGalleryView(runningMode, cursorStartedAt, cursorRunningId, memberUuid);
     }
 
 }

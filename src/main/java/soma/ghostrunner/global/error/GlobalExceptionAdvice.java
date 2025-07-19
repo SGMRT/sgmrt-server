@@ -1,22 +1,24 @@
-package soma.ghostrunner.global.common.error;
+package soma.ghostrunner.global.error;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import soma.ghostrunner.global.common.error.exception.BusinessException;
+import soma.ghostrunner.global.error.exception.BusinessException;
 
 @Slf4j
 @RestControllerAdvice
@@ -29,7 +31,7 @@ public class GlobalExceptionAdvice {
         return createErrorResponse(e.getErrorCode());
     }
 
-    // Valid, @Validated 핸들링
+    // @Valid, @Validated 핸들링
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.warn("handleMethodArgumentNotValidException", e);
@@ -98,7 +100,14 @@ public class GlobalExceptionAdvice {
         log.error("handleIllegalArgumentException", e);
         return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
     }
-  
+
+    // 잘못된 헤더
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    protected ResponseEntity<ErrorResponse> handleMissingRequestHeaderException(MissingRequestHeaderException e) {
+        log.error("handleMissingRequestHeaderException", e);
+        return createErrorResponse(ErrorCode.INVALID_REQUEST_HEADER);
+    }
+
    // 인증 실패
     @ExceptionHandler(AuthenticationException.class)
     protected ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException e) {

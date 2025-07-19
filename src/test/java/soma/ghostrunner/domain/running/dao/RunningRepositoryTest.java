@@ -24,8 +24,6 @@ import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.tuple;
 
-import static org.assertj.core.api.Assertions.tuple;
-
 class RunningRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
@@ -44,7 +42,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course);
@@ -71,10 +69,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         return Member.of(name, "프로필 URL");
     }
 
-    private Course createCourse() {
+    private Course createCourse(Member testMember) {
         CourseProfile testCourseProfile = createCourseProfile();
         StartPoint testStartPoint = createStartPoint();
-        return Course.of(testCourseProfile, testStartPoint, createCoordinatesTelemetries());
+        return Course.of(testMember, testCourseProfile, testStartPoint, createCoordinatesTelemetries());
     }
 
     private String createCoordinatesTelemetries() {
@@ -96,7 +94,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning(member, course);
@@ -113,11 +111,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     @Test
     void findByIdAndFakeMemberId() {
         // given
-        Member member = createMember("이복둥");
-        Member fakeMember = createMember("페이크 이복둥");
+        Member member = createMember("이복둥", UUID.randomUUID().toString());
+        Member fakeMember = createMember("페이크 이복둥", UUID.randomUUID().toString());
         memberRepository.saveAll(List.of(member, fakeMember));
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning(member, course);
@@ -130,6 +128,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Assertions.assertThat(savedRunning).isEmpty();
     }
 
+    private Member createMember(String name, String externalAuthUuid) {
+        return Member.of(name, "프로필 URL");
+    }
+
     @DisplayName("러닝 ID로 시계열 URL을 조회한다.")
     @Test
     void findRunningUrlByRunningId() {
@@ -137,7 +139,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse();
+        Course course = createCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning(member, course);
@@ -158,7 +160,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createSoloRunning(member, course);
@@ -185,11 +187,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 true, false, "URL", testMember, testCourse);
     }
 
-    private Course createCourse(String name) {
+    private Course createCourse(Member testMember, String courseName) {
         CourseProfile testCourseProfile = createCourseProfile();
         StartPoint testStartPoint = createStartPoint();
-        Course course = Course.of(testCourseProfile, testStartPoint, createCoordinatesTelemetries());
-        course.setName(name);
+        Course course = Course.of(testMember, testCourseProfile, testStartPoint, createCoordinatesTelemetries());
+        course.setName(courseName);
         return course;
     }
 
@@ -204,11 +206,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     @Test
     void findGhostRunInfoById() {
         // given
-        Member ghostMember = createMember("고스트 이복둥");
-        Member member = createMember("이복둥");
+        Member ghostMember = createMember("고스트 이복둥", UUID.randomUUID().toString());
+        Member member = createMember("이복둥", UUID.randomUUID().toString());
         memberRepository.saveAll(List.of(member, ghostMember));
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running ghostRunning = createRunning(ghostMember, course);
@@ -248,7 +250,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running = createSoloRunning(member, course);
@@ -272,7 +274,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running = createSoloRunning(member, course);
@@ -292,7 +294,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createSoloRunning(member, course);
@@ -314,7 +316,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course, "러닝 제목1");
@@ -350,7 +352,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse("테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course, "러닝 제목1");
@@ -388,9 +390,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse();
-        Course course2 = createCourse();
-        Course course3 = createCourse();
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
+        Course course3 = createCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 
@@ -406,10 +408,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 .toList();
 
         // when
-        List<RunInfo> firstRunInfos = runningRepository.findRunInfosByCursorIds(RunningMode.SOLO, null, null, member.getId());
+        List<RunInfo> firstRunInfos = runningRepository.findRunInfosByCursorIds(RunningMode.SOLO, null, null, member.getUuid());
         RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
         List<RunInfo> secondRunInfos = runningRepository.findRunInfosByCursorIds(RunningMode.SOLO, lastOfFirstRunInfo.getStartedAt(),
-                lastOfFirstRunInfo.getRunningId(), member.getId());
+                lastOfFirstRunInfo.getRunningId(), member.getUuid());
 
         // then
         IntStream.range(0, firstRunInfos.size()).forEach(idx -> {
@@ -443,7 +445,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
         List<Course> courses = new ArrayList<>();
         randomCourseNames.forEach(name -> {
-            Course newCourse = createCourse(name);
+            Course newCourse = createCourse(member, name);
             newCourse.setIsPublic(true);
             courses.add(newCourse);
         });
@@ -469,11 +471,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningRepository.findRunInfosFilteredByCoursesByCursorIds(RunningMode.SOLO, null, null, member.getId()));
+        runInfos.addAll(runningRepository.findRunInfosFilteredByCoursesByCursorIds(RunningMode.SOLO, null, null, member.getUuid()));
         for (int i = 0; i < 4; i++) {
             RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
             runInfos.addAll(runningRepository.findRunInfosFilteredByCoursesByCursorIds(RunningMode.SOLO,
-                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getId()));
+                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getUuid()));
         }
 
         // then
@@ -498,9 +500,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse();
-        Course course2 = createCourse();
-        Course course3 = createCourse();
+        Course course1 = createCourse(member);
+        Course course2 = createCourse(member);
+        Course course3 = createCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 
@@ -517,10 +519,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> firstRunInfos = runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.SOLO, null, null, member.getId());
+                RunningMode.SOLO, null, null, member.getUuid());
         RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
         List<RunInfo> secondRunInfos = runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.SOLO, lastOfFirstRunInfo.getStartedAt(), lastOfFirstRunInfo.getRunningId(), member.getId());
+                RunningMode.SOLO, lastOfFirstRunInfo.getStartedAt(), lastOfFirstRunInfo.getRunningId(), member.getUuid());
 
         // then
         IntStream.range(0, firstRunInfos.size()).forEach(idx -> {

@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import soma.ghostrunner.domain.auth.api.AuthApi;
+import soma.ghostrunner.domain.auth.application.AuthService;
 import soma.ghostrunner.domain.running.api.RunningApi;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapperImpl;
@@ -13,9 +16,11 @@ import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.global.common.log.HttpLogger;
+import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
-@WebMvcTest(controllers = RunningApi.class)
+@WebMvcTest(controllers = {RunningApi.class, AuthApi.class})
 @Import(RunningApiMapperImpl.class)
+@WithMockUser
 public abstract class ApiTestSupport {
 
     @Autowired
@@ -37,6 +42,12 @@ public abstract class ApiTestSupport {
     protected RunningTelemetryQueryService runningTelemetryQueryService;
 
     @MockitoBean
+    protected AuthService authService;
+
+    @MockitoBean
     protected HttpLogger httpLogger;
+
+    @MockitoBean
+    protected JwtProvider jwtProvider;
 
 }
