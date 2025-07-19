@@ -12,10 +12,12 @@ public record CourseMapResponse(
         Double startLat,
         Double startLng,
         List<CoordinateDto> pathData,
-        List<MemberRecord> runners,
         Integer distance,
         Integer elevationGain,
-        Integer elevationLoss
+        Integer elevationLoss,
+
+        List<MemberRecord> runners,
+        long runnersCount
 ) {
     @Getter @AllArgsConstructor
     public static class MemberRecord {

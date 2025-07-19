@@ -41,9 +41,9 @@ public class CourseFacade {
         List<CourseWithCoordinatesDto> courses = courseService.searchCourses(lat, lng, radiusM,
                 minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerId);
         return courses.stream().map(course -> {
-            List<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4)
-                    .getContent();
-            return courseMapper.toCourseMapResponse(course, rankers);
+            Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
+            long runnersCount = rankers.getTotalElements();
+            return courseMapper.toCourseMapResponse(course, rankers.getContent(), runnersCount);
         }).toList();
     }
 

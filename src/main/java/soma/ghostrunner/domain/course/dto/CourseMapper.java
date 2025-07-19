@@ -24,7 +24,8 @@ public interface CourseMapper {
     CourseWithCoordinatesDto toCourseWithCoordinateDto(Course course);
 
     @Mapping(source = "ghosts", target = "runners")
-    CourseMapResponse toCourseMapResponse(CourseWithCoordinatesDto courseDto, List<CourseGhostResponse> ghosts);
+    CourseMapResponse toCourseMapResponse(CourseWithCoordinatesDto courseDto, List<CourseGhostResponse> ghosts,
+                                          long runnersCount);
 
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
@@ -65,9 +66,9 @@ public interface CourseMapper {
     @Mapping(source = "courseDto.distance", target = "distance")
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")
-    CourseSummaryResponse toCourseSummaryResponse(CourseWithMemberDetailsDto courseDto, Integer uniqueRunnersCount, Integer totalRunsCount,
-                                                  Double averageCompletionTime, Double averageFinisherPace,
-                                                  Double averageFinisherCadence);
+    CourseSummaryResponse toCourseSummaryResponse(CourseWithMemberDetailsDto courseDto, Integer uniqueRunnersCount,
+                                                  Integer totalRunsCount, Double averageCompletionTime,
+                                                  Double averageFinisherPace, Double averageFinisherCadence);
 
 }
 
