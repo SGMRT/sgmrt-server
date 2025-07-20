@@ -74,8 +74,7 @@ public class RunningApi {
 
     @GetMapping("/v1/runs/{myRunningId}/ghosts/{ghostRunningId}")
     public GhostRunDetailInfo getGhostRunInfo(
-            @AuthenticationPrincipal JwtUserDetails userDetails,
-            @PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
+            @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
         String memberUuid = userDetails.getUserId();
         return runningQueryService.findGhostRunInfo(myRunningId, ghostRunningId, memberUuid);
     }

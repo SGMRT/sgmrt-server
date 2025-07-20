@@ -12,9 +12,9 @@ import java.util.Optional;
 
 public interface CustomRunningRepository {
 
-    Optional<SoloRunDetailInfo> findSoloRunInfoById(long id);
+    Optional<SoloRunDetailInfo> findSoloRunInfoById(long id, String memberUuid);
 
-    Optional<GhostRunDetailInfo> findGhostRunInfoById(long id);
+    Optional<GhostRunDetailInfo> findGhostRunInfoById(long id, String memberUuid);
 
     Optional<MemberAndRunRecordInfo> findMemberAndRunRecordInfoById(long id);
 
