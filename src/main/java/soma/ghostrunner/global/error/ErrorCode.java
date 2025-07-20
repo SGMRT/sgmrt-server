@@ -26,6 +26,7 @@ public enum ErrorCode {
     ACCESS_DENIED("A-002", FORBIDDEN, "허용되지 않은 접근"),
     EXPIRED_TOKEN("A-003", UNAUTHORIZED, "만료된 토큰"),
     INVALID_TOKEN("A-004", UNAUTHORIZED, "유효하지 않은 토큰"),
+    EXPIRED_BY_THEFT("AUTH_005", UNAUTHORIZED, "다른 기기에서 로그인하여 세션이 만료되었습니다. 다시 로그인해주세요."),
 
     // Member
     MEMBER_NOT_FOUND("M-001", NOT_FOUND, "존재하지 않는 회원"),

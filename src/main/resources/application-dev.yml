@@ -5,6 +5,11 @@ spring:
     username: ${DB_USER}
     password: ${DB_PASSWORD}
 
+  data:
+    redis:
+      host: ${DEV_REDIS_ENDPOINT}
+      port: 6379
+
   jpa:
     hibernate:
       ddl-auto: validate

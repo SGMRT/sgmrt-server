@@ -39,15 +39,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
-            if (hasPermittedUris(request)) {
+            if (isPermittedUri(request)) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
             String token = jwtProvider.extractTokenFromHeader(request);
-            Claims claims = jwtProvider.parseClaims(token);
-
-            String userId = jwtProvider.getUserId(claims);
+            String userId = jwtProvider.getUserIdFromToken(token);
             MDC.put("userId", userId);
 
             JwtUserDetails userDetails = new JwtUserDetails(userId);
@@ -66,7 +64,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private boolean hasPermittedUris(HttpServletRequest request) {
+    private boolean isPermittedUri(HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         return PERMIT_URLS.stream()
                 .anyMatch(requestURI::startsWith);

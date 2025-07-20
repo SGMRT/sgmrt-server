@@ -41,13 +41,13 @@ class JwtProviderTest {
     }
 
     @Test
-    @DisplayName("유효한 토큰의 클레임을 파싱한다")
+    @DisplayName("유효한 토큰에서 유저의 UUID를 파싱한다")
     void parseClaims_success() {
         // when
-        Claims claims = jwtProvider.parseClaims(validToken);
+        String memberUuid = jwtProvider.getUserIdFromToken(validToken);
 
         // then
-        assertThat(claims.get("userId", String.class)).isEqualTo(testMemberId);
+        assertThat(memberUuid).isEqualTo(testMemberId);
     }
 
     @Test
@@ -62,7 +62,7 @@ class JwtProviderTest {
 
         // when // then
         assertThatThrownBy(
-                () -> jwtProvider.parseClaims(expiredToken))
+                () -> jwtProvider.getUserIdFromToken(expiredToken))
                 .isInstanceOf(ExpiredJwtException.class);
     }
 
@@ -78,7 +78,7 @@ class JwtProviderTest {
                 .compact();
 
         // when // then
-        assertThatThrownBy(() -> jwtProvider.parseClaims(invalidSignatureToken))
+        assertThatThrownBy(() -> jwtProvider.getUserIdFromToken(invalidSignatureToken))
                 .isInstanceOf(SignatureException.class);
     }
 
@@ -119,19 +119,6 @@ class JwtProviderTest {
         // when // then
         assertThatThrownBy(() -> jwtProvider.extractTokenFromHeader(request))
                 .isInstanceOf(ParsingTokenException.class);
-    }
-
-    @Test
-    @DisplayName("클레임에서 userId를 가져온다")
-    void getUserId() {
-        // given
-        Claims claims = jwtProvider.parseClaims(validToken);
-
-        // when
-        String userId = jwtProvider.getUserId(claims);
-
-        // then
-        assertThat(userId).isEqualTo(testMemberId);
     }
 
 }
