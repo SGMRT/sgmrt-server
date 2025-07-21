@@ -28,9 +28,9 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
         + "WHERE r.course.id = :courseId AND r.isPublic = true")
     Page<Running> findByCourse_IdAndIsPublicTrue(Long courseId, Pageable pageable);
 
-    @Query("SELECT r FROM Running r WHERE r.course.id = :courseId AND r.isPublic = true "
-        + "AND r.member.id = :memberId ORDER BY r.runningRecord.averagePace LIMIT 1")
-    Optional<Running> findBestPublicRunByCourseIdAndMemberId(Long courseId, Long memberId);
+    @Query("SELECT r FROM Running r JOIN FETCH r.member m WHERE r.course.id = :courseId AND r.isPublic = true "
+        + "AND m.uuid = :memberUuid ORDER BY r.runningRecord.averagePace LIMIT 1")
+    Optional<Running> findBestPublicRunByCourseIdAndMemberId(Long courseId, String memberUuid);
 
     @Query("SELECT COUNT(r) FROM Running r "
         + "WHERE r.course.id = :courseId AND r.isPublic = true AND r.runningRecord.averagePace < :averagePace")

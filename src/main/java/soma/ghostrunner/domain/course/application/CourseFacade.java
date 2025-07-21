@@ -71,8 +71,8 @@ public class CourseFacade {
     }
 
     @Transactional(readOnly = true)
-    public CourseRankingResponse findCourseRankingDetail(Long courseId, Long userId) {
-        Running running = runningQueryService.findBestPublicRunForCourse(courseId, userId);
+    public CourseRankingResponse findCourseRankingDetail(Long courseId, String memberUuid) {
+        Running running = runningQueryService.findBestPublicRunForCourse(courseId, memberUuid);
         Integer ranking = runningQueryService.findPublicRankForCourse(courseId, running);
         return courseMapper.toRankingResponse(running, ranking);
     }

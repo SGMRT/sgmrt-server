@@ -64,8 +64,8 @@ public class CourseApi {
     @GetMapping("/courses/{courseId}/ranking")
     public CourseRankingResponse getCourseRanking(
             @PathVariable("courseId") Long courseId,
-            @RequestParam Long userId) {
-        return courseFacade.findCourseRankingDetail(courseId, userId);
+            @RequestParam String memberUuid) {
+        return courseFacade.findCourseRankingDetail(courseId, memberUuid);
     }
 
     @GetMapping("/courses/{courseId}/top-ranking")
