@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.member.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -25,6 +26,7 @@ public class TermsAgreement {
     private boolean isThirdPartyDataSharingAgreed;
     private boolean isMarketingAgreed;
 
+    @CreationTimestamp
     private LocalDateTime agreedAt;
 
     @Builder(access = AccessLevel.PRIVATE)
