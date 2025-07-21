@@ -1,8 +1,10 @@
 package soma.ghostrunner.domain.member.application;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -19,6 +21,7 @@ import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.clients.aws.S3PresignProvider;
 import soma.ghostrunner.global.error.ErrorCode;
+import soma.ghostrunner.global.error.exception.BusinessException;
 
 import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 
@@ -186,8 +189,15 @@ public class MemberService {
     }
 
     private void saveTermsAgreement(Member member, TermsAgreement termsAgreement) {
+        // 기존의 약관 동의와 달라진 게 없는 경우는 저장하지 않는다
+        if (isTermsAgreementUnchanged(member, termsAgreement)) throw new BusinessException(ErrorCode.TERMS_AGREEMENT_NOT_CHANGED);
         termsAgreement.setMember(member);
         termsAgreementRepository.save(termsAgreement);
+    }
+
+    private boolean isTermsAgreementUnchanged(Member member, TermsAgreement termsAgreement) {
+        TermsAgreement lastAgreement = termsAgreementRepository.findTopByMemberIdOrderByAgreedAtDesc(member.getId());
+        return lastAgreement != null && lastAgreement.equals(termsAgreement);
     }
 
 }

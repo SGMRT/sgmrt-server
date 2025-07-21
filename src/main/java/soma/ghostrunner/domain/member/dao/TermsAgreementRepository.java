@@ -7,4 +7,6 @@ import soma.ghostrunner.domain.member.domain.TermsAgreement;
 @Repository
 public interface TermsAgreementRepository extends JpaRepository<TermsAgreement, Long> {
 
+    TermsAgreement findTopByMemberIdOrderByAgreedAtDesc(Long id);
+
 }
