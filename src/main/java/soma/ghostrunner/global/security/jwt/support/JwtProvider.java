@@ -21,6 +21,10 @@ public class JwtProvider {
         key = Keys.hmacShaKeyFor(keyBytes);
     }
 
+    public String getUserId(Claims claims) {
+        return claims.get("userId", String.class);
+    }
+  
     public String extractTokenFromHeader(HttpServletRequest request) {
         String authorizationHeader = request.getHeader("Authorization");
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {

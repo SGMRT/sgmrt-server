@@ -176,6 +176,10 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 true, false, telemetryUrl, member, course);
     }
 
+    private Member createMember(String name) {
+        return Member.of(name, "프로필 URL");
+    }
+
     private Course createCourse(Member testMember) {
         return Course.of(
                 testMember, createCourseProfile(), createStartPoint(),
@@ -391,6 +395,14 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
             Assertions.assertThat(runInfos.get(idx).getName()).isEqualTo(sortedSoloRunnings.get(idx).getRunningName());
             Assertions.assertThat(runInfos.get(idx).getStartedAt()).isEqualTo(sortedSoloRunnings.get(idx).getStartedAt());
         });
+    }
+
+    private Course createCourse(Member testMember, String courseName) {
+        Course course = Course.of(
+                testMember, createCourseProfile(), createStartPoint(),
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        course.setName(courseName);
+        return course;
     }
 
     @DisplayName("갤러리 보기 방식으로 러닝 기록을 조회한다.")

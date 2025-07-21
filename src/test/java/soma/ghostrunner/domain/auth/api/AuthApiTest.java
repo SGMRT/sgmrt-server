@@ -107,5 +107,5 @@ class AuthApiTest extends ApiTestSupport {
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
     }
-
+  
 }

@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.auth.application;
 
-import com.google.api.client.auth.oauth2.TokenResponse;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,7 +53,7 @@ class AuthServiceTest extends IntegrationTestSupport {
 
     @MockitoBean
     private JwtProvider jwtProvider;
-
+  
     @DisplayName("파이어베이스 토큰을 통해 로그인을 진행한다.")
     @Test
     void signIn() {

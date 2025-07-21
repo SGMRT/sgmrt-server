@@ -111,8 +111,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     @Test
     void findByIdAndFakeMemberId() {
         // given
-        Member member = createMember("이복둥");
-        Member fakeMember = createMember("페이크 이복둥");
+        Member member = createMember("이복둥", UUID.randomUUID().toString());
+        Member fakeMember = createMember("페이크 이복둥", UUID.randomUUID().toString());
         memberRepository.saveAll(List.of(member, fakeMember));
 
         Course course = createCourse(member);
@@ -126,6 +126,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // then
         Assertions.assertThat(savedRunning).isEmpty();
+    }
+
+    private Member createMember(String name, String externalAuthUuid) {
+        return Member.of(name, "프로필 URL");
     }
 
     @DisplayName("러닝 ID로 시계열 URL을 조회한다.")
