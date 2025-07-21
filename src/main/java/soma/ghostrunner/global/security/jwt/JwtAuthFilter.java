@@ -29,6 +29,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final String AUTH_EXCEPTION_ATTRIBUTE = "authentication";
 
+    private final String HEALTH_CHECK_URI = "/";
+
     private static final List<String> PERMIT_URLS = List.of(
             "/v1/auth", "/swagger"
     );
@@ -39,7 +41,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
-            if (isPermittedUri(request)) {
+            if (isPermittedUri(request) || isHealthCheckUri(request)) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -62,6 +64,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isHealthCheckUri(HttpServletRequest request) {
+        return request.getRequestURI().equals(HEALTH_CHECK_URI);
     }
 
     private boolean isPermittedUri(HttpServletRequest request) {
