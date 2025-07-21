@@ -14,6 +14,7 @@ import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -41,9 +42,9 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
     @MockitoBean
     TelemetryClient telemetryClient;
 
-    @DisplayName("러닝의 위치 시계열을 조회한다.")
+    @DisplayName("러닝의 전체 시계열을 조회한다.")
     @Test
-    void findRunningTelemetries() {
+    void findTotalTelemetries() {
         // given
         Member member = createMember("이복둥");
         memberRepository.save(member);
@@ -64,7 +65,44 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
         given(telemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
-        List<CoordinateDto> telemetries = runningTelemetryQueryService.findCoordinateTelemetries(running.getTelemetryUrl());
+        List<TelemetryDto> telemetries = runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getTelemetryUrl());
+
+        // then
+        Assertions.assertThat(telemetries)
+                .hasSize(4)
+                .extracting("timeStamp", "lat", "lng", "dist", "pace", "alt", "cadence", "bpm", "isRunning")
+                .containsExactly(
+                        tuple(0L, 37.2, 37.5, 110.0, 6.0, 100, 120, 110, true),
+                        tuple(1L, 37.3, 37.6, 110.1, 6.1, 101, 121, 111, true),
+                        tuple(2L, 37.4, 37.7, 110.2, 6.2, 102, 122, 112, true),
+                        tuple(3L, 37.5, 37.8, 110.3, 6.3, 103, 123, 113, false)
+                );
+    }
+
+    @DisplayName("러닝의 위치 시계열을 조회한다.")
+    @Test
+    void findCoordinateTelemetries() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        Running running = createRunning("러닝", course, member, "러닝의 URL");
+        runningRepository.save(running);
+
+        List<String> downloadedStringTelemetries = List.of(
+                "{\"timeStamp\":0,\"lat\":37.2,\"lng\":37.5,\"dist\":110.0,\"pace\":6.0,\"alt\":100,\"cadence\":120,\"bpm\":110,\"isRunning\":true}",
+                "{\"timeStamp\":1,\"lat\":37.3,\"lng\":37.6,\"dist\":110.1,\"pace\":6.1,\"alt\":101,\"cadence\":121,\"bpm\":111,\"isRunning\":true}",
+                "{\"timeStamp\":2,\"lat\":37.4,\"lng\":37.7,\"dist\":110.2,\"pace\":6.2,\"alt\":102,\"cadence\":122,\"bpm\":112,\"isRunning\":true}",
+                "{\"timeStamp\":3,\"lat\":37.5,\"lng\":37.8,\"dist\":110.3,\"pace\":6.3,\"alt\":103,\"cadence\":123,\"bpm\":113,\"isRunning\":false}"
+        );
+
+        given(telemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
+
+        // when
+        List<CoordinateDto> telemetries = runningTelemetryQueryService.findCoordinateTelemetries(running.getId(), running.getTelemetryUrl());
 
         // then
         Assertions.assertThat(telemetries)

@@ -8,6 +8,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import soma.ghostrunner.domain.auth.application.dto.JwtTokens;
 
 import javax.crypto.SecretKey;
 import java.util.UUID;
@@ -25,32 +26,18 @@ class JwtTokenFactoryTest {
         jwtTokenFactory = new JwtTokenFactory(testSecretKey, accessTokenExpTime, refreshTokenExpTime);
     }
 
-    @DisplayName("액세스 토큰을 생성한다.")
+    @DisplayName("액세스/리프레쉬 토큰을 생성한다.")
     @Test
-    void createAccessToken() {
+    void createTokens() {
         // given
         String userId = UUID.randomUUID().toString();
 
         // when
-        String accessToken = jwtTokenFactory.createAccessToken(userId);
+        JwtTokens jwtTokens = jwtTokenFactory.createTokens(userId);
 
         // then
-        Claims claims = parseToken(accessToken);
-        Assertions.assertThat(claims.get("userId")).isEqualTo(userId);
-    }
-
-    @DisplayName("리프레쉬 토큰을 생성한다.")
-    @Test
-    void creteRefreshToken() {
-        // given
-        String userId = UUID.randomUUID().toString();
-
-        // when
-        String refreshToken = jwtTokenFactory.createRefreshToken(userId);
-
-        // then
-        Claims claims = parseToken(refreshToken);
-        Assertions.assertThat(claims.get("userId")).isEqualTo(userId);
+        Assertions.assertThat(parseToken(jwtTokens.accessToken()).get("userId")).isEqualTo(userId);
+        Assertions.assertThat(parseToken(jwtTokens.refreshToken()).get("userId")).isEqualTo(userId);
     }
 
     private Claims parseToken(String token) {

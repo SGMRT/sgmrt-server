@@ -37,16 +37,15 @@ public class JwtTokenFactory {
         return new JwtTokens(accessToken, refreshToken);
     }
 
-    public String createAccessToken(String memberId) {
+    private String createAccessToken(String memberId) {
         Claims claims = createClaims(memberId);
         ZonedDateTime now = ZonedDateTime.now();
         return createToken(claims, now, now.plusSeconds(accessTokenExpTime));
     }
 
-    public String createRefreshToken(String memberId){
+    private String createRefreshToken(String memberId){
         Claims claims = createClaims(memberId);
         ZonedDateTime now = ZonedDateTime.now();
-
         return createToken(claims, now, now.plusSeconds(refreshTokenExpTime));
     }
 

@@ -25,8 +25,8 @@ public class RunningTelemetryQueryService {
         return TelemetryTypeConverter.convertFromStringToDtos(stringTelemetries);
     }
 
-    public List<CoordinateDto> findCoordinateTelemetries(String telemetryUrl) {
-        List<String> stringTelemetries = telemetryClient.downloadTelemetryFromUrl(telemetryUrl);
+    public List<CoordinateDto> findCoordinateTelemetries(Long runningId, String telemetryUrl) {
+        List<String> stringTelemetries = downloadTelemetries(runningId, telemetryUrl);
         return CoordinateConverter.convertToCoordinateList(stringTelemetries);
     }
 

@@ -29,6 +29,18 @@ public class AuthApi {
         return authService.signUp(firebaseToken, signUpRequest);
     }
 
+    @PostMapping("/reissue")
+    public AuthenticationResponse reissue(@RequestHeader("Authorization") String authorizationHeader) {
+        String refreshToken = extractToken(authorizationHeader);
+        return authService.reissueTokens(refreshToken);
+    }
+
+    @PostMapping("/logout")
+    public void logout(@RequestHeader("Authorization") String authorizationHeader) {
+        String refreshToken = extractToken(authorizationHeader);
+        authService.logout(refreshToken);
+    }
+
     private String extractToken(String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             throw new InvalidTokenException(ErrorCode.INVALID_TOKEN, "유효하지 않은 Bearer 토큰입니다.");

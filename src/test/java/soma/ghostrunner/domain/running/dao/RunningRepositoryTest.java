@@ -168,7 +168,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         runningRepository.saveAll(List.of(running1, running2));
 
         // when
-        SoloRunDetailInfo soloRunDetailInfo = runningRepository.findSoloRunInfoById(running1.getId()).get();
+        SoloRunDetailInfo soloRunDetailInfo = runningRepository.findSoloRunInfoById(running1.getId(), member.getUuid()).get();
 
         // then
         Assertions.assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running1.getStartedAt());
@@ -199,15 +199,16 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     @Test
     void findSoloRunInfoByInvalidRunningId() {
         // then
-        Assertions.assertThat(runningRepository.findSoloRunInfoById(Long.MAX_VALUE)).isEmpty();
+        Assertions.assertThat(
+                runningRepository.findSoloRunInfoById(Long.MAX_VALUE, UUID.randomUUID().toString())).isEmpty();
     }
 
     @DisplayName("기존 코스를 기반으로 고스트와 달린 러닝에 대한 코스와 나의 러닝 상세 정보를 조회한다. 고스트의 정보는 바로 조회되지 않는다.")
     @Test
     void findGhostRunInfoById() {
         // given
-        Member ghostMember = createMember("고스트 이복둥", UUID.randomUUID().toString());
-        Member member = createMember("이복둥", UUID.randomUUID().toString());
+        Member member = createMember("이복둥");
+        Member ghostMember = createMember("고스트 이복둥");
         memberRepository.saveAll(List.of(member, ghostMember));
 
         Course course = createCourse(member, "테스트 코스");
@@ -219,7 +220,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when
-        GhostRunDetailInfo ghostRunDetailInfo = runningRepository.findGhostRunInfoById(running.getId()).get();
+        GhostRunDetailInfo ghostRunDetailInfo = runningRepository.findGhostRunInfoById(running.getId(), member.getUuid()).get();
 
         // then
         Assertions.assertThat(ghostRunDetailInfo.getStartedAt()).isEqualTo(running.getStartedAt());
@@ -281,7 +282,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when
-        String url = runningRepository.findTelemetryUrlById(running.getId()).get();
+        String url = runningRepository.findTelemetryUrlById(running.getId(), member.getUuid()).get();
 
         // then
         Assertions.assertThat(url).isEqualTo(running.getTelemetryUrl());

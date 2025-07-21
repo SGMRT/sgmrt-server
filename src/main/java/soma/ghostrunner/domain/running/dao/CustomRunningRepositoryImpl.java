@@ -28,7 +28,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Optional<SoloRunDetailInfo> findSoloRunInfoById(long runningId) {
+    public Optional<SoloRunDetailInfo> findSoloRunInfoById(long runningId, String memberUuid) {
 
         QRunning subRunning = new QRunning("subRunning");
 
@@ -58,12 +58,13 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         ))
                         .from(running)
                         .join(running.course, course)
-                        .where(running.id.eq(runningId))
+                        .join(running.member, member)
+                        .where(running.id.eq(runningId).and(member.uuid.eq(memberUuid)))
                         .fetchOne());
     }
 
     @Override
-    public Optional<GhostRunDetailInfo> findGhostRunInfoById(long runningId) {
+    public Optional<GhostRunDetailInfo> findGhostRunInfoById(long runningId, String memberUuid) {
 
         QRunning subRunning = new QRunning("subRunning");
 
@@ -98,7 +99,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         .from(running)
                         .join(running.course, course)
                         .join(running.member, member)
-                        .where(running.id.eq(runningId))
+                        .where(running.id.eq(runningId)
+                                .and(member.uuid.eq(memberUuid)))
                         .fetchOne());
     }
 

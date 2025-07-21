@@ -84,4 +84,28 @@ class AuthApiTest extends ApiTestSupport {
                 true, false, LocalDateTime.now());
     }
 
+    @DisplayName("Authorization 헤더에서 리프레쉬 토큰을 추출하고 토큰 재발급을 진행한다.")
+    @Test
+    void reissue() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/auth/reissue")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .header("Authorization", "Bearer RefreshToken")
+                )
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+    }
+
+    @DisplayName("Authorization 헤더에서 리프레쉬 토큰을 추출하고 로그아웃을 진행한다.")
+    @Test
+    void logout() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/auth/logout")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .header("Authorization", "Bearer RefreshToken")
+                )
+                .andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
+    }
+  
 }

@@ -37,14 +37,24 @@ public class RunningQueryService {
     private final RunningApiMapper runningApiMapper;
 
     public SoloRunDetailInfo findSoloRunInfo(Long runningId, String memberUuid) {
-        SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId);
+        SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId, memberUuid);
         List<TelemetryDto> telemetries = downloadTelemetries(runningId, soloRunDetailInfo.getTelemetryUrl());
         soloRunDetailInfo.setTelemetries(telemetries);
         return soloRunDetailInfo;
     }
 
+    private SoloRunDetailInfo findSoloRunInfoByRunningId(Long runningId, String memberUuid) {
+        return runningRepository.findSoloRunInfoById(runningId, memberUuid)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
+    }
+
+    private List<TelemetryDto> downloadTelemetries(Long runningId, String telemetryUrl) {
+        return runningTelemetryQueryService.findTotalTelemetries(runningId, telemetryUrl);
+    }
+
+    // TODO : 테스트 코드 짜기
     public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId, String memberUuid) {
-        GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunInfoByRunningId(myRunningId);
+        GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunInfoByRunningId(myRunningId, memberUuid);
         verifyGhostRunningId(ghostRunningId, myGhostRunDetailInfo);
 
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfoByRunningId(ghostRunningId);
@@ -55,23 +65,30 @@ public class RunningQueryService {
         return myGhostRunDetailInfo;
     }
 
-    private List<TelemetryDto> downloadTelemetries(Long runningId, String telemetryUrl) {
-        return runningTelemetryQueryService.findTotalTelemetries(runningId, telemetryUrl);
+    private GhostRunDetailInfo findGhostRunInfoByRunningId(Long myRunningId, String memberUuid) {
+        return runningRepository.findGhostRunInfoById(myRunningId, memberUuid)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, myRunningId));
     }
 
     private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostRunDetailInfo) {
         if (myGhostRunDetailInfo.getGhostRunId() == null || !myGhostRunDetailInfo.getGhostRunId().equals(ghostRunningId)) {
-            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "고스트의 러닝 ID가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우");
+            throw new InvalidRunningException(
+                    ErrorCode.INVALID_REQUEST_VALUE, "고스트의 러닝 ID가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우");
         }
     }
 
-    public List<TelemetryDto> findRunningTelemetries(Long runningId, String memberId) {
-        String telemetryUrl = findTelemetryUrlByRunningId(runningId);
+    private MemberAndRunRecordInfo findGhostMemberAndRunInfoByRunningId(Long ghostRunningId) {
+        return runningRepository.findMemberAndRunRecordInfoById(ghostRunningId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, ghostRunningId));
+    }
+
+    public List<TelemetryDto> findRunningTelemetries(Long runningId, String memberUuid) {
+        String telemetryUrl = findTelemetryUrlByRunningId(runningId, memberUuid);
         return downloadTelemetries(runningId, telemetryUrl);
     }
 
-    private String findTelemetryUrlByRunningId(Long runningId) {
-        return runningRepository.findTelemetryUrlById(runningId)
+    private String findTelemetryUrlByRunningId(Long runningId, String memberUuid) {
+        return runningRepository.findTelemetryUrlById(runningId, memberUuid)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
     }
 
@@ -111,22 +128,8 @@ public class RunningQueryService {
 
     public Running findFirstRunning(Long courseId) {
         return runningRepository.findFirstRunningByCourseId(courseId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "코스 ID : " + courseId + "를 갖는 러닝이 없습니다."));
-    }
-
-    private MemberAndRunRecordInfo findGhostMemberAndRunInfoByRunningId(Long ghostRunningId) {
-        return runningRepository.findMemberAndRunRecordInfoById(ghostRunningId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, ghostRunningId));
-    }
-
-    private GhostRunDetailInfo findGhostRunInfoByRunningId(Long myRunningId) {
-        return runningRepository.findGhostRunInfoById(myRunningId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, myRunningId));
-    }
-
-    private SoloRunDetailInfo findSoloRunInfoByRunningId(Long runningId) {
-        return runningRepository.findSoloRunInfoById(runningId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
+                .orElseThrow(() -> new RunningNotFoundException(
+                        ErrorCode.ENTITY_NOT_FOUND, "코스 ID : " + courseId + "에 대한 러닝 데이터가 없습니다."));
     }
 
     private void validateSortProperty(Pageable pageable) {
@@ -138,20 +141,17 @@ public class RunningQueryService {
             });
     }
 
-    public List<RunInfo> findRunnings(
-            String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
+    public List<RunInfo> findRunnings(String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
         return runningRepository.findRunInfosByCursorIds(
                 RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
     }
 
-    public List<RunInfo> findRunningsFilteredByCourse(
-            String runningMode, String courseName, Long cursorRunningId, String memberUuid) {
+    public List<RunInfo> findRunningsFilteredByCourse(String runningMode, String courseName, Long cursorRunningId, String memberUuid) {
         return runningRepository.findRunInfosFilteredByCoursesByCursorIds(
                 RunningMode.valueOf(runningMode), courseName, cursorRunningId, memberUuid);
     }
 
-    public List<RunInfo> findRunningsForGalleryView(
-            String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
+    public List<RunInfo> findRunningsForGalleryView(String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
         return runningRepository.findRunInfosForGalleryViewByCursorIds(
                 RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
     }

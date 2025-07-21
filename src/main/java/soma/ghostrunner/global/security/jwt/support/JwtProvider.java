@@ -24,7 +24,7 @@ public class JwtProvider {
     public String getUserId(Claims claims) {
         return claims.get("userId", String.class);
     }
-
+  
     public String extractTokenFromHeader(HttpServletRequest request) {
         String authorizationHeader = request.getHeader("Authorization");
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
@@ -33,11 +33,20 @@ public class JwtProvider {
         return authorizationHeader.substring(7);
     }
 
-    public Claims parseClaims(String token) {
+    public String getUserIdFromToken(String token) {
+        Claims claims = parseClaims(token);
+        return getUserId(claims);
+    }
+
+    private Claims parseClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key).build()
                 .parseClaimsJws(token)
                 .getBody();
+    }
+
+    private String getUserId(Claims claims) {
+        return claims.get("userId", String.class);
     }
 
 }
