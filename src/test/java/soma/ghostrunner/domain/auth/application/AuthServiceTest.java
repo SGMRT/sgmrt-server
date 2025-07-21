@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.domain.auth.api.dto.TermsAgreementDto;
+import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
 import soma.ghostrunner.domain.auth.api.dto.response.AuthenticationResponse;
 import soma.ghostrunner.domain.auth.application.dto.JwtTokens;

@@ -10,7 +10,7 @@ import soma.ghostrunner.domain.auth.application.dto.JwtTokens;
 import soma.ghostrunner.domain.auth.exception.TokenTheftException;
 import soma.ghostrunner.domain.auth.resolver.AuthIdResolver;
 import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
-import soma.ghostrunner.domain.auth.api.dto.TermsAgreementDto;
+import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
