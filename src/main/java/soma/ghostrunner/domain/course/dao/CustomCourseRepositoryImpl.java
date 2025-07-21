@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.QCourse;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
-import soma.ghostrunner.domain.member.QMember;
+import soma.ghostrunner.domain.member.domain.QMember;
 
 @Repository
 @RequiredArgsConstructor

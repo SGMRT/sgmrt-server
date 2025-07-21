@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static soma.ghostrunner.domain.course.domain.QCourse.course;
-import static soma.ghostrunner.domain.member.QMember.member;
+import static soma.ghostrunner.domain.member.domain.QMember.member;
 import static soma.ghostrunner.domain.running.domain.QRunning.running;
 
 @Repository
