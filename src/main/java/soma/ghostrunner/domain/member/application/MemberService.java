@@ -7,7 +7,7 @@ import soma.ghostrunner.domain.member.*;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberBioInfo;
 import soma.ghostrunner.domain.member.MemberNotFoundException;
-import soma.ghostrunner.domain.member.MemberRepository;
+import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.member.api.dto.ProfileImageUploadRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;

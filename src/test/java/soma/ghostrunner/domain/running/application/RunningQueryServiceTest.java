@@ -11,7 +11,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.member.MemberRepository;
+import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
