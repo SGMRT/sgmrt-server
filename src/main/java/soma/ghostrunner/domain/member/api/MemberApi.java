@@ -3,7 +3,8 @@ package soma.ghostrunner.domain.member.api;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import soma.ghostrunner.domain.member.api.dto.ProfileImageUploadRequest;
+import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
+import soma.ghostrunner.domain.member.api.dto.request.ProfileImageUploadRequest;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 
@@ -17,7 +18,16 @@ public class MemberApi {
 
     @GetMapping("/{memberUuid}")
     public Object getMember(@PathVariable("memberUuid") String memberUuid) {
+        // todo 본인만 확인 가능
         return memberMapper.toMemberResponse(memberService.findMemberByUuid(memberUuid));
+    }
+
+    @PatchMapping("/{memberUuid}")
+    public void patchMember(
+            @PathVariable("memberUuid") String memberUuid,
+            @RequestBody MemberUpdateRequest memberUpdateRequest) {
+        // todo 본인만 수정 가능
+        memberService.updateMember(memberUuid, memberUpdateRequest);
     }
 
     @PostMapping("/{memberUuid}/profile-image/upload-url")

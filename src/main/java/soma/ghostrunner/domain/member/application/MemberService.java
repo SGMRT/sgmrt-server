@@ -3,12 +3,14 @@ package soma.ghostrunner.domain.member.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberBioInfo;
+import soma.ghostrunner.domain.member.enums.Gender;
 import soma.ghostrunner.domain.member.exception.InvalidMemberException;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
-import soma.ghostrunner.domain.member.api.dto.ProfileImageUploadRequest;
+import soma.ghostrunner.domain.member.api.dto.request.ProfileImageUploadRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.dao.TermsAgreementRepository;
@@ -50,6 +52,58 @@ public class MemberService {
     }
 
     @Transactional
+    public void updateMember(String uuid, MemberUpdateRequest request) {
+        Member member = findMemberByUuid(uuid);
+
+        Gender gender = member.getBioInfo().getGender();
+        Integer weight = member.getBioInfo().getWeight();
+        Integer height = member.getBioInfo().getHeight();
+        for(MemberUpdateRequest.UpdatedAttr attr : request.getUpdateAttrs()) {
+            switch(attr) {
+                case NICKNAME:
+                    verifyNickname(request.getNickname());
+                    member.updateNickname(request.getNickname());
+                    break;
+                case GENDER:
+                    verifyGender(request.getGender());
+                    gender = request.getGender();
+                    break;
+                case HEIGHT:
+                    verifyHeight(request.getHeight());
+                    height = request.getHeight();
+                    break;
+                case WEIGHT:
+                    verifyWeight(request.getHeight());
+                    weight = request.getWeight();
+                    break;
+            }
+        }
+
+        member.updateBioInfo(gender, weight, height);
+    }
+
+    private void verifyNickname(String nickname) {
+        if(nickname == null) throw new IllegalArgumentException("nickname cannot be null");
+        verifyAlreadyExistNickname(nickname);
+    }
+
+    private void verifyGender(Gender gender) {
+        if(gender == null) throw new IllegalArgumentException("gender cannot be null");
+    }
+
+    private void verifyHeight(Integer height) {
+        // height와 weight는 null 입력 허용
+        int MAX_HEIGHT = 300, MIN_HEIGHT = 50;
+        if(height != null && (height >= MAX_HEIGHT || height <= MIN_HEIGHT)) throw new IllegalArgumentException("invalid height");
+    }
+
+    private void verifyWeight(Integer weight) {
+        // height와 weight는 null 입력 허용
+        int MAX_WEIGHT = 300, MIN_WEIGHT = 20;
+        if(weight != null && (weight >= MAX_WEIGHT || weight <= MIN_WEIGHT)) throw new IllegalArgumentException("invalid weight");
+    }
+
+    @Transactional
     public Member createMember(MemberCreationRequest creationRequest) {
         Member member = Member.builder()
                 .nickname(creationRequest.getNickname())
@@ -58,7 +112,7 @@ public class MemberService {
                                            creationRequest.getHeight()))
                 .profilePictureUrl(creationRequest.getProfileImageUrl())
                 .build();
-        verifyAlreadyExistNickname(creationRequest);
+        verifyAlreadyExistNickname(creationRequest.getNickname());
         member = memberRepository.save(member);
 
         MemberAuthInfo memberAuthInfo = MemberAuthInfo.of(member, creationRequest.getExternalAuthId());
@@ -75,8 +129,8 @@ public class MemberService {
         return member;
     }
 
-    private void verifyAlreadyExistNickname(MemberCreationRequest creationRequest) {
-        boolean alreadyExist = memberRepository.existsByNickname(creationRequest.getNickname());
+    private void verifyAlreadyExistNickname(String nickname) {
+        boolean alreadyExist = memberRepository.existsByNickname(nickname);
         if (alreadyExist) {
             throw new InvalidMemberException(ErrorCode.NICKNAME_ALREADY_EXIST, "이미 존재하는 닉네임인 경우");
         }

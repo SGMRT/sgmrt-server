@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.member.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import soma.ghostrunner.domain.member.enums.Gender;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.common.document.TestOnly;
 
@@ -48,6 +49,21 @@ public class Member extends BaseTimeEntity {
                 .nickname(nickname)
                 .profilePictureUrl(profilePictureUrl)
                 .build();
+    }
+
+    public void updateNickname(String nickname) {
+        if(nickname == null) throw new IllegalArgumentException("nickname cannot be null");
+        if(nickname.trim().isEmpty()) throw new IllegalArgumentException("nickname cannot be empty");
+        if(nickname.length() > 10) throw new IllegalArgumentException("nickname cannot be longer than 10 characters");
+        this.nickname = nickname;
+    }
+
+    public void updateBioInfo(Gender gender, Integer weight, Integer height) {
+        if(gender == null) throw new IllegalArgumentException("gender cannot be null");
+        //  weight나 height는 null check X - 요청 시 null로 변경 가능
+        if(weight != null && weight < 0) throw new IllegalArgumentException("weight cannot be negative");
+        if(height != null && height < 0) throw new IllegalArgumentException("height cannot be negative");
+        this.bioInfo = new MemberBioInfo(gender, weight, height);
     }
 
     @TestOnly
