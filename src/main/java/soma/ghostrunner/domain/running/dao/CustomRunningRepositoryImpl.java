@@ -206,11 +206,15 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 running.runningRecord.duration.avg(),
                                 running.runningRecord.averagePace.avg(),
                                 running.runningRecord.cadence.avg(),
-                                running.runningRecord.averagePace.min()
+                                running.runningRecord.averagePace.min(),
+                                running.member.countDistinct().intValue(),
+                                running.count().intValue()
                         ))
                         .from(running)
                         .where(running.course.id.eq(courseId)
-                                .and(running.isPublic.isTrue()))
+                                .and(running.isPublic.isTrue())
+                                // todo: memberId 받은 다음에 본인 꺼는 isPublic = false여도 보여줘야 하나?
+                        )
                         .fetchOne()
         );
     }

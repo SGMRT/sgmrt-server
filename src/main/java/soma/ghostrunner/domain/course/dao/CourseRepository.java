@@ -1,6 +1,8 @@
 package soma.ghostrunner.domain.course.dao;
 
 import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -24,5 +26,7 @@ public interface CourseRepository extends CustomCourseRepository, JpaRepository<
             @Param("minLng") Double minLng,
             @Param("maxLng") Double maxLng
     );
+
+    Page<Course> findCoursesFetchJoinMembersByMemberUuidOrderByCreatedAtDesc(String memberUuid, Pageable pageable);
 
 }

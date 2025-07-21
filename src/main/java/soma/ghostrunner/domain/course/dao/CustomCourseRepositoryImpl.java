@@ -58,6 +58,9 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
     builder.and(course.startPoint.latitude.between(minLat, maxLat));
     builder.and(course.startPoint.longitude.between(minLng, maxLng));
 
+    // 공개 여부 필터링
+    builder.and(course.isPublic.isTrue());
+
     // 거리 필터링 (m 단위 -> km로 변환)
     if (Objects.nonNull(minDistanceM)) {
       builder.and(course.courseProfile.distance.goe(minDistanceM / 1000.0));

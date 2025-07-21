@@ -4,7 +4,6 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
-import soma.ghostrunner.domain.course.dto.response.CourseRankingResponse;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
@@ -20,7 +19,7 @@ public interface RunningApiMapper {
 
     CreateRunCommand toCommand(CreateRunRequest request);
 
-    @Mapping(source = "member.id", target = "runnerId")
+    @Mapping(source = "member.uuid", target = "runnerUuid")
     @Mapping(source = "member.profilePictureUrl", target = "runnerProfileUrl")
     @Mapping(source = "member.nickname", target = "runnerNickname")
     @Mapping(source = "id", target = "runningId")
