@@ -11,7 +11,7 @@ import soma.ghostrunner.domain.running.domain.support.CoordinateConverter;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {CoordinateConverter.class})
+@Mapper(componentModel = "spring", uses = {CoordinateConverter.class, CourseSubMapper.class})
 public interface CourseMapper {
     @Mapping(source = "startPoint.latitude", target = "startLat")
     @Mapping(source = "startPoint.longitude", target = "startLng")
@@ -21,7 +21,11 @@ public interface CourseMapper {
                     ": null)")
     @Mapping(source = "courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "courseProfile.elevationLoss", target = "elevationLoss")
-    CourseResponse toCourseResponse(Course course);
+    CourseWithCoordinatesDto toCourseWithCoordinateDto(Course course);
+
+    @Mapping(source = "ghosts", target = "runners")
+    CourseMapResponse toCourseMapResponse(CourseWithCoordinatesDto courseDto, List<CourseGhostResponse> ghosts,
+                                          long runnersCount);
 
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
@@ -62,8 +66,15 @@ public interface CourseMapper {
     @Mapping(source = "courseDto.distance", target = "distance")
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")
-    CourseSummaryResponse toCourseSummaryResponse(CourseWithMemberDetailsDto courseDto, Integer uniqueRunnersCount, Integer totalRunsCount,
-                                                  Double averageCompletionTime, Double averageFinisherPace,
-                                                  Double averageFinisherCadence);
+    CourseSummaryResponse toCourseSummaryResponse(CourseWithMemberDetailsDto courseDto, Integer uniqueRunnersCount,
+                                                  Integer totalRunsCount, Double averageCompletionTime,
+                                                  Double averageFinisherPace, Double averageFinisherCadence);
 
+}
+
+@Mapper(componentModel = "spring")
+interface CourseSubMapper {
+    @Mapping(source = "ghost.runnerUuid", target = "uuid")
+    @Mapping(source = "ghost.runnerProfileUrl", target = "profileUrl")
+    CourseMapResponse.MemberRecord toMemberRecordDto(CourseGhostResponse ghost);
 }
