@@ -9,6 +9,8 @@ spring:
     redis:
       host: ${DEV_REDIS_ENDPOINT}
       port: 6379
+      ssl:
+        enabled: true
 
   jpa:
     hibernate:
