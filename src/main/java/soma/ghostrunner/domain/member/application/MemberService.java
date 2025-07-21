@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.member.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberBioInfo;
@@ -122,8 +123,7 @@ public class MemberService {
 
         TermsAgreement termsAgreement = creationRequest.getTermsAgreement();
         if (termsAgreement != null) {
-            termsAgreement.setMember(member);
-            termsAgreementRepository.save(termsAgreement);
+            saveTermsAgreement(member,  termsAgreement);
         }
 
         return member;
@@ -168,6 +168,26 @@ public class MemberService {
             return fileName.substring(dotIndex + 1);
         }
         return "";
+    }
+
+    @Transactional
+    public void saveTermsAgreement(String memberUuid, TermsAgreementDto termsAgreementDto) {
+        Member member = findMemberByUuid(memberUuid);
+        if(termsAgreementDto == null) throw new IllegalArgumentException("termsAgreement cannot be null");
+        TermsAgreement agreement = TermsAgreement.createIfAllMandatoryTermsAgreed(
+                termsAgreementDto.isServiceTermsAgreed(),
+                termsAgreementDto.isPrivacyPolicyAgreed(),
+                termsAgreementDto.isDataConsignmentAgreed(),
+                termsAgreementDto.isThirdPartyDataSharingAgreed(),
+                termsAgreementDto.isMarketingAgreed(),
+                null
+        );
+        saveTermsAgreement(member, agreement);
+    }
+
+    private void saveTermsAgreement(Member member, TermsAgreement termsAgreement) {
+        termsAgreement.setMember(member);
+        termsAgreementRepository.save(termsAgreement);
     }
 
 }
