@@ -36,10 +36,10 @@ public class CourseFacade {
             Double lat, Double lng, Integer radiusM,
             Integer minDistanceM, Integer maxDistanceM,
             Integer minElevationM, Integer maxElevationM,
-            Long ownerId) {
+            String ownerUuid) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
         List<CourseWithCoordinatesDto> courses = courseService.searchCourses(lat, lng, radiusM,
-                minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerId);
+                minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid);
         return courses.stream().map(course -> {
             Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
             long runnersCount = rankers.getTotalElements();
