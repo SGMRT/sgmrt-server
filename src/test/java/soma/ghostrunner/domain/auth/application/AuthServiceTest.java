@@ -13,7 +13,7 @@ import soma.ghostrunner.domain.auth.application.dto.JwtTokens;
 import soma.ghostrunner.domain.auth.exception.TokenTheftException;
 import soma.ghostrunner.domain.auth.resolver.impl.FirebaseUidResolver;
 import soma.ghostrunner.domain.member.InvalidMemberException;
-import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;

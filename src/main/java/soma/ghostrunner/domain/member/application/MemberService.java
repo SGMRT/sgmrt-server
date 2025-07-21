@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.member.*;
-import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.MemberBioInfo;
 import soma.ghostrunner.domain.member.MemberNotFoundException;
 import soma.ghostrunner.domain.member.MemberRepository;

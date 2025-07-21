@@ -3,7 +3,7 @@ package soma.ghostrunner.domain.member.application.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.auth.api.dto.request.SignUpRequest;
-import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 

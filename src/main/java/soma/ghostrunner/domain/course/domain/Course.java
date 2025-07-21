@@ -3,7 +3,7 @@ package soma.ghostrunner.domain.course.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SoftDelete;
-import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 @Entity

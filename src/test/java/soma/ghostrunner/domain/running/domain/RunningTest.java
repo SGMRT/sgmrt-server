@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.StartPoint;
-import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 
 import java.lang.reflect.Field;

@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.member.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import soma.ghostrunner.domain.member.Member;
 
 import java.time.LocalDateTime;
 
