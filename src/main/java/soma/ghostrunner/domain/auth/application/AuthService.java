@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.auth.application;
 
+import io.jsonwebtoken.MalformedJwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

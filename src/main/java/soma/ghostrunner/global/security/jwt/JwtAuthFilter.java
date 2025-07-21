@@ -1,6 +1,5 @@
 package soma.ghostrunner.global.security.jwt;
 
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -31,8 +30,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final String HEALTH_CHECK_URI = "/";
 
-    private static final List<String> PERMIT_URLS = List.of(
-            "/v1/auth", "/swagger"
+    private final List<String> SIGN_ENDPOINTS = List.of(
+            "/v1/auth/firebase-signin", "v1/auth/firebase-signup"
+    );
+
+    private static final List<String> PERMITTED_ENDPOINTS = List.of(
+            "/swagger-ui", "/v3/api-docs"
     );
 
     private final JwtProvider jwtProvider;
@@ -41,7 +44,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
-            if (isPermittedUri(request) || isHealthCheckUri(request)) {
+            if (isPermittedUri(request) || isHealthCheckUri(request) || isSignEndpoint(request)) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -72,8 +75,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private boolean isPermittedUri(HttpServletRequest request) {
         String requestURI = request.getRequestURI();
-        return PERMIT_URLS.stream()
+        return PERMITTED_ENDPOINTS.stream()
                 .anyMatch(requestURI::startsWith);
+    }
+
+    private boolean isSignEndpoint(HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        return SIGN_ENDPOINTS.stream()
+                .anyMatch(endpoint -> endpoint.equals(requestURI));
     }
 
     private void setAuthentication(UsernamePasswordAuthenticationToken authentication) {
