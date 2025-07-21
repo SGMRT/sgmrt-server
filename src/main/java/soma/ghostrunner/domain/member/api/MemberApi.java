@@ -9,7 +9,7 @@ import soma.ghostrunner.domain.member.application.MemberService;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/members")
-public class MemberController {
+public class MemberApi {
 
     private final MemberService memberService;
 
