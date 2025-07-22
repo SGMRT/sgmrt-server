@@ -1,11 +1,9 @@
-package soma.ghostrunner.domain.member.api.dto;
+package soma.ghostrunner.domain.member.api.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import soma.ghostrunner.domain.member.enums.AllowedProfileImageContentType;
-import soma.ghostrunner.global.common.validator.enums.EnumValid;
 
 @Getter
 @NoArgsConstructor
