@@ -37,10 +37,15 @@ public interface CourseMapper {
                                                     Double averageCompletionTime, Double averageFinisherPace,
                                                     Double averageFinisherCadence, Double lowestFinisherPace);
 
+    @Mapping(source = "running.member.uuid", target = "runnerUuid")
+    @Mapping(source = "running.member.profilePictureUrl", target = "runnerProfileUrl")
+    @Mapping(source = "running.member.nickname", target = "runnerNickname")
     @Mapping(source = "running.id", target = "runningId")
     @Mapping(source = "running.runningRecord.duration", target = "duration")
     @Mapping(source = "running.runningRecord.bpm", target = "bpm")
+    @Mapping(source = "running.runningRecord.cadence", target = "cadence")
     @Mapping(source = "running.runningRecord.averagePace", target = "averagePace")
+    @Mapping(source = "running.createdAt", target = "startedAt")
     CourseRankingResponse toRankingResponse(Running running, Integer rank);
 
     CourseCoordinatesResponse toCoordinatesResponse(Course course, List<CoordinateDto> coordinates);
