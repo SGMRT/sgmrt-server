@@ -52,7 +52,6 @@ public class RunningQueryService {
         return runningTelemetryQueryService.findTotalTelemetries(runningId, telemetryUrl);
     }
 
-    // TODO : 테스트 코드 짜기
     public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId, String memberUuid) {
         GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunInfoByRunningId(myRunningId, memberUuid);
         verifyGhostRunningId(ghostRunningId, myGhostRunDetailInfo);
@@ -121,13 +120,11 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
     }
 
-    // TODO : 테스트 코드 짜기
     public Running findRunningByRunningId(Long id) {
         return runningRepository.findById(id)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, id));
     }
 
-    // TODO : 테스트 코드 짜기
     public Running findFirstRunning(Long courseId) {
         return runningRepository.findFirstRunningByCourseId(courseId)
                 .orElseThrow(() -> new RunningNotFoundException(

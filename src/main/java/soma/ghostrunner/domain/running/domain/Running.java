@@ -71,6 +71,7 @@ public class Running extends BaseTimeEntity {
         this.course = course;
     }
 
+    // TODO : 고스트, 솔로 모드 정적 팩토리 생성자 나누기
     public static Running of(String runningName, RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
                              boolean isPublic, boolean hasPaused, String telemetryUrl, Member member, Course course) {
         return Running.builder()

@@ -11,14 +11,17 @@ public class RunInfo {
     private Long startedAt;
     private RunRecordInfo recordInfo;
     private CourseInfo courseInfo;
+    private Long ghostRunningId;
 
     @QueryProjection
-    public RunInfo(Long runningId, String name, Long startedAt, RunRecordInfo recordInfo, CourseInfo courseInfo) {
+    public RunInfo(Long runningId, String name, Long startedAt, RunRecordInfo recordInfo,
+                   CourseInfo courseInfo, Long ghostRunningId) {
         this.runningId = runningId;
         this.name = name;
         this.startedAt = startedAt;
         this.recordInfo = recordInfo;
         this.courseInfo = courseInfo;
+        this.ghostRunningId = ghostRunningId;
     }
 
 }

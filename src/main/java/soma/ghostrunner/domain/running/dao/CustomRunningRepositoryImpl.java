@@ -130,7 +130,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         running.id, running.runningName, running.startedAt,
                         new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
                                 running.runningRecord.averagePace, running.runningRecord.cadence),
-                        new QCourseInfo(running.course.id, running.course.name, running.course.isPublic)
+                        new QCourseInfo(running.course.id, running.course.name, running.course.isPublic),
+                        running.ghostRunningId
                 ))
                 .from(running)
                 .join(running.course, course)
@@ -158,7 +159,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         running.id, running.runningName, running.startedAt,
                         new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
                                 running.runningRecord.averagePace, running.runningRecord.cadence),
-                        new QCourseInfo(running.course.id, running.course.name)
+                        new QCourseInfo(running.course.id, running.course.name),
+                        running.ghostRunningId
                 ))
                 .from(running)
                 .join(running.course, course)
@@ -187,7 +189,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
                                 running.runningRecord.averagePace, running.runningRecord.cadence),
                         new QCourseInfo(running.course.id, running.course.name,
-                                running.course.isPublic, running.course.pathData)
+                                running.course.isPublic, running.course.pathData),
+                        running.ghostRunningId
                 ))
                 .from(running)
                 .join(running.course, course)

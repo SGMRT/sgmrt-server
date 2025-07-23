@@ -7,6 +7,7 @@ import lombok.Getter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+// TODO : DTO 구조 개선
 @Getter
 public class GhostRunDetailInfo extends RunDetailInfo {
 
