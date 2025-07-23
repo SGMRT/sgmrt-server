@@ -90,6 +90,7 @@ public class CourseFacade {
         return courseMapper.toCoordinatesResponse(course, coordinates);
     }
 
+    @Transactional(readOnly = true)
     public Page<CourseSummaryResponse> findCourseSummariesOfMember(String memberUuid, Pageable pageable) {
         // todo: 평균 데이터 캐싱 (Course 테이블에 저장 혹은 캐싱)
         Page<CourseWithMemberDetailsDto> courseDetails = courseService.findCoursesByMemberUuid(memberUuid, pageable);
