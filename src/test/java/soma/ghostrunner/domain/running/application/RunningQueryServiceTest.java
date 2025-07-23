@@ -29,6 +29,7 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.*;
 
+// TODO : 단위 테스트로 전환
 class RunningQueryServiceTest extends IntegrationTestSupport {
 
     @Autowired
