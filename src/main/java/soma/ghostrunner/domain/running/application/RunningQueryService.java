@@ -116,8 +116,8 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
     }
 
-    public Running findBestPublicRunForCourse(Long courseId, Long memberId) {
-        return runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberId)
+    public Running findBestPublicRunForCourse(Long courseId, String memberUuid) {
+        return runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberUuid)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
     }
 

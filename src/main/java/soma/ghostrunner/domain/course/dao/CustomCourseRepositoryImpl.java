@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.QCourse;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
-import soma.ghostrunner.domain.member.QMember;
+import soma.ghostrunner.domain.member.domain.QMember;
 
 @Repository
 @RequiredArgsConstructor
@@ -48,7 +48,7 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
   @Override
   public List<Course> findCoursesWithFilters(Double minLat, Double maxLat,
       Double minLng, Double maxLng, Integer minDistanceM, Integer maxDistanceM,
-      Integer minElevationM, Integer maxElevationM, Long ownerId) {
+      Integer minElevationM, Integer maxElevationM, String ownerUuid) {
     QCourse course = QCourse.course;
     QMember member = QMember.member;
 
@@ -78,8 +78,8 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
     }
 
     // ownerId 필터링
-    if (Objects.nonNull(ownerId)) {
-      builder.and(course.member.id.eq(ownerId)); // member.id를 사용하여 필터링
+    if (Objects.nonNull(ownerUuid)) {
+      builder.and(course.member.uuid.eq(ownerUuid)); // member.id를 사용하여 필터링
     }
 
     return queryFactory

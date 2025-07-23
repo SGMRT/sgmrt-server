@@ -25,13 +25,13 @@ public class CourseApi {
             @RequestParam Double lat,
             @RequestParam Double lng,
             @RequestParam(required = false, defaultValue = "2000") @Max(value = 20000) Integer radiusM,
-            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) String ownerUuid,
             @RequestParam(required = false) Integer minDistanceM,
             @RequestParam(required = false) Integer maxDistanceM,
             @RequestParam(required = false) Integer minElevationM,
             @RequestParam(required = false) Integer maxElevationM) {
         return courseFacade.findCoursesByPosition(lat, lng, radiusM,
-                minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerId);
+                minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid);
     }
 
     @GetMapping("/courses/{courseId}")
@@ -64,8 +64,8 @@ public class CourseApi {
     @GetMapping("/courses/{courseId}/ranking")
     public CourseRankingResponse getCourseRanking(
             @PathVariable("courseId") Long courseId,
-            @RequestParam Long userId) {
-        return courseFacade.findCourseRankingDetail(courseId, userId);
+            @RequestParam String memberUuid) {
+        return courseFacade.findCourseRankingDetail(courseId, memberUuid);
     }
 
     @GetMapping("/courses/{courseId}/top-ranking")

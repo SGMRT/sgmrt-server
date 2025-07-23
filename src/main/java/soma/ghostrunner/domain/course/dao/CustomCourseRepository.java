@@ -10,6 +10,6 @@ public interface CustomCourseRepository {
 
   List<Course> findCoursesWithFilters(Double minLat, Double maxLat,
       Double minLng, Double maxLng, Integer minDistanceM, Integer maxDistanceM,
-      Integer minElevationM, Integer maxElevationM, Long ownerId);
+      Integer minElevationM, Integer maxElevationM, String ownerUuid);
 
 }

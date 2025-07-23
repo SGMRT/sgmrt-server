@@ -2,7 +2,7 @@ package soma.ghostrunner.domain.member.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import soma.ghostrunner.domain.member.Member;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -26,6 +26,7 @@ public class TermsAgreement {
     private boolean isThirdPartyDataSharingAgreed;
     private boolean isMarketingAgreed;
 
+    @CreationTimestamp
     private LocalDateTime agreedAt;
 
     @Builder(access = AccessLevel.PRIVATE)
@@ -59,6 +60,17 @@ public class TermsAgreement {
 
     private boolean allMandatoryTermsAgreed() {
         return isServiceTermsAgreed && isPrivacyPolicyAgreed && isDataConsignmentAgreed && isThirdPartyDataSharingAgreed;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof TermsAgreement)) return false;
+        TermsAgreement other = (TermsAgreement) o;
+        return this.isServiceTermsAgreed ==  other.isServiceTermsAgreed
+            && this.isDataConsignmentAgreed == other.isDataConsignmentAgreed
+            && this.isPrivacyPolicyAgreed ==  other.isPrivacyPolicyAgreed
+            && this.isThirdPartyDataSharingAgreed == other.isThirdPartyDataSharingAgreed
+            && this.isMarketingAgreed == other.isMarketingAgreed;
     }
 
 }

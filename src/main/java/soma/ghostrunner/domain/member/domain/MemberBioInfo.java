@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.member;
+package soma.ghostrunner.domain.member.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;

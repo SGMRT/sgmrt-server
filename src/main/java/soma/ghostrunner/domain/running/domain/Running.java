@@ -5,7 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.SoftDelete;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.error.ErrorCode;
