@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import soma.ghostrunner.clients.aws.presign.S3PresignUrlClient;
 import soma.ghostrunner.domain.auth.api.AuthApi;
 import soma.ghostrunner.domain.auth.application.AuthService;
 import soma.ghostrunner.domain.running.api.RunningApi;
@@ -15,10 +16,11 @@ import soma.ghostrunner.domain.running.api.dto.RunningApiMapperImpl;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
+import soma.ghostrunner.global.common.CommonApi;
 import soma.ghostrunner.global.common.log.HttpLogger;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
-@WebMvcTest(controllers = {RunningApi.class, AuthApi.class})
+@WebMvcTest(controllers = {RunningApi.class, AuthApi.class, CommonApi.class})
 @Import(RunningApiMapperImpl.class)
 @WithMockUser
 public abstract class ApiTestSupport {
@@ -49,5 +51,8 @@ public abstract class ApiTestSupport {
 
     @MockitoBean
     protected JwtProvider jwtProvider;
+
+    @MockitoBean
+    protected S3PresignUrlClient s3PresignUrlClient;
 
 }

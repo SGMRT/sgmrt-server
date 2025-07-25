@@ -13,11 +13,4 @@ public class MemberController {
 
     private final MemberService memberService;
 
-    @PostMapping("/{memberUuid}/profile-image/upload-url")
-    public String generateProfileImageUploadUrl(
-            @PathVariable("memberUuid") String memberUuid,
-            @RequestBody @Valid ProfileImageUploadRequest request) {
-        return memberService.generateProfileImageUploadUrl(memberUuid, request);
-
-    }
 }

@@ -3,7 +3,7 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.clients.aws.TelemetryClient;
+import soma.ghostrunner.clients.aws.upload.S3TelemetryClient;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
@@ -26,7 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RunningCommandService {
 
-    private final TelemetryClient telemetryClient;
+    private final S3TelemetryClient s3TelemetryClient;
     private final RunningRepository runningRepository;
 
     private final RunningQueryService runningQueryService;
@@ -72,7 +72,7 @@ public class RunningCommandService {
 
     private String uploadTelemetryToS3(String memberUuid, ProcessedTelemetriesDto processedTelemetry) {
         String stringTelemetries = TelemetryTypeConverter.convertFromObjectsToString(processedTelemetry.getRelativeTelemetries());
-        return telemetryClient.uploadTelemetries(stringTelemetries, memberUuid);
+        return s3TelemetryClient.uploadTelemetries(stringTelemetries, memberUuid);
     }
 
     private RunningRecord createRunningRecord(RunRecordDto command, ProcessedTelemetriesDto processedTelemetry) {

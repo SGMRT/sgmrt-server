@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.clients.aws.TelemetryClient;
+import soma.ghostrunner.clients.aws.upload.S3TelemetryClient;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
@@ -45,7 +45,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     private CourseRepository courseRepository;
 
     @MockitoBean
-    private TelemetryClient telemetryClient;
+    private S3TelemetryClient s3TelemetryClient;
 
     @DisplayName("새로운 코스에 대한 러닝 기록을 생성한다.")
     @Test
@@ -59,7 +59,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createRunCommandRequest("러닝 이름", "SOLO", 100L,
                 runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
+        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when
@@ -138,7 +138,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "SOLO", null,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
+        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when
@@ -174,7 +174,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
+        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when
@@ -212,7 +212,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
                 100L, runRecordDto, telemetryDtos);
 
-        given(telemetryClient.uploadTelemetries(anyString(), anyString()))
+        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
                 .willReturn("Mock Telemetries Url");
 
         // when // then
