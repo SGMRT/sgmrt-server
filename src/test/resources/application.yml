@@ -1,0 +1,29 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: TEST_AWS_ACCESS_KEY
+      secret-key: TEST_AWS_SECRET_KEY
+    stack:
+      auto: false
+
+s3:
+  bucket: ghostrunner-test-bucket
+  telemetry-directory: running-telemetry
+  member-profile-directory: member-profile
+
+jwt:
+  secret: ca4af8af65f788e32f267de8dcac28271b886a302a99fdc19aba24557ac095922384b9a05febb1ea7bc67df87a898bb589aa357e877fb06fa3470b3e5dcff8cf
+  expiration_time:
+    access_token: 1200000
+    refresh_token: 604800000

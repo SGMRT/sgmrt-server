@@ -19,20 +19,15 @@ import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.dao.TermsAgreementRepository;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
-import soma.ghostrunner.clients.aws.S3PresignProvider;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.error.exception.BusinessException;
 
 import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 
-import java.time.Duration;
-import java.util.UUID;
-
 @Service
 @RequiredArgsConstructor
 public class MemberService {
 
-    private final S3PresignProvider s3PresignProvider;
     private final MemberRepository memberRepository;
     private final TermsAgreementRepository termsAgreementRepository;
     private final MemberAuthInfoRepository memberAuthInfoRepository;
@@ -137,21 +132,6 @@ public class MemberService {
         if (alreadyExist) {
             throw new InvalidMemberException(ErrorCode.NICKNAME_ALREADY_EXIST, "이미 존재하는 닉네임인 경우");
         }
-    }
-
-    public String generateProfileImageUploadUrl(String memberUuid, ProfileImageUploadRequest request) {
-        // todo: memberuuid가 현재 로그인한 사용자인지 확인
-        // todo: content-type 검증 로직 Enum으로 변경
-        if (!isAllowedImageContentType(request.getContentType())) {
-            throw new IllegalArgumentException("부적절한 Content-Type입니다: " + request.getContentType());
-        }
-
-        String cleansedFilename = sanitizeFilename(request.getFilename());
-        String fileExt = getFileExtension(cleansedFilename);
-        String objectKey = String.format("profiles/%s/%s.%s",
-                memberUuid, UUID.randomUUID(), fileExt);
-
-        return s3PresignProvider.generatePresignedPutUrl(objectKey, request.getContentType(), Duration.ofMinutes(5));
     }
 
     // todo 컨트롤러에서 enum 검증으로 변경

@@ -14,7 +14,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
@@ -39,8 +39,9 @@ cloud:
       auto: false
 
 s3:
-  telemetry-bucket-name: ${AWS_TELEMETRY_BUCKET}
-  telemetry-directory-name: ${AWS_TELEMETRY_DIRECTORY}
+  bucket: ${AWS_TELEMETRY_BUCKET}
+  telemetry-directory: ${AWS_TELEMETRY_DIRECTORY}
+  member-profile-directory: ${MEMBER_PROFILE_DIRECTORY}
 
 jwt:
   secret: ${DEV_JWT_SECRET_KEY}
