@@ -22,25 +22,18 @@ public class MemberSettings {
     @Column(nullable = false)
     private boolean vibrationEnabled;
 
-    @Column(nullable = false)
-    private boolean doNotDisturbAtNightEnabled;
-
-    public void updateSettings(Boolean pushAlarmEnabled, Boolean vibrationEnabled, Boolean doNotDisturbAtNightEnabled) {
+    public void updateSettings(Boolean pushAlarmEnabled, Boolean vibrationEnabled) {
         this.pushAlarmEnabled = pushAlarmEnabled != null ? pushAlarmEnabled : this.pushAlarmEnabled;
         this.vibrationEnabled = vibrationEnabled != null ? vibrationEnabled : this.vibrationEnabled;
-        this.doNotDisturbAtNightEnabled = doNotDisturbAtNightEnabled != null
-                ? doNotDisturbAtNightEnabled
-                : this.doNotDisturbAtNightEnabled;
     }
 
 
     @Builder(access = AccessLevel.PRIVATE)
     protected MemberSettings(Member member, Boolean pushAlarmEnabled,
-                             Boolean vibrationEnabled, Boolean doNotDisturbAtNightEnabled) {
+                             Boolean vibrationEnabled) {
         this.member = member;
         this.pushAlarmEnabled = pushAlarmEnabled;
         this.vibrationEnabled = vibrationEnabled;
-        this.doNotDisturbAtNightEnabled = doNotDisturbAtNightEnabled;
     }
 
     public static MemberSettings of(Member member) {
@@ -49,18 +42,15 @@ public class MemberSettings {
                 .member(member)
                 .pushAlarmEnabled(true)
                 .vibrationEnabled(true)
-                .doNotDisturbAtNightEnabled(true)
                 .build();
     }
 
-    public static MemberSettings of(Member member, boolean pushAlarmEnabled,
-                                    boolean vibrationEnabled, boolean doNotDisturbAtNightEnabled) {
+    public static MemberSettings of(Member member, boolean pushAlarmEnabled, boolean vibrationEnabled) {
         if (member == null) throw new IllegalArgumentException("Member cannot be null");
         return MemberSettings.builder()
                 .member(member)
                 .pushAlarmEnabled(pushAlarmEnabled)
                 .vibrationEnabled(vibrationEnabled)
-                .doNotDisturbAtNightEnabled(doNotDisturbAtNightEnabled)
                 .build();
     }
 
@@ -69,8 +59,7 @@ public class MemberSettings {
         if (!(o instanceof MemberSettings other)) return false;
         return (this.member.getId().equals(other.member.getId()))
             && (this.pushAlarmEnabled == other.pushAlarmEnabled)
-            && (this.vibrationEnabled == other.vibrationEnabled)
-            && (this.doNotDisturbAtNightEnabled == other.doNotDisturbAtNightEnabled);
+            && (this.vibrationEnabled == other.vibrationEnabled);
     }
 
 }

@@ -146,7 +146,7 @@ public class MemberService {
                 .orElseThrow(MemberSettingsNotFoundException::new);
 
         currentSettings.updateSettings(request.getPushAlarmEnabled(),
-                request.getVibrationEnabled(), request.getDoNotDisturbAtNightEnabled());
+                request.getVibrationEnabled());
     }
 
     public String generateProfileImageUploadUrl(String memberUuid, ProfileImageUploadRequest request) {
