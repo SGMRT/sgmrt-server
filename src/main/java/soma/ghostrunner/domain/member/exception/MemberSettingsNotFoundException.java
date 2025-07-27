@@ -7,5 +7,4 @@ public class MemberSettingsNotFoundException extends BusinessException {
 
   public MemberSettingsNotFoundException() { super(ErrorCode.ENTITY_NOT_FOUND, "MemberSettings not found"); }
 
-
 }
