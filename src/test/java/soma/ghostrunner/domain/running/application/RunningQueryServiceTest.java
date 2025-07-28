@@ -10,15 +10,19 @@ import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.StartPoint;
+import soma.ghostrunner.domain.member.Member;
+import soma.ghostrunner.domain.member.MemberRepository;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
 import java.util.*;
@@ -27,6 +31,7 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.*;
 
+// TODO : 단위 테스트로 전환
 class RunningQueryServiceTest extends IntegrationTestSupport {
 
     @Autowired
@@ -44,7 +49,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     @MockitoBean
     RunningTelemetryQueryService runningTelemetryQueryService;
 
-    @DisplayName("기존 코스를 기반으로 혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
+    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
     @Test
     void findSoloRunInfoById() {
         // given
@@ -101,11 +106,14 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     }
 
     private Running createSoloRunning(Member testMember, Course testCourse) {
-        RunningRecord testRunningRecord = RunningRecord.of(
-                5.2, 40, -20, 6.1,
-                4.9, 6.9, 3423L, 302, 120, 56);
+        RunningRecord testRunningRecord = createRunningRecord();
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, null, testRunningRecord,
                 1750729987181L, true, false, "URL", testMember, testCourse);
+    }
+
+    private RunningRecord createRunningRecord() {
+        return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2,
+                302.2, 120L, 56, 100, 120);
     }
 
     private List<TelemetryDto> createTelemetryDtos() {
@@ -117,7 +125,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         );
     }
 
-    @DisplayName("기존 코스를 기반으로 혼자 뛴 러닝을 조회할 때 자신의 러닝 정보가 아니라면 NOT_FOUND 예외를 응답한다.")
+    @DisplayName("혼자 뛴 러닝을 조회할 때 자신의 러닝 정보가 아니라면 NOT_FOUND 예외를 응답한다.")
     @Test
     void findSoloRunInfoByNoneOwnerId() {
         // given
@@ -136,6 +144,154 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 .isInstanceOf(RunningNotFoundException.class)
                 .hasMessage("id " + running.getId() +" is not found");
     }
+
+    @DisplayName("고스트와 뛴 러닝에 대한 상세 정보를 조회한다.")
+    @Test
+    void findGhostRunInfo() {
+        // given
+        Member member = createMember("이복둥");
+        Member followingMember = createMember("고스트 이복둥");
+        memberRepository.saveAll(List.of(member, followingMember));
+
+        Course course = createCourse(member, "테스트 코스");
+        courseRepository.save(course);
+
+        RunningRecord runningRecord = RunningRecord.of(4.0, 40, -20, 6.1,
+                6.1, 8.1, 120L, 50, 100, 120);
+        Running running = Running.of("러닝 제목", RunningMode.SOLO, null, runningRecord,
+                1750729987181L, true, false, "URL", member, course);
+        runningRepository.save(running);
+
+        RunningRecord ghostRunningRecord = RunningRecord.of(5.0, 50, -10, 7.1,
+                7.1, 9.1, 130L, 60, 110, 130);
+        Running followingRunning = Running.of("고스트 러닝 제목", RunningMode.GHOST, running.getId(), ghostRunningRecord,
+                1750729987181L, true, false, "URL", followingMember, course);
+        Running followingRunning2 = Running.of("고스트 러닝 제목2", RunningMode.GHOST, running.getId(), ghostRunningRecord,
+                1750729987181L, true, false, "URL", followingMember, course);
+        runningRepository.saveAll(List.of(followingRunning, followingRunning2));
+
+        List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
+        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetryUrl()))
+                .willReturn(mockTelemetryDtos);
+
+        // when
+        GhostRunDetailInfo ghostRunDetailInfo = runningQueryService.findGhostRunInfo(
+                followingRunning.getId(), running.getId(), followingMember.getUuid());
+
+        // then
+        Assertions.assertThat(ghostRunDetailInfo.getStartedAt()).isEqualTo(followingRunning.getStartedAt());
+        Assertions.assertThat(ghostRunDetailInfo.getRunningName()).isEqualTo(followingRunning.getRunningName());
+        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(followingRunning.getTelemetryUrl());
+
+        Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getId()).isEqualTo(course.getId());
+        Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getName()).isEqualTo(course.getName());
+        Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getRunnersCount()).isEqualTo(3);
+
+        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getNickname())
+                .isEqualTo(followingMember.getNickname());
+        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getProfileUrl())
+                .isEqualTo(followingMember.getProfilePictureUrl());
+        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDistance())
+                .isEqualTo(followingRunning.getRunningRecord().getDistance());
+        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDuration())
+                .isEqualTo(followingRunning.getRunningRecord().getDuration());
+
+        Assertions.assertThat(ghostRunDetailInfo.getGhostRunId()).isEqualTo(running.getId());
+
+        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getNickname())
+                .isEqualTo(member.getNickname());
+        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getProfileUrl())
+                .isEqualTo(member.getProfilePictureUrl());
+        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getRecordInfo().getCadence())
+                .isEqualTo(running.getRunningRecord().getCadence());
+        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getRecordInfo().getDuration())
+                .isEqualTo(running.getRunningRecord().getDuration());
+
+        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getDistance()).isEqualTo(-0.8);
+        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getDuration()).isEqualTo(10L);
+        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getCadence()).isEqualTo(10);
+        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getPace()).isEqualTo(1.0);
+
+        Assertions.assertThat(ghostRunDetailInfo.getTelemetries())
+                .hasSize(4)
+                .extracting("timeStamp", "lat", "lng", "dist", "pace", "alt", "cadence", "bpm", "isRunning")
+                .containsExactly(
+                        tuple(0L, 37.2, 37.5, 110.0, 6.0, 100, 120, 110, true),
+                        tuple(1L, 37.3, 37.6, 110.1, 6.1, 101, 121, 111, true),
+                        tuple(2L, 37.4, 37.7, 110.2, 6.2, 102, 122, 112, true),
+                        tuple(3L, 37.5, 37.8, 110.3, 6.3, 103, 123, 113, false)
+                );
+    }
+
+    @DisplayName("고스트와 뛴 러닝에 대한 상세 정보를 조회할 때 입력한 고스트 러닝 ID가 실제 고스트 러닝 ID와 일치하지 않을 때 예외가 발생한다.")
+    @Test
+    void findGhostRunInfoWithInvalidGhostRunningId() {
+        // given
+        Member member = createMember("이복둥");
+        Member followingMember = createMember("고스트 이복둥");
+        memberRepository.saveAll(List.of(member, followingMember));
+
+        Course course = createCourse(member, "테스트 코스");
+        courseRepository.save(course);
+
+        RunningRecord runningRecord = RunningRecord.of(4.0, 40, -20, 6.1,
+                6.1, 8.1, 120L, 50, 100, 120);
+        Running running = Running.of("러닝 제목", RunningMode.SOLO, null, runningRecord,
+                1750729987181L, true, false, "URL", member, course);
+        runningRepository.save(running);
+
+        RunningRecord ghostRunningRecord = RunningRecord.of(5.0, 50, -10, 7.1,
+                7.1, 9.1, 130L, 60, 110, 130);
+        Running followingRunning = Running.of("고스트 러닝 제목", RunningMode.GHOST, running.getId(), ghostRunningRecord,
+                1750729987181L, true, false, "URL", followingMember, course);
+        runningRepository.save(followingRunning);
+
+        List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
+        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetryUrl()))
+                .willReturn(mockTelemetryDtos);
+
+        // when // then
+        Assertions.assertThatThrownBy(() ->
+                        runningQueryService.findGhostRunInfo(
+                                followingRunning.getId(), running.getId() + 1L, followingMember.getUuid()))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessage("고스트의 러닝 ID가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우");
+    }
+
+     @DisplayName("고스트와 뛴 러닝을 조회할 때 자신의 러닝 정보가 아니라면 NOT_FOUND 예외를 응답한다.")
+     @Test
+     void findGhostRunInfoByNoneOwnerId() {
+         // given
+         Member member = createMember("이복둥");
+         Member followingMember = createMember("고스트 이복둥");
+         memberRepository.saveAll(List.of(member, followingMember));
+
+         Course course = createCourse(member, "테스트 코스");
+         courseRepository.save(course);
+
+         RunningRecord runningRecord = RunningRecord.of(4.0, 40, -20, 6.1,
+                 6.1, 8.1, 120L, 50, 100, 120);
+         Running running = Running.of("러닝 제목", RunningMode.SOLO, null, runningRecord,
+                 1750729987181L, true, false, "URL", member, course);
+         runningRepository.save(running);
+
+         RunningRecord ghostRunningRecord = RunningRecord.of(5.0, 50, -10, 7.1,
+                 7.1, 9.1, 130L, 60, 110, 130);
+         Running followingRunning = Running.of("고스트 러닝 제목", RunningMode.GHOST, running.getId(), ghostRunningRecord,
+                 1750729987181L, true, false, "URL", followingMember, course);
+         runningRepository.save(followingRunning);
+
+         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
+         given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetryUrl()))
+                 .willReturn(mockTelemetryDtos);
+
+         // when // then
+         Assertions.assertThatThrownBy(() ->
+                         runningQueryService.findGhostRunInfo(
+                                 followingRunning.getId(), running.getId(), UUID.randomUUID().toString()))
+                 .isInstanceOf(RunningNotFoundException.class)
+                 .hasMessage("id " + followingRunning.getId() + " is not found");
+     }
 
     @DisplayName("러닝의 전체 시계열을 조회한다.")
     @Test
@@ -188,10 +344,6 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         return CourseProfile.of(5.2, 40, -20);
     }
 
-    private RunningRecord createRunningRecord() {
-        return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
-    }
-
     @DisplayName("존재하지 않는 러닝의 전체 시계열을 조회하면 NOT_FOUND를 응답한다.")
     @Test
     void findRunningTelemetriesWithNoneRunning() {
@@ -210,6 +362,77 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                         () -> runningQueryService.findRunningTelemetries(running.getId(), UUID.randomUUID().toString()))
                 .isInstanceOf(RunningNotFoundException.class)
                 .hasMessage("id " + running.getId() +" is not found");
+    }
+
+    @DisplayName("러닝 ID로 러닝을 조회한다.")
+    @Test
+    void findRunningByRunningId() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        Running running = createRunning("러닝", course, member, "러닝의 URL");
+        runningRepository.save(running);
+
+        // when
+        Running savedRunning = runningQueryService.findRunningByRunningId(running.getId());
+
+        // then
+        Assertions.assertThat(savedRunning.getRunningName()).isEqualTo(running.getRunningName());
+        Assertions.assertThat(savedRunning.getGhostRunningId()).isEqualTo(running.getGhostRunningId());
+        Assertions.assertThat(savedRunning.getTelemetryUrl()).isEqualTo(running.getTelemetryUrl());
+    }
+
+    @DisplayName("존재하지 않는 러닝 ID로 러닝을 조회하면 NOT_FOUND 예외가 발생한다.")
+    @Test
+    void findRunningByNoneRunningId() {
+        // when // then
+        Assertions.assertThatThrownBy(() -> runningQueryService.findRunningByRunningId(1L))
+                .isInstanceOf(RunningNotFoundException.class)
+                .hasMessage("id " + 1L +" is not found");
+    }
+
+    @DisplayName("코스 ID를 기반으로 코스에 대한 첫 번째 러닝 데이터를 조회한다.")
+    @Test
+    void findFirstRunning() {
+        // given
+        Member member1 = createMember("이복둥1");
+        Member member2 = createMember("이복둥2");
+        memberRepository.saveAll(List.of(member1, member2));
+
+        Course course = createCourse(member1);
+        courseRepository.save(course);
+
+        Running running1 = createRunning("러닝1", course, member1, "러닝1의 URL");
+        Running running2 = createRunning("러닝2", course, member1, "러닝2의 URL");
+        Running running3 = createRunning("러닝3", course, member2, "러닝3의 URL");
+        runningRepository.saveAll(List.of(running1, running2, running3));
+
+        // when
+        Running firstRunning = runningQueryService.findFirstRunning(course.getId());
+
+        // then
+        Assertions.assertThat(firstRunning.getRunningName()).isEqualTo(running1.getRunningName());
+    }
+
+    @DisplayName("코스 ID를 기반으로 코스에 대한 첫 번째 러닝 데이터를 조회할 때 존재하지 않는다면 NOT_FOUND를 응답한다.")
+    @Test
+    void findFirstRunningOnNoneCourse() {
+        // given
+        Member member1 = createMember("이복둥1");
+        Member member2 = createMember("이복둥2");
+        memberRepository.saveAll(List.of(member1, member2));
+
+        Course course = createCourse(member1);
+        courseRepository.save(course);
+
+        // when // then
+        Assertions.assertThatThrownBy(() -> runningQueryService.findFirstRunning(course.getId()))
+                .isInstanceOf(RunningNotFoundException.class)
+                .hasMessage("코스 ID : " + course.getId() + "에 대한 러닝 데이터가 없습니다.");
     }
 
     @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 러닝 시작순으로 정렬된다.")
@@ -241,28 +464,54 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 .filter(running -> running.getRunningMode().equals(RunningMode.SOLO))
                 .sorted(Comparator.comparing(Running::getStartedAt).reversed())
                 .toList();
+        List<Running> sortedGhostRunnings = runnings.stream()
+                .filter(running -> running.getRunningMode().equals(RunningMode.GHOST))
+                .sorted(Comparator.comparing(Running::getStartedAt).reversed())
+                .toList();
 
         // when
-        List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningQueryService.findRunnings("SOLO", null, null, member.getUuid()));
+        List<RunInfo> soloRunInfos = new ArrayList<>();
+        soloRunInfos.addAll(runningQueryService.findRunnings("SOLO", null, null, member.getUuid()));
         for (int i = 0; i < 4; i++) {
-            RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
-            runInfos.addAll(runningQueryService.findRunnings("SOLO", lastRunInfo.getStartedAt(),
+            RunInfo lastRunInfo = soloRunInfos.get(soloRunInfos.size() - 1);
+            soloRunInfos.addAll(runningQueryService.findRunnings("SOLO", lastRunInfo.getStartedAt(),
+                    lastRunInfo.getRunningId(), member.getUuid()));
+        }
+        List<RunInfo> ghostRunInfos = new ArrayList<>();
+        ghostRunInfos.addAll(runningQueryService.findRunnings("GHOST", null, null, member.getUuid()));
+        for (int i = 0; i < 4; i++) {
+            RunInfo lastRunInfo = ghostRunInfos.get(ghostRunInfos.size() - 1);
+            ghostRunInfos.addAll(runningQueryService.findRunnings("GHOST", lastRunInfo.getStartedAt(),
                     lastRunInfo.getRunningId(), member.getUuid()));
         }
 
         // then
-        Assertions.assertThat(runInfos).hasSize(100);
-        IntStream.range(0, runInfos.size()).forEach(idx -> {
-            Assertions.assertThat(runInfos.get(idx).getRunningId()).isEqualTo(sortedSoloRunnings.get(idx).getId());
-            Assertions.assertThat(runInfos.get(idx).getName()).isEqualTo(sortedSoloRunnings.get(idx).getRunningName());
-            Assertions.assertThat(runInfos.get(idx).getStartedAt()).isEqualTo(sortedSoloRunnings.get(idx).getStartedAt());
+        Assertions.assertThat(soloRunInfos).hasSize(100);
+        IntStream.range(0, soloRunInfos.size()).forEach(idx -> {
+            Assertions.assertThat(soloRunInfos.get(idx).getRunningId()).isEqualTo(sortedSoloRunnings.get(idx).getId());
+            Assertions.assertThat(soloRunInfos.get(idx).getName()).isEqualTo(sortedSoloRunnings.get(idx).getRunningName());
+            Assertions.assertThat(soloRunInfos.get(idx).getStartedAt()).isEqualTo(sortedSoloRunnings.get(idx).getStartedAt());
+            Assertions.assertThat(soloRunInfos.get(idx).getGhostRunningId()).isNull();
+        });
+
+        Assertions.assertThat(ghostRunInfos).hasSize(100);
+        IntStream.range(0, ghostRunInfos.size()).forEach(idx -> {
+            Assertions.assertThat(ghostRunInfos.get(idx).getRunningId()).isEqualTo(sortedGhostRunnings.get(idx).getId());
+            Assertions.assertThat(ghostRunInfos.get(idx).getName()).isEqualTo(sortedGhostRunnings.get(idx).getRunningName());
+            Assertions.assertThat(ghostRunInfos.get(idx).getStartedAt()).isEqualTo(sortedGhostRunnings.get(idx).getStartedAt());
+            Assertions.assertThat(ghostRunInfos.get(idx).getGhostRunningId()).isEqualTo(sortedGhostRunnings.get(idx).getGhostRunningId());
         });
     }
 
     private Running createRunning(String runningName, Course course, Member member, Long startedAt, RunningMode runningMode) {
-        return Running.of(runningName, runningMode, null, createRunningRecord(), startedAt,
-                true, false, "시계열 URL", member, course);
+        if (runningMode.equals(RunningMode.SOLO)) {
+            return Running.of(runningName, runningMode, null, createRunningRecord(), startedAt,
+                    true, false, "시계열 URL", member, course);
+        } else {
+            Random random = new Random();
+            return Running.of(runningName, runningMode, random.nextLong(), createRunningRecord(), startedAt,
+                    true, false, "시계열 URL", member, course);
+        }
     }
 
     @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 시작시간이 같다면 ID를 기반으로 정렬된다.")

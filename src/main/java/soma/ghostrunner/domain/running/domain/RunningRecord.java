@@ -42,7 +42,7 @@ public class RunningRecord {
     @NotEmpty @Column(name = "average_bpm")
     private Integer bpm;
 
-    @Builder
+    @Builder(access = AccessLevel.PRIVATE)
     private RunningRecord(double distance, int elevationGain, int elevationLoss, double averagePace,
                           double highestPace, double lowestPace, long duration, int burnedCalories, int cadence, int bpm) {
         this.distance = distance;

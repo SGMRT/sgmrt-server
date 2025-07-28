@@ -38,7 +38,6 @@ out/
 
 ### resources ###
 /src/main/resources/application-local.yml
-/src/test/resources/
 
 ### DS STORE ###
 **/.DS_Store

@@ -24,6 +24,7 @@ import soma.ghostrunner.global.error.ErrorCode;
 import java.util.List;
 import java.util.Optional;
 
+// TODO : 서비스 단 쪼개기
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -52,7 +53,6 @@ public class RunningQueryService {
         return runningTelemetryQueryService.findTotalTelemetries(runningId, telemetryUrl);
     }
 
-    // TODO : 테스트 코드 짜기
     public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId, String memberUuid) {
         GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunInfoByRunningId(myRunningId, memberUuid);
         verifyGhostRunningId(ghostRunningId, myGhostRunDetailInfo);
