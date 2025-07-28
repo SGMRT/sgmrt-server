@@ -12,10 +12,4 @@ public interface MemberMapper {
 
     MemberCreationRequest toMemberCreationRequest(String externalAuthId, SignUpRequest signUpRequest,
                                                   TermsAgreement termsAgreement);
-
-    @Mapping(source = "bioInfo.gender", target = "gender")
-    @Mapping(source = "bioInfo.weight", target = "weight")
-    @Mapping(source = "bioInfo.height", target = "height")
-    MemberResponse toMemberResponse(Member member);
-
 }
