@@ -7,6 +7,7 @@ import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.request.ProfileImageUploadRequest;
+import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 
@@ -16,12 +17,11 @@ import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 public class MemberApi {
 
     private final MemberService memberService;
-    private final MemberMapper memberMapper;
 
     @GetMapping("/{memberUuid}")
-    public Object getMember(@PathVariable("memberUuid") String memberUuid) {
+    public MemberResponse getMember(@PathVariable("memberUuid") String memberUuid) {
         // todo 본인만 확인 가능
-        return memberMapper.toMemberResponse(memberService.findMemberByUuid(memberUuid));
+        return memberService.findMemberDtoByUuid(memberUuid);
     }
 
     @PatchMapping("/{memberUuid}")

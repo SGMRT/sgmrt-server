@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
+import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
 import soma.ghostrunner.domain.member.dao.MemberSettingsRepository;
 import soma.ghostrunner.domain.member.domain.*;
 import soma.ghostrunner.domain.member.enums.Gender;
@@ -52,6 +53,12 @@ public class MemberService {
         if (isExist) {
             throw new InvalidMemberException(MEMBER_ALREADY_EXISTED, "이미 존재하는 회원인 경우");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public MemberResponse findMemberDtoByUuid(String uuid) {
+        return memberRepository.findMemberDtoByUuid(uuid)
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find member uuid: " + uuid));
     }
 
     @Transactional
