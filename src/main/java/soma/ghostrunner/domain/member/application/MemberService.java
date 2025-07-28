@@ -1,14 +1,14 @@
 package soma.ghostrunner.domain.member.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
+import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
-import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.member.domain.MemberBioInfo;
+import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
+import soma.ghostrunner.domain.member.dao.MemberSettingsRepository;
+import soma.ghostrunner.domain.member.domain.*;
 import soma.ghostrunner.domain.member.enums.Gender;
 import soma.ghostrunner.domain.member.exception.InvalidMemberException;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
@@ -17,9 +17,8 @@ import soma.ghostrunner.domain.member.api.dto.request.ProfileImageUploadRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.dao.TermsAgreementRepository;
-import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
-import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.clients.aws.S3PresignProvider;
+import soma.ghostrunner.domain.member.exception.MemberSettingsNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.error.exception.BusinessException;
 
@@ -36,6 +35,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final TermsAgreementRepository termsAgreementRepository;
     private final MemberAuthInfoRepository memberAuthInfoRepository;
+    private final MemberSettingsRepository memberSettingsRepository;
 
     @Transactional(readOnly = true)
     public Member findMemberByUuid(String uuid) {
@@ -53,6 +53,12 @@ public class MemberService {
         if (isExist) {
             throw new InvalidMemberException(MEMBER_ALREADY_EXISTED, "이미 존재하는 회원인 경우");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public MemberResponse findMemberDtoByUuid(String uuid) {
+        return memberRepository.findMemberDtoByUuid(uuid)
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find member uuid: " + uuid));
     }
 
     @Transactional
@@ -88,7 +94,7 @@ public class MemberService {
 
     private void verifyNickname(String nickname) {
         if(nickname == null) throw new IllegalArgumentException("nickname cannot be null");
-        verifyAlreadyExistNickname(nickname);
+        checkNicknameDuplication(nickname);
     }
 
     private void verifyGender(Gender gender) {
@@ -116,27 +122,38 @@ public class MemberService {
                                            creationRequest.getHeight()))
                 .profilePictureUrl(creationRequest.getProfileImageUrl())
                 .build();
-        verifyAlreadyExistNickname(creationRequest.getNickname());
+        verifyNickname(creationRequest.getNickname());
         member = memberRepository.save(member);
-
-        MemberAuthInfo memberAuthInfo = MemberAuthInfo.of(member, creationRequest.getExternalAuthId());
-        memberAuthInfoRepository.save(memberAuthInfo);
-
-        member = memberRepository.save(member);
-
-        TermsAgreement termsAgreement = creationRequest.getTermsAgreement();
-        if (termsAgreement != null) {
-            saveTermsAgreement(member,  termsAgreement);
-        }
-
+        saveInitialMemberDetails(member, creationRequest.getExternalAuthId(), creationRequest.getTermsAgreement());
         return member;
     }
 
-    private void verifyAlreadyExistNickname(String nickname) {
+    private void saveInitialMemberDetails(Member member, String externalAuthId, TermsAgreement termsAgreement) {
+        if (member == null || externalAuthId == null || termsAgreement == null) throw new IllegalArgumentException();
+
+        MemberAuthInfo memberAuthInfo = MemberAuthInfo.of(member, externalAuthId);
+        memberAuthInfoRepository.save(memberAuthInfo);
+
+        saveTermsAgreement(member,  termsAgreement);
+
+        MemberSettings memberSettings = MemberSettings.of(member);
+        memberSettingsRepository.save(memberSettings);
+    }
+
+    private void checkNicknameDuplication(String nickname) {
         boolean alreadyExist = memberRepository.existsByNickname(nickname);
         if (alreadyExist) {
             throw new InvalidMemberException(ErrorCode.NICKNAME_ALREADY_EXIST, "이미 존재하는 닉네임인 경우");
         }
+    }
+
+    @Transactional
+    public void updateMemberSettings(String memberUuid, MemberSettingsUpdateRequest request) {
+        MemberSettings currentSettings = memberSettingsRepository.findByMember_Uuid(memberUuid)
+                .orElseThrow(MemberSettingsNotFoundException::new);
+
+        currentSettings.updateSettings(request.getPushAlarmEnabled(),
+                request.getVibrationEnabled());
     }
 
     public String generateProfileImageUploadUrl(String memberUuid, ProfileImageUploadRequest request) {
@@ -189,6 +206,7 @@ public class MemberService {
     }
 
     private void saveTermsAgreement(Member member, TermsAgreement termsAgreement) {
+        if (member == null || termsAgreement == null) throw new IllegalArgumentException("member or termsAgreement cannot be null");
         // 기존의 약관 동의와 달라진 게 없는 경우는 저장하지 않는다
         if (isTermsAgreementUnchanged(member, termsAgreement)) throw new BusinessException(ErrorCode.TERMS_AGREEMENT_NOT_CHANGED);
         termsAgreement.setMember(member);
