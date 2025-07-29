@@ -2,6 +2,8 @@ package soma.ghostrunner.domain.member.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import soma.ghostrunner.domain.member.enums.Gender;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.common.document.TestOnly;
@@ -12,6 +14,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "member")
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@SQLRestriction("deleted_at IS NULL")
+@SQLDelete(sql = "UPDATE member SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 public class Member extends BaseTimeEntity {
 
     @Id
@@ -33,6 +37,8 @@ public class Member extends BaseTimeEntity {
     @Column(name = "last_login_at")
     @Setter
     private LocalDateTime lastLoginAt;
+
+    private LocalDateTime deletedAt;
 
     @Builder
     public Member(String nickname, String profilePictureUrl,
