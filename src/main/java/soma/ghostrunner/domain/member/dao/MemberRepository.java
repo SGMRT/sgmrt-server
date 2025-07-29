@@ -26,4 +26,11 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             "WHERE m.uuid = :uuid")
     Optional<MemberResponse> findMemberDtoByUuid(String uuid);
 
+    void deleteByUuid(String memberUuid);
+
+    @Query(value = "SELECT * FROM member m WHERE m.uuid = :uuid AND m.deleted_at IS NOT NULL", nativeQuery = true)
+    Optional<Member> findSoftDeletedMemberByUuid(String uuid);
+
+    boolean existsByUuid(String memberUuid);
+
 }
