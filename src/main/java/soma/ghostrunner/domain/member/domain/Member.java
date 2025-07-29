@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.member.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.checkerframework.checker.units.qual.A;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import soma.ghostrunner.domain.member.enums.Gender;
@@ -10,6 +11,7 @@ import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.common.document.TestOnly;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,7 +46,7 @@ public class Member extends BaseTimeEntity {
     private LocalDateTime deletedAt;
 
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "member")
-    private List<Running> runs;
+    private List<Running> runs = new ArrayList<>();
 
     @Builder
     public Member(String nickname, String profilePictureUrl,
