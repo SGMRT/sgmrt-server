@@ -5,10 +5,12 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import soma.ghostrunner.domain.member.enums.Gender;
+import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.common.document.TestOnly;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -38,7 +40,11 @@ public class Member extends BaseTimeEntity {
     @Setter
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "member")
+    private List<Running> runs;
 
     @Builder
     public Member(String nickname, String profilePictureUrl,
