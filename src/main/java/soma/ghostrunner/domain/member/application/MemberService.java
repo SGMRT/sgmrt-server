@@ -220,9 +220,8 @@ public class MemberService {
 
     @Transactional
     public void removeAccount(String memberUuid) {
-        // todo 탈퇴할 회원의 Running 전부 비활성화 혹은 삭제 (Soft Delete)
         if(!memberRepository.existsByUuid(memberUuid)) throw new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, memberUuid);
-        memberRepository.deleteByUuid(memberUuid); // id가 아니라 uuid 기준이여도 상관없나? SQLDelete에서는 id = ?으로 주는데
+        memberRepository.deleteByUuid(memberUuid);
     }
 
 }
