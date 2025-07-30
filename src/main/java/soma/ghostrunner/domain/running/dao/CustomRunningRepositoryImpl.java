@@ -22,8 +22,8 @@ import static soma.ghostrunner.domain.running.domain.QRunning.running;
 @RequiredArgsConstructor
 public class CustomRunningRepositoryImpl implements CustomRunningRepository {
 
-    private final int DEFAULT_PAGE_SIZE = 20;
-    private final int GALLERY_VIEW_PAGE_SIZE = 8;
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int GALLERY_VIEW_PAGE_SIZE = 8;
 
     private final JPAQueryFactory queryFactory;
 

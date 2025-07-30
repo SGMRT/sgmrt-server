@@ -39,14 +39,6 @@ public class MemberApi {
         memberService.saveTermsAgreement(memberUuid, termsAgreementDto);
     }
 
-    @PostMapping("/{memberUuid}/profile-image/upload-url")
-    public String generateProfileImageUploadUrl(
-            @PathVariable("memberUuid") String memberUuid,
-            @RequestBody @Valid ProfileImageUploadRequest request) {
-        return memberService.generateProfileImageUploadUrl(memberUuid, request);
-
-    }
-
     @PatchMapping("/{memberUuid}/settings")
     public void updateMemberSettings(
             @PathVariable("memberUuid") String memberUuid,
@@ -59,5 +51,5 @@ public class MemberApi {
         // todo 본인만 수정 가능
         memberService.removeAccount(memberUuid);
     }
-
+  
 }

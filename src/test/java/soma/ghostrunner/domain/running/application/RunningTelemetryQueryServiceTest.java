@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.clients.aws.TelemetryClient;
+import soma.ghostrunner.clients.aws.upload.S3TelemetryClient;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
@@ -40,7 +40,7 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
     RunningRepository runningRepository;
 
     @MockitoBean
-    TelemetryClient telemetryClient;
+    S3TelemetryClient s3TelemetryClient;
 
     @DisplayName("러닝의 전체 시계열을 조회한다.")
     @Test
@@ -62,7 +62,7 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
                 "{\"timeStamp\":3,\"lat\":37.5,\"lng\":37.8,\"dist\":110.3,\"pace\":6.3,\"alt\":103,\"cadence\":123,\"bpm\":113,\"isRunning\":false}"
         );
 
-        given(telemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
+        given(s3TelemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
         List<TelemetryDto> telemetries = runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getTelemetryUrl());
@@ -99,7 +99,7 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
                 "{\"timeStamp\":3,\"lat\":37.5,\"lng\":37.8,\"dist\":110.3,\"pace\":6.3,\"alt\":103,\"cadence\":123,\"bpm\":113,\"isRunning\":false}"
         );
 
-        given(telemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
+        given(s3TelemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
         List<CoordinateDto> telemetries = runningTelemetryQueryService.findCoordinateTelemetries(running.getId(), running.getTelemetryUrl());

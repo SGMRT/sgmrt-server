@@ -1,6 +1,5 @@
-package soma.ghostrunner.clients.aws;
+package soma.ghostrunner.clients.aws.upload;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,15 +23,14 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class TelemetryClient {
+public class S3TelemetryClient {
 
     private final S3Client s3Client;
-    private final ObjectMapper objectMapper;
 
-    @Value("${s3.telemetry-bucket-name}")
-    private String telemetryBucket;
+    @Value("${s3.bucket}")
+    private String s3Bucket;
 
-    @Value("${s3.telemetry-directory-name}")
+    @Value("${s3.telemetry-directory}")
     private String telemetryDirectory;
 
     // 업로드
@@ -40,7 +38,7 @@ public class TelemetryClient {
 
         String fileName = telemetryDirectory + "/" + memberUuid + "/" + UUID.randomUUID() + ".jsonl";
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(telemetryBucket)
+                .bucket(s3Bucket)
                 .key(fileName)
                 .contentType("application/jsonl")
                 .contentLength((long) telemetries.getBytes(StandardCharsets.UTF_8).length)
@@ -54,7 +52,7 @@ public class TelemetryClient {
         }
 
         log.info("S3에 업로드에 성공했습니다.\n파일 이름: {}", fileName);
-        return s3Client.utilities().getUrl(GetUrlRequest.builder().bucket(telemetryBucket).key(fileName).build()).toString();
+        return s3Client.utilities().getUrl(GetUrlRequest.builder().bucket(s3Bucket).key(fileName).build()).toString();
     }
 
     // 다운로드
@@ -87,7 +85,7 @@ public class TelemetryClient {
         try {
             // S3 스트림 연결
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                    .bucket(telemetryBucket)
+                    .bucket(s3Bucket)
                     .key(fileName)
                     .build();
             ResponseInputStream<GetObjectResponse> s3ObjectStream = s3Client.getObject(getObjectRequest);

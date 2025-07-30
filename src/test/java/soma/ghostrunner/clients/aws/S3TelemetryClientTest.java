@@ -3,7 +3,7 @@ package soma.ghostrunner.clients.aws;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-class TelemetryClientTest {
+class S3TelemetryClientTest {
 
     @Test
     void 파싱_테스트() {
