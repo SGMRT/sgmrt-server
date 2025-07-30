@@ -8,5 +8,7 @@ public record MemberResponse (
         String profilePictureUrl,
         Gender gender,
         Integer weight,
-        Integer height
+        Integer height,
+        Boolean pushAlarmEnabled,
+        Boolean vibrationEnabled
 ) { }

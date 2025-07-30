@@ -48,3 +48,9 @@ jwt:
   expiration_time:
     access_token: 600000
     refresh_token: 1209600000
+
+sentry:
+  dsn: ${SENTRY_DSN}
+  send-default-pii: true
+  environment: dev
+  traces-sample-rate: 1.0
