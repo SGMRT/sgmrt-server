@@ -1,0 +1,25 @@
+version: 0.2
+
+env:
+  parameter-store:
+    FIREBASE_PRIVATE_KEY_JSON: "/dev/firebase/private-key.json"
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+  pre_build:
+    commands:
+      - echo "$FIREBASE_PRIVATE_KEY_JSON" > src/main/resources/firebase-private-key.json
+  build:
+    commands:
+      - ./gradlew build -Dspring.profiles.active=dev
+      - mv build/libs/*.jar app.jar
+
+artifacts:
+  files:
+    - app.jar
+
+cache:
+  paths:
+    - '/root/.gradle/caches/**/*'
