@@ -27,6 +27,7 @@ public interface CourseRepository extends CustomCourseRepository, JpaRepository<
             @Param("maxLng") Double maxLng
     );
 
+    @Query("SELECT c FROM Course c LEFT JOIN FETCH c.member m WHERE m.uuid = :memberUuid ORDER BY c.createdAt DESC")
     Page<Course> findCoursesFetchJoinMembersByMemberUuidOrderByCreatedAtDesc(String memberUuid, Pageable pageable);
 
 }
