@@ -20,8 +20,8 @@ public class S3PresignUrlClient {
     private static final Integer PRESIGNED_URL_VALID_MINUTES = 10;
     private static final Set<String> PROFILE_IMAGE_ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg");
 
-    private String s3Bucket;
-    private String memberProfileDirectory;
+    private final String s3Bucket;
+    private final String memberProfileDirectory;
 
     private S3Presigner s3Presigner;
 
