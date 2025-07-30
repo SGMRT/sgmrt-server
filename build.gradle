@@ -31,11 +31,11 @@ configurations {
 repositories {
 	mavenCentral()
 }
-
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
@@ -98,7 +98,12 @@ dependencies {
 	testImplementation "org.testcontainers:testcontainers:1.19.0"
 	testImplementation 'org.testcontainers:mysql:1.16.0'
 	testImplementation "com.redis.testcontainers:testcontainers-redis-junit:1.6.4"
+
+	// Prometheus
+	runtimeOnly "io.micrometer:micrometer-registry-prometheus"
+
 }
+
 
 tasks.named('test') {
 	useJUnitPlatform()
