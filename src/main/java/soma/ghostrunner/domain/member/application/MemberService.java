@@ -17,6 +17,8 @@ import soma.ghostrunner.domain.member.api.dto.request.ProfileImageUploadRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.dao.TermsAgreementRepository;
+import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
+import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.clients.aws.S3PresignProvider;
 import soma.ghostrunner.domain.member.exception.MemberSettingsNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
@@ -24,14 +26,10 @@ import soma.ghostrunner.global.error.exception.BusinessException;
 
 import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 
-import java.time.Duration;
-import java.util.UUID;
-
 @Service
 @RequiredArgsConstructor
 public class MemberService {
 
-    private final S3PresignProvider s3PresignProvider;
     private final MemberRepository memberRepository;
     private final TermsAgreementRepository termsAgreementRepository;
     private final MemberAuthInfoRepository memberAuthInfoRepository;

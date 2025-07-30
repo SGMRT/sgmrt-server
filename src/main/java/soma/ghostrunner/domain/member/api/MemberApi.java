@@ -54,5 +54,5 @@ public class MemberApi {
             @Valid @RequestBody MemberSettingsUpdateRequest request) {
         memberService.updateMemberSettings(memberUuid, request);
     }
-
+  
 }
