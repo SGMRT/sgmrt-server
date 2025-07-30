@@ -54,3 +54,9 @@ sentry:
   send-default-pii: true
   environment: dev
   traces-sample-rate: 1.0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus"
