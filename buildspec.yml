@@ -10,6 +10,7 @@ phases:
       java: corretto17
   pre_build:
     commands:
+      - export SENTRY_AUTH_TOKEN_CLEANED=$(echo $SENTRY_AUTH_TOKEN | jq -r .SENTRY_AUTH_TOKEN)
       - export SENTRY_LOG_LEVEL=debug
       - echo "$FIREBASE_PRIVATE_KEY_JSON" > src/main/resources/firebase-private-key.json
   build:
