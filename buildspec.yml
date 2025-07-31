@@ -21,6 +21,6 @@ artifacts:
   files:
     - app.jar
 
-#cache:
-#  paths:
-#    - '/root/.gradle/caches/**/*'
+cache:
+  paths:
+    - '/root/.gradle/caches/**/*'
