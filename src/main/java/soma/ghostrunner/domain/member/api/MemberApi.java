@@ -53,5 +53,11 @@ public class MemberApi {
             @AuthenticationPrincipal JwtUserDetails userDetails) {
         memberService.updateMemberSettings(memberUuid, request);
     }
+
+    @DeleteMapping("/{memberUuid}")
+    public void deleteMember(@PathVariable("memberUuid") String memberUuid) {
+        // todo 본인만 수정 가능
+        memberService.removeAccount(memberUuid);
+    }
   
 }
