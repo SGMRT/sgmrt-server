@@ -151,11 +151,12 @@ public class MemberService {
 
     @Transactional
     public void updateMemberSettings(String memberUuid, MemberSettingsUpdateRequest request) {
+        Member member = findMemberByUuid(memberUuid);
         MemberSettings currentSettings = memberSettingsRepository.findByMember_Uuid(memberUuid)
-                .orElseThrow(MemberSettingsNotFoundException::new);
+                .orElse(MemberSettings.of(member));
 
-        currentSettings.updateSettings(request.getPushAlarmEnabled(),
-                request.getVibrationEnabled());
+        currentSettings.updateSettings(request.getPushAlarmEnabled(), request.getVibrationEnabled());
+        memberSettingsRepository.save(currentSettings);
     }
 
     @Transactional
