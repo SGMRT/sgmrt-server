@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.auth.application;
 
-import io.jsonwebtoken.MalformedJwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +16,7 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.global.error.ErrorCode;
+import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 import soma.ghostrunner.global.security.jwt.factory.JwtTokenFactory;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 public class AuthService {
 
     private final RefreshTokenService refreshTokenService;
-
     private final MemberService memberService;
     private final MemberMapper memberMapper;
 
@@ -114,6 +113,11 @@ public class AuthService {
     public void logout(String receivedRefreshToken) {
         String memberUuid = getMemberUuidFromToken(receivedRefreshToken);
         refreshTokenService.deleteTokenByMemberUuid(memberUuid);
+    }
+
+    public boolean isOwner(String memberUuid, JwtUserDetails userDetails) {
+        if(memberUuid == null || userDetails == null) return false;
+        return memberUuid.equals(userDetails.getUserId());
     }
 
 }

@@ -19,6 +19,7 @@ import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
 import soma.ghostrunner.domain.member.enums.Gender;
+import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 import soma.ghostrunner.global.security.jwt.factory.JwtTokenFactory;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
@@ -236,6 +237,48 @@ class AuthServiceTest extends IntegrationTestSupport {
         Assertions.assertThatThrownBy(() -> authService.reissueTokens(requestRefreshToken))
                 .isInstanceOf(TokenTheftException.class)
                 .hasMessage("저장소에 멤버의 리프레쉬 토큰이 없지만 재발급 요청되어 공격이 의심되는 상황");
+    }
+
+    @DisplayName("인증된 회원이 본인의 uuid로 isOwner()를 호출하는 경우 true를 반환한다.")
+    @Test
+    void testIsOwner_success() {
+        // given
+        String memberUuid = UUID.randomUUID().toString();
+        JwtUserDetails userDetails = new JwtUserDetails(memberUuid);
+
+        // when
+        boolean result = authService.isOwner(memberUuid, userDetails);
+
+        // then
+        Assertions.assertThat(result).isTrue();
+    }
+
+    @DisplayName("인증된 회원이 다른 uuid로 isOwner()를 호출하는 경우 false를 반환한다.")
+    @Test
+    void testIsOwner_notMatch() {
+        // given
+        String memberUuid = "wrong-uuid";
+        JwtUserDetails userDetails = new JwtUserDetails(UUID.randomUUID().toString());
+
+        // when
+        boolean result = authService.isOwner(memberUuid, userDetails);
+
+        // then
+        Assertions.assertThat(result).isFalse();
+    }
+
+    @DisplayName("인증되지 않은 회원이 isOwner()를 호출하면 false를 반환한다.")
+    @Test
+    void testIsOwner_notAuthenticated() {
+        // given
+        String memberUuid = UUID.randomUUID().toString();
+        JwtUserDetails userDetails = null;
+
+        // when
+        boolean result = authService.isOwner(memberUuid, userDetails);
+
+        // then
+        Assertions.assertThat(result).isFalse();
     }
 
 }
