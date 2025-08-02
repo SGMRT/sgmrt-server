@@ -62,8 +62,11 @@ public class MemberService {
 
     @Transactional
     public void updateMember(String uuid, MemberUpdateRequest request) {
-        Member member = findMemberByUuid(uuid);
+        if(request.getUpdateAttrs() == null || request.getUpdateAttrs().isEmpty()) {
+            return;
+        }
 
+        Member member = findMemberByUuid(uuid);
         Gender gender = member.getBioInfo().getGender();
         Integer weight = member.getBioInfo().getWeight();
         Integer height = member.getBioInfo().getHeight();
