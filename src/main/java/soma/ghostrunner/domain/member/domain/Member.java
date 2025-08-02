@@ -2,16 +2,24 @@ package soma.ghostrunner.domain.member.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.checkerframework.checker.units.qual.A;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import soma.ghostrunner.domain.member.enums.Gender;
+import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.common.document.TestOnly;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
 @Table(name = "member")
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@SQLRestriction("deleted_at IS NULL")
+@SQLDelete(sql = "UPDATE member SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 public class Member extends BaseTimeEntity {
 
     @Id
@@ -33,6 +41,12 @@ public class Member extends BaseTimeEntity {
     @Column(name = "last_login_at")
     @Setter
     private LocalDateTime lastLoginAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "member")
+    private List<Running> runs = new ArrayList<>();
 
     @Builder
     public Member(String nickname, String profilePictureUrl,

@@ -73,7 +73,7 @@ public class Running extends BaseTimeEntity {
 
     public static Running of(String runningName, RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
                              boolean isPublic, boolean hasPaused, String telemetryUrl, Member member, Course course) {
-        return Running.builder()
+        Running running = Running.builder()
                 .runningName(runningName)
                 .runningMode(runningMode)
                 .ghostRunningId(ghostRunningId)
@@ -85,6 +85,8 @@ public class Running extends BaseTimeEntity {
                 .member(member)
                 .course(course)
                 .build();
+        if(!running.member.getRuns().contains(running)) running.member.getRuns().add(running);
+        return running;
     }
 
     public void updateName(String name) {

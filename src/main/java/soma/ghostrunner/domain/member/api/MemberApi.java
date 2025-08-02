@@ -9,7 +9,6 @@ import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.request.ProfileImageUploadRequest;
 import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
 import soma.ghostrunner.domain.member.application.MemberService;
-import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 
 @RestController
 @RequiredArgsConstructor
@@ -45,6 +44,12 @@ public class MemberApi {
             @PathVariable("memberUuid") String memberUuid,
             @Valid @RequestBody MemberSettingsUpdateRequest request) {
         memberService.updateMemberSettings(memberUuid, request);
+    }
+
+    @DeleteMapping("/{memberUuid}")
+    public void deleteMember(@PathVariable("memberUuid") String memberUuid) {
+        // todo 본인만 수정 가능
+        memberService.removeAccount(memberUuid);
     }
   
 }
