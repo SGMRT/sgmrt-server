@@ -183,4 +183,10 @@ public class MemberService {
         return lastAgreement != null && lastAgreement.equals(termsAgreement);
     }
 
+    @Transactional
+    public void removeAccount(String memberUuid) {
+        if(!memberRepository.existsByUuid(memberUuid)) throw new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, memberUuid);
+        memberRepository.deleteByUuid(memberUuid);
+    }
+
 }

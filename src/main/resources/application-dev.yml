@@ -7,7 +7,7 @@ spring:
 
   data:
     redis:
-      host: ${DEV_REDIS_ENDPOINT}
+      host: ${REDIS_ENDPOINT}
       port: 6379
       ssl:
         enabled: true
@@ -39,12 +39,12 @@ cloud:
       auto: false
 
 s3:
-  bucket: ${AWS_TELEMETRY_BUCKET}
-  telemetry-directory: ${AWS_TELEMETRY_DIRECTORY}
+  bucket: ${AWS_BUCKET}
+  telemetry-directory: ${RUNNING_TELEMETRY_DIRECTORY}
   member-profile-directory: ${MEMBER_PROFILE_DIRECTORY}
 
 jwt:
-  secret: ${DEV_JWT_SECRET_KEY}
+  secret: ${JWT_SECRET_KEY}
   expiration_time:
     access_token: 600000
     refresh_token: 1209600000

@@ -9,7 +9,7 @@ sentry {
 	includeSourceContext = true
 
 	org = "sogogimaratang"
-	projectName = "ghostrunner-api-server-springboot"
+	projectName = "ghostrunner-dev-backend"
 	authToken = System.getenv("SENTRY_AUTH_TOKEN")
 }
 
@@ -107,4 +107,8 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+jar {
+	enabled = false
 }
