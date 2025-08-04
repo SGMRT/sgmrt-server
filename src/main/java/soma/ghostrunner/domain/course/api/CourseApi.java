@@ -6,10 +6,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseFacade;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
+import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.util.List;
 
@@ -81,10 +84,12 @@ public class CourseApi {
         return courseFacade.findCourseFirstRunCoordinatesWithDetails(courseId);
     }
 
+    @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
     @GetMapping("/members/{memberUuid}/courses")
     public PagedModel<CourseSummaryResponse> getMemberCourses(
             @PathVariable("memberUuid") String memberUuid,
-            @PageableDefault Pageable pageable) {
+            @PageableDefault Pageable pageable,
+            @AuthenticationPrincipal JwtUserDetails userDetails) {
         return new PagedModel<>(courseFacade.findCourseSummariesOfMember(memberUuid, pageable));
     }
 

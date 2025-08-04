@@ -62,8 +62,11 @@ public class MemberService {
 
     @Transactional
     public void updateMember(String uuid, MemberUpdateRequest request) {
-        Member member = findMemberByUuid(uuid);
+        if(request.getUpdateAttrs() == null || request.getUpdateAttrs().isEmpty()) {
+            return;
+        }
 
+        Member member = findMemberByUuid(uuid);
         Gender gender = member.getBioInfo().getGender();
         Integer weight = member.getBioInfo().getWeight();
         Integer height = member.getBioInfo().getHeight();
@@ -148,11 +151,12 @@ public class MemberService {
 
     @Transactional
     public void updateMemberSettings(String memberUuid, MemberSettingsUpdateRequest request) {
+        Member member = findMemberByUuid(memberUuid);
         MemberSettings currentSettings = memberSettingsRepository.findByMember_Uuid(memberUuid)
-                .orElseThrow(MemberSettingsNotFoundException::new);
+                .orElse(MemberSettings.of(member));
 
-        currentSettings.updateSettings(request.getPushAlarmEnabled(),
-                request.getVibrationEnabled());
+        currentSettings.updateSettings(request.getPushAlarmEnabled(), request.getVibrationEnabled());
+        memberSettingsRepository.save(currentSettings);
     }
 
     @Transactional

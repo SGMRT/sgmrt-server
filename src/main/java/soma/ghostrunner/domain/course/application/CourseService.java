@@ -76,7 +76,7 @@ public class CourseService {
 
     public Page<CourseWithMemberDetailsDto> findCoursesByMemberUuid(
             String memberUuid, Pageable pageable) {
-        Page<Course> courses = courseRepository.findCoursesFetchJoinMembersByMemberUuidOrderByCreatedAtDesc(memberUuid, pageable);
+        Page<Course> courses = courseRepository.findPublicCoursesFetchJoinMembersByMemberUuidOrderByCreatedAtDesc(memberUuid, pageable);
         return courses.map(c -> courseMapper.toCourseWithMemberDetailsDto(c, c.getMember()));
     }
 
