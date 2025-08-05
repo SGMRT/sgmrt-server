@@ -17,7 +17,7 @@ import java.util.UUID;
 public class S3PresignUrlClient {
 
     private static final Integer PRESIGNED_URL_VALID_MINUTES = 10;
-    private static final Set<String> PROFILE_IMAGE_ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg");
+    public static final Set<String> PROFILE_IMAGE_ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg");
 
     private final String s3Bucket;
     private final String memberProfileDirectory;
