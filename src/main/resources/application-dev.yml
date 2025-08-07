@@ -54,6 +54,8 @@ sentry:
   send-default-pii: true
   environment: dev
   traces-sample-rate: 1.0
+  max-request-body-size: always
+  exception-resolver-order: -1
 
 management:
   endpoints:
