@@ -61,6 +61,7 @@ public class Member extends BaseTimeEntity {
     public static Member of(String nickname, String profilePictureUrl) {
         return Member.builder()
                 .nickname(nickname)
+                .bioInfo(new MemberBioInfo(null, null, null))
                 .profilePictureUrl(profilePictureUrl)
                 .build();
     }
@@ -73,11 +74,14 @@ public class Member extends BaseTimeEntity {
     }
 
     public void updateBioInfo(Gender gender, Integer weight, Integer height) {
-        if(gender == null) throw new IllegalArgumentException("gender cannot be null");
-        //  weight나 height는 null check X - 요청 시 null로 변경 가능
+        // gender, weight, height는 null check X -> 요청 시 null로 변경 가능
         if(weight != null && weight < 0) throw new IllegalArgumentException("weight cannot be negative");
         if(height != null && height < 0) throw new IllegalArgumentException("height cannot be negative");
         this.bioInfo = new MemberBioInfo(gender, weight, height);
+    }
+
+    public void updateProfilePictureUrl(String profilePictureUrl) {
+        this.profilePictureUrl = profilePictureUrl;
     }
 
     @TestOnly

@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.member.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.clients.aws.presign.S3PresignUrlClient;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
@@ -23,6 +24,9 @@ import soma.ghostrunner.domain.member.exception.MemberSettingsNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.error.exception.BusinessException;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Set;
 import java.util.UUID;
 
 import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
@@ -77,7 +81,6 @@ public class MemberService {
                     member.updateNickname(request.getNickname());
                     break;
                 case GENDER:
-                    verifyGender(request.getGender());
                     gender = request.getGender();
                     break;
                 case HEIGHT:
@@ -88,19 +91,34 @@ public class MemberService {
                     verifyWeight(request.getHeight());
                     weight = request.getWeight();
                     break;
+                case PROFILE_IMAGE_URL:
+                    verifyImageUrl(request.getProfileImageUrl());
+                    member.updateProfilePictureUrl(request.getProfileImageUrl());
+                    break;
             }
         }
 
         member.updateBioInfo(gender, weight, height);
     }
 
+    private void verifyImageUrl(String profileImageUrl) {
+        // image는 null 입력 허용
+        if (profileImageUrl == null) return;
+        try {
+            URL url = new URL(profileImageUrl);
+            Set<String> allowedExtensions = S3PresignUrlClient.PROFILE_IMAGE_ALLOWED_EXTENSIONS;
+            boolean isExtensionValid = allowedExtensions.stream().anyMatch(profileImageUrl::endsWith);
+            if(!isExtensionValid) {
+                throw new IllegalArgumentException("unsupported image url extension: " + profileImageUrl);
+            }
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("invalid url: " + profileImageUrl);
+        }
+    }
+
     private void verifyNickname(String nickname) {
         if(nickname == null) throw new IllegalArgumentException("nickname cannot be null");
         checkNicknameDuplication(nickname);
-    }
-
-    private void verifyGender(Gender gender) {
-        if(gender == null) throw new IllegalArgumentException("gender cannot be null");
     }
 
     private void verifyHeight(Integer height) {

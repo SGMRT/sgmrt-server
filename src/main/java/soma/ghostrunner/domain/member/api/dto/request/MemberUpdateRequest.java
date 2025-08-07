@@ -20,12 +20,15 @@ public class MemberUpdateRequest {
     @PositiveOrZero
     private Integer weight;
 
+    private String profileImageUrl;
+
     private Set<UpdatedAttr> updateAttrs;
 
     public enum UpdatedAttr {
         NICKNAME,
         GENDER,
         HEIGHT,
-        WEIGHT
+        WEIGHT,
+        PROFILE_IMAGE_URL
     }
 }
