@@ -8,7 +8,8 @@ public record CourseWithCoordinatesDto(
     String name,
     Double startLat,
     Double startLng,
-    List<CoordinateDto> pathData,
+    String routeUrl,
+    String thumbnailUrl,
     Integer distance,
     Integer elevationGain,
     Integer elevationLoss

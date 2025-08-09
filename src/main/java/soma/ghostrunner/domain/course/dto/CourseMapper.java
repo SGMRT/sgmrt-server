@@ -13,6 +13,7 @@ import java.util.List;
 
 @Mapper(componentModel = "spring", uses = {CoordinateConverter.class, CourseSubMapper.class})
 public interface CourseMapper {
+
     @Mapping(source = "startPoint.latitude", target = "startLat")
     @Mapping(source = "startPoint.longitude", target = "startLng")
     @Mapping(target = "distance",
