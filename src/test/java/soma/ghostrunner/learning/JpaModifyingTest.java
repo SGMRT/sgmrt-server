@@ -109,7 +109,7 @@ public class JpaModifyingTest extends IntegrationTestSupport {
     private Course createCourse(Member member) {
         CourseProfile testCourseProfile = createCourseProfile();
         StartPoint testStartPoint = createStartPoint();
-        return Course.of(member, testCourseProfile, testStartPoint, createCoordinatesTelemetries(), null);
+        return Course.of(member, testCourseProfile, testStartPoint, createCoordinatesTelemetries(), "경로 URL", "썸네일 URL");
     }
 
     private String createCoordinatesTelemetries() {

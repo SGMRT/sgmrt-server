@@ -98,7 +98,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     private Course createCourse(Member testMember, String courseName) {
         Course course = Course.of(
                 testMember, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]", null);
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]", "URL", "URL");
         course.setName(courseName);
         return course;
     }
@@ -331,7 +331,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     private Course createCourse(Member testMember) {
         return Course.of(
                 testMember, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]", null);
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]", "URL", "URL");
     }
 
     private StartPoint createStartPoint() {

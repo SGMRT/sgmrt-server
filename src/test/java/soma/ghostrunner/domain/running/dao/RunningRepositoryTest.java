@@ -72,7 +72,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     private Course createCourse(Member testMember) {
         CourseProfile testCourseProfile = createCourseProfile();
         StartPoint testStartPoint = createStartPoint();
-        return Course.of(testMember, testCourseProfile, testStartPoint, createCoordinatesTelemetries(), null);
+        return Course.of(testMember, testCourseProfile, testStartPoint, createCoordinatesTelemetries(), "경로 URL", "썸네일 URL");
     }
 
     private String createCoordinatesTelemetries() {
@@ -190,7 +190,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     private Course createCourse(Member testMember, String courseName) {
         CourseProfile testCourseProfile = createCourseProfile();
         StartPoint testStartPoint = createStartPoint();
-        Course course = Course.of(testMember, testCourseProfile, testStartPoint, createCoordinatesTelemetries(), null);
+        Course course = Course.of(testMember, testCourseProfile, testStartPoint, createCoordinatesTelemetries(), "경로 URL", "썸네일 URL");
         course.setName(courseName);
         return course;
     }

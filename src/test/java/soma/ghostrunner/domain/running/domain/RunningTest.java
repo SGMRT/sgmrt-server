@@ -35,7 +35,7 @@ class RunningTest {
     private Course createCourse(Member member) {
         return Course.of(
                 member, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]", null);
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]", "경로 URL", "썸네일 URL");
     }
 
     private StartPoint createStartPoint() {
