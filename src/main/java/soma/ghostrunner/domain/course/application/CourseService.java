@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.CourseWithCoordinatesDto;
 import soma.ghostrunner.domain.course.dto.CourseWithMemberDetailsDto;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
@@ -39,15 +40,8 @@ public class CourseService {
                 .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
     }
 
-    public List<CourseWithCoordinatesDto> searchCourses(
-            Double lat,
-            Double lng,
-            Integer radiusM,
-            Integer minDistanceM,
-            Integer maxDistanceM,
-            Integer minElevationM,
-            Integer maxElevationM,
-            String ownerUuid) {
+    public List<CourseWithCoordinatesDto> searchCourses(Double lat, Double lng, Integer radiusM,
+                                                        CourseSearchFilterDto filters) {
         // 코스 검색할 직사각형 반경 계산
         // - 1도 위도 당 111km 가정 (지구 둘레 40,075km / 360도 = 약 111.3km)
         // - 근사치이며, 적도에서 멀어질 수록 경도 거리 오차가 커짐 -> TODO: 추후 Haversine 공식이나 DB 공간 데이터 타입 활용하도록 변경
@@ -60,8 +54,7 @@ public class CourseService {
         double minLng = lng - lngDelta;
         double maxLng = lng + lngDelta;
 
-        List<Course> courses = courseRepository.findCoursesWithFilters(minLat, maxLat, minLng, maxLng,
-            minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid);
+        List<Course> courses = courseRepository.findCoursesWithFilters(minLat, maxLat, minLng, maxLng, filters);
 
         return courses.stream()
                 .map(courseMapper::toCourseWithCoordinateDto)

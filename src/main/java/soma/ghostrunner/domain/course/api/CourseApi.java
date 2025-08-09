@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseFacade;
+import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
@@ -34,7 +35,7 @@ public class CourseApi {
             @RequestParam(required = false) Integer minElevationM,
             @RequestParam(required = false) Integer maxElevationM) {
         return courseFacade.findCoursesByPosition(lat, lng, radiusM,
-                minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid);
+                CourseSearchFilterDto.of(minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid));
     }
 
     @GetMapping("/courses/{courseId}")

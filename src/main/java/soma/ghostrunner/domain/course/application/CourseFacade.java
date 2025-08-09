@@ -8,10 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.dto.CourseMapper;
-import soma.ghostrunner.domain.course.dto.CourseWithCoordinatesDto;
-import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
-import soma.ghostrunner.domain.course.dto.CourseWithMemberDetailsDto;
+import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
@@ -32,14 +29,10 @@ public class CourseFacade {
     private final CourseMapper courseMapper;
 
     @Transactional(readOnly = true)
-    public List<CourseMapResponse> findCoursesByPosition(
-            Double lat, Double lng, Integer radiusM,
-            Integer minDistanceM, Integer maxDistanceM,
-            Integer minElevationM, Integer maxElevationM,
-            String ownerUuid) {
+    public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM,
+                                                         CourseSearchFilterDto filters) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
-        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(lat, lng, radiusM,
-                minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid);
+        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(lat, lng, radiusM, filters);
         return courses.stream().map(course -> {
             Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
             long runnersCount = rankers.getTotalElements();
