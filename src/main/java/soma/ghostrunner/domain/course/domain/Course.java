@@ -34,25 +34,31 @@ public class Course extends BaseTimeEntity {
     @Column
     private Boolean isPublic = false;
 
-    @Lob @Column(name = "path_data", columnDefinition = "LONGTEXT")
-    private String pathData;
+    @Column
+    private String routeUrl;
+
+    @Column
+    private String thumbnailUrl;
 
     @Builder(access = AccessLevel.PRIVATE)
-    private Course(CourseProfile courseProfile, Member member, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
+    private Course(CourseProfile courseProfile, Member member, String name, StartPoint startPoint,
+                   Boolean isPublic, String routeUrl, String thumbnailUrl) {
         this.courseProfile = courseProfile;
         this.member = member;
         this.startPoint = startPoint;
-        this.pathData = pathData;
         this.name = name;
         this.isPublic = isPublic;
+        this.routeUrl = routeUrl;
+        this.thumbnailUrl = thumbnailUrl;
     }
 
-    public static Course of(Member member, CourseProfile courseProfile, StartPoint startPoint, String pathData) {
+    public static Course of(Member member, CourseProfile courseProfile, StartPoint startPoint,
+                            String pathDataUrl, String thumbnailUrl) {
         return Course.builder()
                 .member(member)
                 .courseProfile(courseProfile)
                 .startPoint(startPoint)
-                .pathData(pathData)
+                .routeUrl(pathDataUrl)
                 .isPublic(false)
                 .build();
     }

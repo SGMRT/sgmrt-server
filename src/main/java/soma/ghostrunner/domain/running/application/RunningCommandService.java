@@ -109,7 +109,7 @@ public class RunningCommandService {
         Course course = Course.of(member, CourseProfile.of(
                 command.record().distance(), command.record().elevationGain(),
                 command.record().elevationLoss()), processedTelemetry.getStartPoint(),
-                processedTelemetry.getCourseCoordinates());
+                processedTelemetry.getCourseCoordinates(), null);
         courseService.save(course);
         return course;
     }

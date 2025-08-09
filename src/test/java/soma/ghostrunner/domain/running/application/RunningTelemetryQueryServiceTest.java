@@ -128,7 +128,7 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
     private Course createCourse(Member testMember) {
         return Course.of(
                 testMember, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]", null);
     }
 
     private StartPoint createStartPoint() {

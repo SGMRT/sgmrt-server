@@ -223,7 +223,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 
     private Course createCourse(Member member) {
         return Course.of(member, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]", null);
     }
 
     private StartPoint createStartPoint() {
