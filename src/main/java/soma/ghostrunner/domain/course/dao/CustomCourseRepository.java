@@ -1,10 +1,11 @@
 package soma.ghostrunner.domain.course.dao;
 
-import java.util.List;
-import java.util.Optional;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
+
+import java.util.List;
+import java.util.Optional;
 
 public interface CustomCourseRepository {
 

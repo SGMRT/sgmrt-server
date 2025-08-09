@@ -1,14 +1,8 @@
 package soma.ghostrunner.domain.course.dao;
 
-import static soma.ghostrunner.domain.course.domain.QCourse.course;
-import static soma.ghostrunner.domain.running.domain.QRunning.running;
-
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -16,6 +10,13 @@ import soma.ghostrunner.domain.course.domain.QCourse;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.member.domain.QMember;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+import static soma.ghostrunner.domain.course.domain.QCourse.course;
+import static soma.ghostrunner.domain.running.domain.QRunning.running;
 
 @Repository
 @RequiredArgsConstructor

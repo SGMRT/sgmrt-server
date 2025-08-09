@@ -1,7 +1,6 @@
 package soma.ghostrunner.domain.course.dto;
 
 import lombok.*;
-import soma.ghostrunner.domain.course.domain.Course;
 
 
 /** 위치 기반 코스 조회를 위한 선택적 필터 */

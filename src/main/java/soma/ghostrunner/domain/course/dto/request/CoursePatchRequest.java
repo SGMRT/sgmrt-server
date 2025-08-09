@@ -1,9 +1,10 @@
 package soma.ghostrunner.domain.course.dto.request;
 
-import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -15,6 +16,6 @@ public class CoursePatchRequest {
 
     enum UpdatedAttr {
         NAME,
-        IS_PUBLIC;
+        IS_PUBLIC
     }
 }

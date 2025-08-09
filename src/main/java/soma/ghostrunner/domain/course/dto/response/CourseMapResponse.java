@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.course.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 
 import java.util.List;
 
