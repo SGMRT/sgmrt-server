@@ -14,7 +14,7 @@ public class CoursePatchRequest {
     private Boolean isPublic;
     private Set<UpdatedAttr> updatedAttrs = Set.of();
 
-    enum UpdatedAttr {
+    public enum UpdatedAttr {
         NAME,
         IS_PUBLIC
     }
