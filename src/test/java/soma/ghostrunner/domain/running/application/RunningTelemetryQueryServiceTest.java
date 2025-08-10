@@ -8,12 +8,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.clients.aws.upload.S3TelemetryClient;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
-import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -65,7 +64,8 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
         given(s3TelemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
-        List<TelemetryDto> telemetries = runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getTelemetrySavedUrl());
+        List<TelemetryDto> telemetries = runningTelemetryQueryService.findTotalTelemetries(
+                running.getId(), running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
 
         // then
         Assertions.assertThat(telemetries)
@@ -102,7 +102,9 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
         given(s3TelemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
-        List<CoordinateDto> telemetries = runningTelemetryQueryService.findCoordinateTelemetries(running.getId(), running.getTelemetrySavedUrl());
+        List<soma.ghostrunner.domain.running.application.dto.CoordinateDto> telemetries =
+                runningTelemetryQueryService.findCoordinateTelemetries(
+                        running.getId(), running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
 
         // then
         Assertions.assertThat(telemetries)
@@ -118,7 +120,7 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
 
     private Running createRunning(String runningName, Course course, Member member, String telemetryUrl) {
         return Running.of(runningName, RunningMode.SOLO, null, createRunningRecord(), 1750729987181L,
-                true, false, telemetryUrl, member, course);
+                true, false, telemetryUrl, telemetryUrl, telemetryUrl, member, course);
     }
 
     private Member createMember(String name) {
@@ -126,13 +128,15 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
     }
 
     private Course createCourse(Member testMember) {
-        return Course.of(
-                testMember, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        CourseProfile testCourseProfile = createCourseProfile();
+        Coordinate testCoordinate = createStartPoint();
+        return Course.of(testMember, testCourseProfile.getDistance(),
+                testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(), "Mock URL");
     }
 
-    private StartPoint createStartPoint() {
-        return StartPoint.of(37.545354, 34.7878);
+    private Coordinate createStartPoint() {
+        return Coordinate.of(37.545354, 34.7878);
     }
 
     private CourseProfile createCourseProfile() {
@@ -140,7 +144,8 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
     }
 
     private RunningRecord createRunningRecord() {
-        return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
+        return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2,
+                302.2, 120L, 56, 100, 120);
     }
 
 }

@@ -3,9 +3,9 @@ package soma.ghostrunner.domain.running.domain;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
-import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 
@@ -33,13 +33,15 @@ class RunningTest {
     }
 
     private Course createCourse(Member member) {
-        return Course.of(
-                member, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        CourseProfile testCourseProfile = createCourseProfile();
+        Coordinate testCoordinate = createStartPoint();
+        return Course.of(member, testCourseProfile.getDistance(),
+                testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(), "Mock URL");
     }
 
-    private StartPoint createStartPoint() {
-        return StartPoint.of(37.545354, 34.7878);
+    private Coordinate createStartPoint() {
+        return Coordinate.of(37.545354, 34.7878);
     }
 
     private CourseProfile createCourseProfile() {
@@ -48,7 +50,7 @@ class RunningTest {
 
     private Running createRunning(String runningName, Member testMember, Course testCourse) {
         return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                true, false, "URL", testMember, testCourse);
+                true, false, "URL", "URL", "URL", testMember, testCourse);
     }
 
     private RunningRecord createRunningRecord() {
@@ -94,7 +96,7 @@ class RunningTest {
     private Running createRunning(
             String runningName, Member testMember, Course testCourse, boolean isPublic, boolean hasPaused) {
         return Running.of(runningName, RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                isPublic, hasPaused, "URL", testMember, testCourse);
+                isPublic, hasPaused, "URL", "URL", "URL", testMember, testCourse);
     }
 
     @DisplayName("뛰었던 코스의 ID인지 검증한다.")

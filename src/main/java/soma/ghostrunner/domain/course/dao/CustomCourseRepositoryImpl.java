@@ -55,8 +55,8 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
     BooleanBuilder builder = new BooleanBuilder();
 
     // 반경 필터링
-    builder.and(course.startPoint.latitude.between(minLat, maxLat));
-    builder.and(course.startPoint.longitude.between(minLng, maxLng));
+    builder.and(course.startCoordinate.latitude.between(minLat, maxLat));
+    builder.and(course.startCoordinate.longitude.between(minLng, maxLng));
 
     // 공개 여부 필터링
     builder.and(course.isPublic.isTrue());

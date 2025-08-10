@@ -35,4 +35,5 @@ public class CourseProfile {
                 .elevationLoss(elevationLoss)
                 .build();
     }
+
 }

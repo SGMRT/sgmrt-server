@@ -7,14 +7,14 @@ import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.support.CoordinateConverter;
+import soma.ghostrunner.domain.running.application.support.CoordinateConverter;
 
 import java.util.List;
 
 @Mapper(componentModel = "spring", uses = {CoordinateConverter.class, CourseSubMapper.class})
 public interface CourseMapper {
-    @Mapping(source = "startPoint.latitude", target = "startLat")
-    @Mapping(source = "startPoint.longitude", target = "startLng")
+    @Mapping(source = "startCoordinate.latitude", target = "startLat")
+    @Mapping(source = "startCoordinate.longitude", target = "startLng")
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
@@ -52,8 +52,8 @@ public interface CourseMapper {
 
     @Mapping(source = "course.id", target = "courseId")
     @Mapping(source = "course.name", target = "courseName")
-    @Mapping(source = "course.startPoint.latitude", target = "startLat")
-    @Mapping(source = "course.startPoint.longitude", target = "startLng")
+    @Mapping(source = "course.startCoordinate.latitude", target = "startLat")
+    @Mapping(source = "course.startCoordinate.longitude", target = "startLng")
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +

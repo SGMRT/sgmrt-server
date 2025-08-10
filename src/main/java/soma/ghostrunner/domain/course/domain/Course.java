@@ -28,7 +28,7 @@ public class Course extends BaseTimeEntity {
     private CourseProfile courseProfile;
 
     @Embedded
-    private StartPoint startPoint;
+    private Coordinate startCoordinate;
 
     @Setter
     @Column
@@ -38,21 +38,26 @@ public class Course extends BaseTimeEntity {
     private String pathDataSavedUrl;
 
     @Builder(access = AccessLevel.PRIVATE)
-    private Course(CourseProfile courseProfile, Member member, String name, StartPoint startPoint,
-                   String pathDataSavedUrl, Boolean isPublic) {
+    private Course(CourseProfile courseProfile, Member member, String name,
+                   Coordinate startCoordinate, String pathDataSavedUrl, Boolean isPublic) {
         this.courseProfile = courseProfile;
         this.member = member;
-        this.startPoint = startPoint;
+        this.startCoordinate = startCoordinate;
         this.pathDataSavedUrl = pathDataSavedUrl;
         this.name = name;
         this.isPublic = isPublic;
     }
 
-    public static Course of(Member member, CourseProfile courseProfile, StartPoint startPoint, String pathDataSavedUrl) {
+    public static Course of(Member member, Double distance, Integer elevationGain, Integer elevationLoss,
+                            Double startLatitude, Double startLongitude, String pathDataSavedUrl) {
+
+        CourseProfile courseProfile = CourseProfile.of(distance, elevationGain, elevationLoss);
+        Coordinate startCoordinate = Coordinate.of(startLatitude, startLongitude);
+
         return Course.builder()
                 .member(member)
                 .courseProfile(courseProfile)
-                .startPoint(startPoint)
+                .startCoordinate(startCoordinate)
                 .pathDataSavedUrl(pathDataSavedUrl)
                 .isPublic(false)
                 .build();

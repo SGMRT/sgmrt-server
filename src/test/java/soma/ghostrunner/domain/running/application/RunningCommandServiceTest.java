@@ -9,9 +9,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.clients.aws.upload.S3TelemetryClient;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
-import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
@@ -20,6 +20,7 @@ import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordDto;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
+import soma.ghostrunner.domain.running.domain.RunningDataUrls;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
@@ -69,9 +70,8 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Running savedRunning = runningRepository.findById(response.getRunningId()).get();
         Assertions.assertThat(savedRunning)
                 .isNotNull()
-                .extracting(Running::getRunningName, Running::getRunningMode,
-                        Running::getStartedAt, Running::getTelemetrySavedUrl)
-                .containsExactly("러닝 이름", RunningMode.SOLO, 100L, "Mock Telemetries Url");
+                .extracting(Running::getRunningName, Running::getRunningMode, Running::getStartedAt)
+                .containsExactly("러닝 이름", RunningMode.SOLO, 100L);
 
         RunningRecord savedRunningRecord = savedRunning.getRunningRecord();
         Assertions.assertThat(savedRunningRecord)
@@ -79,6 +79,13 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
                 .extracting(RunningRecord::getDistance, RunningRecord::getElevationGain,
                         RunningRecord::getElevationLoss, RunningRecord::getDuration)
                 .containsExactly(5.1, 130, -120, 3600L);
+
+        RunningDataUrls runningDataUrls = savedRunning.getRunningDataUrls();
+        Assertions.assertThat(runningDataUrls)
+                .isNotNull()
+                .extracting(RunningDataUrls::getRawTelemetrySavedUrl, RunningDataUrls::getInterpolatedTelemetrySavedUrl,
+                        RunningDataUrls::getScreenShotSavedUrl)
+                .containsExactly("Mock Telemetries Url", "Mock Telemetries Url", "Mock Telemetries Url");
 
         Course savedCourse = courseRepository.findById(response.getCourseId()).get();
         Assertions.assertThat(savedCourse)
@@ -92,10 +99,10 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
                 .extracting(CourseProfile::getDistance, CourseProfile::getElevationGain, CourseProfile::getElevationLoss)
                 .containsExactly(5.1, 130, -120);
 
-        StartPoint savedStartPoint = savedCourse.getStartPoint();
-        Assertions.assertThat(savedStartPoint)
+        Coordinate savedCoordinate = savedCourse.getStartCoordinate();
+        Assertions.assertThat(savedCoordinate)
                 .isNotNull()
-                .extracting(StartPoint::getLatitude, StartPoint::getLongitude)
+                .extracting(Coordinate::getLatitude, Coordinate::getLongitude)
                 .containsExactly(36.2, 37.3);
      }
 
@@ -148,9 +155,9 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Running savedRunning = runningRepository.findById(savedRunningId).get();
         Assertions.assertThat(savedRunning)
                 .isNotNull()
-                .extracting(Running::getRunningName, Running::getRunningMode, Running::getGhostRunningId,
-                        Running::getStartedAt, Running::getTelemetrySavedUrl)
-                .containsExactly("러닝 이름", RunningMode.SOLO, null, 100L, "Mock Telemetries Url");
+                .extracting(Running::getRunningName, Running::getRunningMode,
+                        Running::getGhostRunningId, Running::getStartedAt)
+                .containsExactly("러닝 이름", RunningMode.SOLO, null, 100L);
 
         Course savedCourse = savedRunning.getCourse();
         Assertions.assertThat(savedCourse.getId()).isEqualTo(savedCourseId);
@@ -184,9 +191,9 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Running savedRunning = runningRepository.findById(savedRunningId).get();
         Assertions.assertThat(savedRunning)
                 .isNotNull()
-                .extracting(Running::getRunningName, Running::getRunningMode, Running::getGhostRunningId,
-                        Running::getStartedAt, Running::getTelemetrySavedUrl)
-                .containsExactly("러닝 이름", RunningMode.GHOST, ghostRunningId, 100L, "Mock Telemetries Url");
+                .extracting(Running::getRunningName, Running::getRunningMode,
+                        Running::getGhostRunningId, Running::getStartedAt)
+                .containsExactly("러닝 이름", RunningMode.GHOST, ghostRunningId, 100L);
 
         Course savedCourse = savedRunning.getCourse();
         Assertions.assertThat(savedCourse.getId()).isEqualTo(savedCourseId);
@@ -222,12 +229,15 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     }
 
     private Course createCourse(Member member) {
-        return Course.of(member, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        CourseProfile testCourseProfile = createCourseProfile();
+        Coordinate testCoordinate = createStartPoint();
+        return Course.of(member, testCourseProfile.getDistance(),
+                testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(), "Mock URL");
     }
 
-    private StartPoint createStartPoint() {
-        return StartPoint.of(37.545354, 34.7878);
+    private Coordinate createStartPoint() {
+        return Coordinate.of(37.545354, 34.7878);
     }
 
     private CourseProfile createCourseProfile() {
@@ -243,7 +253,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     private Running createRunning(Member member, Course course) {
         RunningRecord testRunningRecord = createRunningRecord();
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord,
-                1750729987181L, true, false, "URL", member, course);
+                1750729987181L, true, false, "URL", "URL", "URL", member, course);
     }
   
     @DisplayName("러닝 기록을 공개/비공개 상태로 변경한다.")
@@ -313,12 +323,12 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     private Running createRunning(Member member, Course course, Boolean isPublic) {
         RunningRecord testRunningRecord = createRunningRecord();
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
-                isPublic, false, "URL", member, course);
+                isPublic, false, "URL", "URL", "URL", member, course);
     }
 
     private Running createHasPausedRunning(Member member, Course course) {
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                false, true, "URL", member, course);
+                false, true, "URL", "URL", "URL", member, course);
     }
 
     private RunningRecord createRunningRecord() {

@@ -7,9 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
-import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
@@ -63,7 +63,8 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.saveAll(List.of(running1, running2, running3));
 
         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(running1.getId(), running1.getTelemetrySavedUrl()))
+        given(runningTelemetryQueryService.findTotalTelemetries(
+                running1.getId(), running1.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()))
                 .willReturn(mockTelemetryDtos);
 
         // when
@@ -72,7 +73,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running1.getStartedAt());
         Assertions.assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running1.getRunningName());
-        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running1.getTelemetrySavedUrl());
+        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running1.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(running1.getRunningRecord().getDistance());
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(running1.getRunningRecord().getDuration());
 
@@ -96,9 +97,11 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     }
 
     private Course createCourse(Member testMember, String courseName) {
-        Course course = Course.of(
-                testMember, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        CourseProfile testCourseProfile = createCourseProfile();
+        Coordinate testCoordinate = createStartPoint();
+        Course course = Course.of(testMember, testCourseProfile.getDistance(),
+                testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(), "Mock URL");
         course.setName(courseName);
         return course;
     }
@@ -106,7 +109,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     private Running createSoloRunning(Member testMember, Course testCourse) {
         RunningRecord testRunningRecord = createRunningRecord();
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, null, testRunningRecord,
-                1750729987181L, true, false, "URL", testMember, testCourse);
+                1750729987181L, true, false, "URL", "URL", "URL", testMember, testCourse);
     }
 
     private RunningRecord createRunningRecord() {
@@ -157,19 +160,20 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         RunningRecord runningRecord = RunningRecord.of(4.0, 40, -20, 6.1,
                 6.1, 8.1, 120L, 50, 100, 120);
         Running running = Running.of("러닝 제목", RunningMode.SOLO, null, runningRecord,
-                1750729987181L, true, false, "URL", member, course);
+                1750729987181L, true, false, "URL", "URL", "URL", member, course);
         runningRepository.save(running);
 
         RunningRecord ghostRunningRecord = RunningRecord.of(5.0, 50, -10, 7.1,
                 7.1, 9.1, 130L, 60, 110, 130);
         Running followingRunning = Running.of("고스트 러닝 제목", RunningMode.GHOST, running.getId(), ghostRunningRecord,
-                1750729987181L, true, false, "URL", followingMember, course);
+                1750729987181L, true, false, "URL", "URL", "URL", followingMember, course);
         Running followingRunning2 = Running.of("고스트 러닝 제목2", RunningMode.GHOST, running.getId(), ghostRunningRecord,
-                1750729987181L, true, false, "URL", followingMember, course);
+                1750729987181L, true, false, "URL", "URL", "URL", followingMember, course);
         runningRepository.saveAll(List.of(followingRunning, followingRunning2));
 
         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetrySavedUrl()))
+        given(runningTelemetryQueryService.findTotalTelemetries(
+                followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()))
                 .willReturn(mockTelemetryDtos);
 
         // when
@@ -179,7 +183,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(ghostRunDetailInfo.getStartedAt()).isEqualTo(followingRunning.getStartedAt());
         Assertions.assertThat(ghostRunDetailInfo.getRunningName()).isEqualTo(followingRunning.getRunningName());
-        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(followingRunning.getTelemetrySavedUrl());
+        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(followingRunning.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
 
         Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getId()).isEqualTo(course.getId());
         Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getName()).isEqualTo(course.getName());
@@ -235,17 +239,17 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         RunningRecord runningRecord = RunningRecord.of(4.0, 40, -20, 6.1,
                 6.1, 8.1, 120L, 50, 100, 120);
         Running running = Running.of("러닝 제목", RunningMode.SOLO, null, runningRecord,
-                1750729987181L, true, false, "URL", member, course);
+                1750729987181L, true, false, "URL", "URL", "URL", member, course);
         runningRepository.save(running);
 
         RunningRecord ghostRunningRecord = RunningRecord.of(5.0, 50, -10, 7.1,
                 7.1, 9.1, 130L, 60, 110, 130);
         Running followingRunning = Running.of("고스트 러닝 제목", RunningMode.GHOST, running.getId(), ghostRunningRecord,
-                1750729987181L, true, false, "URL", followingMember, course);
+                1750729987181L, true, false, "URL", "URL", "URL", followingMember, course);
         runningRepository.save(followingRunning);
 
         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetrySavedUrl()))
+        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()))
                 .willReturn(mockTelemetryDtos);
 
         // when // then
@@ -270,17 +274,17 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
          RunningRecord runningRecord = RunningRecord.of(4.0, 40, -20, 6.1,
                  6.1, 8.1, 120L, 50, 100, 120);
          Running running = Running.of("러닝 제목", RunningMode.SOLO, null, runningRecord,
-                 1750729987181L, true, false, "URL", member, course);
+                 1750729987181L, true, false, "URL", "URL", "URL", member, course);
          runningRepository.save(running);
 
          RunningRecord ghostRunningRecord = RunningRecord.of(5.0, 50, -10, 7.1,
                  7.1, 9.1, 130L, 60, 110, 130);
          Running followingRunning = Running.of("고스트 러닝 제목", RunningMode.GHOST, running.getId(), ghostRunningRecord,
-                 1750729987181L, true, false, "URL", followingMember, course);
+                 1750729987181L, true, false, "URL", "URL", "URL", followingMember, course);
          runningRepository.save(followingRunning);
 
          List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-         given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetrySavedUrl()))
+         given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()))
                  .willReturn(mockTelemetryDtos);
 
          // when // then
@@ -305,7 +309,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getTelemetrySavedUrl()))
+        given(runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()))
                 .willReturn(mockTelemetryDtos);
 
         // when
@@ -325,17 +329,19 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
 
     private Running createRunning(String runningName, Course course, Member member, String telemetryUrl) {
         return Running.of(runningName, RunningMode.SOLO, null, createRunningRecord(), 1750729987181L,
-                true, false, telemetryUrl, member, course);
+                true, false, telemetryUrl, telemetryUrl, telemetryUrl, member, course);
     }
 
     private Course createCourse(Member testMember) {
-        return Course.of(
-                testMember, createCourseProfile(), createStartPoint(),
-                "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]");
+        CourseProfile testCourseProfile = createCourseProfile();
+        Coordinate testCoordinate = createStartPoint();
+        return Course.of(testMember, testCourseProfile.getDistance(),
+                testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(), "Mock URL");
     }
 
-    private StartPoint createStartPoint() {
-        return StartPoint.of(37.545354, 34.7878);
+    private Coordinate createStartPoint() {
+        return Coordinate.of(37.545354, 34.7878);
     }
 
     private CourseProfile createCourseProfile() {
@@ -381,7 +387,8 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(savedRunning.getRunningName()).isEqualTo(running.getRunningName());
         Assertions.assertThat(savedRunning.getGhostRunningId()).isEqualTo(running.getGhostRunningId());
-        Assertions.assertThat(savedRunning.getTelemetrySavedUrl()).isEqualTo(running.getTelemetrySavedUrl());
+        Assertions.assertThat(savedRunning.getRunningDataUrls().getInterpolatedTelemetrySavedUrl())
+                .isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
     }
 
     @DisplayName("존재하지 않는 러닝 ID로 러닝을 조회하면 NOT_FOUND 예외가 발생한다.")
@@ -504,11 +511,11 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     private Running createRunning(String runningName, Course course, Member member, Long startedAt, RunningMode runningMode) {
         if (runningMode.equals(RunningMode.SOLO)) {
             return Running.of(runningName, runningMode, null, createRunningRecord(), startedAt,
-                    true, false, "시계열 URL", member, course);
+                    true, false, "시계열 URL", "시계열 URL", "시계열 URL", member, course);
         } else {
             Random random = new Random();
             return Running.of(runningName, runningMode, random.nextLong(), createRunningRecord(), startedAt,
-                    true, false, "시계열 URL", member, course);
+                    true, false, "시계열 URL", "시계열 URL", "시계열 URL", member, course);
         }
     }
 

@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.application.support.TelemetryTypeConverter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +27,8 @@ class TelemetryTypeConverterTest {
         String ts = firstTelemetries[0].split(":")[1];
         String lat = firstTelemetries[1].split(":")[1];
 
-        Assertions.assertThat(ts).isEqualTo(String.valueOf(telemetryDtos.get(0).timeStamp()));
-        Assertions.assertThat(lat).isEqualTo(String.valueOf(telemetryDtos.get(0).lat()));
+        Assertions.assertThat(ts).isEqualTo(String.valueOf(telemetryDtos.get(0).getTimeStamp()));
+        Assertions.assertThat(lat).isEqualTo(String.valueOf(telemetryDtos.get(0).getLat()));
     }
 
     private List<TelemetryDto> createTelemetryDtos() {

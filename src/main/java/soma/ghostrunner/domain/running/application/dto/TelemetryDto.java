@@ -1,27 +1,26 @@
 package soma.ghostrunner.domain.running.application.dto;
 
-public record TelemetryDto (
-        Long timeStamp,
-        Double lat,
-        Double lng,
-        Double dist,
-        Double pace,
-        Integer alt,
-        Integer cadence,
-        Integer bpm,
-        Boolean isRunning
-) {
-    public TelemetryDto convertToRelativeTs(Long startedAt) {
-        return new TelemetryDto(
-                this.timeStamp - startedAt,
-                this.lat,
-                this.lng,
-                this.dist,
-                this.pace,
-                this.alt,
-                this.cadence,
-                this.bpm,
-                this.isRunning
-        );
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
+public class TelemetryDto {
+
+    private Long timeStamp;
+    private Double lat;
+    private Double lng;
+    private Double dist;
+    private Double pace;
+    private Integer alt;
+    private Integer cadence;
+    private Integer bpm;
+    private Boolean isRunning;
+
+    public void setRelativeTimeStamp(Long timeStamp) {
+        this.timeStamp = timeStamp;
     }
+
 }
