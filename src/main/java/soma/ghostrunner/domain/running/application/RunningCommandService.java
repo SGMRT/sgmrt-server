@@ -33,19 +33,21 @@ public class RunningCommandService {
     private final CourseService courseService;
     private final MemberService memberService;
 
+    // TODO : 수정 필요
     @Transactional
     public CreateCourseAndRunResponse createCourseAndRun(CreateRunCommand command, String memberUuid) {
         Member member = memberService.findMemberByUuid(memberUuid);
 
         ProcessedTelemetriesDto processedTelemetry = processTelemetry(command);
-        String url = uploadTelemetryToS3(memberUuid, processedTelemetry);
+        String telemetryUrl = uploadTelemetryToS3(memberUuid, processedTelemetry);
 
         Course course = createAndSaveCourse(member, command, processedTelemetry);
-        Running running = createAndSaveRunning(command, processedTelemetry, url, member, course);
+        Running running = createAndSaveRunning(command, processedTelemetry, telemetryUrl, member, course);
 
         return CreateCourseAndRunResponse.of(running.getId(), course.getId());
     }
 
+    // TODO : 수정 필요
     @Transactional
     public Long createRun(CreateRunCommand command, Long courseId, String memberUuid) {
         Member member = memberService.findMemberByUuid(memberUuid);
@@ -80,10 +82,13 @@ public class RunningCommandService {
                 processedTelemetry.getLowestPace(), command.duration(), command.calories(), command.avgCadence(), command.avgBpm());
     }
 
-    private Running createAndSaveRunning(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry, String url, Member member, Course course) {
+    private Running createAndSaveRunning(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry,
+                                         String rawTelemetrySavedUrl, String interpolatedTelemetrySavedUrl,
+                                         String screenShotSavedUrl, Member member, Course course) {
         RunningRecord runningRecord = createRunningRecord(command.record(), processedTelemetry);
         return runningRepository.save(Running.of(command.runningName(), RunningMode.valueOf(command.mode()),
-                command.ghostRunningId(), runningRecord, command.startedAt(), command.isPublic(), command.hasPaused(), url, member, course));
+                command.ghostRunningId(), runningRecord, command.startedAt(), command.isPublic(), command.hasPaused(),
+                rawTelemetrySavedUrl, interpolatedTelemetrySavedUrl, screenShotSavedUrl, member, course));
     }
 
     @Transactional

@@ -146,11 +146,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when
-        String url = runningRepository.findById(running.getId()).get().getTelemetryUrl();
+        String url = runningRepository.findById(running.getId()).get().getTelemetrySavedUrl();
 
         // then
         Assertions.assertThat(url)
-                .isEqualTo(running.getTelemetryUrl());
+                .isEqualTo(running.getTelemetrySavedUrl());
     }
 
     @DisplayName("기존 코스를 기반으로 혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
@@ -176,7 +176,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(running1.getCourse().getId());
         Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getName()).isEqualTo(running1.getCourse().getName());
         Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getRunnersCount()).isEqualTo(2);
-        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running1.getTelemetryUrl());
+        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running1.getTelemetrySavedUrl());
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(running1.getRunningRecord().getDistance());
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(running1.getRunningRecord().getDuration());
     }
@@ -231,7 +231,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDistance()).isEqualTo(running.getRunningRecord().getDistance());
         Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDuration()).isEqualTo(running.getRunningRecord().getDuration());
-        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getTelemetryUrl());
+        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getTelemetrySavedUrl());
 
         Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getName()).isEqualTo("테스트 코스");
 
@@ -285,7 +285,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         String url = runningRepository.findTelemetryUrlById(running.getId(), member.getUuid()).get();
 
         // then
-        Assertions.assertThat(url).isEqualTo(running.getTelemetryUrl());
+        Assertions.assertThat(url).isEqualTo(running.getTelemetrySavedUrl());
     }
 
     @DisplayName("코스에 대해 첫 번째 러닝 기록을 조회한다.")

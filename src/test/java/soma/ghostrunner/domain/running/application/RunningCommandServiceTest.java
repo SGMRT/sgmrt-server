@@ -70,7 +70,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Assertions.assertThat(savedRunning)
                 .isNotNull()
                 .extracting(Running::getRunningName, Running::getRunningMode,
-                        Running::getStartedAt, Running::getTelemetryUrl)
+                        Running::getStartedAt, Running::getTelemetrySavedUrl)
                 .containsExactly("러닝 이름", RunningMode.SOLO, 100L, "Mock Telemetries Url");
 
         RunningRecord savedRunningRecord = savedRunning.getRunningRecord();
@@ -149,7 +149,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Assertions.assertThat(savedRunning)
                 .isNotNull()
                 .extracting(Running::getRunningName, Running::getRunningMode, Running::getGhostRunningId,
-                        Running::getStartedAt, Running::getTelemetryUrl)
+                        Running::getStartedAt, Running::getTelemetrySavedUrl)
                 .containsExactly("러닝 이름", RunningMode.SOLO, null, 100L, "Mock Telemetries Url");
 
         Course savedCourse = savedRunning.getCourse();
@@ -185,7 +185,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Assertions.assertThat(savedRunning)
                 .isNotNull()
                 .extracting(Running::getRunningName, Running::getRunningMode, Running::getGhostRunningId,
-                        Running::getStartedAt, Running::getTelemetryUrl)
+                        Running::getStartedAt, Running::getTelemetrySavedUrl)
                 .containsExactly("러닝 이름", RunningMode.GHOST, ghostRunningId, 100L, "Mock Telemetries Url");
 
         Course savedCourse = savedRunning.getCourse();

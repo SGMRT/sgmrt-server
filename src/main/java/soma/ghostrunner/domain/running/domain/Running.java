@@ -10,8 +10,10 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.error.ErrorCode;
 
+import java.util.List;
+
 @Entity
-@Table(name = "running_record")
+@Table(name = "running")
 @SoftDelete
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Running extends BaseTimeEntity {
@@ -43,10 +45,7 @@ public class Running extends BaseTimeEntity {
     private boolean hasPaused;
 
     @Embedded
-    private RunningSummary runningSummary;
-
-    @Column(name = "telemetry_url", nullable = false, length = 2048)
-    private String telemetryUrl;
+    private RunningDataUrls runningDataUrls;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
@@ -56,9 +55,10 @@ public class Running extends BaseTimeEntity {
     @JoinColumn(name = "course_id")
     private Course course;
 
-    @Builder
-    private Running(String runningName, RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
-                    boolean isPublic, boolean hasPaused, String telemetryUrl, Member member, Course course) {
+    @Builder(access = AccessLevel.PRIVATE)
+    private Running(String runningName, RunningMode runningMode, Long ghostRunningId,
+                    RunningRecord runningRecord, Long startedAt, boolean isPublic, boolean hasPaused,
+                    RunningDataUrls runningDataUrls, Member member, Course course) {
         this.runningName = runningName;
         this.runningMode = runningMode;
         this.ghostRunningId = ghostRunningId;
@@ -66,13 +66,19 @@ public class Running extends BaseTimeEntity {
         this.startedAt = startedAt;
         this.isPublic = isPublic;
         this.hasPaused = hasPaused;
-        this.telemetryUrl = telemetryUrl;
+        this.runningDataUrls = runningDataUrls;
         this.member = member;
         this.course = course;
     }
 
-    public static Running of(String runningName, RunningMode runningMode, Long ghostRunningId, RunningRecord runningRecord, Long startedAt,
-                             boolean isPublic, boolean hasPaused, String telemetryUrl, Member member, Course course) {
+    public static Running of(String runningName, RunningMode runningMode, Long ghostRunningId,
+                             RunningRecord runningRecord, Long startedAt, boolean isPublic, boolean hasPaused,
+                             String rawTelemetrySavedUrl, String interpolatedTelemetrySavedUrl, String screenShotSavedUrl,
+                             Member member, Course course) {
+
+        RunningDataUrls runningDataUrls = RunningDataUrls.of(
+                rawTelemetrySavedUrl, interpolatedTelemetrySavedUrl, screenShotSavedUrl);
+
         Running running = Running.builder()
                 .runningName(runningName)
                 .runningMode(runningMode)
@@ -81,11 +87,16 @@ public class Running extends BaseTimeEntity {
                 .startedAt(startedAt)
                 .isPublic(isPublic)
                 .hasPaused(hasPaused)
-                .telemetryUrl(telemetryUrl)
+                .runningDataUrls(runningDataUrls)
                 .member(member)
                 .course(course)
                 .build();
-        if(!running.member.getRuns().contains(running)) running.member.getRuns().add(running);
+
+        List<Running> runs = running.member.getRuns();
+        if (runs != null && !runs.contains(running)) {
+            runs.add(running);
+        }
+
         return running;
     }
 

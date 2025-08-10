@@ -63,7 +63,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.saveAll(List.of(running1, running2, running3));
 
         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(running1.getId(), running1.getTelemetryUrl()))
+        given(runningTelemetryQueryService.findTotalTelemetries(running1.getId(), running1.getTelemetrySavedUrl()))
                 .willReturn(mockTelemetryDtos);
 
         // when
@@ -72,7 +72,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running1.getStartedAt());
         Assertions.assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running1.getRunningName());
-        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running1.getTelemetryUrl());
+        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running1.getTelemetrySavedUrl());
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(running1.getRunningRecord().getDistance());
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(running1.getRunningRecord().getDuration());
 
@@ -169,7 +169,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.saveAll(List.of(followingRunning, followingRunning2));
 
         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetryUrl()))
+        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetrySavedUrl()))
                 .willReturn(mockTelemetryDtos);
 
         // when
@@ -179,7 +179,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(ghostRunDetailInfo.getStartedAt()).isEqualTo(followingRunning.getStartedAt());
         Assertions.assertThat(ghostRunDetailInfo.getRunningName()).isEqualTo(followingRunning.getRunningName());
-        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(followingRunning.getTelemetryUrl());
+        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(followingRunning.getTelemetrySavedUrl());
 
         Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getId()).isEqualTo(course.getId());
         Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getName()).isEqualTo(course.getName());
@@ -245,7 +245,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.save(followingRunning);
 
         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetryUrl()))
+        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetrySavedUrl()))
                 .willReturn(mockTelemetryDtos);
 
         // when // then
@@ -280,7 +280,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
          runningRepository.save(followingRunning);
 
          List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-         given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetryUrl()))
+         given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getTelemetrySavedUrl()))
                  .willReturn(mockTelemetryDtos);
 
          // when // then
@@ -305,7 +305,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getTelemetryUrl()))
+        given(runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getTelemetrySavedUrl()))
                 .willReturn(mockTelemetryDtos);
 
         // when
@@ -381,7 +381,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(savedRunning.getRunningName()).isEqualTo(running.getRunningName());
         Assertions.assertThat(savedRunning.getGhostRunningId()).isEqualTo(running.getGhostRunningId());
-        Assertions.assertThat(savedRunning.getTelemetryUrl()).isEqualTo(running.getTelemetryUrl());
+        Assertions.assertThat(savedRunning.getTelemetrySavedUrl()).isEqualTo(running.getTelemetrySavedUrl());
     }
 
     @DisplayName("존재하지 않는 러닝 ID로 러닝을 조회하면 NOT_FOUND 예외가 발생한다.")

@@ -12,34 +12,34 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RunningRecord {
 
-    @NotEmpty @Column(name = "distance_km")
+    @Column(name = "distance_km")
     private Double distance;
 
-    @NotEmpty @Column(name = "elevation_gain_m")
+    @Column(name = "elevation_gain_m")
     private Integer elevationGain;
 
-    @NotEmpty @Column(name = "elevation_loss_m")
+    @Column(name = "elevation_loss_m")
     private Integer elevationLoss;
 
-    @NotEmpty @Column(name = "average_pace_min/km")
+    @Column(name = "average_pace_min/km")
     private Double averagePace;
 
-    @NotEmpty @Column(name = "highest_pace_min/km")
+    @Column(name = "highest_pace_min/km")
     private Double highestPace;
 
-    @NotEmpty @Column(name = "lowest_pace_min/km")
+    @Column(name = "lowest_pace_min/km")
     private Double lowestPace;
 
-    @NotEmpty @Column(name = "duration_sec")
+    @Column(name = "duration_sec")
     private Long duration;
 
-    @NotEmpty @Column(name = "burned_calories_kcal")
+    @Column(name = "burned_calories_kcal")
     private Integer burnedCalories;
 
-    @NotEmpty @Column(name = "average_cadence_spm")
+    @Column(name = "average_cadence_spm")
     private Integer cadence;
 
-    @NotEmpty @Column(name = "average_bpm")
+    @Column(name = "average_bpm")
     private Integer bpm;
 
     @Builder(access = AccessLevel.PRIVATE)

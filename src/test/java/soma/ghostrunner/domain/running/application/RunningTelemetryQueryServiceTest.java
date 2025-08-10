@@ -65,7 +65,7 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
         given(s3TelemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
-        List<TelemetryDto> telemetries = runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getTelemetryUrl());
+        List<TelemetryDto> telemetries = runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getTelemetrySavedUrl());
 
         // then
         Assertions.assertThat(telemetries)
@@ -102,7 +102,7 @@ class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
         given(s3TelemetryClient.downloadTelemetryFromUrl("러닝의 URL")).willReturn(downloadedStringTelemetries);
 
         // when
-        List<CoordinateDto> telemetries = runningTelemetryQueryService.findCoordinateTelemetries(running.getId(), running.getTelemetryUrl());
+        List<CoordinateDto> telemetries = runningTelemetryQueryService.findCoordinateTelemetries(running.getId(), running.getTelemetrySavedUrl());
 
         // then
         Assertions.assertThat(telemetries)
