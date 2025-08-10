@@ -21,18 +21,23 @@ public class MemberSettings {
     @Column(nullable = false)
     private boolean vibrationEnabled;
 
-    public void updateSettings(Boolean pushAlarmEnabled, Boolean vibrationEnabled) {
+    @Column(nullable = false)
+    private boolean voiceGuidanceEnabled;
+
+    public void updateSettings(Boolean pushAlarmEnabled, Boolean vibrationEnabled, Boolean voiceGuidanceEnabled) {
         this.pushAlarmEnabled = pushAlarmEnabled != null ? pushAlarmEnabled : this.pushAlarmEnabled;
         this.vibrationEnabled = vibrationEnabled != null ? vibrationEnabled : this.vibrationEnabled;
+        this.voiceGuidanceEnabled = voiceGuidanceEnabled != null ? voiceGuidanceEnabled : this.voiceGuidanceEnabled;
     }
 
 
     @Builder(access = AccessLevel.PRIVATE)
     protected MemberSettings(Member member, Boolean pushAlarmEnabled,
-                             Boolean vibrationEnabled) {
+                             Boolean vibrationEnabled, Boolean voiceGuidanceEnabled) {
         this.member = member;
         this.pushAlarmEnabled = pushAlarmEnabled;
         this.vibrationEnabled = vibrationEnabled;
+        this.voiceGuidanceEnabled = voiceGuidanceEnabled;
     }
 
     public static MemberSettings of(Member member) {
@@ -41,6 +46,7 @@ public class MemberSettings {
                 .member(member)
                 .pushAlarmEnabled(true)
                 .vibrationEnabled(true)
+                .voiceGuidanceEnabled(true)
                 .build();
     }
 
@@ -50,6 +56,7 @@ public class MemberSettings {
                 .member(member)
                 .pushAlarmEnabled(pushAlarmEnabled)
                 .vibrationEnabled(vibrationEnabled)
+                .voiceGuidanceEnabled(true)
                 .build();
     }
 
@@ -58,7 +65,8 @@ public class MemberSettings {
         if (!(o instanceof MemberSettings other)) return false;
         return (this.member.getId().equals(other.member.getId()))
             && (this.pushAlarmEnabled == other.pushAlarmEnabled)
-            && (this.vibrationEnabled == other.vibrationEnabled);
+            && (this.vibrationEnabled == other.vibrationEnabled)
+            && (this.voiceGuidanceEnabled == other.voiceGuidanceEnabled);
     }
 
 }
