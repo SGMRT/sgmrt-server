@@ -33,9 +33,9 @@ public interface CourseMapper {
                     ": null)")
     @Mapping(source = "course.courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "course.courseProfile.elevationLoss", target = "elevationLoss")
-    CourseDetailedResponse toCourseDetailedResponse(Course course, String telemetryUrl,
-                                                    Double averageCompletionTime, Double averageFinisherPace,
-                                                    Double averageFinisherCadence, Double lowestFinisherPace);
+    CourseDetailedResponse toCourseDetailedResponse(Course course, String telemetryUrl, Double averageCompletionTime,
+                                                    Double averageFinisherPace, Double averageFinisherCadence,
+                                                    Double averageCaloriesBurned, Double lowestFinisherPace);
 
     @Mapping(source = "running.member.uuid", target = "runnerUuid")
     @Mapping(source = "running.member.profilePictureUrl", target = "runnerProfileUrl")

@@ -209,6 +209,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 running.runningRecord.duration.avg(),
                                 running.runningRecord.averagePace.avg(),
                                 running.runningRecord.cadence.avg(),
+                                running.runningRecord.burnedCalories.avg(),
                                 running.runningRecord.averagePace.min(),
                                 running.member.countDistinct().intValue(),
                                 running.count().intValue()

@@ -54,10 +54,9 @@ public class CourseFacade {
                 .orElse(new CourseRunStatisticsDto());
         String telemetryUrl = runningQueryService.findFirstRunning(course.getId()).getTelemetryUrl();
         return courseMapper.toCourseDetailedResponse(
-                course,
-                telemetryUrl,
-                courseStatistics.getAvgCompletionTime(), courseStatistics.getAvgFinisherPace(),
-                courseStatistics.getAvgFinisherCadence(), courseStatistics.getLowestFinisherPace());
+                course, telemetryUrl, courseStatistics.getAvgCompletionTime(),
+                courseStatistics.getAvgFinisherPace(), courseStatistics.getAvgFinisherCadence(),
+                courseStatistics.getAvgCaloriesBurned(), courseStatistics.getLowestFinisherPace());
     }
 
     public void updateCourse(Long courseId, CoursePatchRequest request) {

@@ -10,5 +10,6 @@ public record CourseDetailedResponse (
   Integer averageCompletionTime,
   Integer averageFinisherPace,
   Integer averageFinisherCadence,
+  Integer averageCaloriesBurned,
   Integer lowestFinisherPace
 ) {}

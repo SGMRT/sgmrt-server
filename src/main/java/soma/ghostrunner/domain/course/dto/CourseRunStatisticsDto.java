@@ -10,6 +10,7 @@ public class CourseRunStatisticsDto {
   private Double avgCompletionTime;
   private Double avgFinisherPace;
   private Double avgFinisherCadence;
+  private Double avgCaloriesBurned;
   private Double lowestFinisherPace;
 
   private Integer uniqueRunnersCount;
@@ -20,12 +21,14 @@ public class CourseRunStatisticsDto {
       Double avgCompletionTime,
       Double avgFinisherPace,
       Double avgFinisherCadence,
+      Double avgCaloriesBurned,
       Double lowestFinisherPace,
       Integer uniqueRunnersCount,
       Integer totalRunsCount) {
     this.avgCompletionTime = avgCompletionTime;
     this.avgFinisherPace = avgFinisherPace;
     this.avgFinisherCadence = avgFinisherCadence;
+    this.avgCaloriesBurned = avgCaloriesBurned;
     this.lowestFinisherPace = lowestFinisherPace;
     this.uniqueRunnersCount = uniqueRunnersCount;
     this.totalRunsCount = totalRunsCount;
