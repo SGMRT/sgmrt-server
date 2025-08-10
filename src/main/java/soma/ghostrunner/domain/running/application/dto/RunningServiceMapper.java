@@ -1,11 +1,9 @@
-package soma.ghostrunner.domain.running.application;
+package soma.ghostrunner.domain.running.application.dto;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
-import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordDto;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -13,9 +11,9 @@ import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
 @Mapper(componentModel = "spring")
-public interface RunningApplicationMapper {
+public interface RunningServiceMapper {
 
-    RunningApplicationMapper INSTANCE = Mappers.getMapper(RunningApplicationMapper.class);
+    RunningServiceMapper INSTANCE = Mappers.getMapper(RunningServiceMapper.class);
 
     default Running toRunning(CreateRunCommand command,
                               ProcessedTelemetriesDto processedTelemetry,

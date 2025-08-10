@@ -42,6 +42,20 @@ class TelemetryProcessorTest {
         Assertions.assertThat(processedTelemetry.highestPace()).isEqualTo(14.0);
     }
 
+    @DisplayName(".jsonl Multipart 파일이 비어있다면 예외를 발생한다.")
+    @Test
+    void processEmptyTelemetryTest() throws Exception {
+        // given
+        Long startedAt = 1750729987181L;
+        List<TelemetryDto> telemetryList = new ArrayList<>();
+        MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
+
+        // when // then
+        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Telemetry data is empty.");
+    }
+
     private List<TelemetryDto> getTelemetryDtos(Long startedAt) {
         List<TelemetryDto> telemetryList = new ArrayList<>();
         Random random = new Random();
