@@ -10,5 +10,6 @@ public record MemberResponse (
         Integer weight,
         Integer height,
         Boolean pushAlarmEnabled,
-        Boolean vibrationEnabled
+        Boolean vibrationEnabled,
+        Boolean voiceGuidanceEnabled
 ) { }
