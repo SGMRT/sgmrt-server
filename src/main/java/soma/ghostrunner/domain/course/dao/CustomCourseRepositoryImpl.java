@@ -1,7 +1,5 @@
 package soma.ghostrunner.domain.course.dao;
 
-import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
@@ -11,14 +9,11 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.QCourse;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
-import soma.ghostrunner.domain.member.domain.QMember;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 import static soma.ghostrunner.domain.course.domain.QCourse.course;
@@ -55,23 +50,24 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
 
   @Override
   public List<Course> findCoursesWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
-                                             Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort) {
+                                                            Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort) {
+    // todo - 코스에 딸린 러닝기록 수 반정규화해서 따로 저장해두면 굳이 Running 테이블까지 조인할 필요 없음
     JPAQuery<Course> query = queryFactory
             .selectFrom(course)
+            .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
             .leftJoin(course.member)
             .where(
                     course.isPublic.isTrue(),
                     startPointWithinBoundary(minLat, maxLat, minLng, maxLng),
                     withSearchFilters(filters)
-            );
+            )
+            .groupBy(course);
 
     // 정렬 조건 분기 처리
     if (sort == CourseSortType.DISTANCE) {
       query.orderBy(calculateDistance(curLat, curLng).asc());
     } else if (sort == CourseSortType.POPULARITY) {
-      query.leftJoin(running).on(running.course.id.eq(course.id))
-              .groupBy(course)
-              .orderBy(running.count().desc(), course.id.desc());
+      query.orderBy(running.id.count().desc(), course.id.desc());
     }
 
     return query.fetch();

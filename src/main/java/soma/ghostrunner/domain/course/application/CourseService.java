@@ -1,6 +1,7 @@
 package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -8,10 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.dto.CourseMapper;
-import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
-import soma.ghostrunner.domain.course.dto.CourseWithCoordinatesDto;
-import soma.ghostrunner.domain.course.dto.CourseWithMemberDetailsDto;
+import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
@@ -23,6 +21,7 @@ import soma.ghostrunner.global.error.ErrorCode;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CourseService {
@@ -56,6 +55,7 @@ public class CourseService {
         double maxLng = lng + lngDelta;
 
         List<Course> courses = courseRepository.findCoursesWithFilters(lat, lng, minLat, maxLat, minLng, maxLng, filters, sort);
+        log.info("CourseService::searchCourses() - found {} courses", courses.size());
 
         return courses.stream()
                 .map(courseMapper::toCourseWithCoordinateDto)
