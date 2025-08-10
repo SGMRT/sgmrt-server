@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.course.dto.response;
 public record CourseDetailedResponse (
   Long id,
   String name,
+  String telemetryUrl,
   Integer distance,
   Integer elevationGain,
   Integer elevationLoss,

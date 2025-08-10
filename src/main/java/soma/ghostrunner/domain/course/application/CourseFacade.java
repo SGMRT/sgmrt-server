@@ -52,8 +52,10 @@ public class CourseFacade {
         Course course = courseService.findCourseById(courseId);
         CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseId)
                 .orElse(new CourseRunStatisticsDto());
+        String telemetryUrl = runningQueryService.findFirstRunning(course.getId()).getTelemetryUrl();
         return courseMapper.toCourseDetailedResponse(
                 course,
+                telemetryUrl,
                 courseStatistics.getAvgCompletionTime(), courseStatistics.getAvgFinisherPace(),
                 courseStatistics.getAvgFinisherCadence(), courseStatistics.getLowestFinisherPace());
     }

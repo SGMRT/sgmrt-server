@@ -33,7 +33,7 @@ public interface CourseMapper {
                     ": null)")
     @Mapping(source = "course.courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "course.courseProfile.elevationLoss", target = "elevationLoss")
-    CourseDetailedResponse toCourseDetailedResponse(Course course,
+    CourseDetailedResponse toCourseDetailedResponse(Course course, String telemetryUrl,
                                                     Double averageCompletionTime, Double averageFinisherPace,
                                                     Double averageFinisherCadence, Double lowestFinisherPace);
 
