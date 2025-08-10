@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
-import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
+import soma.ghostrunner.domain.course.enums.GhostSortType;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
@@ -135,7 +135,7 @@ public class RunningQueryService {
     private void validateSortProperty(Pageable pageable) {
         pageable.getSort().stream()
             .forEach(order -> {
-                if(!AvailableGhostSortField.isValidField(order.getProperty())){
+                if(!GhostSortType.isValidField(order.getProperty())){
                     throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
                 };
             });

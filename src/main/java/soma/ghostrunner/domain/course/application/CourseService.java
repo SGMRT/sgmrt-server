@@ -14,6 +14,7 @@ import soma.ghostrunner.domain.course.dto.CourseWithCoordinatesDto;
 import soma.ghostrunner.domain.course.dto.CourseWithMemberDetailsDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
+import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
@@ -40,7 +41,7 @@ public class CourseService {
                 .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
     }
 
-    public List<CourseWithCoordinatesDto> searchCourses(Double lat, Double lng, Integer radiusM,
+    public List<CourseWithCoordinatesDto> searchCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                         CourseSearchFilterDto filters) {
         // 코스 검색할 직사각형 반경 계산
         // - 1도 위도 당 111km 가정 (지구 둘레 40,075km / 360도 = 약 111.3km)
@@ -54,7 +55,7 @@ public class CourseService {
         double minLng = lng - lngDelta;
         double maxLng = lng + lngDelta;
 
-        List<Course> courses = courseRepository.findCoursesWithFilters(minLat, maxLat, minLng, maxLng, filters);
+        List<Course> courses = courseRepository.findCoursesWithFilters(lat, lng, minLat, maxLat, minLng, maxLng, filters, sort);
 
         return courses.stream()
                 .map(courseMapper::toCourseWithCoordinateDto)

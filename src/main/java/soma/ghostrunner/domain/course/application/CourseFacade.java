@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
+import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
@@ -29,10 +30,10 @@ public class CourseFacade {
     private final CourseMapper courseMapper;
 
     @Transactional(readOnly = true)
-    public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM,
+    public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                          CourseSearchFilterDto filters) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
-        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(lat, lng, radiusM, filters);
+        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(lat, lng, radiusM, sort, filters);
         return courses.stream().map(course -> {
             Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
             long runnersCount = rankers.getTotalElements();

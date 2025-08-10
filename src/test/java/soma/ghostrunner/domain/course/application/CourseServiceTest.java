@@ -13,6 +13,7 @@ import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.CourseWithCoordinatesDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
+import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
@@ -54,7 +55,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseNearby1, courseNearby2, courseFar));
 
         // when
-        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, LNG, 1000, CourseSearchFilterDto.of());
+        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         // - course1, 2는 조회되고, course3은 조회되지 않는다
@@ -72,7 +73,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(course1, course2));
 
         // when
-        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, LNG, 0, CourseSearchFilterDto.of());
+        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, LNG, 0, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         Assertions.assertThat(courses).hasSize(1)
@@ -89,7 +90,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(publicCourse, privateCourse));
 
         // when
-        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, LNG, 1000, CourseSearchFilterDto.of());
+        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         Assertions.assertThat(courses).hasSize(1);
@@ -106,7 +107,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseEast, courseWest, courseFar));
 
         // when
-        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, 0d, 1000, CourseSearchFilterDto.of());
+        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, 0d, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         // 동경, 서경 코스는 모두 조회되고, 멀리 있는 코스는 조회되지 않아야 함
@@ -127,7 +128,7 @@ class CourseServiceTest extends IntegrationTestSupport {
 
         // when
         // 동경 179.9985도 지점에서 반경 1km 내 코스 검색
-        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, 179.9985, 1000, CourseSearchFilterDto.of());
+        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(LAT, 179.9985, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         // 동경 끝, 서경 끝 코스는 모두 조회되고, 멀리 있는 코스는 조회되지 않아야 함
