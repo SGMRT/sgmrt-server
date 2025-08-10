@@ -8,6 +8,7 @@ import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
+import soma.ghostrunner.domain.running.application.dto.RunningServiceMapper;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
@@ -23,7 +24,7 @@ import java.util.List;
 public class RunningCommandService {
 
     private final S3TelemetryClient s3TelemetryClient;
-    private final RunningApplicationMapper mapper;
+    private final RunningServiceMapper mapper;
 
     private final RunningRepository runningRepository;
 
