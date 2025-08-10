@@ -173,7 +173,8 @@ public class MemberService {
         MemberSettings currentSettings = memberSettingsRepository.findByMember_Uuid(memberUuid)
                 .orElse(MemberSettings.of(member));
 
-        currentSettings.updateSettings(request.getPushAlarmEnabled(), request.getVibrationEnabled());
+        currentSettings.updateSettings(request.getPushAlarmEnabled(),
+                request.getVibrationEnabled(), request.getVoiceGuidanceEnabled());
         memberSettingsRepository.save(currentSettings);
     }
 
