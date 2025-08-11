@@ -20,7 +20,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByUuid(String uuid);
 
     @Query("SELECT new soma.ghostrunner.domain.member.api.dto.response.MemberResponse(" +
-                "m.uuid, m.nickname, m.profilePictureUrl, m.bioInfo.gender, m.bioInfo.weight, " +
+                "m.uuid, m.nickname, m.profilePictureUrl, m.bioInfo.gender, m.bioInfo.age, m.bioInfo.weight, " +
                 "m.bioInfo.height, ms.pushAlarmEnabled, ms.vibrationEnabled, ms.voiceGuidanceEnabled" +
             ") FROM Member m LEFT JOIN MemberSettings ms ON m.id = ms.member.id " +
             "WHERE m.uuid = :uuid")

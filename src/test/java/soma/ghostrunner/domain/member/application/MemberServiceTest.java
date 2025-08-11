@@ -8,8 +8,13 @@ import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
+import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
+import soma.ghostrunner.domain.member.dao.MemberSettingsRepository;
+import soma.ghostrunner.domain.member.dao.TermsAgreementRepository;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
+import soma.ghostrunner.domain.member.domain.MemberSettings;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.domain.member.enums.Gender;
 import soma.ghostrunner.domain.member.exception.InvalidMemberException;
@@ -21,31 +26,29 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 class MemberServiceTest extends IntegrationTestSupport {
 
-    @Autowired
-    MemberService memberService;
+    @Autowired MemberService memberService;
+    @Autowired MemberRepository memberRepository;
+    @Autowired MemberSettingsRepository memberSettingsRepository;
+    @Autowired MemberAuthInfoRepository memberAuthInfoRepository;
+    @Autowired TermsAgreementRepository termsAgreementRepository;
+    @Autowired RunningRepository runningRepository;
+    @Autowired CourseRepository courseRepository;
 
-    @Autowired
-    MemberRepository memberRepository;
-
-    @Autowired
-    RunningRepository runningRepository;
-
-    @Autowired
-    CourseRepository courseRepository;
-
-    @DisplayName("회원가입이 성공하면 관련 엔티티도 성공적으로 저장된다.")
+    @DisplayName("회원가입 성공 시 입력한 정보대로 회원을 저장한다.")
     @Test
     void signUp_success() {
         // given
         MemberCreationRequest request = MemberCreationRequest.builder()
-                .nickname("testNickname")
+                .nickname("장원영")
                 .externalAuthId("testAuthId123")
-                .profileImageUrl("http://example.com/profile.jpg")
-                .gender(Gender.MALE)
+                .profileImageUrl("https://example.com/profile.jpg")
+                .gender(Gender.FEMALE)
+                .age(25)
                 .weight(70)
                 .height(175)
                 .termsAgreement(createTermsAgreement())
@@ -55,9 +58,51 @@ class MemberServiceTest extends IntegrationTestSupport {
         Member member = memberService.createMember(request);
 
         // then
-        Assertions.assertNotNull(member);
-        Assertions.assertNotNull(member.getId());
-        Assertions.assertEquals("testNickname", member.getNickname());
+        assertNotNull(member);
+        assertNotNull(member.getId());
+        assertNotNull(member.getUuid());
+        assertThat(member.getNickname()).isEqualTo("장원영");
+        assertThat(member.getBioInfo().getGender()).isEqualTo(Gender.FEMALE);
+        assertThat(member.getBioInfo().getAge()).isEqualTo(25);
+        assertThat(member.getBioInfo().getWeight()).isEqualTo(70);
+        assertThat(member.getBioInfo().getHeight()).isEqualTo(175);
+    }
+
+    @DisplayName("회원가입 시 인증정보, 설정, 약관동의 엔티티가 함께 저장된다.")
+    @Test
+    void signUp_success_withAssociatedEntities() {
+        // given
+        TermsAgreement termsAgreement = createTermsAgreement();
+        MemberCreationRequest request = MemberCreationRequest.builder()
+                .nickname("이상혁")
+                .externalAuthId("testAuthId123")
+                .profileImageUrl("https://example.com/profile.jpg")
+                .gender(Gender.MALE)
+                .age(25)
+                .weight(70)
+                .height(175)
+                .termsAgreement(termsAgreement)
+                .build();
+
+        // when
+        Member member = memberService.createMember(request);
+
+        // then
+        assertNotNull(member);
+
+        // - MemberAuthInfo 검증
+        MemberAuthInfo memberAuthInfo = memberAuthInfoRepository.findByMemberId(member.getId()).orElseThrow();
+        assertThat(memberAuthInfo.getExternalAuthUid()).isEqualTo("testAuthId123");
+
+        // - MemberSettings 검증
+        MemberSettings memberSettings = memberSettingsRepository.findByMember_Uuid(member.getUuid()).orElseThrow();
+        assertThat(memberSettings.isPushAlarmEnabled()).isTrue();
+        assertThat(memberSettings.isVibrationEnabled()).isTrue();
+        assertThat(memberSettings.isVoiceGuidanceEnabled()).isTrue();
+
+        // - TermsAgreement 검증
+        TermsAgreement savedTermsAgreement = termsAgreementRepository.findByMemberId(member.getId()).orElseThrow();
+        assertThat(savedTermsAgreement).isEqualTo(termsAgreement);
     }
 
     @DisplayName("중복 닉네임으로 회원가입 시 예외가 발생한다.")
@@ -67,6 +112,7 @@ class MemberServiceTest extends IntegrationTestSupport {
         MemberCreationRequest request1 = MemberCreationRequest.builder()
                 .nickname("duplicate")
                 .externalAuthId("testAuthId1")
+                .age(25)
                 .gender(Gender.MALE)
                 .termsAgreement(createTermsAgreement())
                 .build();
@@ -74,6 +120,7 @@ class MemberServiceTest extends IntegrationTestSupport {
         MemberCreationRequest request2 = MemberCreationRequest.builder()
                 .nickname("duplicate")
                 .externalAuthId("testAuthId2")
+                .age(25)
                 .gender(Gender.MALE)
                 .termsAgreement(createTermsAgreement())
                 .build();
@@ -87,7 +134,7 @@ class MemberServiceTest extends IntegrationTestSupport {
                 .hasMessageContaining("존재하는 닉네임");
     }
 
-    @DisplayName("회원 정보 수정에 성공하면 해당 내용이 반영된다")
+    @DisplayName("회원 정보 수정에 성공하면 변경한 내용이 반영된다.")
     @Test
     void updateMember_success() {
         // given
@@ -95,10 +142,10 @@ class MemberServiceTest extends IntegrationTestSupport {
         String uuid = member.getUuid();
         memberRepository.save(member);
         MemberUpdateRequest request = new MemberUpdateRequest(
-                "카리나", Gender.FEMALE, 175, 70, "https://testUrl.com/picture.jpg",
+                "카리나", Gender.FEMALE, 175, 70, 26, "https://testUrl.com/picture.jpg",
                 Set.of(MemberUpdateRequest.UpdatedAttr.NICKNAME, MemberUpdateRequest.UpdatedAttr.GENDER,
-                MemberUpdateRequest.UpdatedAttr.HEIGHT, MemberUpdateRequest.UpdatedAttr.WEIGHT,
-                MemberUpdateRequest.UpdatedAttr.PROFILE_IMAGE_URL));
+                MemberUpdateRequest.UpdatedAttr.AGE, MemberUpdateRequest.UpdatedAttr.HEIGHT,
+                MemberUpdateRequest.UpdatedAttr.WEIGHT, MemberUpdateRequest.UpdatedAttr.PROFILE_IMAGE_URL));
 
         // when
         memberService.updateMember(uuid, request);
@@ -112,16 +159,19 @@ class MemberServiceTest extends IntegrationTestSupport {
         assertThat(updatedMember.getProfilePictureUrl()).isEqualTo("https://testUrl.com/picture.jpg");
     }
 
-    @DisplayName("회원 정보 수정 시 updateAttr에 명시한 필드만 수정된다")
+    @DisplayName("회원 정보 수정 시 updateAttr에 명시한 필드만 수정된다.")
     @Test
     void updateMember_specifiedAttrOnly() {
         // given
         Member member = createMember("아이유");
         String uuid = member.getUuid();
         memberRepository.save(member);
-        MemberUpdateRequest request = new MemberUpdateRequest(
-                "이상혁", null, 200, null, null,
-                Set.of(MemberUpdateRequest.UpdatedAttr.NICKNAME));
+        // 변경할 필드에 nickname만 명시한다
+        MemberUpdateRequest request = MemberUpdateRequest.builder()
+                .nickname("이상혁")
+                .height(200)
+                .updateAttrs(Set.of(MemberUpdateRequest.UpdatedAttr.NICKNAME))
+                .build();
 
         // when
         memberService.updateMember(uuid, request);
@@ -136,7 +186,7 @@ class MemberServiceTest extends IntegrationTestSupport {
         assertThat(updatedMember.getProfilePictureUrl()).isEqualTo(member.getProfilePictureUrl());
     }
 
-    @DisplayName("회원 정보 수정 시 중복 닉네임으로 변경하면 예외가 발생한다")
+    @DisplayName("회원 정보 수정 시 닉네임이 중복이면 예외가 발생한다.")
     @Test
     void updateMember_duplicateNickname() {
         // given
@@ -146,8 +196,10 @@ class MemberServiceTest extends IntegrationTestSupport {
         Member member2 = createMember("유나아님");
         memberRepository.save(member2);
         String uuid = member2.getUuid();
-        MemberUpdateRequest request = new MemberUpdateRequest("유나", null, null, null, null,
-                Set.of(MemberUpdateRequest.UpdatedAttr.NICKNAME));
+        MemberUpdateRequest request = MemberUpdateRequest.builder()
+                .nickname("유나")
+                .updateAttrs(Set.of(MemberUpdateRequest.UpdatedAttr.NICKNAME))
+                .build();
 
         // when & then
         assertThatThrownBy(() -> memberService.updateMember(uuid, request))

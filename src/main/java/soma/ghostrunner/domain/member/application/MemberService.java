@@ -7,7 +7,6 @@ import soma.ghostrunner.clients.aws.presign.S3PresignUrlClient;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
-import soma.ghostrunner.domain.member.api.dto.request.ProfileImageUploadRequest;
 import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
 import soma.ghostrunner.domain.member.dao.MemberSettingsRepository;
 import soma.ghostrunner.domain.member.domain.*;
@@ -20,14 +19,12 @@ import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.dao.TermsAgreementRepository;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
-import soma.ghostrunner.domain.member.exception.MemberSettingsNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.error.exception.BusinessException;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Set;
-import java.util.UUID;
 
 import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 
@@ -74,6 +71,7 @@ public class MemberService {
         Gender gender = member.getBioInfo().getGender();
         Integer weight = member.getBioInfo().getWeight();
         Integer height = member.getBioInfo().getHeight();
+        Integer age = member.getBioInfo().getAge();
         for(MemberUpdateRequest.UpdatedAttr attr : request.getUpdateAttrs()) {
             switch(attr) {
                 case NICKNAME:
@@ -82,6 +80,9 @@ public class MemberService {
                     break;
                 case GENDER:
                     gender = request.getGender();
+                    break;
+                case AGE:
+                    age = request.getAge();
                     break;
                 case HEIGHT:
                     verifyHeight(request.getHeight());
@@ -98,7 +99,7 @@ public class MemberService {
             }
         }
 
-        member.updateBioInfo(gender, weight, height);
+        member.updateBioInfo(gender, age, weight, height);
     }
 
     private void verifyImageUrl(String profileImageUrl) {
@@ -138,6 +139,7 @@ public class MemberService {
         Member member = Member.builder()
                 .nickname(creationRequest.getNickname())
                 .bioInfo(new MemberBioInfo(creationRequest.getGender(),
+                                           creationRequest.getAge(),
                                            creationRequest.getWeight(),
                                            creationRequest.getHeight()))
                 .profilePictureUrl(creationRequest.getProfileImageUrl())

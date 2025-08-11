@@ -7,6 +7,7 @@ public record MemberResponse (
         String nickname,
         String profilePictureUrl,
         Gender gender,
+        Integer age,
         Integer weight,
         Integer height,
         Boolean pushAlarmEnabled,
