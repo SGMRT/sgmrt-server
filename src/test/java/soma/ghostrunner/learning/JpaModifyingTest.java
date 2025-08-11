@@ -97,7 +97,9 @@ public class JpaModifyingTest extends IntegrationTestSupport {
     }
 
     private Running createRunning(Member testMember, Course testCourse) {
-        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
+        RunningRecord testRunningRecord = RunningRecord.of(
+                5.2, 40.0, 20.0, 5.1,
+                6.1, 4.9, 6.9, 3423L, 302, 120, 56);
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, null, testRunningRecord, 1750729987181L,
                 true, false, "URL", "URL", "URL", testMember, testCourse);
     }
@@ -110,7 +112,7 @@ public class JpaModifyingTest extends IntegrationTestSupport {
         CourseProfile testCourseProfile = createCourseProfile();
         Coordinate testCoordinate = createStartPoint();
         return Course.of(member, testCourseProfile.getDistance(),
-                testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
                 testCoordinate.getLatitude(), testCoordinate.getLongitude(), "Mock URL");
     }
 
@@ -119,7 +121,7 @@ public class JpaModifyingTest extends IntegrationTestSupport {
     }
 
     private CourseProfile createCourseProfile() {
-        return CourseProfile.of(5.2, 40, -10);
+        return CourseProfile.of(5.2, 40.0, 40.1, -10.0);
     }
 
 }

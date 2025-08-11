@@ -3,7 +3,7 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import soma.ghostrunner.clients.aws.upload.S3TelemetryClient;
+import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.support.CoordinateConverter;
@@ -18,7 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RunningTelemetryQueryService {
 
-    private final S3TelemetryClient s3TelemetryClient;
+    private final GhostRunnerS3Client ghostRunnerS3Client;
 
     public List<TelemetryDto> findTotalTelemetries(Long runningId, String telemetryUrl) {
         List<String> stringTelemetries = downloadTelemetries(runningId, telemetryUrl);

@@ -34,7 +34,7 @@ public class Course extends BaseTimeEntity {
     @Column
     private Boolean isPublic = false;
 
-    @Column(name = "path_data_saved_url", columnDefinition = "LONGTEXT")
+    @Column(name = "path_data_saved_url")
     private String pathDataSavedUrl;
 
     @Builder(access = AccessLevel.PRIVATE)
@@ -48,10 +48,11 @@ public class Course extends BaseTimeEntity {
         this.isPublic = isPublic;
     }
 
-    public static Course of(Member member, Double distance, Integer elevationGain, Integer elevationLoss,
+    public static Course of(Member member, Double distance,
+                            Double elevationAverage, Double elevationGain, Double elevationLoss,
                             Double startLatitude, Double startLongitude, String pathDataSavedUrl) {
 
-        CourseProfile courseProfile = CourseProfile.of(distance, elevationGain, elevationLoss);
+        CourseProfile courseProfile = CourseProfile.of(distance, elevationAverage, elevationGain, elevationLoss);
         Coordinate startCoordinate = Coordinate.of(startLatitude, startLongitude);
 
         return Course.builder()

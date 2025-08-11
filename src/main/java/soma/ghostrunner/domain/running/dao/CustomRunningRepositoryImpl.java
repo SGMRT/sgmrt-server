@@ -54,7 +54,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                         running.runningRecord.elevationGain,
                                         running.runningRecord.elevationLoss
                                 ),
-                                running.runningDataUrls.simplifiedTelemetrySavedUrl
+                                running.runningDataUrls.interpolatedTelemetrySavedUrl
                         ))
                         .from(running)
                         .join(running.course, course)
@@ -94,7 +94,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                                 running.runningRecord.elevationLoss
                                         )),
                                 running.ghostRunningId,
-                                running.runningDataUrls.simplifiedTelemetrySavedUrl
+                                running.runningDataUrls.interpolatedTelemetrySavedUrl
                         ))
                         .from(running)
                         .join(running.course, course)

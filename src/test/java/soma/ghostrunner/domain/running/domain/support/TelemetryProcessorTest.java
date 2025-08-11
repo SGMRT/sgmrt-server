@@ -9,6 +9,8 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
+import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+import soma.ghostrunner.domain.running.exception.TelemetryCalculationException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -17,7 +19,7 @@ import java.util.Random;
 
 class TelemetryProcessorTest {
 
-    @DisplayName(".jsonl Multipart 파일을 역직렬화 후 상대 시간 변환, 좌표 수집, 최고 / 최저 속도를 계산한다.")
+    @DisplayName(".jsonl Multipart 파일을 역직렬화 후 상대 시간 변환, 좌표 수집, 최고 / 최저 속도, 평균 고도를 계산한다.")
     @Test
     void processTelemetryTest() throws Exception {
         // given
@@ -40,6 +42,7 @@ class TelemetryProcessorTest {
 
         Assertions.assertThat(processedTelemetry.lowestPace()).isEqualTo(5.0);
         Assertions.assertThat(processedTelemetry.highestPace()).isEqualTo(14.0);
+        Assertions.assertThat(processedTelemetry.avgElevation()).isEqualTo(4.5);
     }
 
     @DisplayName(".jsonl Multipart 파일이 비어있다면 예외를 발생한다.")
@@ -66,7 +69,7 @@ class TelemetryProcessorTest {
                     126.9780 + i * 0.0001,        // 경도
                     i * 10.0,                    // 거리 (예: 10m 단위)
                     5.0 + i,         // 페이스
-                    30 + i,     // 고도
+                    30.0 + i,     // 고도
                     150 + random.nextInt(10),    // 케이던스
                     120 + random.nextInt(20),    // 심박수
                     i % 2 == 0                   // 달리는 중 여부
@@ -91,6 +94,40 @@ class TelemetryProcessorTest {
                 "application/json",
                 sb.toString().getBytes(StandardCharsets.UTF_8)
         );
+    }
+
+    @DisplayName("BPM, Pace, Cadence, Distance 중 마이너스 값이 있다면 예외를 발생한다.")
+    @Test
+    void processMinusTelemetryTest() throws Exception {
+        // given
+        Long startedAt = 1750729987181L;
+        List<TelemetryDto> telemetryList = createMinusTelemetryDtos(startedAt);
+        MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
+
+        // when // then
+        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessage("마이너스 값이 포함되어 있습니다.");
+    }
+
+    private List<TelemetryDto> createMinusTelemetryDtos(Long startedAt) {
+        List<TelemetryDto> telemetryList = new ArrayList<>();
+        Random random = new Random();
+        for (int i = 0; i < 10; i++) {
+            TelemetryDto telemetry = new TelemetryDto(
+                    startedAt + (i*5),     // 5초 간격
+                    37.5665 + i * 0.0001,         // 위도
+                    126.9780 + i * 0.0001,        // 경도
+                    i * 10.0,                    // 거리 (예: 10m 단위)
+                    - 5.0 + i,         // 페이스
+                    30.0 + i,     // 고도
+                    - 150 + random.nextInt(10),    // 케이던스
+                    120 + random.nextInt(20),    // 심박수
+                    i % 2 == 0                   // 달리는 중 여부
+            );
+            telemetryList.add(telemetry);
+        }
+        return telemetryList;
     }
 
 }

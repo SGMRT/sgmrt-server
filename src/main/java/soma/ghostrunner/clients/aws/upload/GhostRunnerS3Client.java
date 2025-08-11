@@ -10,6 +10,8 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.error.exception.ExternalIOException;
 
@@ -21,7 +23,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class S3TelemetryClient {
+public class GhostRunnerS3Client {
 
     private final ObjectMapper objectMapper;
     private final S3Client s3Client;
@@ -38,11 +40,19 @@ public class S3TelemetryClient {
     @Value("${s3.member-directory")
     private String memberDirectory;
 
-    public String uploadSimplifiedTelemetry(List<?> interpolatedTelemetry, String memberUuid) {
-        String fileName = String.format("%s/%s/%s.jsonl", courseDirectory, memberUuid, UUID.randomUUID());
+    public String uploadInterpolatedTelemetry(List<TelemetryDto> telemetryDtos, String memberUuid) {
+        return uploadObjectList(telemetryDtos, runningDirectory, memberUuid);
+    }
+
+    public String uploadSimplifiedTelemetry(List<CoordinateDto> coordinateDtos, String memberUuid) {
+        return uploadObjectList(coordinateDtos, courseDirectory, memberUuid);
+    }
+
+    private String uploadObjectList(List<?> objectList, String directory, String memberUuid) {
+        String fileName = String.format("%s/%s/%s.jsonl", directory, memberUuid, UUID.randomUUID());
 
         try {
-            String jsonlContent = interpolatedTelemetry.stream()
+            String jsonlContent = objectList.stream()
                     .map(item -> {
                         try {
                             return objectMapper.writeValueAsString(item);

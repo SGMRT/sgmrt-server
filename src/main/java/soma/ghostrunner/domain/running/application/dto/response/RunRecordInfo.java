@@ -22,7 +22,7 @@ public class RunRecordInfo {
 
     @QueryProjection
     public RunRecordInfo(Double distance, Long duration, Integer cadence, Integer bpm, Integer calories,
-                         Double averagePace, Double highestPace, Double lowestPace, Integer elevationGain, Integer elevationLoss) {
+                         Double averagePace, Double highestPace, Double lowestPace, Double elevationGain, Double elevationLoss) {
         this.distance = distance;
         this.duration = duration;
         this.cadence = cadence;
@@ -31,9 +31,9 @@ public class RunRecordInfo {
         this.averagePace = averagePace;
         this.highestPace = highestPace;
         this.lowestPace = lowestPace;
-        this.elevationGain = elevationGain;
-        this.elevationLoss = elevationLoss;
-        this.totalElevation = elevationGain + elevationLoss;
+        this.elevationGain = (int) Math.round(elevationGain);
+        this.elevationLoss = (int) Math.round(elevationLoss);
+        this.totalElevation = (int) Math.round(elevationGain + elevationLoss);
     }
 
     @QueryProjection

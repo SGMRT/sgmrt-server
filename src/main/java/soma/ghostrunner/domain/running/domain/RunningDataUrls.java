@@ -16,24 +16,24 @@ public class RunningDataUrls {
     private String rawTelemetrySavedUrl;
 
     @Column(name = "interpolated_telemetry_saved_url", nullable = false, length = 2048)
-    private String simplifiedTelemetrySavedUrl;
+    private String interpolatedTelemetrySavedUrl;
 
     @Column(name = "screen_shot_saved_url")
     private String screenShotSavedUrl;
 
     @Builder(access = AccessLevel.PRIVATE)
     public RunningDataUrls(String rawTelemetrySavedUrl,
-                           String simplifiedTelemetrySavedUrl, String screenshotSavedUrl) {
+                           String interpolatedTelemetrySavedUrl, String screenshotSavedUrl) {
         this.rawTelemetrySavedUrl = rawTelemetrySavedUrl;
-        this.simplifiedTelemetrySavedUrl = simplifiedTelemetrySavedUrl;
+        this.interpolatedTelemetrySavedUrl = interpolatedTelemetrySavedUrl;
         this.screenShotSavedUrl = screenshotSavedUrl;
     }
 
     static RunningDataUrls of(String rawTelemetrySavedUrl,
-                              String simplifiedTelemetrySavedUrl, String screenshotSavedUrl) {
+                              String interpolatedTelemetrySavedUrl, String screenshotSavedUrl) {
         return RunningDataUrls.builder()
                 .rawTelemetrySavedUrl(rawTelemetrySavedUrl)
-                .simplifiedTelemetrySavedUrl(simplifiedTelemetrySavedUrl)
+                .interpolatedTelemetrySavedUrl(interpolatedTelemetrySavedUrl)
                 .screenshotSavedUrl(screenshotSavedUrl)
                 .build();
     }

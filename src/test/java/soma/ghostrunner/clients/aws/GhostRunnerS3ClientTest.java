@@ -16,13 +16,14 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Utilities;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import soma.ghostrunner.clients.aws.upload.S3TelemetryClient;
+import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
+import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 
 
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -30,7 +31,7 @@ import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
-class S3TelemetryClientTest {
+class GhostRunnerS3ClientTest {
 
     @Mock
     private S3Client s3Client;
@@ -38,12 +39,12 @@ class S3TelemetryClientTest {
     private S3Utilities s3Utilities;
 
     private ObjectMapper objectMapper;
-    private S3TelemetryClient sut;
+    private GhostRunnerS3Client sut;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        sut = new S3TelemetryClient(objectMapper, s3Client);
+        sut = new GhostRunnerS3Client(objectMapper, s3Client);
 
         // @Value 주입 대체
         ReflectionTestUtils.setField(sut, "s3Bucket", "test-bucket");
@@ -61,12 +62,16 @@ class S3TelemetryClientTest {
     }
 
     @Test
-    @DisplayName("해상도를 줄인 코스 시계열 데이터를 S3에 업로드한다.")
-    void uploadSimplifiedTelemetry() throws Exception {
+    @DisplayName("프론트엔드 단에서 보간한 러닝 시계열 데이터를 S3에 업로드한다.")
+    void uploadInterpolatedTelemetry() {
         // given
-        List<Map<String, Object>> telemetry = List.of(
-                Map.of("timeStamp", 0, "lat", 37.1, "lng", 127.2),
-                Map.of("timeStamp", 1000, "lat", 37.2, "lng", 127.3)
+        List<TelemetryDto> telemetryDtos = List.of(
+                new TelemetryDto(0L, 37.1, 36.3, 5.0, 5.5, 110.0, 120, 130, true),
+                new TelemetryDto(0L, 37.2, 36.4, 5.1, 5.6, 111.0, 121, 131, true),
+                new TelemetryDto(0L, 37.3, 36.5, 5.2, 5.7, 112.0, 122, 132, true),
+                new TelemetryDto(0L, 37.4, 36.6, 5.3, 5.8, 113.0, 123, 133, true),
+                new TelemetryDto(0L, 37.5, 36.7, 5.4, 5.6, 114.0, 124, 134, true),
+                new TelemetryDto(0L, 37.6, 36.8, 5.5, 6.0, 115.0, 125, 135, false)
         );
 
         // putObject stubbing (리턴 타입 반영)
@@ -74,7 +79,37 @@ class S3TelemetryClientTest {
                 .willReturn(software.amazon.awssdk.services.s3.model.PutObjectResponse.builder().build());
 
         // when
-        String url = sut.uploadSimplifiedTelemetry(telemetry, "member-uuid-123");
+        String url = sut.uploadInterpolatedTelemetry(telemetryDtos, "member-uuid-123");
+
+        // then: 호출 검증 + 캡처
+        ArgumentCaptor<PutObjectRequest> reqCap = ArgumentCaptor.forClass(PutObjectRequest.class);
+        verify(s3Client, times(1)).putObject(reqCap.capture(), any(RequestBody.class));
+
+        PutObjectRequest req = reqCap.getValue();
+        assertThat(req.bucket()).isEqualTo("test-bucket");
+        assertThat(req.contentType()).isEqualTo("application/jsonl");
+        assertThat(req.key()).startsWith("running/member-uuid-123/").endsWith(".jsonl");
+        assertThat(url).isEqualTo("https://test-bucket.s3.amazonaws.com/" + req.key());
+    }
+
+    @Test
+    @DisplayName("해상도를 줄인 코스 시계열 데이터를 S3에 업로드한다.")
+    void uploadSimplifiedTelemetry() {
+        // given
+        List<CoordinateDto> coordinateDtos = List.of(
+                new CoordinateDto(37.1, 36.3),
+                new CoordinateDto(37.2, 36.4),
+                new CoordinateDto(37.3, 36.5),
+                new CoordinateDto(37.4, 36.6),
+                new CoordinateDto(37.5, 36.7)
+        );
+
+        // putObject stubbing (리턴 타입 반영)
+        given(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .willReturn(software.amazon.awssdk.services.s3.model.PutObjectResponse.builder().build());
+
+        // when
+        String url = sut.uploadSimplifiedTelemetry(coordinateDtos, "member-uuid-123");
 
         // then: 호출 검증 + 캡처
         ArgumentCaptor<PutObjectRequest> reqCap = ArgumentCaptor.forClass(PutObjectRequest.class);

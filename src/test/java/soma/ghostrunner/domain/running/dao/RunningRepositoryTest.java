@@ -60,7 +60,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     }
 
     private Running createRunning(Member testMember, Course testCourse) {
-        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
+        RunningRecord testRunningRecord = RunningRecord.of(5.2, 30.0, 40.0, -20.0,
+                6.1, 4.9, 6.9, 3423L, 302, 120, 56);
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, null, testRunningRecord, 1750729987181L,
                 true, false, "URL", "URL", "URL", testMember, testCourse);
     }
@@ -73,9 +74,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         CourseProfile testCourseProfile = createCourseProfile();
         Coordinate testCoordinate = createStartPoint();
         return Course.of(testMember, testCourseProfile.getDistance(),
-                testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
-                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
-                createCoordinatesTelemetries());
+                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(), createCoordinatesTelemetries());
     }
 
     private String createCoordinatesTelemetries() {
@@ -87,7 +87,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     }
 
     private CourseProfile createCourseProfile() {
-        return CourseProfile.of(5.2, 40, -10);
+        return CourseProfile.of(5.2, 30.0, 40.0, -10.0);
     }
 
     @DisplayName("러닝 ID와 멤버 ID로 러닝을 조회한다.")
@@ -149,11 +149,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when
-        String url = runningRepository.findById(running.getId()).get().getRunningDataUrls().getSimplifiedTelemetrySavedUrl();
+        String url = runningRepository.findById(running.getId()).get().getRunningDataUrls().getInterpolatedTelemetrySavedUrl();
 
         // then
         Assertions.assertThat(url)
-                .isEqualTo(running.getRunningDataUrls().getSimplifiedTelemetrySavedUrl());
+                .isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
     }
 
     @DisplayName("기존 코스를 기반으로 혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
@@ -180,7 +180,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getName()).isEqualTo(running1.getCourse().getName());
         Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getRunnersCount()).isEqualTo(2);
         Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl())
-                .isEqualTo(running1.getRunningDataUrls().getSimplifiedTelemetrySavedUrl());
+                .isEqualTo(running1.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance())
                 .isEqualTo(running1.getRunningRecord().getDistance());
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration())
@@ -188,7 +188,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     }
 
     private Running createSoloRunning(Member testMember, Course testCourse) {
-        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
+        RunningRecord testRunningRecord = RunningRecord.of(5.2, 30.0, 40.0, -20.0,
+                6.1, 4.9, 6.9, 3423L, 302, 120, 56);
         return Running.of("테스트 러닝 제목", RunningMode.SOLO, null, testRunningRecord, 1750729987181L,
                 true, false, "URL", "URL", "URL", testMember, testCourse);
     }
@@ -197,9 +198,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         CourseProfile testCourseProfile = createCourseProfile();
         Coordinate testCoordinate = createStartPoint();
         Course course = Course.of(testMember, testCourseProfile.getDistance(),
-                testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
-                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
-                createCoordinatesTelemetries());
+                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(), createCoordinatesTelemetries());
         course.setName(courseName);
         return course;
     }
@@ -240,7 +240,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDistance()).isEqualTo(running.getRunningRecord().getDistance());
         Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDuration()).isEqualTo(running.getRunningRecord().getDuration());
-        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getRunningDataUrls().getSimplifiedTelemetrySavedUrl());
+        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
 
         Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getName()).isEqualTo("테스트 코스");
 
@@ -248,7 +248,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     }
 
     private Running createGhostRunning(Member testMember, Course testCourse, Long ghostRunningId) {
-        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
+        RunningRecord testRunningRecord = RunningRecord.of(5.2, 30.0, 40.0, -20.0,
+                6.1, 4.9, 6.9, 3423L, 302, 120, 56);
         return Running.of("테스트 러닝 제목", RunningMode.GHOST, ghostRunningId, testRunningRecord, 1750729987181L,
                 true, false, "URL", "URL", "URL", testMember, testCourse);
     }
@@ -294,7 +295,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         String url = runningRepository.findTelemetryUrlById(running.getId(), member.getUuid()).get();
 
         // then
-        Assertions.assertThat(url).isEqualTo(running.getRunningDataUrls().getSimplifiedTelemetrySavedUrl());
+        Assertions.assertThat(url).isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
     }
 
     @DisplayName("코스에 대해 첫 번째 러닝 기록을 조회한다.")
@@ -350,7 +351,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     }
 
     private Running createRunning(Member testMember, Course testCourse, String runningName) {
-        RunningRecord testRunningRecord = RunningRecord.of(5.2, 40, -20, 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
+        RunningRecord testRunningRecord = RunningRecord.of(5.2, 30.0, 40.0, -20.0,
+                6.1, 4.9, 6.9, 3423L, 302, 120, 56);
         return Running.of(runningName, RunningMode.SOLO, null, testRunningRecord, 1750729987181L,
                 true, false, "URL","URL","URL", testMember, testCourse);
     }
@@ -377,8 +379,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         // then
         List<Running> runnings = runningRepository.findByIds(List.of(running1.getId(), running2.getId(),
                 running3.getId(), running4.getId()));
-        Assertions.assertThat(runnings)
-                .hasSize(0);
+        Assertions.assertThat(runnings).hasSize(0);
 
         List<Running> deletedRunnings = runningRepository.findByIdsNoMatterDeleted(List.of(running1.getId(),
                 running2.getId(), running3.getId(), running4.getId()));
@@ -470,7 +471,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     }
 
     private RunningRecord createRunningRecord() {
-        return RunningRecord.of(5.2, 40, -20, 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
+        return RunningRecord.of(5.2, 30.0, 40.0, -20.0,
+                6.1, 3423.2, 302.2, 120L, 56, 100, 120);
     }
 
     @DisplayName("코스명, 러닝 ID를 기준으로 커서 페이징 방식을 활용해 조회한다.")

@@ -17,9 +17,7 @@ public interface RunningServiceMapper {
 
     default Running toRunning(CreateRunCommand command,
                               ProcessedTelemetriesDto processedTelemetry,
-                              String rawTelemetrySavedUrl,
-                              String simplifiedTelemetrySavedUrl,
-                              String screenShotSavedUrl,
+                              RunningDataUrlsDto runningDataUrlsDto,
                               Member member,
                               Course course) {
 
@@ -34,9 +32,9 @@ public interface RunningServiceMapper {
                 command.startedAt(),
                 command.isPublic(),
                 command.hasPaused(),
-                rawTelemetrySavedUrl,
-                simplifiedTelemetrySavedUrl,
-                screenShotSavedUrl,
+                runningDataUrlsDto.rawTelemetrySavedUrl(),
+                runningDataUrlsDto.interpolatedTelemetrySavedUrl(),
+                runningDataUrlsDto.screenShotSavedUrl(),
                 member,
                 course
         );
@@ -46,6 +44,7 @@ public interface RunningServiceMapper {
 
         return RunningRecord.of(
                 record.distance(),
+                processedTelemetry.avgElevation(),
                 record.elevationGain(),
                 record.elevationLoss(),
                 record.avgPace(),
@@ -60,18 +59,20 @@ public interface RunningServiceMapper {
 
     default Course toCourse(Member member,
                             CreateRunCommand createRunCommand,
-                            CoordinateDto coordinateDto,
+                            ProcessedTelemetriesDto processedTelemetry,
                             String pathDataSavedUrl) {
 
         Double distance = createRunCommand.record().distance();
-        Integer elevationGain = createRunCommand.record().elevationGain();
-        Integer elevationLoss = createRunCommand.record().elevationLoss();
-        Double startLat = coordinateDto.lat();
-        Double startLng = coordinateDto.lng();
+        Double elevationAverage = processedTelemetry.avgElevation();
+        Double elevationGain = createRunCommand.record().elevationGain();
+        Double elevationLoss = createRunCommand.record().elevationLoss();
+        Double startLat = processedTelemetry.startPoint().lat();
+        Double startLng = processedTelemetry.startPoint().lng();
 
         return Course.of(
                 member,
                 distance,
+                elevationAverage,
                 elevationGain,
                 elevationLoss,
                 startLat,

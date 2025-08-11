@@ -36,7 +36,7 @@ class RunningTest {
         CourseProfile testCourseProfile = createCourseProfile();
         Coordinate testCoordinate = createStartPoint();
         return Course.of(member, testCourseProfile.getDistance(),
-                testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
                 testCoordinate.getLatitude(), testCoordinate.getLongitude(), "Mock URL");
     }
 
@@ -45,7 +45,7 @@ class RunningTest {
     }
 
     private CourseProfile createCourseProfile() {
-        return CourseProfile.of(5.2, 40, -20);
+        return CourseProfile.of(5.2, 30.0, 40.0, -20.0);
     }
 
     private Running createRunning(String runningName, Member testMember, Course testCourse) {
@@ -55,8 +55,8 @@ class RunningTest {
 
     private RunningRecord createRunningRecord() {
         return RunningRecord.of(
-                5.2, 40, -20, 6.1, 3423.2,
-                302.2, 120L, 56, 100, 120);
+                5.2, 40.0, 30.0, -20.0,
+                6.1, 3423.2, 302.2, 120L, 56, 100, 120);
     }
 
     @DisplayName("공개/비공개 설정을 변경한다.")
@@ -101,7 +101,7 @@ class RunningTest {
 
     @DisplayName("뛰었던 코스의 ID인지 검증한다.")
     @Test
-    void verifyCourseId() {
+    void validateBelongsToCourse() {
         // given
         Member member = createMember();
         Course course = createCourse(member);
@@ -109,7 +109,7 @@ class RunningTest {
         Running running = createRunning("테스트 러닝제목", member, course);
 
         // when // then
-        running.verifyCourseId(100L);
+        running.validateBelongsToCourse(100L);
     }
 
     @DisplayName("뛰었던 코스의 ID가 아니거나 NULL이라면 예외를 발생한다.")
@@ -122,11 +122,11 @@ class RunningTest {
         Running running = createRunning("테스트 러닝제목", member, course);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> running.verifyCourseId(101L))
+        Assertions.assertThatThrownBy(() -> running.validateBelongsToCourse(101L))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("고스트가 뛴 코스가 아닙니다.");
 
-        Assertions.assertThatThrownBy(() -> running.verifyCourseId(null))
+        Assertions.assertThatThrownBy(() -> running.validateBelongsToCourse(null))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("고스트가 뛴 코스가 아닙니다.");
     }

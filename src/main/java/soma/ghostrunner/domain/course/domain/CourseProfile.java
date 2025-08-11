@@ -15,22 +15,27 @@ public class CourseProfile {
     @Column(name = "distance_km", nullable = false)
     private Double distance;
 
-    @NotEmpty @Column(name = "elevation_gain_m")
-    private Integer elevationGain;
+    @Column(name = "elevation_average_m")
+    private Double elevationAverage;
 
-    @NotEmpty @Column(name = "elevation_loss_m")
-    private Integer elevationLoss;
+    @Column(name = "elevation_gain_m")
+    private Double elevationGain;
+
+    @Column(name = "elevation_loss_m")
+    private Double elevationLoss;
 
     @Builder
-    private CourseProfile(Double distance, Integer elevationGain, Integer elevationLoss) {
+    private CourseProfile(Double distance, Double elevationAverage, Double elevationGain, Double elevationLoss) {
         this.distance = distance;
+        this.elevationAverage = elevationAverage;
         this.elevationGain = elevationGain;
         this.elevationLoss = elevationLoss;
     }
 
-    public static CourseProfile of(Double distance, Integer  elevationGain, Integer elevationLoss) {
+    public static CourseProfile of(Double distance, Double elevationAverage, Double elevationGain, Double elevationLoss) {
         return CourseProfile.builder()
                 .distance(distance)
+                .elevationAverage(elevationAverage)
                 .elevationGain(elevationGain)
                 .elevationLoss(elevationLoss)
                 .build();

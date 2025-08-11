@@ -14,7 +14,7 @@ public class TelemetryDto {
     private Double lng;
     private Double dist;
     private Double pace;
-    private Integer alt;
+    private Double alt;
     private Integer cadence;
     private Integer bpm;
     private Boolean isRunning;

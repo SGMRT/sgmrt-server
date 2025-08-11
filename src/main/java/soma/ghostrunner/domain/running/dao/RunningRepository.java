@@ -21,7 +21,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
 
     Optional<Running> findByIdAndMemberId(Long runningId, Long memberId);
 
-    @Query("select r.telemetryUrl from Running r join r.member m where r.id = :runningId and m.uuid = :memberUuid")
+    @Query("select r.runningDataUrls.interpolatedTelemetrySavedUrl from Running r join r.member m where r.id = :runningId and m.uuid = :memberUuid")
     Optional<String> findTelemetryUrlById(Long runningId, String memberUuid);
 
     @Query("SELECT r FROM Running r JOIN FETCH r.member "
@@ -43,7 +43,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
     List<Running> findByIds(List<Long> runningIds);
 
     @Query(
-            value = "select * from running_record r where r.id in :runningIds",
+            value = "select * from running r where r.id in :runningIds",
             nativeQuery = true
     )
     List<Running> findByIdsNoMatterDeleted(@Param("runningIds") List<Long> runningIds);

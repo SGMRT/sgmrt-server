@@ -127,7 +127,7 @@ public class Running extends BaseTimeEntity {
         }
     }
 
-    public void verifyCourseId(Long courseId) {
+    public void validateBelongsToCourse(Long courseId) {
         boolean isInvalid = (courseId == null || !courseId.equals(this.course.getId()));
         if (isInvalid) {
             throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "고스트가 뛴 코스가 아닙니다.");

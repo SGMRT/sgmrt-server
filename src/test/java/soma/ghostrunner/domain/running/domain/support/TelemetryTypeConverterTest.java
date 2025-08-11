@@ -35,7 +35,7 @@ class TelemetryTypeConverterTest {
         List<TelemetryDto> telemetryDtos = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             telemetryDtos.add(new TelemetryDto(100L + i, 36.2 + i, 37.3 + i, 10.1 + i,
-                    6.4 + i, 110 + i, 120 + i, 110 + i, true));
+                    6.4 + i, 110.0 + i, 120 + i, 110 + i, true));
         }
         return telemetryDtos;
     }

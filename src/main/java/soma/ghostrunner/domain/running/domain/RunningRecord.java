@@ -15,11 +15,14 @@ public class RunningRecord {
     @Column(name = "distance_km")
     private Double distance;
 
+    @Column(name = "elevation_average_m")
+    private Double elevationAverage;
+
     @Column(name = "elevation_gain_m")
-    private Integer elevationGain;
+    private Double elevationGain;
 
     @Column(name = "elevation_loss_m")
-    private Integer elevationLoss;
+    private Double elevationLoss;
 
     @Column(name = "average_pace_min/km")
     private Double averagePace;
@@ -43,9 +46,12 @@ public class RunningRecord {
     private Integer bpm;
 
     @Builder(access = AccessLevel.PRIVATE)
-    private RunningRecord(double distance, int elevationGain, int elevationLoss, double averagePace,
-                          double highestPace, double lowestPace, long duration, int burnedCalories, int cadence, int bpm) {
+    private RunningRecord(Double distance,
+                          Double elevationAverage, Double elevationGain, Double elevationLoss,
+                          Double averagePace, Double highestPace, Double lowestPace,
+                          Long duration, Integer burnedCalories, Integer cadence, Integer bpm) {
         this.distance = distance;
+        this.elevationAverage = elevationAverage;
         this.elevationGain = elevationGain;
         this.elevationLoss = elevationLoss;
         this.averagePace = averagePace;
@@ -57,10 +63,13 @@ public class RunningRecord {
         this.bpm = bpm;
     }
 
-    public static RunningRecord of(Double distance, Integer elevationGain, Integer elevationLoss, Double averagePace,
-                                   Double highestPace, Double lowestPace, Long duration, Integer burnedCalories, Integer cadence, Integer bpm) {
+    public static RunningRecord of(Double distance,
+                                   Double elevationAverage, Double elevationGain, Double elevationLoss,
+                                   Double averagePace, Double highestPace, Double lowestPace,
+                                   Long duration, Integer burnedCalories, Integer cadence, Integer bpm) {
         return RunningRecord.builder()
                 .distance(distance)
+                .elevationAverage(elevationAverage)
                 .elevationGain(elevationGain)
                 .elevationLoss(elevationLoss)
                 .averagePace(averagePace)

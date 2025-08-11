@@ -6,15 +6,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import soma.ghostrunner.ApiTestSupport;
 import soma.ghostrunner.domain.running.api.dto.request.*;
-import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -27,32 +26,23 @@ class RunningApiTest extends ApiTestSupport {
 
     @DisplayName("새로운 코스를 기반으로 달린다.")
     @Test
-    void testCreateCourseAndRun() throws Exception{
+    void testCreateCourseAndRun() throws Exception {
         // given
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        MockMultipartFile raw = createMockJsonl("rawTelemetry");
+        MockMultipartFile interpolated = createMockJsonl("interpolatedTelemetry");
+        MockMultipartFile screenshot = createMockImage("screenShotImage");
 
-        // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs")
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs")
+                        .file(raw)
+                        .file(interpolated)
+                        .file(screenshot)
+                        .file(createJsonBodyPart("req", request))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .content(objectMapper.writeValueAsString(request))
-                        .contentType(MediaType.APPLICATION_JSON)
-                )
-                .andDo(MockMvcResultHandlers.print())
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
+                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
-    }
-
-    @DisplayName("새로운 코스를 기반으로 러닝할 때 CreateRunRequest 에 대한 검증을 진행한다.")
-    @ParameterizedTest(name = "[{index}] field `{1}` invalid")
-    @MethodSource("invalidCreateCourseAndRunRequests")
-    void createInvalidCourseAndRun(CreateCourseAndRunRequest payload, String wrongField, String reason) throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs")
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andDo(MockMvcResultHandlers.print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField))
-                .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value(reason));
     }
 
     private static CreateCourseAndRunRequest validCreateCourseAndRunRequest() {
@@ -62,8 +52,53 @@ class RunningApiTest extends ApiTestSupport {
                 .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
-                .telemetries(validTelemetries())
                 .build();
+    }
+
+    private MockMultipartFile createMockJsonl(String name) {
+        String jsonl = """
+        {"timeStamp":0,"lat":37.63,"lng":127.07,"dist":2.5,"pace":396.9,"alt":45,"cadence":240,"bpm":0,"isRunning":true}
+        {"timeStamp":1000,"lat":37.63,"lng":127.07,"dist":3.5,"pace":562.8,"alt":45,"cadence":120,"bpm":0,"isRunning":true}
+        """;
+        return new MockMultipartFile(name, name + ".jsonl", "application/jsonl",
+                jsonl.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private MockMultipartFile createMockImage(String name) {
+        byte[] bytes = new byte[] { (byte)137, 80, 78, 71 };
+        return new MockMultipartFile(name, name + ".png", org.springframework.http.MediaType.IMAGE_PNG_VALUE, bytes);
+    }
+
+    private MockMultipartFile createJsonBodyPart(String partName, Object body) throws Exception {
+        return new MockMultipartFile(
+                partName,
+                partName + ".json",
+                org.springframework.http.MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(body)
+        );
+    }
+
+    @DisplayName("새로운 코스를 기반으로 러닝할 때 CreateRunRequest 에 대한 검증을 진행한다.")
+    @ParameterizedTest(name = "[{index}] field `{1}` invalid")
+    @MethodSource("invalidCreateCourseAndRunRequests")
+    void createInvalidCourseAndRun(CreateCourseAndRunRequest payload, String wrongField, String reason) throws Exception {
+        // given
+        MockMultipartFile raw = createMockJsonl("rawTelemetry");
+        MockMultipartFile interpolated = createMockJsonl("interpolatedTelemetry");
+        MockMultipartFile screenshot = createMockImage("screenShotImage");
+
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs")
+                        .file(raw)
+                        .file(interpolated)
+                        .file(screenshot)
+                        .file(createJsonBodyPart("req", payload))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
+                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField))
+                .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value(reason));
     }
 
     private static Stream<Arguments> invalidCreateCourseAndRunRequests() {
@@ -88,12 +123,6 @@ class RunningApiTest extends ApiTestSupport {
                 ),
                 Arguments.of(
                         setHasPausedAndIsPublicInvalid(), "hasPaused", "중지한 기록이 있다면 공개 설정이 불가능합니다."
-                ),
-                Arguments.of(
-                        setEmptyTelemetriesCreateCourseAndRunRequest(), "telemetries", "must not be empty"
-                ),
-                Arguments.of(
-                        setNullTelemetriesCreateCourseAndRunRequest(), "telemetries", "must not be empty"
                 )
         );
     }
@@ -130,7 +159,7 @@ class RunningApiTest extends ApiTestSupport {
 
     private static CreateCourseAndRunRequest setElevationLossPositive() {
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.getRecord().setElevationLoss(20);
+        request.getRecord().setElevationLoss(20.0);
         return request;
     }
 
@@ -141,61 +170,75 @@ class RunningApiTest extends ApiTestSupport {
         return request;
     }
 
-    private static CreateCourseAndRunRequest setEmptyTelemetriesCreateCourseAndRunRequest() {
-        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.setTelemetries(Collections.emptyList());
-        return request;
-    }
-
-    private static CreateCourseAndRunRequest setNullTelemetriesCreateCourseAndRunRequest() {
-        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
-        request.setTelemetries(null);
-        return request;
-    }
-
     @DisplayName("기존 코스를 기반으로 혼자 달린다.")
     @Test
-    void testSoloCreateRun() throws Exception{
+    void testSoloCreateRun() throws Exception {
         // given
         CreateRunRequest soloRequest = validSoloCreateRunRequest();
-        given(runningCommandService.createRun(any(CreateRunCommand.class), anyLong(), any())).willReturn(2L);
+        MockMultipartFile raw = createMockJsonl("rawTelemetry");
+        MockMultipartFile interpolated = createMockJsonl("interpolatedTelemetry");
+        MockMultipartFile screenshot = createMockImage("screenShotImage");
 
-        // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/" + 1L)
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs/courses/{courseId}", 1L)
+                        .file(raw)
+                        .file(interpolated)
+                        .file(screenshot)
+                        .file(createJsonBodyPart("req", soloRequest))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .content(objectMapper.writeValueAsString(soloRequest))
-                        .contentType(MediaType.APPLICATION_JSON)
-                )
-                .andDo(MockMvcResultHandlers.print())
-                .andExpect(status().isOk())
-                .andExpect(content().string("2"));
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
+                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andExpect(status().isOk());
     }
 
     @DisplayName("기존 코스를 기반으로 고스트와 달린다.")
     @Test
-    void testGhostCreateRun() throws Exception{
-        // when
+    void testGhostCreateRun() throws Exception {
         CreateRunRequest ghostRequest = validGhostCreateRunRequest(3L);
+        MockMultipartFile raw = createMockJsonl("rawTelemetry");
+        MockMultipartFile interpolated = createMockJsonl("interpolatedTelemetry");
+        MockMultipartFile screenshot = createMockImage("screenShotImage");
 
-        // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/" + 1L)
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs/courses/{courseId}", 1L)
+                        .file(raw)
+                        .file(interpolated)
+                        .file(screenshot)
+                        .file(createJsonBodyPart("req", ghostRequest))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .content(objectMapper.writeValueAsString(ghostRequest))
-                        .contentType(MediaType.APPLICATION_JSON)
-                )
-                .andDo(MockMvcResultHandlers.print())
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
+                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
+    }
+
+    private static CreateRunRequest validGhostCreateRunRequest(Long ghostRunningId) {
+        return CreateRunRequest.builder()
+                .runningName("테스트 러닝 제목")
+                .mode("GHOST")
+                .ghostRunningId(ghostRunningId)
+                .startedAt(1750729987181L)
+                .record(validRunRecordDto())
+                .hasPaused(false)
+                .isPublic(true)
+                .telemetries(validTelemetries())
+                .build();
     }
 
     @DisplayName("기존 코스를 기반으로 러닝할 때 CreateRunRequest에 대한 유효성 검사를 진행한다.")
     @ParameterizedTest(name = "[{index}] field `{1}` invalid")
     @MethodSource("invalidSoloCreateRunRequests")
     void testCreateRunValidation(CreateRunRequest payload, String wrongField, String reason) throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/courses/1")
+        MockMultipartFile raw = createMockJsonl("rawTelemetry");
+        MockMultipartFile interpolated = createMockJsonl("interpolatedTelemetry");
+        MockMultipartFile screenshot = createMockImage("screenShotImage");
+
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs/courses/{courseId}", 1L)
+                        .file(raw)
+                        .file(interpolated)
+                        .file(screenshot)
+                        .file(createJsonBodyPart("req", payload))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andDo(MockMvcResultHandlers.print())
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
+                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField))
                 .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value(reason));
@@ -305,8 +348,8 @@ class RunningApiTest extends ApiTestSupport {
                 .distance(10.5)
                 .avgPace(5.7)
                 .calories(800)
-                .elevationGain(30)
-                .elevationLoss(-20)
+                .elevationGain(30.0)
+                .elevationLoss(-20.0)
                 .avgBpm(150)
                 .avgCadence(80)
                 .build();
@@ -330,19 +373,6 @@ class RunningApiTest extends ApiTestSupport {
         return CreateRunRequest.builder()
                 .runningName("테스트 러닝 제목")
                 .mode("SOLO")
-                .startedAt(1750729987181L)
-                .record(validRunRecordDto())
-                .hasPaused(false)
-                .isPublic(true)
-                .telemetries(validTelemetries())
-                .build();
-    }
-
-    private static CreateRunRequest validGhostCreateRunRequest(Long ghostRunningId) {
-        return CreateRunRequest.builder()
-                .runningName("테스트 러닝 제목")
-                .mode("GHOST")
-                .ghostRunningId(ghostRunningId)
                 .startedAt(1750729987181L)
                 .record(validRunRecordDto())
                 .hasPaused(false)

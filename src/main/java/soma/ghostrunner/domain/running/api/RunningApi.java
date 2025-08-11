@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
@@ -37,17 +38,27 @@ public class RunningApi {
   
     @PostMapping("/v1/runs")
     public CreateCourseAndRunResponse createCourseAndRun(
-            @AuthenticationPrincipal JwtUserDetails userDetails, @RequestBody @Valid CreateCourseAndRunRequest req) {
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @RequestPart("req") @Valid CreateCourseAndRunRequest req,
+            @RequestPart MultipartFile rawTelemetry,
+            @RequestPart MultipartFile interpolatedTelemetry,
+            @RequestPart MultipartFile screenShotImage) {
         String memberUuid = userDetails.getUserId();
-        return runningCommandService.createCourseAndRun(mapper.toCommand(req), memberUuid);
+        return runningCommandService.createCourseAndRun(
+                mapper.toCommand(req), memberUuid, rawTelemetry, interpolatedTelemetry, screenShotImage);
     }
 
     @PostMapping("/v1/runs/courses/{courseId}")
     public Long createRun(
             @AuthenticationPrincipal JwtUserDetails userDetails,
-            @RequestBody @Valid CreateRunRequest req, @PathVariable Long courseId) {
+            @RequestPart("req") @Valid CreateRunRequest req,
+            @RequestPart MultipartFile rawTelemetry,
+            @RequestPart MultipartFile interpolatedTelemetry,
+            @RequestPart MultipartFile screenShotImage,
+            @PathVariable Long courseId) {
         String memberUuid = userDetails.getUserId();
-        return runningCommandService.createRun(mapper.toCommand(req), courseId, memberUuid);
+        return runningCommandService.createRun(
+                mapper.toCommand(req), memberUuid, courseId, rawTelemetry, interpolatedTelemetry, screenShotImage);
     }
 
     @PatchMapping("/v1/runs/{runningId}/name")

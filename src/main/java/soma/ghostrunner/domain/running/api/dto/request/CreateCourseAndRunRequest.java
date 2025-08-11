@@ -2,12 +2,9 @@ package soma.ghostrunner.domain.running.api.dto.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import soma.ghostrunner.domain.running.api.validation.NoPauseForPublic;
-
-import java.util.List;
 
 @NoPauseForPublic(
         hasPaused = "hasPaused",
@@ -33,8 +30,5 @@ public class CreateCourseAndRunRequest {
 
     @NotNull
     private Boolean isPublic;
-
-    @NotEmpty @Valid
-    private List<TelemetryRequest> telemetries;
 
 }
