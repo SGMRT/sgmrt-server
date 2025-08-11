@@ -34,6 +34,7 @@ public class CourseFacade {
                                                          CourseSearchFilterDto filters) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
         List<CourseWithCoordinatesDto> courses = courseService.searchCourses(lat, lng, radiusM, sort, filters);
+        // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
         return courses.stream().map(course -> {
             Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
             long runnersCount = rankers.getTotalElements();

@@ -97,7 +97,7 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
 
     return Expressions.allOf(
             filters.getMinElevationM() != null ?
-                    course.courseProfile.distance.goe(filters.getMinElevationM() / 1000.0) : null,
+                    course.courseProfile.distance.goe(filters.getMinDistanceM() / 1000.0) : null,
             filters.getMaxDistanceM() != null ?
                     course.courseProfile.distance.loe(filters.getMaxDistanceM() / 1000.0) : null,
             filters.getMinElevationM() != null ?
