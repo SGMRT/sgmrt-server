@@ -1,20 +1,18 @@
 package soma.ghostrunner.clients.aws.upload;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.core.ResponseInputStream;
+import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.error.exception.ExternalIOException;
-import soma.ghostrunner.global.error.exception.ParsingException;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
@@ -25,82 +23,113 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class S3TelemetryClient {
 
+    private final ObjectMapper objectMapper;
     private final S3Client s3Client;
 
     @Value("${s3.bucket}")
     private String s3Bucket;
 
-    @Value("${s3.telemetry-directory}")
-    private String telemetryDirectory;
+    @Value("${s3.running-directory}")
+    private String runningDirectory;
 
-    // 업로드
-    public String uploadTelemetries(String telemetries, String memberUuid) {
+    @Value("${s3.course-directory")
+    private String courseDirectory;
 
-        String fileName = telemetryDirectory + "/" + memberUuid + "/" + UUID.randomUUID() + ".jsonl";
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(s3Bucket)
-                .key(fileName)
-                .contentType("application/jsonl")
-                .contentLength((long) telemetries.getBytes(StandardCharsets.UTF_8).length)
-                .build();
+    @Value("${s3.member-directory")
+    private String memberDirectory;
 
-        try{
-            log.info("시계열 데이터를 업로드중.. 파일 이름: {}, 크기: {} bytes", fileName, telemetries.getBytes(StandardCharsets.UTF_8).length);
-            s3Client.putObject(putObjectRequest, RequestBody.fromString(telemetries));
-        } catch (Exception e) {
-            throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3와 통신에 실패했습니다.");
-        }
+    public String uploadSimplifiedTelemetry(List<?> interpolatedTelemetry, String memberUuid) {
+        String fileName = String.format("%s/%s/%s.jsonl", courseDirectory, memberUuid, UUID.randomUUID());
 
-        log.info("S3에 업로드에 성공했습니다.\n파일 이름: {}", fileName);
-        return s3Client.utilities().getUrl(GetUrlRequest.builder().bucket(s3Bucket).key(fileName).build()).toString();
-    }
-
-    // 다운로드
-    public List<String> downloadTelemetryFromUrl(String s3Url) {
-        String fileName = extractFileNameFromUrl(s3Url);
-        return downloadTelemetry(fileName);
-    }
-
-    // URL -> 파일명 추출
-    private String extractFileNameFromUrl(String s3Url) {
         try {
-            int bucketEndIndex = s3Url.indexOf(".s3.");
-            if (bucketEndIndex == -1) {
-                throw new IllegalArgumentException("올바르지 않은 S3 URL 형식입니다: " + s3Url);
-            }
+            String jsonlContent = interpolatedTelemetry.stream()
+                    .map(item -> {
+                        try {
+                            return objectMapper.writeValueAsString(item);
+                        } catch (JsonProcessingException e) {
+                            log.error("객체 JSON 직렬화 실패: {}", item, e);
+                            throw new RuntimeException("객체를 JSON으로 변환하는 중 오류가 발생했습니다.", e);
+                        }
+                    })
+                    .collect(Collectors.joining("\n"));
 
-            int pathStartIndex = s3Url.indexOf("/", bucketEndIndex + 4);
-            if (pathStartIndex == -1) {
-                throw new IllegalArgumentException("S3 URL에서 파일 경로를 찾을 수 없습니다: " + s3Url);
-            }
+            byte[] contentBytes = jsonlContent.getBytes(StandardCharsets.UTF_8);
 
-            return s3Url.substring(pathStartIndex + 1);
-        } catch (Exception e) {
-            log.error("S3 URL {}에서 파일명 추출에 실패했습니다.", s3Url, e);
-            throw new ParsingException(ErrorCode.SERVICE_UNAVAILABLE, "S3 URL에서 파일명을 추출하는 중 오류가 발생했습니다");
-        }
-    }
-
-    private List<String> downloadTelemetry(String fileName) {
-        try {
-            // S3 스트림 연결
-            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(s3Bucket)
                     .key(fileName)
+                    .contentType("application/jsonl")
+                    .contentLength((long) contentBytes.length)
                     .build();
-            ResponseInputStream<GetObjectResponse> s3ObjectStream = s3Client.getObject(getObjectRequest);
 
-            // 읽기
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(s3ObjectStream, StandardCharsets.UTF_8))) {
-                List<String> result = reader.lines().collect(Collectors.toList());
-                log.info("S3로 부터 다운로드 성공: {}", fileName);
-                return result;
-            }
-        } catch (S3Exception e) {
-            throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3에서 텔레메트리 데이터를 다운로드하는 중 오류가 발생했습니다.");
-        } catch (IOException e) {
-            throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "다운로드한 S3 데이터를 읽는 중 오류가 발생했습니다.");
+            log.info("리스트 기반 JSONL 업로드 중.. 파일 이름: {}, 크기: {} bytes", fileName, contentBytes.length);
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(contentBytes));
+
+            log.info("S3에 리스트 JSONL 업로드 성공. 파일: {}", fileName);
+            return getS3FileUrl(fileName);
+        } catch (Exception e) {
+            throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3에 리스트를 JSONL로 업로드하는데 실패했습니다.");
         }
+    }
+
+    public String uploadRawTelemetry(MultipartFile rawTelemetry, String memberUuid) {
+        String fileName = String.format("%s/%s/%s.jsonl", runningDirectory, memberUuid, UUID.randomUUID());
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(s3Bucket)
+                    .key(fileName)
+                    .contentType("application/jsonl")
+                    .contentLength(rawTelemetry.getSize())
+                    .build();
+
+            log.info("MultipartFile JSONL 업로드 중.. 파일 이름: {}, 크기: {} bytes", fileName, rawTelemetry.getSize());
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(rawTelemetry.getInputStream(), rawTelemetry.getSize()));
+
+            log.info("S3에 MultipartFile JSONL 업로드 성공. 파일: {}", fileName);
+            return getS3FileUrl(fileName);
+        } catch (Exception e) {
+            throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3에 MultipartFile(JSONL)을 업로드하는데 실패했습니다.");
+        }
+    }
+
+    public String uploadRunningCaptureImage(MultipartFile runningCaptureImage, String memberUuid) {
+        return uploadImageFile(runningCaptureImage, runningDirectory, memberUuid);
+    }
+
+    public String uploadMemberProfileImage(MultipartFile memberProfileImage, String memberUuid) {
+        return uploadImageFile(memberProfileImage, memberDirectory, memberUuid);
+    }
+
+    private String uploadImageFile(MultipartFile imageFile, String directory, String memberUuid) {
+        String originalFilename = imageFile.getOriginalFilename();
+        String extension = ".jpg";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+
+        String fileName = String.format("%s/%s/%s%s", directory, memberUuid, UUID.randomUUID(), extension);
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(s3Bucket)
+                    .key(fileName)
+                    .contentType(imageFile.getContentType())
+                    .contentLength(imageFile.getSize())
+                    .build();
+
+            log.info("이미지 업로드 중.. 파일 이름: {}, 크기: {} bytes", fileName, imageFile.getSize());
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(imageFile.getInputStream(), imageFile.getSize()));
+
+            log.info("S3에 이미지 업로드 성공. 파일: {}", fileName);
+            return getS3FileUrl(fileName);
+        } catch (Exception e) {
+            throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3에 이미지를 업로드하는데 실패했습니다.");
+        }
+    }
+
+    private String getS3FileUrl(String fileKey) {
+        return s3Client.utilities().getUrl(GetUrlRequest.builder().bucket(s3Bucket).key(fileKey).build()).toString();
     }
 
 }

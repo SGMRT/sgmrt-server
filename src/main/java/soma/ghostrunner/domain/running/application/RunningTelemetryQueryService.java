@@ -32,7 +32,7 @@ public class RunningTelemetryQueryService {
 
     private List<String> downloadTelemetries(Long runningId, String telemetryUrl) {
         try {
-            return s3TelemetryClient.downloadTelemetryFromUrl(telemetryUrl);
+            return null;
         } catch (Exception e) {
             log.error("runningId {}의 요청에 대해 S3에서 다운로드를 실패했습니다.", runningId, e);
             throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3에서 데이터를 조회하는 과정에서 오류가 발생했습니다.");

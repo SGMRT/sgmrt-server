@@ -18,7 +18,7 @@ public interface RunningServiceMapper {
     default Running toRunning(CreateRunCommand command,
                               ProcessedTelemetriesDto processedTelemetry,
                               String rawTelemetrySavedUrl,
-                              String interpolatedTelemetrySavedUrl,
+                              String simplifiedTelemetrySavedUrl,
                               String screenShotSavedUrl,
                               Member member,
                               Course course) {
@@ -35,7 +35,7 @@ public interface RunningServiceMapper {
                 command.isPublic(),
                 command.hasPaused(),
                 rawTelemetrySavedUrl,
-                interpolatedTelemetrySavedUrl,
+                simplifiedTelemetrySavedUrl,
                 screenShotSavedUrl,
                 member,
                 course

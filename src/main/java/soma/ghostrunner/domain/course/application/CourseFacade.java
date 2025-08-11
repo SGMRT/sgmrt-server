@@ -87,7 +87,7 @@ public class CourseFacade {
         Course course = courseService.findCourseById(courseId);
         Running firstRun = runningQueryService.findFirstRunning(courseId);
         List<CoordinateDto> coordinates = runningTelemetryQueryService.findCoordinateTelemetries(firstRun.getId(),
-                firstRun.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
+                firstRun.getRunningDataUrls().getSimplifiedTelemetrySavedUrl());
         return courseMapper.toCoordinatesResponse(course, coordinates);
     }
 

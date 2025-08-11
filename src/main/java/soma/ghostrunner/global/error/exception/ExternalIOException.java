@@ -11,4 +11,5 @@ public class ExternalIOException extends BusinessException {
     public ExternalIOException(ErrorCode errorCode, String message) {
         super(errorCode, message);
     }
+
 }

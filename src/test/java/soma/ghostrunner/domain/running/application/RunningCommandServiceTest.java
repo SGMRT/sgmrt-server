@@ -29,8 +29,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.BDDMockito.*;
-
 class RunningCommandServiceTest extends IntegrationTestSupport {
 
     @Autowired
@@ -60,8 +58,8 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         CreateRunCommand request = createRunCommandRequest("러닝 이름", "SOLO", 100L,
                 runRecordDto, telemetryDtos);
 
-        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
-                .willReturn("Mock Telemetries Url");
+//        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
+//                .willReturn("Mock Telemetries Url");
 
         // when
         CreateCourseAndRunResponse response = runningCommandService.createCourseAndRun(request, member.getUuid());
@@ -83,7 +81,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         RunningDataUrls runningDataUrls = savedRunning.getRunningDataUrls();
         Assertions.assertThat(runningDataUrls)
                 .isNotNull()
-                .extracting(RunningDataUrls::getRawTelemetrySavedUrl, RunningDataUrls::getInterpolatedTelemetrySavedUrl,
+                .extracting(RunningDataUrls::getRawTelemetrySavedUrl, RunningDataUrls::getSimplifiedTelemetrySavedUrl,
                         RunningDataUrls::getScreenShotSavedUrl)
                 .containsExactly("Mock Telemetries Url", "Mock Telemetries Url", "Mock Telemetries Url");
 
@@ -113,7 +111,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     private CreateRunCommand createRunCommandRequest(String runningName, String runningMode, Long startedAt,
                                                      RunRecordDto runRecordDto, List<TelemetryDto> telemetryDtos) {
         return new CreateRunCommand(runningName, null, runningMode,
-                startedAt, runRecordDto, false, true, telemetryDtos);
+                startedAt, runRecordDto, false, true);
     }
 
     private List<TelemetryDto> createTelemetryDtos() {
@@ -142,11 +140,12 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 
         RunRecordDto runRecordDto = createRunRecordDto(5.1, 130, -120, 3600L);
         List<TelemetryDto> telemetryDtos = createTelemetryDtos();
-        CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "SOLO", null,
-                100L, runRecordDto, telemetryDtos);
+        CreateRunCommand request = createGhostRunCommandRequest(
+                "러닝 이름", "SOLO", null,
+                100L, runRecordDto);
 
-        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
-                .willReturn("Mock Telemetries Url");
+//        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
+//                .willReturn("Mock Telemetries Url");
 
         // when
         Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getUuid());
@@ -177,12 +176,12 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Long ghostRunningId = runningRepository.save(ghostRunning).getId();
 
         RunRecordDto runRecordDto = createRunRecordDto(5.1, 130, -120, 3600L);
-        List<TelemetryDto> telemetryDtos = createTelemetryDtos();
-        CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
-                100L, runRecordDto, telemetryDtos);
+        CreateRunCommand request = createGhostRunCommandRequest(
+                "러닝 이름", "GHOST", ghostRunningId,
+                100L, runRecordDto);
 
-        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
-                .willReturn("Mock Telemetries Url");
+//        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
+//                .willReturn("Mock Telemetries Url");
 
         // when
         Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getUuid());
@@ -215,12 +214,12 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Long ghostRunningId = runningRepository.save(ghostRunning).getId();
 
         RunRecordDto runRecordDto = createRunRecordDto(5.1, 130, -120, 3600L);
-        List<TelemetryDto> telemetryDtos = createTelemetryDtos();
-        CreateRunCommand request = createGhostRunCommandRequest("러닝 이름", "GHOST", ghostRunningId,
-                100L, runRecordDto, telemetryDtos);
+        CreateRunCommand request = createGhostRunCommandRequest(
+                "러닝 이름", "GHOST", ghostRunningId,
+                100L, runRecordDto);
 
-        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
-                .willReturn("Mock Telemetries Url");
+//        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
+//                .willReturn("Mock Telemetries Url");
 
         // when // then
         Assertions.assertThatThrownBy(() -> runningCommandService.createRun(request, savedFakeCourseId, savedMemberUuid))
@@ -245,9 +244,9 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
     }
 
     private CreateRunCommand createGhostRunCommandRequest(String runningName, String runningMode, Long ghostRunningId,
-                                                          Long startedAt, RunRecordDto runRecordDto, List<TelemetryDto> telemetryDtos) {
+                                                          Long startedAt, RunRecordDto runRecordDto) {
         return new CreateRunCommand(runningName, ghostRunningId, runningMode,
-                startedAt, runRecordDto, false, true, telemetryDtos);
+                startedAt, runRecordDto, false, true);
     }
 
     private Running createRunning(Member member, Course course) {

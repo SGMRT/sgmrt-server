@@ -84,7 +84,7 @@ public class RunningCommandService {
 
     private String uploadTelemetryToS3(String memberUuid, ProcessedTelemetriesDto processedTelemetry) {
         String stringTelemetries = TelemetryTypeConverter.convertFromObjectsToString(processedTelemetry.relativeTelemetries());
-        return s3TelemetryClient.uploadTelemetries(stringTelemetries, memberUuid);
+        return null;
     }
 
     private Running createAndSaveRunning(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry,
