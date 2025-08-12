@@ -24,7 +24,8 @@ public class AuthApi {
 
     @PostMapping("/firebase-signup")
     public AuthenticationResponse firebaseSignUp (
-            @RequestHeader("Authorization") String authorizationHeader, @Valid @RequestBody SignUpRequest signUpRequest) {
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @RequestBody SignUpRequest signUpRequest) {
         String firebaseToken = extractToken(authorizationHeader);
         return authService.signUp(firebaseToken, signUpRequest);
     }

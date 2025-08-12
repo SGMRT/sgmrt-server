@@ -13,6 +13,7 @@ public class MemberCreationRequest {
     private String profileImageUrl;
     private String nickname;
     private Gender gender;
+    private Integer age;
     private Integer height;
     private Integer weight;
     private TermsAgreement termsAgreement;
