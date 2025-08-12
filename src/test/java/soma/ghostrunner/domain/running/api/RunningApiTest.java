@@ -218,7 +218,7 @@ class RunningApiTest extends ApiTestSupport {
 
     @DisplayName("스크린샷 요청 데이터는 Null이 가능하다.")
     @Test
-    void validateMultipartCanAllowScreenShot() throws Exception {
+    void validateMultipartCanAllowScreenShotNull() throws Exception {
         // given
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
         MockMultipartFile rawTelemetry = createMockJsonl("rawTelemetry");
@@ -233,6 +233,32 @@ class RunningApiTest extends ApiTestSupport {
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
                 .andDo(print())
                 .andExpect(status().isOk());
+    }
+
+    @DisplayName("스크린샷 요청 데이터는 Null이 아니라면 비어있으면 안된다.")
+    @Test
+    void validateEmptyScreenShotIfNotNull() throws Exception {
+        // given
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        MockMultipartFile rawTelemetry = createMockJsonl("rawTelemetry");
+        MockMultipartFile interpolatedTelemetry = createMockJsonl("interpolatedTelemetry");
+        MockMultipartFile screenshot = createEmptyMockImage("screenShotImage");
+
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs")
+                        .file(rawTelemetry)
+                        .file(interpolatedTelemetry)
+                        .file(screenshot)
+                        .file(createJsonBodyPart("req", request))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+    }
+
+    private MockMultipartFile createEmptyMockImage(String name) {
+        byte[] bytes = new byte[0];
+        return new MockMultipartFile(name, name + ".png", org.springframework.http.MediaType.IMAGE_PNG_VALUE, bytes);
     }
 
     @DisplayName("기존 코스를 기반으로 혼자 달린다.")

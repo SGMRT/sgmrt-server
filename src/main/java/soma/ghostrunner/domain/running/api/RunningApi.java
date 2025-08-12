@@ -45,13 +45,22 @@ public class RunningApi {
             @RequestPart MultipartFile rawTelemetry,
             @RequestPart MultipartFile interpolatedTelemetry,
             @RequestPart(required = false) MultipartFile screenShotImage) {
-        validateFiles(rawTelemetry, interpolatedTelemetry);
+        validateTelemetryFiles(rawTelemetry, interpolatedTelemetry);
+        validateScreenShotFiles(screenShotImage);
         String memberUuid = userDetails.getUserId();
         return runningCommandService.createCourseAndRun(
                 mapper.toCommand(req), memberUuid, rawTelemetry, interpolatedTelemetry, screenShotImage);
     }
 
-    private void validateFiles(MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry) {
+    private void validateScreenShotFiles(MultipartFile screenShotImage) {
+        if (screenShotImage != null) {
+            if (screenShotImage.isEmpty()) {
+                throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "ScreenShot MultipartFile이 비어있습니다.");
+            }
+        }
+    }
+
+    private void validateTelemetryFiles(MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry) {
         if (isEmpty(rawTelemetry) || isEmpty(interpolatedTelemetry)) {
             throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "Telemetry MultipartFile이 비어있습니다.");
         }
@@ -69,7 +78,8 @@ public class RunningApi {
             @RequestPart MultipartFile interpolatedTelemetry,
             @RequestPart MultipartFile screenShotImage,
             @PathVariable Long courseId) {
-        validateFiles(rawTelemetry, interpolatedTelemetry);
+        validateTelemetryFiles(rawTelemetry, interpolatedTelemetry);
+        validateScreenShotFiles(screenShotImage);
         String memberUuid = userDetails.getUserId();
         return runningCommandService.createRun(
                 mapper.toCommand(req), memberUuid, courseId, rawTelemetry, interpolatedTelemetry, screenShotImage);
