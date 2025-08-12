@@ -8,10 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.dto.CourseMapper;
-import soma.ghostrunner.domain.course.dto.CourseWithCoordinatesDto;
-import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
-import soma.ghostrunner.domain.course.dto.CourseWithMemberDetailsDto;
+import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
@@ -48,14 +45,14 @@ public class CourseFacade {
     }
 
     @Transactional(readOnly = true)
-    public CourseDetailedResponse findCourse(Long courseId) {
+    public CourseDetailedResponse findCourse(Long courseId, String viewerUuid) {
         Course course = courseService.findCourseById(courseId);
         CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseId)
                 .orElse(new CourseRunStatisticsDto());
-        return courseMapper.toCourseDetailedResponse(
-                course,
-                courseStatistics.getAvgCompletionTime(), courseStatistics.getAvgFinisherPace(),
-                courseStatistics.getAvgFinisherCadence(), courseStatistics.getLowestFinisherPace());
+        UserPaceStatsDto userPaceStats = runningQueryService.findUserPaceStatistics(courseId, viewerUuid)
+                .orElse(new UserPaceStatsDto());
+        String telemetryUrl = runningQueryService.findFirstRunning(course.getId()).getTelemetryUrl();
+        return courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStatistics, userPaceStats);
     }
 
     public void updateCourse(Long courseId, CoursePatchRequest request) {

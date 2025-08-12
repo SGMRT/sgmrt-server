@@ -7,6 +7,8 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
+import soma.ghostrunner.domain.course.dto.QUserPaceStatsDto;
+import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.domain.QRunning;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -209,6 +211,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 running.runningRecord.duration.avg(),
                                 running.runningRecord.averagePace.avg(),
                                 running.runningRecord.cadence.avg(),
+                                running.runningRecord.burnedCalories.avg(),
                                 running.runningRecord.averagePace.min(),
                                 running.member.countDistinct().intValue(),
                                 running.count().intValue()
@@ -219,6 +222,25 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 // todo: memberId 받은 다음에 본인 꺼는 isPublic = false여도 보여줘야 하나?
                         )
                         .fetchOne()
+        );
+    }
+
+    @Override
+    public Optional<UserPaceStatsDto> findUserRunStatisticsByCourseId(Long courseId, String memberUuid) {
+        return Optional.ofNullable(
+           queryFactory
+                    .select(new QUserPaceStatsDto(
+                            running.member.uuid,
+                            running.runningRecord.averagePace.min(),
+                            running.runningRecord.averagePace.avg(),
+                            running.runningRecord.averagePace.max()
+                    ))
+                    .from(running)
+                    .join(running.member, member)
+                    .where(running.member.uuid.eq(memberUuid)
+                            .and(running.course.id.eq(courseId)))
+                   .groupBy(running.member.uuid)
+                   .fetchOne()
         );
     }
 
