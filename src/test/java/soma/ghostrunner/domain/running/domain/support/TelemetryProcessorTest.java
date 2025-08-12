@@ -1,5 +1,8 @@
 package soma.ghostrunner.domain.running.domain.support;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,6 +15,7 @@ import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.TelemetryCalculationException;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -128,6 +132,74 @@ class TelemetryProcessorTest {
             telemetryList.add(telemetry);
         }
         return telemetryList;
+    }
+
+    @DisplayName("필드값이 유효하지 않은 .jsonl 파일이라면 예외를 발생한다.")
+    @Test
+    void testProcessInvalidTelemetryTest() throws Exception {
+        // given
+        Long startedAt = 1750729987181L;
+        List<InvalidTelemetryDto> invalidTelemetryDtos = createInvalidTelemetryDtos(startedAt);
+        MultipartFile multipartTelemetryList = createInvalidTelemetryJsonlFile(invalidTelemetryDtos);
+
+        // when // then
+        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList))
+                .isInstanceOf(TelemetryCalculationException.class)
+                .hasMessage("시계열 좌표를 가공하는 중 에러가 발생했습니다.");
+    }
+
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    private class InvalidTelemetryDto {
+
+        private Long timeStamp;
+        private Double invalidLat;
+        private Double invalidLng;
+        private Double dist;
+        private Double pace;
+        private Double alt;
+        private Integer cadence;
+        private Integer bpm;
+        private Boolean isRunning;
+
+    }
+
+    private List<InvalidTelemetryDto> createInvalidTelemetryDtos(Long startedAt) {
+        List<InvalidTelemetryDto> invalidTelemetryDtos = new ArrayList<>();
+        Random random = new Random();
+        for (int i = 0; i < 10; i++) {
+            InvalidTelemetryDto invalidTelemetryDto = new InvalidTelemetryDto(
+                    startedAt + (i*5),     // 5초 간격
+                    37.5665 + i * 0.0001,         // 위도
+                    126.9780 + i * 0.0001,        // 경도
+                    i * 10.0,                    // 거리 (예: 10m 단위)
+                    - 5.0 + i,         // 페이스
+                    30.0 + i,     // 고도
+                    - 150 + random.nextInt(10),    // 케이던스
+                    120 + random.nextInt(20),    // 심박수
+                    i % 2 == 0                   // 달리는 중 여부
+            );
+            invalidTelemetryDtos.add(invalidTelemetryDto);
+        }
+        return invalidTelemetryDtos;
+    }
+
+    private MultipartFile createInvalidTelemetryJsonlFile(List<InvalidTelemetryDto> telemetryList) throws Exception {
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        StringBuilder sb = new StringBuilder();
+        for (InvalidTelemetryDto dto : telemetryList) {
+            sb.append(objectMapper.writeValueAsString(dto)).append("\n");
+        }
+
+        return new MockMultipartFile(
+                "file",
+                "invalid_telemetry.jsonl",
+                "application/json",
+                sb.toString().getBytes(StandardCharsets.UTF_8)
+        );
     }
 
 }
