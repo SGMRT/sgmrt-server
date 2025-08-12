@@ -153,14 +153,14 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 .isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
     }
 
-    @DisplayName("기존 코스를 기반으로 혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
+    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회한다. 공개한 코스가 있다면 코스 정보를 함께 응답한다.")
     @Test
     void findSoloRunInfoById() {
         // given
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createPublicCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createSoloRunning(member, course);
@@ -175,7 +175,6 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Assertions.assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running1.getRunningName());
         Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(running1.getCourse().getId());
         Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getName()).isEqualTo(running1.getCourse().getName());
-        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getRunnersCount()).isEqualTo(2);
         Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl())
                 .isEqualTo(running1.getRunningDataUrls().getInterpolatedTelemetryUrl());
         Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance())
@@ -191,7 +190,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 true, false, "URL", "URL", "URL", testMember, testCourse);
     }
 
-    private Course createCourse(Member testMember, String courseName) {
+    private Course createPublicCourse(Member testMember, String courseName) {
         CourseProfile testCourseProfile = createCourseProfile();
         Coordinate testCoordinate = createStartPoint();
         Course course = Course.of(testMember, testCourseProfile.getDistance(),
@@ -199,6 +198,39 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 testCoordinate.getLatitude(), testCoordinate.getLongitude(),
                 "URL", "URL");
         course.setName(courseName);
+        course.setIsPublic(true);
+        return course;
+    }
+
+    @DisplayName("기존 코스를 기반으로 혼자 뛴 러닝에 대한 상세 정보를 조회한다. 비공개 코스라면 코스 정보는 Null을 응답한다.")
+    @Test
+    void findSoloRunInfoByIdWithUnPublicCourse() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createUnPublicCourse(member);
+        courseRepository.save(course);
+
+        Running running1 = createSoloRunning(member, course);
+        Running running2 = createSoloRunning(member, course);
+        runningRepository.saveAll(List.of(running1, running2));
+
+        // when
+        SoloRunDetailInfo soloRunDetailInfo = runningRepository.findSoloRunInfoById(running1.getId(), member.getUuid()).get();
+
+        // then
+        Assertions.assertThat(soloRunDetailInfo.getCourseInfo()).isNull();
+    }
+
+    private Course createUnPublicCourse(Member testMember) {
+        CourseProfile testCourseProfile = createCourseProfile();
+        Coordinate testCoordinate = createStartPoint();
+        Course course = Course.of(testMember, testCourseProfile.getDistance(),
+                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
+                "URL", "URL");
+        course.setIsPublic(false);
         return course;
     }
 
@@ -218,7 +250,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member ghostMember = createMember("고스트 이복둥");
         memberRepository.saveAll(List.of(member, ghostMember));
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createPublicCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running ghostRunning = createRunning(ghostMember, course);
@@ -259,7 +291,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createPublicCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running = createSoloRunning(member, course);
@@ -283,7 +315,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createPublicCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running = createSoloRunning(member, course);
@@ -303,7 +335,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createPublicCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createSoloRunning(member, course);
@@ -325,7 +357,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createPublicCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course, "러닝 제목1");
@@ -362,7 +394,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createPublicCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course, "러닝 제목1");
@@ -483,7 +515,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
         List<Course> courses = new ArrayList<>();
         randomCourseNames.forEach(name -> {
-            Course newCourse = createCourse(member, name);
+            Course newCourse = createPublicCourse(member, name);
             newCourse.setIsPublic(true);
             courses.add(newCourse);
         });

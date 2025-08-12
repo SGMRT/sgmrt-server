@@ -15,6 +15,7 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
+import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -45,70 +46,56 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     @MockitoBean
     RunningTelemetryQueryService runningTelemetryQueryService;
 
-//    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
-//    @Test
-//    void findSoloRunInfoById() {
-//        // given
-//        Member member = createMember("이복둥");
-//        memberRepository.save(member);
-//
-//        Course course = createCourse(member, "테스트 코스");
-//        courseRepository.save(course);
-//
-//        Running running1 = createSoloRunning(member, course);
-//        Running running2 = createSoloRunning(member, course);
-//        Running running3 = createSoloRunning(member, course);
-//        runningRepository.saveAll(List.of(running1, running2, running3));
-//
-//        List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-//        given(runningTelemetryQueryService.findTotalTelemetries(
-//                running1.getId(), running1.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()))
-//                .willReturn(mockTelemetryDtos);
-//
-//        // when
-//        SoloRunDetailInfo soloRunDetailInfo = runningQueryService.findSoloRunInfo(running1.getId(), member.getUuid());
-//
-//        // then
-//        Assertions.assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running1.getStartedAt());
-//        Assertions.assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running1.getRunningName());
-//        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running1.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
-//        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(running1.getRunningRecord().getDistance());
-//        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(running1.getRunningRecord().getDuration());
-//
-//        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(running1.getCourse().getId());
-//        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getName()).isEqualTo(running1.getCourse().getName());
-//        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getRunnersCount()).isEqualTo(3);
-//
-//        Assertions.assertThat(soloRunDetailInfo.getTelemetries())
-//                .hasSize(4)
-//                .extracting("timeStamp", "lat", "lng", "dist", "pace", "alt", "cadence", "bpm", "isRunning")
-//                .containsExactly(
-//                        tuple(0L, 37.2, 37.5, 110.0, 6.0, 100, 120, 110, true),
-//                        tuple(1L, 37.3, 37.6, 110.1, 6.1, 101, 121, 111, true),
-//                        tuple(2L, 37.4, 37.7, 110.2, 6.2, 102, 122, 112, true),
-//                        tuple(3L, 37.5, 37.8, 110.3, 6.3, 103, 123, 113, false)
-//                );
-//    }
+    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
+    @Test
+    void findSoloRunInfoById() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createPublicCourse(member, "테스트 코스");
+        courseRepository.save(course);
+
+        Running running = createSoloRunning(member, course, "MockInterpolatedTelemetrySavedUrl");
+        runningRepository.save(running);
+
+        // when
+        SoloRunDetailInfo soloRunDetailInfo = runningQueryService.findSoloRunInfo(running.getId(), member.getUuid());
+
+        // then
+        Assertions.assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running.getStartedAt());
+        Assertions.assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running.getRunningName());
+        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
+        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(running.getRunningRecord().getDistance());
+        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(running.getRunningRecord().getDuration());
+
+        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(running.getCourse().getId());
+        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getName()).isEqualTo(running.getCourse().getName());
+    }
 
     private Member createMember(String name) {
         return Member.of(name, "프로필 URL");
     }
 
-    private Course createCourse(Member testMember, String courseName) {
-        CourseProfile testCourseProfile = createCourseProfile();
+    private Course createPublicCourse(Member testMember, String courseName) {
+        CourseProfile testCourseProfile = createPublicCourseProfile();
         Coordinate testCoordinate = createStartPoint();
         Course course = Course.of(testMember, testCourseProfile.getDistance(),
                 testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
                 testCoordinate.getLatitude(), testCoordinate.getLongitude(),
                 "Mock URL", "Mock URL");
         course.setName(courseName);
+        course.setIsPublic(true);
         return course;
     }
 
-    private Running createSoloRunning(Member testMember, Course testCourse) {
+    private Running createSoloRunning(Member testMember, Course testCourse, String interpolatedTelemetrySavedUrl) {
         RunningRecord testRunningRecord = createRunningRecord();
-        return Running.of("테스트 러닝 제목", RunningMode.SOLO, null, testRunningRecord,
-                1750729987181L, true, false, "URL", "URL", "URL", testMember, testCourse);
+        return Running.of("테스트 러닝 제목", RunningMode.SOLO,
+                null, testRunningRecord,
+                1750729987181L, true, false,
+                "URL", interpolatedTelemetrySavedUrl, "URL",
+                testMember, testCourse);
     }
 
     private RunningRecord createRunningRecord() {
@@ -125,17 +112,53 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         );
     }
 
-    @DisplayName("혼자 뛴 러닝을 조회할 때 자신의 러닝 정보가 아니라면 NOT_FOUND 예외를 응답한다.")
+    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회할 때 공개되지 않은 코스 정보라면 CourseInfo는 Null이 조회된다..")
+    @Test
+    void findSoloRunInUnPublicCourseInfoById() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createUnPublicCourse(member, "테스트 코스");
+        courseRepository.save(course);
+
+        Running running = createSoloRunning(member, course, "MockInterpolatedTelemetrySavedUrl");
+        runningRepository.save(running);
+
+        // when
+        SoloRunDetailInfo soloRunDetailInfo = runningQueryService.findSoloRunInfo(running.getId(), member.getUuid());
+
+        // then
+        Assertions.assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running.getStartedAt());
+        Assertions.assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running.getRunningName());
+        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
+        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(running.getRunningRecord().getDistance());
+        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(running.getRunningRecord().getDuration());
+        Assertions.assertThat(soloRunDetailInfo.getCourseInfo()).isNull();
+    }
+
+    private Course createUnPublicCourse(Member testMember, String courseName) {
+        CourseProfile testCourseProfile = createPublicCourseProfile();
+        Coordinate testCoordinate = createStartPoint();
+        Course course = Course.of(testMember, testCourseProfile.getDistance(),
+                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
+                "Mock URL", "Mock URL");
+        course.setName(courseName);
+        return course;
+    }
+
+    @DisplayName("혼자 뛴 러닝을 조회할 때 자신의 러닝 정보가 아니거나 없는 데이터라면 NOT_FOUND 예외를 응답한다.")
     @Test
     void findSoloRunInfoByNoneOwnerId() {
         // given
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createPublicCourse(member, "테스트 코스");
         courseRepository.save(course);
 
-        Running running = createSoloRunning(member, course);
+        Running running = createSoloRunning(member, course, "MockInterpolatedTelemetrySavedUrl");
         runningRepository.save(running);
 
         // when // then
@@ -232,7 +255,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member followingMember = createMember("고스트 이복둥");
         memberRepository.saveAll(List.of(member, followingMember));
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createPublicCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         RunningRecord runningRecord = RunningRecord.of(4.0, 40.0, 60.0, -30.0,
@@ -267,7 +290,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
          Member followingMember = createMember("고스트 이복둥");
          memberRepository.saveAll(List.of(member, followingMember));
 
-         Course course = createCourse(member, "테스트 코스");
+         Course course = createPublicCourse(member, "테스트 코스");
          courseRepository.save(course);
 
          RunningRecord runningRecord = RunningRecord.of(4.0, 30.0, 40.0, -20.0,
@@ -301,7 +324,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member);
+        Course course = createPublicCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning("러닝", course, member, "Interpolated Telemetry Mock URL");
@@ -324,8 +347,8 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         );
     }
 
-    private Course createCourse(Member testMember) {
-        CourseProfile testCourseProfile = createCourseProfile();
+    private Course createPublicCourse(Member testMember) {
+        CourseProfile testCourseProfile = createPublicCourseProfile();
         Coordinate testCoordinate = createStartPoint();
         return Course.of(testMember, testCourseProfile.getDistance(),
                 testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
@@ -337,7 +360,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         return Coordinate.of(37.545354, 34.7878);
     }
 
-    private CourseProfile createCourseProfile() {
+    private CourseProfile createPublicCourseProfile() {
         return CourseProfile.of(5.2, 30.0, 40.0, -20.0);
     }
 
@@ -350,7 +373,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member other = createMember("타인은 지옥이다.");
         memberRepository.save(other);
 
-        Course course = createCourse(owner);
+        Course course = createPublicCourse(owner);
         courseRepository.save(course);
 
         Running running = createRunning("러닝", course, owner, "Interpolated Telemetry Mock URL");
@@ -369,7 +392,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member);
+        Course course = createPublicCourse(member);
         courseRepository.save(course);
 
         Running running = createRunning("러닝", course, member, "러닝의 URL");
@@ -402,7 +425,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member2 = createMember("이복둥2");
         memberRepository.saveAll(List.of(member1, member2));
 
-        Course course = createCourse(member1);
+        Course course = createPublicCourse(member1);
         courseRepository.save(course);
 
         Running running1 = createRunning("러닝1", course, member1, "러닝1의 URL");
@@ -425,7 +448,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member2 = createMember("이복둥2");
         memberRepository.saveAll(List.of(member1, member2));
 
-        Course course = createCourse(member1);
+        Course course = createPublicCourse(member1);
         courseRepository.save(course);
 
         // when // then
@@ -441,9 +464,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse(member);
-        Course course2 = createCourse(member);
-        Course course3 = createCourse(member);
+        Course course1 = createPublicCourse(member);
+        Course course2 = createPublicCourse(member);
+        Course course3 = createPublicCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 
@@ -520,9 +543,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course1 = createCourse(member);
-        Course course2 = createCourse(member);
-        Course course3 = createCourse(member);
+        Course course1 = createPublicCourse(member);
+        Course course2 = createPublicCourse(member);
+        Course course3 = createPublicCourse(member);
         List<Course> courses = List.of(course1, course2, course3);
         courseRepository.saveAll(courses);
 
@@ -561,9 +584,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course privateCourse = createCourse(member);
+        Course privateCourse = createPublicCourse(member);
         privateCourse.setName("비공개 코스 러닝");
-        Course publicCourse = createCourse(member);
+        Course publicCourse = createPublicCourse(member);
         publicCourse.setIsPublic(true);
         publicCourse.setName("공개 코스 러닝");
         List<Course> courses = List.of(privateCourse, publicCourse);
@@ -596,7 +619,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
         List<Course> courses = new ArrayList<>();
         randomCourseNames.forEach(name -> {
-            Course newCourse = createCourse(member, name);
+            Course newCourse = createPublicCourse(member, name);
             newCourse.setIsPublic(true);
             courses.add(newCourse);
         });
@@ -650,7 +673,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
         List<Course> courses = new ArrayList<>();
         randomCourseNames.forEach(name -> {
-            Course newCourse = createCourse(member, name);
+            Course newCourse = createPublicCourse(member, name);
             courses.add(newCourse);
         });
         courseRepository.saveAll(courses);

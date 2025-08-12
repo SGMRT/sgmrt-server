@@ -1,6 +1,7 @@
 package soma.ghostrunner.domain.running.application.dto;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -84,6 +85,8 @@ public interface RunningServiceMapper {
         );
     }
 
-    CreateCourseAndRunResponse toResponse(Long runningId, Long courseId);
+    @Mapping(source = "running.id", target = "runningId")
+    @Mapping(source = "course.id", target = "courseId")
+    CreateCourseAndRunResponse toResponse(Running running, Course course);
 
 }

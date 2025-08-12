@@ -94,20 +94,6 @@ class RunningApiMapperTest {
                 .build();
     }
 
-    private List<TelemetryRequest> validTelemetries() {
-        List<TelemetryRequest> telemetryRequests = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
-            telemetryRequests.add(TelemetryRequest.builder()
-                    .timeStamp(1750729987181L)
-                    .lat(37.5).lng(127.0)
-                    .dist(4.2).pace(5.48).alt(100)
-                    .cadence(80).bpm(150)
-                    .isRunning(true)
-                    .build());
-        }
-        return telemetryRequests;
-    }
-
     private CreateRunRequest validCreateSoloRunRequest() {
         return CreateRunRequest.builder()
                 .runningName("테스트 러닝 제목")
@@ -116,7 +102,6 @@ class RunningApiMapperTest {
                 .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
-                .telemetries(validTelemetries())
                 .build();
     }
 
@@ -129,7 +114,7 @@ class RunningApiMapperTest {
                 .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
-                .telemetries(validTelemetries())
                 .build();
     }
+
 }

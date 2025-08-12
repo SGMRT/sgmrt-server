@@ -32,26 +32,17 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class RunningQueryService {
 
-    private final RunningTelemetryQueryService runningTelemetryQueryService;
-
     private final RunningRepository runningRepository;
 
     private final RunningApiMapper runningApiMapper;
 
     public SoloRunDetailInfo findSoloRunInfo(Long runningId, String memberUuid) {
-        SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId, memberUuid);
-        List<TelemetryDto> telemetries = downloadTelemetries(runningId, soloRunDetailInfo.getTelemetryUrl());
-        soloRunDetailInfo.setTelemetries(telemetries);
-        return soloRunDetailInfo;
+        return findSoloRunInfoByRunningId(runningId, memberUuid);
     }
 
     private SoloRunDetailInfo findSoloRunInfoByRunningId(Long runningId, String memberUuid) {
         return runningRepository.findSoloRunInfoById(runningId, memberUuid)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
-    }
-
-    private List<TelemetryDto> downloadTelemetries(Long runningId, String telemetryUrl) {
-        return runningTelemetryQueryService.findTotalTelemetries(runningId, telemetryUrl);
     }
 
     public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId, String memberUuid) {
@@ -60,9 +51,6 @@ public class RunningQueryService {
 
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfoByRunningId(ghostRunningId);
         myGhostRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
-
-        List<TelemetryDto> telemetries = downloadTelemetries(myRunningId, myGhostRunDetailInfo.getTelemetryUrl());
-        myGhostRunDetailInfo.setTelemetries(telemetries);
         return myGhostRunDetailInfo;
     }
 
