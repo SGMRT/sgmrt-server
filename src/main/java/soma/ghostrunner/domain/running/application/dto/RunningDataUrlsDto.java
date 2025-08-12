@@ -1,6 +1,17 @@
 package soma.ghostrunner.domain.running.application.dto;
 
-public record RunningDataUrlsDto(
-        String rawTelemetrySavedUrl, String interpolatedTelemetrySavedUrl,
-        String simplifiedPathSavedUrl, String screenShotSavedUrl){
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@AllArgsConstructor
+public class RunningDataUrlsDto {
+
+    private String rawTelemetrySavedUrl;
+    private String interpolatedTelemetrySavedUrl;
+    @Setter
+    private String simplifiedPathSavedUrl;
+    private String screenShotSavedUrl;
+
 }

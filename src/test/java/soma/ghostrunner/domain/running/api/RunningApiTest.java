@@ -9,7 +9,6 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import soma.ghostrunner.ApiTestSupport;
 import soma.ghostrunner.domain.running.api.dto.request.*;
 
@@ -17,9 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.BDDMockito.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class RunningApiTest extends ApiTestSupport {
@@ -41,7 +38,7 @@ class RunningApiTest extends ApiTestSupport {
                         .file(createJsonBodyPart("req", request))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -95,7 +92,7 @@ class RunningApiTest extends ApiTestSupport {
                         .file(createJsonBodyPart("req", payload))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField))
                 .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value(reason));
@@ -170,6 +167,74 @@ class RunningApiTest extends ApiTestSupport {
         return request;
     }
 
+    @DisplayName("필수 시계열 데이터가 비어있는지 검증한다.")
+    @Test
+    void validateMultipartIsEmpty() throws Exception {
+        // given
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        MockMultipartFile raw = createMockJsonl("rawTelemetry");
+        MockMultipartFile interpolated = createEmptyMockJsonl("interpolatedTelemetry");
+        MockMultipartFile screenshot = createMockImage("screenShotImage");
+
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs")
+                        .file(raw)
+                        .file(interpolated)
+                        .file(screenshot)
+                        .file(createJsonBodyPart("req", request))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+    }
+
+    private MockMultipartFile createEmptyMockJsonl(String name) {
+        return new MockMultipartFile(
+                name,
+                name + ".jsonl",
+                "application/jsonl",
+                new byte[0]
+        );
+    }
+
+    @DisplayName("필수 시계열 데이터가 요청되지 않았는지 검증한다.")
+    @Test
+    void validateMultipartIsNotRequested() throws Exception {
+        // given
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        MockMultipartFile raw = createMockJsonl("rawTelemetry");
+        MockMultipartFile screenshot = createMockImage("screenShotImage");
+
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs")
+                        .file(raw)
+                        .file(screenshot)
+                        .file(createJsonBodyPart("req", request))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+    }
+
+    @DisplayName("스크린샷 요청 데이터는 Null이 가능하다.")
+    @Test
+    void validateMultipartCanAllowScreenShot() throws Exception {
+        // given
+        CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
+        MockMultipartFile rawTelemetry = createMockJsonl("rawTelemetry");
+        MockMultipartFile interpolatedTelemetry = createMockJsonl("interpolatedTelemetry");
+
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs")
+                        .file(rawTelemetry)
+                        .file(interpolatedTelemetry)
+                        .file(createJsonBodyPart("req", request))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
+                .andDo(print())
+                .andExpect(status().isOk());
+    }
+
     @DisplayName("기존 코스를 기반으로 혼자 달린다.")
     @Test
     void testSoloCreateRun() throws Exception {
@@ -187,7 +252,7 @@ class RunningApiTest extends ApiTestSupport {
                         .file(createJsonBodyPart("req", soloRequest))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -206,7 +271,7 @@ class RunningApiTest extends ApiTestSupport {
                         .file(createJsonBodyPart("req", ghostRequest))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -238,7 +303,7 @@ class RunningApiTest extends ApiTestSupport {
                         .file(createJsonBodyPart("req", payload))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrorInfos[0].field").value(wrongField))
                 .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value(reason));
@@ -296,7 +361,7 @@ class RunningApiTest extends ApiTestSupport {
                         .content(objectMapper.writeValueAsString(request))
                         .contentType(MediaType.APPLICATION_JSON)
                 )
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -314,7 +379,7 @@ class RunningApiTest extends ApiTestSupport {
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrorInfos[0].field").value("name"));;
     }
@@ -326,7 +391,7 @@ class RunningApiTest extends ApiTestSupport {
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/1/telemetries")
                         .contentType(MediaType.APPLICATION_JSON)
                 )
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -338,7 +403,7 @@ class RunningApiTest extends ApiTestSupport {
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                 )
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -395,7 +460,7 @@ class RunningApiTest extends ApiTestSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                 )
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -413,7 +478,7 @@ class RunningApiTest extends ApiTestSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                 )
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrorInfos[0].field").value("runningIds"))
                 .andExpect(jsonPath("$.fieldErrorInfos[0].reason").value("must not be empty"));
@@ -427,7 +492,7 @@ class RunningApiTest extends ApiTestSupport {
                         .queryParam("runningMode", "SOLO")
                         .queryParam("cursorStartedAt", "1")
                         .queryParam("cursorRunningId", "2"))
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -436,7 +501,7 @@ class RunningApiTest extends ApiTestSupport {
     void runningModeCannotBeNullWhenGetRunInfos() throws Exception {
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs"))
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("G-002"))
                 .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
@@ -448,7 +513,7 @@ class RunningApiTest extends ApiTestSupport {
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
                         .queryParam("runningMode", "FAKE_SOLO"))
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("G-002"))
                 .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
@@ -462,7 +527,7 @@ class RunningApiTest extends ApiTestSupport {
                         .queryParam("runningMode", "SOLO")
                         .queryParam("cursorCourseName", "태화강 러닝")
                         .queryParam("cursorRunningId", "2"))
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -474,7 +539,7 @@ class RunningApiTest extends ApiTestSupport {
                         .queryParam("runningMode", "SOLO")
                         .queryParam("cursorStartedAt", "1")
                         .queryParam("cursorRunningId", "2"))
-                .andDo(MockMvcResultHandlers.print())
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 

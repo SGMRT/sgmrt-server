@@ -34,33 +34,35 @@ public class Course extends BaseTimeEntity {
     @Column
     private Boolean isPublic = false;
 
-    @Column(name = "path_data_saved_url")
-    private String pathDataSavedUrl;
+    @Embedded
+    private CourseDataUrls courseDataUrls;
 
     @Builder(access = AccessLevel.PRIVATE)
     private Course(CourseProfile courseProfile, Member member, String name,
-                   Coordinate startCoordinate, String pathDataSavedUrl, Boolean isPublic) {
+                   Coordinate startCoordinate, Boolean isPublic, CourseDataUrls courseDataUrls) {
         this.courseProfile = courseProfile;
         this.member = member;
         this.startCoordinate = startCoordinate;
-        this.pathDataSavedUrl = pathDataSavedUrl;
         this.name = name;
         this.isPublic = isPublic;
+        this.courseDataUrls = courseDataUrls;
     }
 
     public static Course of(Member member, Double distance,
                             Double elevationAverage, Double elevationGain, Double elevationLoss,
-                            Double startLatitude, Double startLongitude, String pathDataSavedUrl) {
+                            Double startLatitude, Double startLongitude,
+                            String pathDataSavedUrl, String thumbnailImageSavedUrl) {
 
         CourseProfile courseProfile = CourseProfile.of(distance, elevationAverage, elevationGain, elevationLoss);
         Coordinate startCoordinate = Coordinate.of(startLatitude, startLongitude);
+        CourseDataUrls courseDataUrls1 = CourseDataUrls.of(pathDataSavedUrl, thumbnailImageSavedUrl);
 
         return Course.builder()
                 .member(member)
                 .courseProfile(courseProfile)
                 .startCoordinate(startCoordinate)
-                .pathDataSavedUrl(pathDataSavedUrl)
                 .isPublic(false)
+                .courseDataUrls(courseDataUrls1)
                 .build();
     }
 

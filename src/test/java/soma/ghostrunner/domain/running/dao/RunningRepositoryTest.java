@@ -75,11 +75,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Coordinate testCoordinate = createStartPoint();
         return Course.of(testMember, testCourseProfile.getDistance(),
                 testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
-                testCoordinate.getLatitude(), testCoordinate.getLongitude(), createCoordinatesTelemetries());
-    }
-
-    private String createCoordinatesTelemetries() {
-        return "[{'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}, {'lat':37.123, 'lng':32.123}]";
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
+                "URL", "URL");
     }
 
     private Coordinate createStartPoint() {
@@ -199,7 +196,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Coordinate testCoordinate = createStartPoint();
         Course course = Course.of(testMember, testCourseProfile.getDistance(),
                 testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
-                testCoordinate.getLatitude(), testCoordinate.getLongitude(), createCoordinatesTelemetries());
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
+                "URL", "URL");
         course.setName(courseName);
         return course;
     }

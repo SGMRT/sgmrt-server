@@ -18,7 +18,9 @@ import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.validator.enums.EnumValid;
+import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.util.List;
@@ -42,10 +44,21 @@ public class RunningApi {
             @RequestPart("req") @Valid CreateCourseAndRunRequest req,
             @RequestPart MultipartFile rawTelemetry,
             @RequestPart MultipartFile interpolatedTelemetry,
-            @RequestPart MultipartFile screenShotImage) {
+            @RequestPart(required = false) MultipartFile screenShotImage) {
+        validateFiles(rawTelemetry, interpolatedTelemetry);
         String memberUuid = userDetails.getUserId();
         return runningCommandService.createCourseAndRun(
                 mapper.toCommand(req), memberUuid, rawTelemetry, interpolatedTelemetry, screenShotImage);
+    }
+
+    private void validateFiles(MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry) {
+        if (isEmpty(rawTelemetry) || isEmpty(interpolatedTelemetry)) {
+            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "Telemetry MultipartFile이 비어있습니다.");
+        }
+    }
+
+    private boolean isEmpty(MultipartFile file) {
+        return (file == null || file.isEmpty());
     }
 
     @PostMapping("/v1/runs/courses/{courseId}")
@@ -56,6 +69,7 @@ public class RunningApi {
             @RequestPart MultipartFile interpolatedTelemetry,
             @RequestPart MultipartFile screenShotImage,
             @PathVariable Long courseId) {
+        validateFiles(rawTelemetry, interpolatedTelemetry);
         String memberUuid = userDetails.getUserId();
         return runningCommandService.createRun(
                 mapper.toCommand(req), memberUuid, courseId, rawTelemetry, interpolatedTelemetry, screenShotImage);

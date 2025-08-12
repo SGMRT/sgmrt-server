@@ -189,7 +189,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
                                 running.runningRecord.averagePace, running.runningRecord.cadence),
                         new QCourseInfo(running.course.id, running.course.name,
-                                running.course.isPublic, running.course.pathDataSavedUrl),
+                                running.course.isPublic, running.course.courseDataUrls.pathDataSavedUrl),
                         running.ghostRunningId
                 ))
                 .from(running)

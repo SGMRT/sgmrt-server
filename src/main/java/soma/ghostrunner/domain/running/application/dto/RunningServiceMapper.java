@@ -32,9 +32,9 @@ public interface RunningServiceMapper {
                 command.startedAt(),
                 command.isPublic(),
                 command.hasPaused(),
-                runningDataUrlsDto.rawTelemetrySavedUrl(),
-                runningDataUrlsDto.interpolatedTelemetrySavedUrl(),
-                runningDataUrlsDto.screenShotSavedUrl(),
+                runningDataUrlsDto.getRawTelemetrySavedUrl(),
+                runningDataUrlsDto.getInterpolatedTelemetrySavedUrl(),
+                runningDataUrlsDto.getScreenShotSavedUrl(),
                 member,
                 course
         );
@@ -60,7 +60,8 @@ public interface RunningServiceMapper {
     default Course toCourse(Member member,
                             CreateRunCommand createRunCommand,
                             ProcessedTelemetriesDto processedTelemetry,
-                            String pathDataSavedUrl) {
+                            String pathDataSavedUrl,
+                            String thumbnailImageUrl) {
 
         Double distance = createRunCommand.record().distance();
         Double elevationAverage = processedTelemetry.avgElevation();
@@ -77,7 +78,8 @@ public interface RunningServiceMapper {
                 elevationLoss,
                 startLat,
                 startLng,
-                pathDataSavedUrl
+                pathDataSavedUrl,
+                thumbnailImageUrl
         );
     }
 

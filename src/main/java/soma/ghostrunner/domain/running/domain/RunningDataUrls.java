@@ -15,7 +15,7 @@ public class RunningDataUrls {
     @Column(name = "raw_telemetry_saved_url")
     private String rawTelemetrySavedUrl;
 
-    @Column(name = "interpolated_telemetry_saved_url", nullable = false, length = 2048)
+    @Column(name = "interpolated_telemetry_saved_url")
     private String interpolatedTelemetrySavedUrl;
 
     @Column(name = "screen_shot_saved_url")

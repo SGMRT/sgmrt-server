@@ -113,7 +113,8 @@ public class JpaModifyingTest extends IntegrationTestSupport {
         Coordinate testCoordinate = createStartPoint();
         return Course.of(member, testCourseProfile.getDistance(),
                 testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
-                testCoordinate.getLatitude(), testCoordinate.getLongitude(), "Mock URL");
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
+                "Mock URL", "Mock URL");
     }
 
     private Coordinate createStartPoint() {

@@ -92,8 +92,10 @@ class RunningServiceMapperTest {
     }
 
     private Course createCourse(Member member) {
-        return Course.of(member, 5.6, 110.0, 110.0, 120.0,
-                37.2, 37.3, "PATH_DATA_URL");
+        return Course.of(member, 5.6,
+                110.0, 110.0, 120.0,
+                37.2, 37.3,
+                "PATH_DATA_URL", "PATH_DATA_URL");
     }
 
     private Member createMember() {
@@ -115,7 +117,8 @@ class RunningServiceMapperTest {
                 createProcessedTelemetriesDto(relativeTelemetries, startPointCoordinateDto, coordinateDtos);
 
         // when
-        Course course = mapper.toCourse(member, createRunCommand, processedTelemetriesDto, "PATH_DATA_URL");
+        Course course = mapper.toCourse(member, createRunCommand, processedTelemetriesDto,
+                "PATH_DATA_URL", "SCREEN_SHOT_URL");
 
         // then
         assertThat(course.getName()).isNull();
@@ -123,7 +126,8 @@ class RunningServiceMapperTest {
         assertThat(course.getCourseProfile().getDistance()).isEqualTo(runRecordDto.distance());
         assertThat(course.getCourseProfile().getElevationLoss()).isEqualTo(runRecordDto.elevationLoss());
         assertThat(course.getStartCoordinate().getLatitude()).isEqualTo(37.2);
-        assertThat(course.getPathDataSavedUrl()).isEqualTo("PATH_DATA_URL");
+        assertThat(course.getCourseDataUrls().getPathDataSavedUrl()).isEqualTo("PATH_DATA_URL");
+        assertThat(course.getCourseDataUrls().getThumbnailImageSavedUrl()).isEqualTo("SCREEN_SHOT_URL");
      }
 
 }

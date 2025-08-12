@@ -32,7 +32,7 @@ public class RunningCommandService {
     private final CourseService courseService;
     private final MemberService memberService;
 
-    // TODO : 러닝 저장 시 이벤트 발행, S3에 업로드 후 DB I/O 실패했을 때 S3의 유령 데이터 대응책 필요
+    // TODO : 러닝 저장 시 이벤트 발행
     @Transactional
     public CreateCourseAndRunResponse createCourseAndRun(
             CreateRunCommand command, String memberUuid,
@@ -46,7 +46,7 @@ public class RunningCommandService {
         RunningDataUrlsDto runningDataUrlsDto = saveRunningAndCourseDataToS3(
                 rawTelemetry, processedTelemetries, simplifiedCoordinates, screenShotImage, memberUuid);
 
-        Course course = createAndSaveCourse(member, command, processedTelemetries, runningDataUrlsDto.simplifiedPathSavedUrl());
+        Course course = createAndSaveCourse(member, command, processedTelemetries, runningDataUrlsDto);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
         return CreateCourseAndRunResponse.of(running.getId(), course.getId());
     }
@@ -67,17 +67,30 @@ public class RunningCommandService {
             MultipartFile rawTelemetry, ProcessedTelemetriesDto processedTelemetries,
             List<CoordinateDto> simplifiedTelemetry, MultipartFile screenShotImage, String memberUuid) {
 
+        RunningDataUrlsDto runningDataUrlsDto = saveRunningDataToS3(memberUuid, rawTelemetry, screenShotImage, processedTelemetries);
+        String simplifiedTelemetrySavedUrl = ghostRunnerS3Client.uploadSimplifiedTelemetry(simplifiedTelemetry, memberUuid);
+        runningDataUrlsDto.setSimplifiedPathSavedUrl(simplifiedTelemetrySavedUrl);
+
+        return runningDataUrlsDto;
+    }
+
+    private RunningDataUrlsDto saveRunningDataToS3(String memberUuid, MultipartFile rawTelemetry,
+                                                    MultipartFile screenShotImage, ProcessedTelemetriesDto processedTelemetries) {
         String rawTelemetrySavedUrl = ghostRunnerS3Client.uploadRawTelemetry(rawTelemetry, memberUuid);
         String interpolatedTelemetrySavedUrl = ghostRunnerS3Client.uploadInterpolatedTelemetry(processedTelemetries.relativeTelemetries(), memberUuid);
-        String simplifiedTelemetrySavedUrl = ghostRunnerS3Client.uploadSimplifiedTelemetry(simplifiedTelemetry, memberUuid);
-        String screenShotSavedUrl = ghostRunnerS3Client.uploadMemberProfileImage(screenShotImage, memberUuid);
 
-        return new RunningDataUrlsDto(rawTelemetrySavedUrl, interpolatedTelemetrySavedUrl, simplifiedTelemetrySavedUrl, screenShotSavedUrl);
+        String screenShotSavedUrl = null;
+        if (screenShotImage != null) {
+            screenShotSavedUrl = ghostRunnerS3Client.uploadRunningCaptureImage(screenShotImage, memberUuid);
+        }
+
+        return new RunningDataUrlsDto(rawTelemetrySavedUrl, interpolatedTelemetrySavedUrl, null, screenShotSavedUrl);
     }
 
     private Course createAndSaveCourse(Member member, CreateRunCommand command,
-                                         ProcessedTelemetriesDto processedTelemetriesDto, String pathDataSavedUrl) {
-        Course course = mapper.toCourse(member, command, processedTelemetriesDto, pathDataSavedUrl);
+                                         ProcessedTelemetriesDto processedTelemetriesDto, RunningDataUrlsDto runningDataUrlsDto) {
+        Course course = mapper.toCourse(member, command, processedTelemetriesDto,
+                runningDataUrlsDto.getSimplifiedPathSavedUrl(), runningDataUrlsDto.getScreenShotSavedUrl());
         courseService.save(course);
         return course;
     }
@@ -113,14 +126,6 @@ public class RunningCommandService {
         }
     }
 
-    private RunningDataUrlsDto saveRunningDataToS3(String memberUuid, MultipartFile rawTelemetry,
-                                                   MultipartFile screenShotImage, ProcessedTelemetriesDto processedTelemetries) {
-        String rawTelemetrySavedUrl = ghostRunnerS3Client.uploadRawTelemetry(rawTelemetry, memberUuid);
-        String interpolatedTelemetrySavedUrl = ghostRunnerS3Client.uploadInterpolatedTelemetry(processedTelemetries.relativeTelemetries(), memberUuid);
-        String screenShotSavedUrl = ghostRunnerS3Client.uploadMemberProfileImage(screenShotImage, memberUuid);
-        return new RunningDataUrlsDto(rawTelemetrySavedUrl, interpolatedTelemetrySavedUrl, null, screenShotSavedUrl);
-    }
-
     @Transactional
     public void updateRunningName(String name, Long runningId, String memberUuid) {
         Running running = findRunning(runningId);
@@ -138,8 +143,6 @@ public class RunningCommandService {
     private Running findRunning(Long runningId) {
         return runningQueryService.findRunningByRunningId(runningId);
     }
-
-
 
     @Transactional
     public void deleteRunnings(List<Long> runningIds, String memberUuid) {
