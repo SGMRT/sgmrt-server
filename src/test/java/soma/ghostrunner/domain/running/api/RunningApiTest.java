@@ -411,7 +411,7 @@ class RunningApiTest extends ApiTestSupport {
 
     @DisplayName("러닝 ID에 대한 시계열 데이터를 조회한다.")
     @Test
-    void testGetTelemetries() throws Exception{
+    void getRunningTelemetries() throws Exception{
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/1/telemetries")
                         .contentType(MediaType.APPLICATION_JSON)

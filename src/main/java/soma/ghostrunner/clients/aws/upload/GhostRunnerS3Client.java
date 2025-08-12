@@ -34,10 +34,10 @@ public class GhostRunnerS3Client {
     @Value("${s3.running-directory}")
     private String runningDirectory;
 
-    @Value("${s3.course-directory")
+    @Value("${s3.course-directory}")
     private String courseDirectory;
 
-    @Value("${s3.member-directory")
+    @Value("${s3.member-directory}")
     private String memberDirectory;
 
     public String uploadInterpolatedTelemetry(List<TelemetryDto> telemetryDtos, String memberUuid) {

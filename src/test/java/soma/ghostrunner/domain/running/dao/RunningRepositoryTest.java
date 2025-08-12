@@ -290,7 +290,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when
-        String url = runningRepository.findTelemetryUrlById(running.getId(), member.getUuid()).get();
+        String url = runningRepository.findInterpolatedTelemetryUrlByIdAndMemberUuid(running.getId(), member.getUuid()).get();
 
         // then
         Assertions.assertThat(url).isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());

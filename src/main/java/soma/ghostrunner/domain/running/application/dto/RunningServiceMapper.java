@@ -4,6 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordDto;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -82,5 +83,7 @@ public interface RunningServiceMapper {
                 thumbnailImageUrl
         );
     }
+
+    CreateCourseAndRunResponse toResponse(Long runningId, Long courseId);
 
 }

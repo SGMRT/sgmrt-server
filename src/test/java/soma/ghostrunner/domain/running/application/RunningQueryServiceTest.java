@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
@@ -293,41 +294,34 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                  .hasMessage("id " + followingRunning.getId() + " is not found");
      }
 
-//    @DisplayName("러닝의 전체 시계열을 조회한다.")
-//    @Test
-//    void findRunningTelemetries() {
-//        // given
-//        Member member = createMember("이복둥");
-//        memberRepository.save(member);
-//
-//        Course course = createCourse(member);
-//        courseRepository.save(course);
-//
-//        Running running = createRunning("러닝", course, member, "러닝의 URL");
-//        runningRepository.save(running);
-//
-//        List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-//        given(runningTelemetryQueryService.findTotalTelemetries(running.getId(), running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()))
-//                .willReturn(mockTelemetryDtos);
-//
-//        // when
-//        List<TelemetryDto> telemetries = runningQueryService.findRunningTelemetries(running.getId(), member.getUuid());
-//
-//        // then
-//        Assertions.assertThat(telemetries)
-//                .hasSize(4)
-//                .extracting("timeStamp", "lat", "lng", "dist", "pace", "alt", "cadence", "bpm", "isRunning")
-//                .containsExactly(
-//                        tuple(0L, 37.2, 37.5, 110.0, 6.0, 100, 120, 110, true),
-//                        tuple(1L, 37.3, 37.6, 110.1, 6.1, 101, 121, 111, true),
-//                        tuple(2L, 37.4, 37.7, 110.2, 6.2, 102, 122, 112, true),
-//                        tuple(3L, 37.5, 37.8, 110.3, 6.3, 103, 123, 113, false)
-//                );
-//    }
+    @DisplayName("러닝의 전체 시계열을 조회한다.")
+    @Test
+    void findRunningTelemetries() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
 
-    private Running createRunning(String runningName, Course course, Member member, String telemetryUrl) {
-        return Running.of(runningName, RunningMode.SOLO, null, createRunningRecord(), 1750729987181L,
-                true, false, telemetryUrl, telemetryUrl, telemetryUrl, member, course);
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        Running running = createRunning("러닝", course, member, "Interpolated Telemetry Mock URL");
+        runningRepository.save(running);
+
+        // when
+        String interpolatedTelemetryUrl = runningQueryService.findRunningTelemetries(running.getId(), member.getUuid());
+
+        // then
+        Assertions.assertThat(interpolatedTelemetryUrl).isEqualTo("Interpolated Telemetry Mock URL");
+    }
+
+    private Running createRunning(String runningName, Course course, Member member, String interpolatedMockUrl) {
+        return Running.of(
+                runningName, RunningMode.SOLO, null,
+                createRunningRecord(), 1750729987181L,
+                true, false,
+                "Raw Telemetry Mock URL", interpolatedMockUrl, "screenShot",
+                member, course
+        );
     }
 
     private Course createCourse(Member testMember) {
@@ -347,24 +341,25 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         return CourseProfile.of(5.2, 30.0, 40.0, -20.0);
     }
 
-    @DisplayName("존재하지 않는 러닝의 전체 시계열을 조회하면 NOT_FOUND를 응답한다.")
+    @DisplayName("러닝의 전체 시계열을 조회할 때 자신의 러닝 데이터가 아니라면 예외를 응답한다.")
     @Test
-    void findRunningTelemetriesWithNoneRunning() {
+    void findNonAuthorizedRunningTelemetries() {
         // given
-        Member member = createMember("이복둥");
-        memberRepository.save(member);
+        Member owner = createMember("이복둥");
+        memberRepository.save(owner);
+        Member other = createMember("타인은 지옥이다.");
+        memberRepository.save(other);
 
-        Course course = createCourse(member);
+        Course course = createCourse(owner);
         courseRepository.save(course);
 
-        Running running = createRunning("러닝", course, member, "러닝의 URL");
+        Running running = createRunning("러닝", course, owner, "Interpolated Telemetry Mock URL");
         runningRepository.save(running);
 
         // when // then
-        Assertions.assertThatThrownBy(
-                        () -> runningQueryService.findRunningTelemetries(running.getId(), UUID.randomUUID().toString()))
-                .isInstanceOf(RunningNotFoundException.class)
-                .hasMessage("id " + running.getId() +" is not found");
+        Assertions.assertThatThrownBy(() -> runningQueryService.findRunningTelemetries(running.getId(), other.getUuid()))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("접근할 수 없는 러닝 데이터입니다.");
     }
 
     @DisplayName("러닝 ID로 러닝을 조회한다.")

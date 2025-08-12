@@ -48,7 +48,7 @@ public class RunningCommandService {
 
         Course course = createAndSaveCourse(member, command, processedTelemetries, runningDataUrlsDto);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
-        return CreateCourseAndRunResponse.of(running.getId(), course.getId());
+        return mapper.toResponse(running.getId(), course.getId());
     }
 
     private Member findMember(String memberUuid) {
