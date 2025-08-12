@@ -13,7 +13,7 @@ import soma.ghostrunner.global.error.ErrorCode;
 import java.util.List;
 
 @Entity
-@Table(name = "running")
+@Table(name = "running_record")
 @SoftDelete
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Running extends BaseTimeEntity {

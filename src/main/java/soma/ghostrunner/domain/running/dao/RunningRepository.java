@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
@@ -43,7 +42,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
     List<Running> findByIds(List<Long> runningIds);
 
     @Query(
-            value = "select * from running r where r.id in :runningIds",
+            value = "select * from running_record r where r.id in :runningIds",
             nativeQuery = true
     )
     List<Running> findByIdsNoMatterDeleted(@Param("runningIds") List<Long> runningIds);
