@@ -12,29 +12,29 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RunningDataUrls {
 
-    @Column(name = "raw_telemetry_saved_url")
-    private String rawTelemetrySavedUrl;
+    @Column(name = "raw_telemetry_url")
+    private String rawTelemetryUrl;
 
-    @Column(name = "interpolated_telemetry_saved_url")
-    private String interpolatedTelemetrySavedUrl;
+    @Column(name = "interpolated_telemetry_url")
+    private String interpolatedTelemetryUrl;
 
-    @Column(name = "screen_shot_saved_url")
-    private String screenShotSavedUrl;
+    @Column(name = "screen_shot_url")
+    private String screenShotUrl;
 
     @Builder(access = AccessLevel.PRIVATE)
-    public RunningDataUrls(String rawTelemetrySavedUrl,
-                           String interpolatedTelemetrySavedUrl, String screenshotSavedUrl) {
-        this.rawTelemetrySavedUrl = rawTelemetrySavedUrl;
-        this.interpolatedTelemetrySavedUrl = interpolatedTelemetrySavedUrl;
-        this.screenShotSavedUrl = screenshotSavedUrl;
+    public RunningDataUrls(String rawTelemetryUrl,
+                           String interpolatedTelemetryUrl, String screenShotUrl) {
+        this.rawTelemetryUrl = rawTelemetryUrl;
+        this.interpolatedTelemetryUrl = interpolatedTelemetryUrl;
+        this.screenShotUrl = screenShotUrl;
     }
 
-    static RunningDataUrls of(String rawTelemetrySavedUrl,
-                              String interpolatedTelemetrySavedUrl, String screenshotSavedUrl) {
+    static RunningDataUrls of(String rawTelemetryUrl,
+                              String interpolatedTelemetryUrl, String screenShotUrl) {
         return RunningDataUrls.builder()
-                .rawTelemetrySavedUrl(rawTelemetrySavedUrl)
-                .interpolatedTelemetrySavedUrl(interpolatedTelemetrySavedUrl)
-                .screenshotSavedUrl(screenshotSavedUrl)
+                .rawTelemetryUrl(rawTelemetryUrl)
+                .interpolatedTelemetryUrl(interpolatedTelemetryUrl)
+                .screenShotUrl(screenShotUrl)
                 .build();
     }
 

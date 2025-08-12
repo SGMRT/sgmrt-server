@@ -28,13 +28,13 @@ class RunningApiTest extends ApiTestSupport {
         CreateCourseAndRunRequest request = validCreateCourseAndRunRequest();
         MockMultipartFile raw = createMockJsonl("rawTelemetry");
         MockMultipartFile interpolated = createMockJsonl("interpolatedTelemetry");
-        MockMultipartFile screenshot = createMockImage("screenShotImage");
+        MockMultipartFile screenShot = createMockImage("screenShotImage");
 
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs")
                         .file(raw)
                         .file(interpolated)
-                        .file(screenshot)
+                        .file(screenShot)
                         .file(createJsonBodyPart("req", request))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
@@ -242,13 +242,13 @@ class RunningApiTest extends ApiTestSupport {
         CreateRunRequest soloRequest = validSoloCreateRunRequest();
         MockMultipartFile raw = createMockJsonl("rawTelemetry");
         MockMultipartFile interpolated = createMockJsonl("interpolatedTelemetry");
-        MockMultipartFile screenshot = createMockImage("screenShotImage");
+        MockMultipartFile screenShot = createMockImage("screenShotImage");
 
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs/courses/{courseId}", 1L)
                         .file(raw)
                         .file(interpolated)
-                        .file(screenshot)
+                        .file(screenShot)
                         .file(createJsonBodyPart("req", soloRequest))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
@@ -262,12 +262,12 @@ class RunningApiTest extends ApiTestSupport {
         CreateRunRequest ghostRequest = validGhostCreateRunRequest(3L);
         MockMultipartFile raw = createMockJsonl("rawTelemetry");
         MockMultipartFile interpolated = createMockJsonl("interpolatedTelemetry");
-        MockMultipartFile screenshot = createMockImage("screenShotImage");
+        MockMultipartFile screenShot = createMockImage("screenShotImage");
 
         mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs/courses/{courseId}", 1L)
                         .file(raw)
                         .file(interpolated)
-                        .file(screenshot)
+                        .file(screenShot)
                         .file(createJsonBodyPart("req", ghostRequest))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))
@@ -294,12 +294,12 @@ class RunningApiTest extends ApiTestSupport {
     void testCreateRunValidation(CreateRunRequest payload, String wrongField, String reason) throws Exception {
         MockMultipartFile raw = createMockJsonl("rawTelemetry");
         MockMultipartFile interpolated = createMockJsonl("interpolatedTelemetry");
-        MockMultipartFile screenshot = createMockImage("screenShotImage");
+        MockMultipartFile screenShot = createMockImage("screenShotImage");
 
         mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/runs/courses/{courseId}", 1L)
                         .file(raw)
                         .file(interpolated)
-                        .file(screenshot)
+                        .file(screenShot)
                         .file(createJsonBodyPart("req", payload))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA))

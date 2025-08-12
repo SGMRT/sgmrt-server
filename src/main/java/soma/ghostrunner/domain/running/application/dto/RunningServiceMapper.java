@@ -32,9 +32,9 @@ public interface RunningServiceMapper {
                 command.startedAt(),
                 command.isPublic(),
                 command.hasPaused(),
-                runningDataUrlsDto.getRawTelemetrySavedUrl(),
-                runningDataUrlsDto.getInterpolatedTelemetrySavedUrl(),
-                runningDataUrlsDto.getScreenShotSavedUrl(),
+                runningDataUrlsDto.getRawTelemetryUrl(),
+                runningDataUrlsDto.getInterpolatedTelemetryUrl(),
+                runningDataUrlsDto.getScreenShotUrl(),
                 member,
                 course
         );

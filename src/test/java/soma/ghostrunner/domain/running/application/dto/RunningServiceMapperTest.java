@@ -52,9 +52,9 @@ class RunningServiceMapperTest {
         assertThat(running.getRunningRecord().getDistance()).isEqualTo(5.5);
         assertThat(running.getRunningRecord().getCadence()).isEqualTo(100L);
 
-        assertThat(running.getRunningDataUrls().getRawTelemetrySavedUrl()).isEqualTo("RAW URL");
-        assertThat(running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()).isEqualTo("INTERPOLATED URL");
-        assertThat(running.getRunningDataUrls().getScreenShotSavedUrl()).isEqualTo("SCREEN SHOT URL");
+        assertThat(running.getRunningDataUrls().getRawTelemetryUrl()).isEqualTo("RAW URL");
+        assertThat(running.getRunningDataUrls().getInterpolatedTelemetryUrl()).isEqualTo("INTERPOLATED URL");
+        assertThat(running.getRunningDataUrls().getScreenShotUrl()).isEqualTo("SCREEN SHOT URL");
     }
 
     private ProcessedTelemetriesDto createProcessedTelemetriesDto(
@@ -126,8 +126,8 @@ class RunningServiceMapperTest {
         assertThat(course.getCourseProfile().getDistance()).isEqualTo(runRecordDto.distance());
         assertThat(course.getCourseProfile().getElevationLoss()).isEqualTo(runRecordDto.elevationLoss());
         assertThat(course.getStartCoordinate().getLatitude()).isEqualTo(37.2);
-        assertThat(course.getCourseDataUrls().getPathDataSavedUrl()).isEqualTo("PATH_DATA_URL");
-        assertThat(course.getCourseDataUrls().getThumbnailImageSavedUrl()).isEqualTo("SCREEN_SHOT_URL");
+        assertThat(course.getCourseDataUrls().getRouteUrl()).isEqualTo("PATH_DATA_URL");
+        assertThat(course.getCourseDataUrls().getThumbnailUrl()).isEqualTo("SCREEN_SHOT_URL");
      }
 
 }

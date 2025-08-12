@@ -13,9 +13,7 @@ import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
-import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
-import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -26,7 +24,6 @@ import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import java.util.*;
 import java.util.stream.IntStream;
 
-import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.*;
 
 // TODO : 단위 테스트로 전환
@@ -250,7 +247,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.save(followingRunning);
 
         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()))
+        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetryUrl()))
                 .willReturn(mockTelemetryDtos);
 
         // when // then
@@ -285,7 +282,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
          runningRepository.save(followingRunning);
 
          List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-         given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetrySavedUrl()))
+         given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetryUrl()))
                  .willReturn(mockTelemetryDtos);
 
          // when // then
@@ -389,8 +386,8 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(savedRunning.getRunningName()).isEqualTo(running.getRunningName());
         Assertions.assertThat(savedRunning.getGhostRunningId()).isEqualTo(running.getGhostRunningId());
-        Assertions.assertThat(savedRunning.getRunningDataUrls().getInterpolatedTelemetrySavedUrl())
-                .isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetrySavedUrl());
+        Assertions.assertThat(savedRunning.getRunningDataUrls().getInterpolatedTelemetryUrl())
+                .isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
     }
 
     @DisplayName("존재하지 않는 러닝 ID로 러닝을 조회하면 NOT_FOUND 예외가 발생한다.")

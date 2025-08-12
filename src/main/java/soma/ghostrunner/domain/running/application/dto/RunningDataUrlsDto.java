@@ -8,10 +8,10 @@ import lombok.Setter;
 @AllArgsConstructor
 public class RunningDataUrlsDto {
 
-    private String rawTelemetrySavedUrl;
-    private String interpolatedTelemetrySavedUrl;
+    private String rawTelemetryUrl;
+    private String interpolatedTelemetryUrl;
     @Setter
     private String simplifiedPathSavedUrl;
-    private String screenShotSavedUrl;
+    private String screenShotUrl;
 
 }

@@ -6,29 +6,28 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import soma.ghostrunner.domain.running.domain.RunningDataUrls;
 
 @Embeddable
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CourseDataUrls {
 
-    @Column(name = "path_data_saved_url")
-    private String pathDataSavedUrl;
+    @Column(name = "route_url")
+    private String routeUrl;
 
-    @Column(name = "thumbnail_image_saved_url")
-    private String thumbnailImageSavedUrl;
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
 
     @Builder(access = AccessLevel.PRIVATE)
-    public CourseDataUrls(String pathDataSavedUrl, String thumbnailImageSavedUrl) {
-        this.pathDataSavedUrl = pathDataSavedUrl;
-        this.thumbnailImageSavedUrl = thumbnailImageSavedUrl;
+    public CourseDataUrls(String routeUrl, String thumbnailUrl) {
+        this.routeUrl = routeUrl;
+        this.thumbnailUrl = thumbnailUrl;
     }
 
-    static CourseDataUrls of(String pathDataSavedUrl, String thumbnailImageSavedUrl) {
+    static CourseDataUrls of(String routeUrl, String thumbnailUrl) {
         return CourseDataUrls.builder()
-                .pathDataSavedUrl(pathDataSavedUrl)
-                .thumbnailImageSavedUrl(thumbnailImageSavedUrl)
+                .routeUrl(routeUrl)
+                .thumbnailUrl(thumbnailUrl)
                 .build();
     }
 

@@ -20,7 +20,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
 
     Optional<Running> findByIdAndMemberId(Long runningId, Long memberId);
 
-    @Query("select r.runningDataUrls.interpolatedTelemetrySavedUrl from Running r join r.member m where r.id = :runningId and m.uuid = :memberUuid")
+    @Query("select r.runningDataUrls.interpolatedTelemetryUrl from Running r join r.member m where r.id = :runningId and m.uuid = :memberUuid")
     Optional<String> findTelemetryUrlById(Long runningId, String memberUuid);
 
     @Query("SELECT r FROM Running r JOIN FETCH r.member "

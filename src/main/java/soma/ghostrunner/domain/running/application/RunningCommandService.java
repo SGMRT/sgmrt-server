@@ -90,7 +90,7 @@ public class RunningCommandService {
     private Course createAndSaveCourse(Member member, CreateRunCommand command,
                                          ProcessedTelemetriesDto processedTelemetriesDto, RunningDataUrlsDto runningDataUrlsDto) {
         Course course = mapper.toCourse(member, command, processedTelemetriesDto,
-                runningDataUrlsDto.getSimplifiedPathSavedUrl(), runningDataUrlsDto.getScreenShotSavedUrl());
+                runningDataUrlsDto.getSimplifiedPathSavedUrl(), runningDataUrlsDto.getScreenShotUrl());
         courseService.save(course);
         return course;
     }
