@@ -72,7 +72,7 @@ public class GhostRunnerS3Client {
                     .contentLength((long) contentBytes.length)
                     .build();
 
-            log.info("리스트 기반 JSONL 업로드 중.. 파일 이름: {}, 크기: {} bytes", fileName, contentBytes.length);
+            log.info("S3에 리스트 JSONL 업로드 중.. 파일 이름: {}, 크기: {} bytes", fileName, contentBytes.length);
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(contentBytes));
 
             log.info("S3에 리스트 JSONL 업로드 성공. 파일: {}", fileName);
@@ -93,7 +93,7 @@ public class GhostRunnerS3Client {
                     .contentLength(rawTelemetry.getSize())
                     .build();
 
-            log.info("MultipartFile JSONL 업로드 중.. 파일 이름: {}, 크기: {} bytes", fileName, rawTelemetry.getSize());
+            log.info("S3에 MultipartFile JSONL 업로드 중.. 파일 이름: {}, 크기: {} bytes", fileName, rawTelemetry.getSize());
             s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(rawTelemetry.getInputStream(), rawTelemetry.getSize()));
 
             log.info("S3에 MultipartFile JSONL 업로드 성공. 파일: {}", fileName);
@@ -128,7 +128,7 @@ public class GhostRunnerS3Client {
                     .contentLength(imageFile.getSize())
                     .build();
 
-            log.info("이미지 업로드 중.. 파일 이름: {}, 크기: {} bytes", fileName, imageFile.getSize());
+            log.info("S3에 이미지 업로드 중.. 파일 이름: {}, 크기: {} bytes", fileName, imageFile.getSize());
             s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(imageFile.getInputStream(), imageFile.getSize()));
 
             log.info("S3에 이미지 업로드 성공. 파일: {}", fileName);
