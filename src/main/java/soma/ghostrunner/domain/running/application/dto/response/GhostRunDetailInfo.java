@@ -23,7 +23,7 @@ public class GhostRunDetailInfo extends RunDetailInfo {
                               CourseInfo courseInfo, MemberAndRunRecordInfo myRunInfo,
                               Long ghostRunId, String telemetryUrl, Boolean isPublic) {
         super(startedAt, runningName, telemetryUrl, isPublic);
-        this.courseInfo = courseInfo.getIsPublic() ? courseInfo : null;
+        this.courseInfo = courseInfo;
         this.ghostRunId = ghostRunId;
         this.myRunInfo = myRunInfo;
     }

@@ -20,7 +20,7 @@ public class RunInfo {
         this.name = name;
         this.startedAt = startedAt;
         this.recordInfo = recordInfo;
-        this.courseInfo = courseInfo;
+        this.courseInfo = courseInfo.getIsPublic() ? courseInfo : null;
         this.ghostRunningId = ghostRunningId;
     }
 

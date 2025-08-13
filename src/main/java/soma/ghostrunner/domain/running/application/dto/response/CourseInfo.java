@@ -23,4 +23,10 @@ public class CourseInfo {
         this.isPublic = isPublic;
     }
 
+    @QueryProjection
+    public CourseInfo(Long id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
 }
