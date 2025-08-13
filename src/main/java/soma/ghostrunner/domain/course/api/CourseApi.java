@@ -10,8 +10,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseFacade;
+import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
+import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.util.List;
@@ -28,13 +30,14 @@ public class CourseApi {
             @RequestParam Double lat,
             @RequestParam Double lng,
             @RequestParam(required = false, defaultValue = "2000") @Max(value = 20000) Integer radiusM,
+            @RequestParam(required = false, defaultValue = "DISTANCE") CourseSortType sort,
             @RequestParam(required = false) String ownerUuid,
             @RequestParam(required = false) Integer minDistanceM,
             @RequestParam(required = false) Integer maxDistanceM,
             @RequestParam(required = false) Integer minElevationM,
             @RequestParam(required = false) Integer maxElevationM) {
-        return courseFacade.findCoursesByPosition(lat, lng, radiusM,
-                minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid);
+        return courseFacade.findCoursesByPosition(lat, lng, radiusM, sort,
+                CourseSearchFilterDto.of(minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid));
     }
 
     @GetMapping("/courses/{courseId}")
