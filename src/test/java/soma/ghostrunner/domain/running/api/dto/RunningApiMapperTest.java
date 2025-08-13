@@ -116,7 +116,6 @@ class RunningApiMapperTest {
                 .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
-                .telemetries(validTelemetries())
                 .build();
     }
 
@@ -129,7 +128,6 @@ class RunningApiMapperTest {
                 .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
-                .telemetries(validTelemetries())
                 .build();
     }
 }
