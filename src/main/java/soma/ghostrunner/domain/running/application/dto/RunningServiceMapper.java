@@ -23,17 +23,17 @@ public interface RunningServiceMapper {
                               Member member,
                               Course course) {
 
-        RunningRecord runningRecord = toRunningRecord(command.record(), processedTelemetry);
-        RunningMode mode = RunningMode.valueOf(command.mode());
+        RunningRecord runningRecord = toRunningRecord(command.getRecord(), processedTelemetry);
+        RunningMode mode = RunningMode.valueOf(command.getMode());
 
         return Running.of(
-                command.runningName(),
+                command.getRunningName(),
                 mode,
-                command.ghostRunningId(),
+                command.getGhostRunningId(),
                 runningRecord,
-                command.startedAt(),
-                command.isPublic(),
-                command.hasPaused(),
+                command.getStartedAt(),
+                command.getIsPublic(),
+                command.getHasPaused(),
                 runningDataUrlsDto.getRawTelemetryUrl(),
                 runningDataUrlsDto.getInterpolatedTelemetryUrl(),
                 runningDataUrlsDto.getScreenShotUrl(),
@@ -45,17 +45,17 @@ public interface RunningServiceMapper {
     default RunningRecord toRunningRecord(RunRecordDto record, ProcessedTelemetriesDto processedTelemetry) {
 
         return RunningRecord.of(
-                record.distance(),
+                record.getDistance(),
                 processedTelemetry.avgElevation(),
-                record.elevationGain(),
-                record.elevationLoss(),
-                record.avgPace(),
+                record.getElevationGain(),
+                record.getElevationLoss(),
+                record.getAvgPace(),
                 processedTelemetry.highestPace(),
                 processedTelemetry.lowestPace(),
-                record.duration(),
-                record.calories(),
-                record.avgCadence(),
-                record.avgBpm()
+                record.getDuration(),
+                record.getCalories(),
+                record.getAvgCadence(),
+                record.getAvgBpm()
         );
     }
 
@@ -65,10 +65,10 @@ public interface RunningServiceMapper {
                             String pathDataSavedUrl,
                             String thumbnailImageUrl) {
 
-        Double distance = createRunCommand.record().distance();
+        Double distance = createRunCommand.getRecord().getDistance();
         Double elevationAverage = processedTelemetry.avgElevation();
-        Double elevationGain = createRunCommand.record().elevationGain();
-        Double elevationLoss = createRunCommand.record().elevationLoss();
+        Double elevationGain = createRunCommand.getRecord().getElevationGain();
+        Double elevationLoss = createRunCommand.getRecord().getElevationLoss();
         Double startLat = processedTelemetry.startPoint().lat();
         Double startLng = processedTelemetry.startPoint().lng();
 

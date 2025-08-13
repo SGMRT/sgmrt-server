@@ -27,12 +27,12 @@ class RunningApiMapperTest {
         CreateRunCommand command = mapper.toCommand(request);
 
         // then
-        Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
-        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(command.mode()).isEqualTo("SOLO");
-        Assertions.assertThat(command.ghostRunningId()).isNull();
+        Assertions.assertThat(request.getRunningName()).isEqualTo(command.getRunningName());
+        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.getRecord().getDuration());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(command.getMode()).isEqualTo("SOLO");
+        Assertions.assertThat(command.getGhostRunningId()).isNull();
     }
 
     @DisplayName("Solo's CreateRunRequest -> CreateRunCommand")
@@ -45,12 +45,12 @@ class RunningApiMapperTest {
         CreateRunCommand command = mapper.toCommand(request);
 
         // then
-        Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
-        Assertions.assertThat(request.getMode()).isEqualTo(command.mode());
-        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(command.ghostRunningId()).isNull();
+        Assertions.assertThat(request.getRunningName()).isEqualTo(command.getRunningName());
+        Assertions.assertThat(request.getMode()).isEqualTo(command.getMode());
+        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.getRecord().getDuration());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(command.getGhostRunningId()).isNull();
     }
 
     @DisplayName("Ghost's CreateRunRequest -> CreateRunCommand")
@@ -63,12 +63,12 @@ class RunningApiMapperTest {
         CreateRunCommand command = mapper.toCommand(request);
 
         // then
-        Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
-        Assertions.assertThat(request.getMode()).isEqualTo(command.mode());
-        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(command.ghostRunningId()).isEqualTo(1L);
+        Assertions.assertThat(request.getRunningName()).isEqualTo(command.getRunningName());
+        Assertions.assertThat(request.getMode()).isEqualTo(command.getMode());
+        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.getRecord().getDuration());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(command.getGhostRunningId()).isEqualTo(1L);
     }
 
     private CreateCourseAndRunRequest validCreateCourseAndRunRequest() {

@@ -97,6 +97,7 @@ public class RunningCommandService {
 
     private Running createAndSaveRunning(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry,
                                          RunningDataUrlsDto runningDataUrlsDto, Member member, Course course) {
+        command.subtractInitialElevation(processedTelemetry.initialElevation());
         return runningRepository.save(mapper.toRunning(command, processedTelemetry, runningDataUrlsDto, member, course));
     }
 
@@ -120,8 +121,8 @@ public class RunningCommandService {
     }
 
     private void validateBelongsToCourseIfGhostMode(CreateRunCommand command, Long courseId) {
-        if (command.mode().equals("GHOST")) {
-            Running ghostRunning = findRunning(command.ghostRunningId());
+        if (command.getMode().equals("GHOST")) {
+            Running ghostRunning = findRunning(command.getGhostRunningId());
             ghostRunning.validateBelongsToCourse(courseId);
         }
     }

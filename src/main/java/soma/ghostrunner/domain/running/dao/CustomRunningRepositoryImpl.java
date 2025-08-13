@@ -49,7 +49,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                         running.runningRecord.highestPace,
                                         running.runningRecord.lowestPace,
                                         running.runningRecord.elevationGain,
-                                        running.runningRecord.elevationLoss
+                                        running.runningRecord.elevationLoss,
+                                        running.runningRecord.elevationAverage
                                 ),
                                 running.runningDataUrls.interpolatedTelemetryUrl,
                                 running.isPublic
@@ -86,7 +87,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                                 running.runningRecord.highestPace,
                                                 running.runningRecord.lowestPace,
                                                 running.runningRecord.elevationGain,
-                                                running.runningRecord.elevationLoss
+                                                running.runningRecord.elevationLoss,
+                                                running.runningRecord.elevationAverage
                                         )),
                                 running.ghostRunningId,
                                 running.runningDataUrls.interpolatedTelemetryUrl,
