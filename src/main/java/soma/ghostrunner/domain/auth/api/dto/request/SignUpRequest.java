@@ -22,6 +22,9 @@ public class SignUpRequest {
     private Gender gender;
 
     @Positive
+    private Integer age;
+
+    @Positive
     private Integer height;
 
     @Positive

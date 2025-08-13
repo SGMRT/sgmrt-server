@@ -28,44 +28,41 @@ public class Course extends BaseTimeEntity {
     private CourseProfile courseProfile;
 
     @Embedded
-    private StartPoint startPoint;
+    private Coordinate startCoordinate;
 
     @Setter
     @Column
     private Boolean isPublic = false;
 
-    @Lob @Column(columnDefinition = "LONGTEXT")
-    private String pathData;
-
-    @Column
-    private String routeUrl;
-
-    @Column
-    private String thumbnailUrl;
+    @Embedded
+    private CourseDataUrls courseDataUrls;
 
     @Builder(access = AccessLevel.PRIVATE)
-    private Course(CourseProfile courseProfile, Member member, String name, StartPoint startPoint,
-                   String pathData, Boolean isPublic, String routeUrl, String thumbnailUrl) {
+    private Course(CourseProfile courseProfile, Member member, String name,
+                   Coordinate startCoordinate, Boolean isPublic, CourseDataUrls courseDataUrls) {
         this.courseProfile = courseProfile;
         this.member = member;
-        this.startPoint = startPoint;
+        this.startCoordinate = startCoordinate;
         this.name = name;
-        this.pathData = pathData;
         this.isPublic = isPublic;
-        this.routeUrl = routeUrl;
-        this.thumbnailUrl = thumbnailUrl;
+        this.courseDataUrls = courseDataUrls;
     }
 
-    public static Course of(Member member, CourseProfile courseProfile, StartPoint startPoint,
-                            String pathData, String routeUrl, String thumbnailUrl) {
+    public static Course of(Member member, Double distance,
+                            Double elevationAverage, Double elevationGain, Double elevationLoss,
+                            Double startLatitude, Double startLongitude,
+                            String pathDataSavedUrl, String thumbnailImageSavedUrl) {
+
+        CourseProfile courseProfile = CourseProfile.of(distance, elevationAverage, elevationGain, elevationLoss);
+        Coordinate startCoordinate = Coordinate.of(startLatitude, startLongitude);
+        CourseDataUrls courseDataUrls1 = CourseDataUrls.of(pathDataSavedUrl, thumbnailImageSavedUrl);
+
         return Course.builder()
                 .member(member)
                 .courseProfile(courseProfile)
-                .startPoint(startPoint)
-                .pathData(pathData)
-                .routeUrl(routeUrl)
-                .thumbnailUrl(thumbnailUrl)
+                .startCoordinate(startCoordinate)
                 .isPublic(false)
+                .courseDataUrls(courseDataUrls1)
                 .build();
     }
 

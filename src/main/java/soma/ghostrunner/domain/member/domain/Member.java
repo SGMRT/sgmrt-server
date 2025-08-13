@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.member.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.checkerframework.checker.units.qual.A;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import soma.ghostrunner.domain.member.enums.Gender;
@@ -61,7 +60,7 @@ public class Member extends BaseTimeEntity {
     public static Member of(String nickname, String profilePictureUrl) {
         return Member.builder()
                 .nickname(nickname)
-                .bioInfo(new MemberBioInfo(null, null, null))
+                .bioInfo(new MemberBioInfo(null, null, null, null))
                 .profilePictureUrl(profilePictureUrl)
                 .build();
     }
@@ -73,11 +72,12 @@ public class Member extends BaseTimeEntity {
         this.nickname = nickname;
     }
 
-    public void updateBioInfo(Gender gender, Integer weight, Integer height) {
+    public void updateBioInfo(Gender gender, Integer age, Integer weight, Integer height) {
         // gender, weight, height는 null check X -> 요청 시 null로 변경 가능
         if(weight != null && weight < 0) throw new IllegalArgumentException("weight cannot be negative");
         if(height != null && height < 0) throw new IllegalArgumentException("height cannot be negative");
-        this.bioInfo = new MemberBioInfo(gender, weight, height);
+        if(age != null && age < 0) throw new IllegalArgumentException("age cannot be negative");
+        this.bioInfo = new MemberBioInfo(gender, age, weight, height);
     }
 
     public void updateProfilePictureUrl(String profilePictureUrl) {

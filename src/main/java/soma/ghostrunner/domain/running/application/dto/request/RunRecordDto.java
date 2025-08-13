@@ -2,8 +2,8 @@ package soma.ghostrunner.domain.running.application.dto.request;
 
 public record RunRecordDto(
         Double distance,
-        Integer elevationGain,
-        Integer elevationLoss,
+        Double elevationGain,
+        Double elevationLoss,
         Long duration,
         Double avgPace,
         Integer calories,

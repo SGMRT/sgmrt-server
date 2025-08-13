@@ -15,4 +15,6 @@ public interface MemberAuthInfoRepository extends JpaRepository<MemberAuthInfo, 
 
     boolean existsByExternalAuthUid(String authUid);
 
+    Optional<MemberAuthInfo> findByMemberId(Long id);
+
 }

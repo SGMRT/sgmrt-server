@@ -9,22 +9,22 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Embeddable @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class StartPoint {
+public class Coordinate {
 
     @Column(name = "start_latitude", nullable = false)
-    private double latitude;
+    private Double latitude;
 
     @Column(name = "start_longtitude", nullable = false)
-    private double longitude;
+    private Double longitude;
 
     @Builder
-    private StartPoint(double latitude, double longitude) {
+    private Coordinate(Double latitude, Double longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
     }
 
-    public static StartPoint of(double latitude, double longitude) {
-        return StartPoint.builder()
+    public static Coordinate of(Double latitude, Double longitude) {
+        return Coordinate.builder()
                 .latitude(latitude)
                 .longitude(longitude)
                 .build();

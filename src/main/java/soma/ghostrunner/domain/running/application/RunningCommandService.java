@@ -3,22 +3,19 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.clients.aws.upload.S3TelemetryClient;
+import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
+import soma.ghostrunner.domain.running.application.dto.*;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
-import soma.ghostrunner.domain.running.application.dto.request.RunRecordDto;
-import soma.ghostrunner.domain.running.domain.support.TelemetryCalculator;
-import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
+import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
+import soma.ghostrunner.domain.running.domain.PathSimplifier;
 import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.RunningMode;
-import soma.ghostrunner.domain.running.domain.RunningRecord;
-import soma.ghostrunner.domain.running.domain.support.TelemetryTypeConverter;
 
 import java.util.List;
 
@@ -26,64 +23,107 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RunningCommandService {
 
-    private final S3TelemetryClient s3TelemetryClient;
+    private final RunningServiceMapper mapper;
     private final RunningRepository runningRepository;
+
+    private final GhostRunnerS3Client ghostRunnerS3Client;
 
     private final RunningQueryService runningQueryService;
     private final CourseService courseService;
     private final MemberService memberService;
 
+    // TODO : 러닝 저장 시 이벤트 발행
     @Transactional
-    public CreateCourseAndRunResponse createCourseAndRun(CreateRunCommand command, String memberUuid) {
-        Member member = memberService.findMemberByUuid(memberUuid);
+    public CreateCourseAndRunResponse createCourseAndRun(
+            CreateRunCommand command, String memberUuid,
+            MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry, MultipartFile screenShotImage) {
 
-        ProcessedTelemetriesDto processedTelemetry = processTelemetry(command);
-        String url = uploadTelemetryToS3(memberUuid, processedTelemetry);
+        Member member = findMember(memberUuid);
 
-        Course course = createAndSaveCourse(member, command, processedTelemetry);
-        Running running = createAndSaveRunning(command, processedTelemetry, url, member, course);
+        ProcessedTelemetriesDto processedTelemetries = processTelemetries(interpolatedTelemetry);
+        List<CoordinateDto> simplifiedCoordinates = simplifyCoordinates(processedTelemetries);
 
+        RunningDataUrlsDto runningDataUrlsDto = saveRunningAndCourseDataToS3(
+                rawTelemetry, processedTelemetries, simplifiedCoordinates, screenShotImage, memberUuid);
+
+        Course course = createAndSaveCourse(member, command, processedTelemetries, runningDataUrlsDto);
+        Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
         return CreateCourseAndRunResponse.of(running.getId(), course.getId());
     }
 
+    private Member findMember(String memberUuid) {
+        return memberService.findMemberByUuid(memberUuid);
+    }
+
+    private ProcessedTelemetriesDto processTelemetries(MultipartFile interpolatedTelemetry) {
+        return TelemetryProcessor.process(interpolatedTelemetry);
+    }
+
+    private List<CoordinateDto> simplifyCoordinates(ProcessedTelemetriesDto processedTelemetries) {
+        return PathSimplifier.simplify(processedTelemetries.coordinates());
+    }
+
+    private RunningDataUrlsDto saveRunningAndCourseDataToS3(
+            MultipartFile rawTelemetry, ProcessedTelemetriesDto processedTelemetries,
+            List<CoordinateDto> simplifiedTelemetry, MultipartFile screenShotImage, String memberUuid) {
+
+        RunningDataUrlsDto runningDataUrlsDto = saveRunningDataToS3(memberUuid, rawTelemetry, screenShotImage, processedTelemetries);
+        String simplifiedTelemetrySavedUrl = ghostRunnerS3Client.uploadSimplifiedTelemetry(simplifiedTelemetry, memberUuid);
+        runningDataUrlsDto.setSimplifiedPathSavedUrl(simplifiedTelemetrySavedUrl);
+
+        return runningDataUrlsDto;
+    }
+
+    private RunningDataUrlsDto saveRunningDataToS3(String memberUuid, MultipartFile rawTelemetry,
+                                                    MultipartFile screenShotImage, ProcessedTelemetriesDto processedTelemetries) {
+        String rawTelemetrySavedUrl = ghostRunnerS3Client.uploadRawTelemetry(rawTelemetry, memberUuid);
+        String interpolatedTelemetrySavedUrl = ghostRunnerS3Client.uploadInterpolatedTelemetry(processedTelemetries.relativeTelemetries(), memberUuid);
+
+        String screenShotSavedUrl = null;
+        if (screenShotImage != null) {
+            screenShotSavedUrl = ghostRunnerS3Client.uploadRunningCaptureImage(screenShotImage, memberUuid);
+        }
+
+        return new RunningDataUrlsDto(rawTelemetrySavedUrl, interpolatedTelemetrySavedUrl, null, screenShotSavedUrl);
+    }
+
+    private Course createAndSaveCourse(Member member, CreateRunCommand command,
+                                         ProcessedTelemetriesDto processedTelemetriesDto, RunningDataUrlsDto runningDataUrlsDto) {
+        Course course = mapper.toCourse(member, command, processedTelemetriesDto,
+                runningDataUrlsDto.getSimplifiedPathSavedUrl(), runningDataUrlsDto.getScreenShotUrl());
+        courseService.save(course);
+        return course;
+    }
+
+    private Running createAndSaveRunning(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry,
+                                         RunningDataUrlsDto runningDataUrlsDto, Member member, Course course) {
+        return runningRepository.save(mapper.toRunning(command, processedTelemetry, runningDataUrlsDto, member, course));
+    }
+
     @Transactional
-    public Long createRun(CreateRunCommand command, Long courseId, String memberUuid) {
-        Member member = memberService.findMemberByUuid(memberUuid);
-        verifyCourseIdIfGhostMode(command, courseId);
+    public Long createRun(CreateRunCommand command, String memberUuid, Long courseId,
+                          MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry, MultipartFile screenShotImage) {
 
-        ProcessedTelemetriesDto processedTelemetry = processTelemetry(command);
-        String url = uploadTelemetryToS3(memberUuid, processedTelemetry);
+        Member member = findMember(memberUuid);
+        Course course = findCourse(courseId);
 
-        Course course = courseService.findCourseById(courseId);
-        Running running = createAndSaveRunning(command, processedTelemetry, url, member, course);
+        validateBelongsToCourseIfGhostMode(command, courseId);
+        ProcessedTelemetriesDto processedTelemetries = processTelemetries(interpolatedTelemetry);
+
+        RunningDataUrlsDto runningDataUrlsDto = saveRunningDataToS3(memberUuid, rawTelemetry, screenShotImage, processedTelemetries);
+        Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
         return running.getId();
     }
 
-    private void verifyCourseIdIfGhostMode(CreateRunCommand command, Long courseId) {
+    private Course findCourse(Long courseId) {
+        return courseService.findCourseById(courseId);
+    }
+
+    private void validateBelongsToCourseIfGhostMode(CreateRunCommand command, Long courseId) {
         if (command.mode().equals("GHOST")) {
             Running ghostRunning = findRunning(command.ghostRunningId());
-            ghostRunning.verifyCourseId(courseId);
+            ghostRunning.validateBelongsToCourse(courseId);
         }
-    }
-
-    private ProcessedTelemetriesDto processTelemetry(CreateRunCommand command) {
-        return TelemetryCalculator.processTelemetry(command.telemetries(), command.startedAt());
-    }
-
-    private String uploadTelemetryToS3(String memberUuid, ProcessedTelemetriesDto processedTelemetry) {
-        String stringTelemetries = TelemetryTypeConverter.convertFromObjectsToString(processedTelemetry.getRelativeTelemetries());
-        return s3TelemetryClient.uploadTelemetries(stringTelemetries, memberUuid);
-    }
-
-    private RunningRecord createRunningRecord(RunRecordDto command, ProcessedTelemetriesDto processedTelemetry) {
-        return RunningRecord.of(command.distance(), command.elevationGain(), command.elevationLoss(), command.avgPace(), processedTelemetry.getHighestPace(),
-                processedTelemetry.getLowestPace(), command.duration(), command.calories(), command.avgCadence(), command.avgBpm());
-    }
-
-    private Running createAndSaveRunning(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry, String url, Member member, Course course) {
-        RunningRecord runningRecord = createRunningRecord(command.record(), processedTelemetry);
-        return runningRepository.save(Running.of(command.runningName(), RunningMode.valueOf(command.mode()),
-                command.ghostRunningId(), runningRecord, command.startedAt(), command.isPublic(), command.hasPaused(), url, member, course));
     }
 
     @Transactional
@@ -102,16 +142,6 @@ public class RunningCommandService {
 
     private Running findRunning(Long runningId) {
         return runningQueryService.findRunningByRunningId(runningId);
-    }
-
-    private Course createAndSaveCourse(
-            Member member, CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry) {
-        Course course = Course.of(member, CourseProfile.of(
-                command.record().distance(), command.record().elevationGain(),
-                command.record().elevationLoss()), processedTelemetry.getStartPoint(),
-                processedTelemetry.getCourseCoordinates(), null, null);
-        courseService.save(course);
-        return course;
     }
 
     @Transactional

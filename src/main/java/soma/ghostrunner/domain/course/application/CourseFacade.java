@@ -43,14 +43,14 @@ public class CourseFacade {
     }
 
     @Transactional(readOnly = true)
-    public CourseDetailedResponse findCourse(Long courseId) {
+    public CourseDetailedResponse findCourse(Long courseId, String viewerUuid) {
         Course course = courseService.findCourseById(courseId);
         CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseId)
                 .orElse(new CourseRunStatisticsDto());
-        return courseMapper.toCourseDetailedResponse(
-                course,
-                courseStatistics.getAvgCompletionTime(), courseStatistics.getAvgFinisherPace(),
-                courseStatistics.getAvgFinisherCadence(), courseStatistics.getLowestFinisherPace());
+        UserPaceStatsDto userPaceStats = runningQueryService.findUserPaceStatistics(courseId, viewerUuid)
+                .orElse(new UserPaceStatsDto());
+        String telemetryUrl = runningQueryService.findFirstRunning(course.getId()).getTelemetryUrl();
+        return courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStatistics, userPaceStats);
     }
 
     public void updateCourse(Long courseId, CoursePatchRequest request) {
@@ -81,7 +81,8 @@ public class CourseFacade {
     public CourseCoordinatesResponse findCourseFirstRunCoordinatesWithDetails(Long courseId) {
         Course course = courseService.findCourseById(courseId);
         Running firstRun = runningQueryService.findFirstRunning(courseId);
-        List<CoordinateDto> coordinates = runningTelemetryQueryService.findCoordinateTelemetries(firstRun.getId(), firstRun.getTelemetryUrl());
+        List<CoordinateDto> coordinates = runningTelemetryQueryService.findCoordinateTelemetries(firstRun.getId(),
+                firstRun.getRunningDataUrls().getInterpolatedTelemetryUrl());
         return courseMapper.toCoordinatesResponse(course, coordinates);
     }
 

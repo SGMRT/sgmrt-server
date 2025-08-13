@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
+import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.enums.GhostSortType;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
@@ -108,6 +109,10 @@ public class RunningQueryService {
 
     public Optional<CourseRunStatisticsDto> findCourseRunStatistics(Long courseId) {
         return runningRepository.findPublicRunStatisticsByCourseId(courseId);
+    }
+
+    public Optional<UserPaceStatsDto> findUserPaceStatistics(Long courseId, String memberUuid) {
+        return runningRepository.findUserRunStatisticsByCourseId(courseId, memberUuid);
     }
 
     public Integer findPublicRankForCourse(Long courseId, Running running) {

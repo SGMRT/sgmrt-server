@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Getter;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
-import soma.ghostrunner.domain.running.domain.support.CoordinateConverter;
+import soma.ghostrunner.domain.running.application.support.CoordinateConverter;
 
 import java.util.List;
 

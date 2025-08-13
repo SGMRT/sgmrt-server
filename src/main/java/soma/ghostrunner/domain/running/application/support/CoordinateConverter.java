@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.domain.support;
+package soma.ghostrunner.domain.running.application.support;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;

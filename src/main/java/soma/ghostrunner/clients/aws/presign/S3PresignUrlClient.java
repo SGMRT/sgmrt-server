@@ -25,7 +25,7 @@ public class S3PresignUrlClient {
     private S3Presigner s3Presigner;
 
     public S3PresignUrlClient(@Value("${s3.bucket}") String s3Bucket,
-                              @Value("${s3.member-profile-directory}") String memberProfileDirectory,
+                              @Value("${s3.member-directory}") String memberProfileDirectory,
                               S3Presigner s3Presigner) {
         this.s3Bucket = s3Bucket;
         this.memberProfileDirectory = memberProfileDirectory;

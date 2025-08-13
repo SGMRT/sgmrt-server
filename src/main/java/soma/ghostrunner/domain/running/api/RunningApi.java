@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
@@ -17,7 +18,9 @@ import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.validator.enums.EnumValid;
+import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.util.List;
@@ -37,17 +40,49 @@ public class RunningApi {
   
     @PostMapping("/v1/runs")
     public CreateCourseAndRunResponse createCourseAndRun(
-            @AuthenticationPrincipal JwtUserDetails userDetails, @RequestBody @Valid CreateCourseAndRunRequest req) {
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @RequestPart("req") @Valid CreateCourseAndRunRequest req,
+            @RequestPart MultipartFile rawTelemetry,
+            @RequestPart MultipartFile interpolatedTelemetry,
+            @RequestPart(required = false) MultipartFile screenShotImage) {
+        validateTelemetryFiles(rawTelemetry, interpolatedTelemetry);
+        validateScreenShotFiles(screenShotImage);
         String memberUuid = userDetails.getUserId();
-        return runningCommandService.createCourseAndRun(mapper.toCommand(req), memberUuid);
+        return runningCommandService.createCourseAndRun(
+                mapper.toCommand(req), memberUuid, rawTelemetry, interpolatedTelemetry, screenShotImage);
+    }
+
+    private void validateScreenShotFiles(MultipartFile screenShotImage) {
+        if (screenShotImage != null) {
+            if (screenShotImage.isEmpty()) {
+                throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "ScreenShot MultipartFile이 비어있습니다.");
+            }
+        }
+    }
+
+    private void validateTelemetryFiles(MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry) {
+        if (isEmpty(rawTelemetry) || isEmpty(interpolatedTelemetry)) {
+            throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "Telemetry MultipartFile이 비어있습니다.");
+        }
+    }
+
+    private boolean isEmpty(MultipartFile file) {
+        return (file == null || file.isEmpty());
     }
 
     @PostMapping("/v1/runs/courses/{courseId}")
     public Long createRun(
             @AuthenticationPrincipal JwtUserDetails userDetails,
-            @RequestBody @Valid CreateRunRequest req, @PathVariable Long courseId) {
+            @RequestPart("req") @Valid CreateRunRequest req,
+            @RequestPart MultipartFile rawTelemetry,
+            @RequestPart MultipartFile interpolatedTelemetry,
+            @RequestPart MultipartFile screenShotImage,
+            @PathVariable Long courseId) {
+        validateTelemetryFiles(rawTelemetry, interpolatedTelemetry);
+        validateScreenShotFiles(screenShotImage);
         String memberUuid = userDetails.getUserId();
-        return runningCommandService.createRun(mapper.toCommand(req), courseId, memberUuid);
+        return runningCommandService.createRun(
+                mapper.toCommand(req), memberUuid, courseId, rawTelemetry, interpolatedTelemetry, screenShotImage);
     }
 
     @PatchMapping("/v1/runs/{runningId}/name")
