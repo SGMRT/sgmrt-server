@@ -558,52 +558,5 @@ class RunningRepositoryTest extends IntegrationTestSupport {
             Assertions.assertThat(runInfos.get(idx).getGhostRunningId()).isNull();
         });
     }
-
-    @DisplayName("갤러리 보기 방식을 위해 시간, 러닝 ID를 기준으로 커서 페이징 방식을 활용해 조회한다.")
-    @Test
-    void findRunInfosForGalleryViewByCursorIds() {
-        // given
-        Member member = createMember("이복둥");
-        memberRepository.save(member);
-
-        Course course1 = createCourse(member);
-        Course course2 = createCourse(member);
-        Course course3 = createCourse(member);
-        List<Course> courses = List.of(course1, course2, course3);
-        courseRepository.saveAll(courses);
-
-        Random random = new Random();
-        List<Running> runnings = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 3)),
-                    member, random.nextLong(), RunningMode.SOLO));
-        }
-        runningRepository.saveAll(runnings);
-
-        List<Running> sortedRunnings = runnings.stream()
-                .sorted(Comparator.comparing(Running::getStartedAt).reversed())
-                .toList();
-
-        // when
-        List<RunInfo> firstRunInfos = runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.SOLO, null, null, member.getUuid());
-        RunInfo lastOfFirstRunInfo = firstRunInfos.get(firstRunInfos.size() - 1);
-        List<RunInfo> secondRunInfos = runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.SOLO, lastOfFirstRunInfo.getStartedAt(), lastOfFirstRunInfo.getRunningId(), member.getUuid());
-
-        // then
-        IntStream.range(0, firstRunInfos.size()).forEach(idx -> {
-            Assertions.assertThat(firstRunInfos.get(idx).getRunningId()).isEqualTo(sortedRunnings.get(idx).getId());
-            Assertions.assertThat(firstRunInfos.get(idx).getName()).isEqualTo(sortedRunnings.get(idx).getRunningName());
-            Assertions.assertThat(firstRunInfos.get(idx).getStartedAt()).isEqualTo(sortedRunnings.get(idx).getStartedAt());
-            Assertions.assertThat(firstRunInfos.get(idx).getGhostRunningId()).isNull();
-        });
-        IntStream.range(0, secondRunInfos.size()).forEach(idx -> {
-            Assertions.assertThat(secondRunInfos.get(idx).getRunningId()).isEqualTo(sortedRunnings.get(8 + idx).getId());
-            Assertions.assertThat(secondRunInfos.get(idx).getName()).isEqualTo(sortedRunnings.get(8 + idx).getRunningName());
-            Assertions.assertThat(secondRunInfos.get(idx).getStartedAt()).isEqualTo(sortedRunnings.get(8 + idx).getStartedAt());
-            Assertions.assertThat(secondRunInfos.get(idx).getGhostRunningId()).isNull();
-        });
-    }
   
 }

@@ -23,7 +23,6 @@ import static soma.ghostrunner.domain.running.domain.QRunning.running;
 public class CustomRunningRepositoryImpl implements CustomRunningRepository {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
-    private static final int GALLERY_VIEW_PAGE_SIZE = 8;
 
     private final JPAQueryFactory queryFactory;
 
@@ -176,26 +175,6 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
         return running.course.name.gt(cursorCourseName)
                 .or(running.course.name.eq(cursorCourseName)
                         .and(running.id.lt(cursorRunningId)));
-    }
-
-    @Override
-    public List<RunInfo> findRunInfosForGalleryViewByCursorIds(
-            RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
-        return queryFactory
-                .select(new QRunInfo(
-                        running.id, running.runningName, running.startedAt,
-                        new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
-                                running.runningRecord.averagePace, running.runningRecord.cadence),
-                        new QCourseInfo(running.course.id, running.course.name, running.course.isPublic),
-                        running.ghostRunningId
-                ))
-                .from(running)
-                .join(running.course, course)
-                .where(cursorCondition(cursorStartedAt, cursorRunningId))
-                .where(running.member.uuid.eq(memberUuid), running.runningMode.eq(runningMode))
-                .orderBy(running.startedAt.desc(), running.id.desc())
-                .limit(GALLERY_VIEW_PAGE_SIZE)
-                .fetch();
     }
 
     @Override

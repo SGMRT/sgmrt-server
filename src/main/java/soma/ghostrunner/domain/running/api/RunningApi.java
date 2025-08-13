@@ -150,15 +150,4 @@ public class RunningApi {
         return runningQueryService.findRunningsFilteredByCourse(runningMode, cursorCourseName, cursorRunningId, memberUuid);
     }
 
-    @GetMapping("/v1/runs/gallery-view")
-    public List<RunInfo> getRunInfosForGalleryView(
-            @AuthenticationPrincipal JwtUserDetails userDetails,
-            @RequestParam
-            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
-            String runningMode,
-            @RequestParam(required = false) Long cursorStartedAt, @RequestParam(required = false) Long cursorRunningId) {
-        String memberUuid = userDetails.getUserId();
-        return runningQueryService.findRunningsForGalleryView(runningMode, cursorStartedAt, cursorRunningId, memberUuid);
-    }
-
 }

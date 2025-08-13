@@ -134,10 +134,5 @@ public class RunningQueryService {
         return runningRepository.findRunInfosFilteredByCoursesByCursorIds(
                 RunningMode.valueOf(runningMode), courseName, cursorRunningId, memberUuid);
     }
-
-    public List<RunInfo> findRunningsForGalleryView(String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
-        return runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
-    }
   
 }

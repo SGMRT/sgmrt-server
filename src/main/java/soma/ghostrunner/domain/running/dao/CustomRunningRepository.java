@@ -24,9 +24,6 @@ public interface CustomRunningRepository {
     List<RunInfo> findRunInfosFilteredByCoursesByCursorIds(
             RunningMode runningMode, String cursorCourseName, Long cursorRunningId, String memberUuid);
 
-    List<RunInfo> findRunInfosForGalleryViewByCursorIds(
-            RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid);
-
     Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId);
 
 }
