@@ -19,7 +19,8 @@ public interface CustomRunningRepository {
     Optional<MemberAndRunRecordInfo> findMemberAndRunRecordInfoById(long id);
 
     List<RunInfo> findRunInfosByCursorIds(
-            RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid);
+            RunningMode runningMode,
+            Long cursorStartedAt, Long cursorRunningId, Long startEpoch, Long endEpoch, String memberUuid);
 
     List<RunInfo> findRunInfosFilteredByCoursesByCursorIds(
             RunningMode runningMode, String cursorCourseName, Long cursorRunningId, String memberUuid);

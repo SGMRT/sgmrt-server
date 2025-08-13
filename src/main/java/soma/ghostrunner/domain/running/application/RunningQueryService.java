@@ -125,9 +125,13 @@ public class RunningQueryService {
             });
     }
 
-    public List<RunInfo> findRunnings(String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
+    public List<RunInfo> findRunnings(String runningMode,
+                                      Long cursorStartedAt, Long cursorRunningId,
+                                      Long startEpoch, Long endEpoch, String memberUuid) {
         return runningRepository.findRunInfosByCursorIds(
-                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
+                RunningMode.valueOf(runningMode),
+                cursorStartedAt, cursorRunningId,
+                startEpoch, endEpoch, memberUuid);
     }
 
     public List<RunInfo> findRunningsFilteredByCourse(String runningMode, String courseName, Long cursorRunningId, String memberUuid) {

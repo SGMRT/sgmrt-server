@@ -119,24 +119,51 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         .fetchOne());
     }
 
-    @Override
     public List<RunInfo> findRunInfosByCursorIds(
-            RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
+            RunningMode runningMode,
+            Long cursorStartedAt, Long cursorRunningId,
+            Long startEpoch, Long endEpoch,
+            String memberUuid
+    ) {
         return queryFactory
                 .select(new QRunInfo(
-                        running.id, running.runningName, running.startedAt,
-                        new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
-                                running.runningRecord.averagePace, running.runningRecord.cadence),
-                        new QCourseInfo(running.course.id, running.course.name, running.course.isPublic),
+                        running.id,
+                        running.runningName,
+                        running.startedAt,
+                        new QRunRecordInfo(
+                                running.runningRecord.distance,
+                                running.runningRecord.duration,
+                                running.runningRecord.averagePace,
+                                running.runningRecord.cadence
+                        ),
+                        new QCourseInfo(
+                                running.course.id,
+                                running.course.name,
+                                running.course.isPublic
+                        ),
                         running.ghostRunningId
                 ))
                 .from(running)
                 .join(running.course, course)
-                .where(cursorCondition(cursorStartedAt, cursorRunningId))
-                .where(running.member.uuid.eq(memberUuid), running.runningMode.eq(runningMode))
-                .orderBy(running.startedAt.desc(), running.id.desc())
-                .limit(DEFAULT_PAGE_SIZE)
+                .where(
+                        running.member.uuid.eq(memberUuid),
+                        running.runningMode.eq(runningMode),
+                        startedAtRange(startEpoch, endEpoch),
+                        seekAfterAsc(cursorStartedAt, cursorRunningId)
+                )
+                .orderBy(running.startedAt.asc(), running.id.asc())
+                .limit(DEFAULT_PAGE_SIZE + 1)
                 .fetch();
+    }
+
+    private BooleanExpression startedAtRange(Long start, Long end) {
+        return running.startedAt.between(start, end);
+    }
+
+    private BooleanExpression seekAfterAsc(Long cursorStartedAt, Long cursorId) {
+        if (cursorStartedAt == null || cursorId == null) return null; // 첫 페이지
+        return running.startedAt.gt(cursorStartedAt)
+                .or(running.startedAt.eq(cursorStartedAt).and(running.id.gt(cursorId)));
     }
 
     private BooleanExpression cursorCondition(Long cursorStartedAt, Long cursorRunningId) {
