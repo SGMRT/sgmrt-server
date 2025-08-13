@@ -49,7 +49,8 @@ public class CourseFacade {
                 .orElse(new CourseRunStatisticsDto());
         UserPaceStatsDto userPaceStats = runningQueryService.findUserPaceStatistics(courseId, viewerUuid)
                 .orElse(new UserPaceStatsDto());
-        String telemetryUrl = runningQueryService.findFirstRunning(course.getId()).getTelemetryUrl();
+        String telemetryUrl = runningQueryService.findFirstRunning(course.getId()).getRunningDataUrls()
+                .getInterpolatedTelemetryUrl();
         return courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStatistics, userPaceStats);
     }
 

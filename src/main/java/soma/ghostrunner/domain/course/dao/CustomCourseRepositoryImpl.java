@@ -75,9 +75,9 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
 
   /** Haversine 공식을 사용하여 (lat, lng)와 코스 사이 실제 거리를 계산하는 표현식 반환 */
   private NumberExpression<Double> calculateDistance(Double lat, Double lng) {
-    NumberExpression<Double> latRad = Expressions.numberTemplate(Double.class, "RADIANS({0})", course.startPoint.latitude);
+    NumberExpression<Double> latRad = Expressions.numberTemplate(Double.class, "RADIANS({0})", course.startCoordinate.latitude);
     NumberExpression<Double> userLatRad = Expressions.numberTemplate(Double.class, "RADIANS({0})", lat);
-    NumberExpression<Double> lngRad = Expressions.numberTemplate(Double.class, "RADIANS({0})", course.startPoint.longitude);
+    NumberExpression<Double> lngRad = Expressions.numberTemplate(Double.class, "RADIANS({0})", course.startCoordinate.longitude);
     NumberExpression<Double> userLngRad = Expressions.numberTemplate(Double.class, "RADIANS({0})", lng);
 
     return Expressions.numberTemplate(Double.class,
@@ -87,8 +87,8 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
 
   /** 코스의 시작점이 주어진 위경도 범위 내에 존재하는지 판단하는 표현식 반환 */
   private BooleanExpression startPointWithinBoundary(Double minLat, Double maxLat, Double minLng, Double maxLng) {
-    return course.startPoint.latitude.between(minLat, maxLat)
-            .and(course.startPoint.longitude.between(minLng, maxLng));
+    return course.startCoordinate.latitude.between(minLat, maxLat)
+            .and(course.startCoordinate.longitude.between(minLng, maxLng));
   }
 
   /** 코스 검색 필터를 적용하는 반환식 반환 (최소 최대 거리, 고도, 소유자 id) */
