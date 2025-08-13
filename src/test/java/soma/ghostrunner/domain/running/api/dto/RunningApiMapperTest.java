@@ -78,7 +78,6 @@ class RunningApiMapperTest {
                 .record(validRunRecordDto())
                 .hasPaused(false)
                 .isPublic(true)
-                .telemetries(validTelemetries())
                 .build();
     }
 
@@ -88,8 +87,8 @@ class RunningApiMapperTest {
                 .distance(10.5)
                 .avgPace(5.7)
                 .calories(800)
-                .elevationGain(30)
-                .elevationLoss(-20)
+                .elevationGain(30.0)
+                .elevationLoss(-20.0)
                 .avgBpm(150)
                 .avgCadence(80)
                 .build();

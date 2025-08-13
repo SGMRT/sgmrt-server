@@ -83,7 +83,8 @@ public class CourseFacade {
     public CourseCoordinatesResponse findCourseFirstRunCoordinatesWithDetails(Long courseId) {
         Course course = courseService.findCourseById(courseId);
         Running firstRun = runningQueryService.findFirstRunning(courseId);
-        List<CoordinateDto> coordinates = runningTelemetryQueryService.findCoordinateTelemetries(firstRun.getId(), firstRun.getTelemetryUrl());
+        List<CoordinateDto> coordinates = runningTelemetryQueryService.findCoordinateTelemetries(firstRun.getId(),
+                firstRun.getRunningDataUrls().getInterpolatedTelemetryUrl());
         return courseMapper.toCoordinatesResponse(course, coordinates);
     }
 

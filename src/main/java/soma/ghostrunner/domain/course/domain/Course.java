@@ -28,32 +28,41 @@ public class Course extends BaseTimeEntity {
     private CourseProfile courseProfile;
 
     @Embedded
-    private StartPoint startPoint;
+    private Coordinate startCoordinate;
 
     @Setter
     @Column
     private Boolean isPublic = false;
 
-    @Lob @Column(name = "path_data", columnDefinition = "LONGTEXT")
-    private String pathData;
+    @Embedded
+    private CourseDataUrls courseDataUrls;
 
     @Builder(access = AccessLevel.PRIVATE)
-    private Course(CourseProfile courseProfile, Member member, String name, StartPoint startPoint, String pathData, Boolean isPublic) {
+    private Course(CourseProfile courseProfile, Member member, String name,
+                   Coordinate startCoordinate, Boolean isPublic, CourseDataUrls courseDataUrls) {
         this.courseProfile = courseProfile;
         this.member = member;
-        this.startPoint = startPoint;
-        this.pathData = pathData;
+        this.startCoordinate = startCoordinate;
         this.name = name;
         this.isPublic = isPublic;
+        this.courseDataUrls = courseDataUrls;
     }
 
-    public static Course of(Member member, CourseProfile courseProfile, StartPoint startPoint, String pathData) {
+    public static Course of(Member member, Double distance,
+                            Double elevationAverage, Double elevationGain, Double elevationLoss,
+                            Double startLatitude, Double startLongitude,
+                            String pathDataSavedUrl, String thumbnailImageSavedUrl) {
+
+        CourseProfile courseProfile = CourseProfile.of(distance, elevationAverage, elevationGain, elevationLoss);
+        Coordinate startCoordinate = Coordinate.of(startLatitude, startLongitude);
+        CourseDataUrls courseDataUrls1 = CourseDataUrls.of(pathDataSavedUrl, thumbnailImageSavedUrl);
+
         return Course.builder()
                 .member(member)
                 .courseProfile(courseProfile)
-                .startPoint(startPoint)
-                .pathData(pathData)
+                .startCoordinate(startCoordinate)
                 .isPublic(false)
+                .courseDataUrls(courseDataUrls1)
                 .build();
     }
 

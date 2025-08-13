@@ -1,9 +1,5 @@
 package soma.ghostrunner.domain.running.application.dto.request;
 
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
-
-import java.util.List;
-
 public record CreateRunCommand(
         String runningName,
         Long ghostRunningId,
@@ -11,6 +7,5 @@ public record CreateRunCommand(
         Long startedAt,
         RunRecordDto record,
         Boolean hasPaused,
-        Boolean isPublic,
-        List<TelemetryDto> telemetries
+        Boolean isPublic
 ) {}

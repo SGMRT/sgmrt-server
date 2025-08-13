@@ -248,7 +248,10 @@ class MemberServiceTest extends IntegrationTestSupport {
     }
 
     private Running createRunning(String name, Member member) {
-        return Running.of("name", RunningMode.SOLO, null, null, System.currentTimeMillis(), true, false, "telemetry-url", member, null);
+        return Running.of("name", RunningMode.SOLO, null, null,
+                System.currentTimeMillis(), true, false,
+                "telemetry-url", "telemetry-url", "telemetry-url",
+                member, null);
     }
 
     private TermsAgreement createTermsAgreement() {

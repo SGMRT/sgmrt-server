@@ -40,8 +40,9 @@ cloud:
 
 s3:
   bucket: ${AWS_BUCKET}
-  telemetry-directory: ${RUNNING_TELEMETRY_DIRECTORY}
-  member-profile-directory: ${MEMBER_PROFILE_DIRECTORY}
+  running-directory: ${RUNNING_DIRECTORY}
+  course-directory: ${COURSE_DIRECTORY}
+  member-directory: ${MEMBER_DIRECTORY}
 
 jwt:
   secret: ${JWT_SECRET_KEY}

@@ -15,10 +15,10 @@ public class RunRecordRequest {
     private Double distance;    // km
 
     @NotNull @PositiveOrZero
-    private Integer elevationGain;      // m, 고도
+    private Double elevationGain;      // m, 고도
 
     @NotNull @NegativeOrZero
-    private Integer elevationLoss;
+    private Double elevationLoss;
 
     @NotNull @PositiveOrZero
     private Long duration;      // 초 단위

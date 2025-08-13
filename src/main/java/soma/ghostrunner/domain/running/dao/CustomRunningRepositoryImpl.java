@@ -56,7 +56,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                         running.runningRecord.elevationGain,
                                         running.runningRecord.elevationLoss
                                 ),
-                                running.telemetryUrl
+                                running.runningDataUrls.interpolatedTelemetryUrl
                         ))
                         .from(running)
                         .join(running.course, course)
@@ -96,7 +96,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                                 running.runningRecord.elevationLoss
                                         )),
                                 running.ghostRunningId,
-                                running.telemetryUrl
+                                running.runningDataUrls.interpolatedTelemetryUrl
                         ))
                         .from(running)
                         .join(running.course, course)
@@ -191,7 +191,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
                                 running.runningRecord.averagePace, running.runningRecord.cadence),
                         new QCourseInfo(running.course.id, running.course.name,
-                                running.course.isPublic, running.course.pathData),
+                                running.course.isPublic, running.course.courseDataUrls.routeUrl),
                         running.ghostRunningId
                 ))
                 .from(running)

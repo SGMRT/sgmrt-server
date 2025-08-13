@@ -48,6 +48,4 @@ public class CreateRunRequest {
     @NotNull
     private Boolean isPublic;
 
-    @NotEmpty @Valid
-    private List<TelemetryRequest> telemetries;
 }

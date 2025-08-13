@@ -12,40 +12,46 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RunningRecord {
 
-    @NotEmpty @Column(name = "distance_km")
+    @Column(name = "distance_km")
     private Double distance;
 
-    @NotEmpty @Column(name = "elevation_gain_m")
-    private Integer elevationGain;
+    @Column(name = "elevation_average_m")
+    private Double elevationAverage;
 
-    @NotEmpty @Column(name = "elevation_loss_m")
-    private Integer elevationLoss;
+    @Column(name = "elevation_gain_m")
+    private Double elevationGain;
 
-    @NotEmpty @Column(name = "average_pace_min/km")
+    @Column(name = "elevation_loss_m")
+    private Double elevationLoss;
+
+    @Column(name = "average_pace_min/km")
     private Double averagePace;
 
-    @NotEmpty @Column(name = "highest_pace_min/km")
+    @Column(name = "highest_pace_min/km")
     private Double highestPace;
 
-    @NotEmpty @Column(name = "lowest_pace_min/km")
+    @Column(name = "lowest_pace_min/km")
     private Double lowestPace;
 
-    @NotEmpty @Column(name = "duration_sec")
+    @Column(name = "duration_sec")
     private Long duration;
 
-    @NotEmpty @Column(name = "burned_calories_kcal")
+    @Column(name = "burned_calories_kcal")
     private Integer burnedCalories;
 
-    @NotEmpty @Column(name = "average_cadence_spm")
+    @Column(name = "average_cadence_spm")
     private Integer cadence;
 
-    @NotEmpty @Column(name = "average_bpm")
+    @Column(name = "average_bpm")
     private Integer bpm;
 
     @Builder(access = AccessLevel.PRIVATE)
-    private RunningRecord(double distance, int elevationGain, int elevationLoss, double averagePace,
-                          double highestPace, double lowestPace, long duration, int burnedCalories, int cadence, int bpm) {
+    private RunningRecord(Double distance,
+                          Double elevationAverage, Double elevationGain, Double elevationLoss,
+                          Double averagePace, Double highestPace, Double lowestPace,
+                          Long duration, Integer burnedCalories, Integer cadence, Integer bpm) {
         this.distance = distance;
+        this.elevationAverage = elevationAverage;
         this.elevationGain = elevationGain;
         this.elevationLoss = elevationLoss;
         this.averagePace = averagePace;
@@ -57,10 +63,13 @@ public class RunningRecord {
         this.bpm = bpm;
     }
 
-    public static RunningRecord of(Double distance, Integer elevationGain, Integer elevationLoss, Double averagePace,
-                                   Double highestPace, Double lowestPace, Long duration, Integer burnedCalories, Integer cadence, Integer bpm) {
+    public static RunningRecord of(Double distance,
+                                   Double elevationAverage, Double elevationGain, Double elevationLoss,
+                                   Double averagePace, Double highestPace, Double lowestPace,
+                                   Long duration, Integer burnedCalories, Integer cadence, Integer bpm) {
         return RunningRecord.builder()
                 .distance(distance)
+                .elevationAverage(elevationAverage)
                 .elevationGain(elevationGain)
                 .elevationLoss(elevationLoss)
                 .averagePace(averagePace)

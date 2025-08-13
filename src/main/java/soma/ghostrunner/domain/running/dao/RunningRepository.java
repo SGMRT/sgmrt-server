@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
@@ -21,7 +20,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
 
     Optional<Running> findByIdAndMemberId(Long runningId, Long memberId);
 
-    @Query("select r.telemetryUrl from Running r join r.member m where r.id = :runningId and m.uuid = :memberUuid")
+    @Query("select r.runningDataUrls.interpolatedTelemetryUrl from Running r join r.member m where r.id = :runningId and m.uuid = :memberUuid")
     Optional<String> findTelemetryUrlById(Long runningId, String memberUuid);
 
     @Query("SELECT r FROM Running r JOIN FETCH r.member "
