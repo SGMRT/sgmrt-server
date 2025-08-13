@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
-import soma.ghostrunner.domain.course.domain.StartPoint;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.CourseWithCoordinatesDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
@@ -32,7 +32,7 @@ class CourseServiceTest extends IntegrationTestSupport {
     @Autowired private MemberRepository memberRepository;
 
     private Member dummyMember;
-    private final CourseProfile dummyCourseInfo = CourseProfile.of(100d, 0, 0);
+    private final CourseProfile dummyCourseInfo = CourseProfile.of(100d, 0d,0d, 0d);
     private final double LAT = 37.54324;
     private final double LNG = 126.94979;
     private final double KM_PER_LAT = 111; // 위도 1도 당 약 111km
@@ -241,7 +241,7 @@ class CourseServiceTest extends IntegrationTestSupport {
     }
 
     private Course createCourse(String name, Member member, double lat, double lng, CourseProfile courseProfile, boolean isPublic) {
-        Course course = Course.of(member, courseProfile, StartPoint.of(lat, lng), "TO BE DELETED","경로 URL", "썸네일 URL");
+        Course course = Course.of(member, 0d, 0d, 0d, 0d, lat, lng, "url", "url");
         course.setName(name);
         course.setIsPublic(isPublic);
         return course;
