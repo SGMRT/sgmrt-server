@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.course.dto;
 
+import java.time.LocalDateTime;
 
 public record CourseWithCoordinatesDto(
     Long id,
@@ -9,6 +10,8 @@ public record CourseWithCoordinatesDto(
     String routeUrl,
     String thumbnailUrl,
     Integer distance,
+    Integer elevationAverage,
     Integer elevationGain,
-    Integer elevationLoss
+    Integer elevationLoss,
+    LocalDateTime createdAt
 ) {}

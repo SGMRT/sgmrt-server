@@ -19,6 +19,7 @@ public interface CourseMapper {
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
                     ": null)")
+    @Mapping(source = "courseProfile.elevationAverage", target = "elevationAverage")
     @Mapping(source = "courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "courseProfile.elevationLoss", target = "elevationLoss")
     CourseWithCoordinatesDto toCourseWithCoordinateDto(Course course);
@@ -31,8 +32,10 @@ public interface CourseMapper {
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
                     ": null)")
+    @Mapping(source = "course.courseProfile.elevationAverage", target = "elevationAverage")
     @Mapping(source = "course.courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "course.courseProfile.elevationLoss", target = "elevationLoss")
+    @Mapping(source = "course.createdAt", target = "createdAt")
     @Mapping(source = "courseStats.avgCompletionTime", target = "averageCompletionTime")
     @Mapping(source = "courseStats.avgFinisherPace", target = "averageFinisherPace")
     @Mapping(source = "courseStats.avgFinisherCadence", target = "averageFinisherCadence")
