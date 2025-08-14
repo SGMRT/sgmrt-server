@@ -65,10 +65,10 @@ public interface RunningServiceMapper {
                             String pathDataSavedUrl,
                             String thumbnailImageUrl) {
 
-        Double distance = createRunCommand.getRecord().getDistance();
+        Double distance = createRunCommand.record().distance();
         Double elevationAverage = processedTelemetry.avgElevation();
-        Double elevationGain = createRunCommand.getRecord().getElevationGain();
-        Double elevationLoss = createRunCommand.getRecord().getElevationLoss();
+        Double elevationGain = createRunCommand.record().elevationGain();
+        Double elevationLoss = createRunCommand.record().elevationLoss();
         Double startLat = processedTelemetry.startPoint().lat();
         Double startLng = processedTelemetry.startPoint().lng();
 
@@ -88,5 +88,5 @@ public interface RunningServiceMapper {
     @Mapping(source = "running.id", target = "runningId")
     @Mapping(source = "course.id", target = "courseId")
     CreateCourseAndRunResponse toResponse(Running running, Course course);
-
+  
 }

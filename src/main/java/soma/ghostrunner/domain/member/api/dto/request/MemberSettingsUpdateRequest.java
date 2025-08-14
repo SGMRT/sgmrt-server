@@ -8,4 +8,5 @@ import lombok.Getter;
 public class MemberSettingsUpdateRequest {
     private Boolean pushAlarmEnabled;
     private Boolean vibrationEnabled;
+    private Boolean voiceGuidanceEnabled;
 }

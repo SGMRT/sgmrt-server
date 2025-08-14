@@ -10,8 +10,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
+import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
-import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
+import soma.ghostrunner.domain.course.enums.GhostSortType;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
@@ -94,6 +95,10 @@ public class RunningQueryService {
         return runningRepository.findPublicRunStatisticsByCourseId(courseId);
     }
 
+    public Optional<UserPaceStatsDto> findUserPaceStatistics(Long courseId, String memberUuid) {
+        return runningRepository.findUserRunStatisticsByCourseId(courseId, memberUuid);
+    }
+
     public Integer findPublicRankForCourse(Long courseId, Running running) {
         return 1 + runningRepository.countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(
                         courseId, running.getRunningRecord().getAveragePace())
@@ -119,7 +124,7 @@ public class RunningQueryService {
     private void validateSortProperty(Pageable pageable) {
         pageable.getSort().stream()
             .forEach(order -> {
-                if(!AvailableGhostSortField.isValidField(order.getProperty())){
+                if(!GhostSortType.isValidField(order.getProperty())){
                     throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
                 };
             });

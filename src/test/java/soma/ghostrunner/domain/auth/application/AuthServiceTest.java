@@ -135,7 +135,7 @@ class AuthServiceTest extends IntegrationTestSupport {
 
     private SignUpRequest createSignUpRequest(String nickname, TermsAgreementDto agreement) {
         return new SignUpRequest(nickname, "https://example.com/profile.jpg",
-                Gender.FEMALE, 165, 55, agreement);
+                Gender.FEMALE, 25, 165, 55, agreement);
     }
 
     private TermsAgreementDto createTermsAgreementDto() {
