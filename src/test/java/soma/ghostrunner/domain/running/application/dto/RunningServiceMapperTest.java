@@ -43,7 +43,7 @@ class RunningServiceMapperTest {
                         "SIMPLIFIED URL", "SCREEN SHOT URL"), member, course);
 
         // then
-        assertThat(running.getRunningName()).isEqualTo(createRunCommand.runningName());
+        assertThat(running.getRunningName()).isEqualTo(createRunCommand.getRunningName());
         assertThat(running.getRunningMode()).isEqualTo(RunningMode.SOLO);
         assertThat(running.getGhostRunningId()).isNull();
         assertThat(running.getStartedAt()).isEqualTo(1000L);
@@ -59,7 +59,7 @@ class RunningServiceMapperTest {
 
     private ProcessedTelemetriesDto createProcessedTelemetriesDto(
             List<TelemetryDto> relativeTelemetries, CoordinateDto startPointCoordinateDto, List<CoordinateDto> coordinateDtos) {
-        return new ProcessedTelemetriesDto(relativeTelemetries, startPointCoordinateDto, coordinateDtos, 6.5, 5.2, 120.2);
+        return new ProcessedTelemetriesDto(relativeTelemetries, startPointCoordinateDto, coordinateDtos, 6.5, 5.2, 120.2, 120.2);
     }
 
     private List<CoordinateDto> createCoordinateDtos() {
@@ -123,8 +123,8 @@ class RunningServiceMapperTest {
         // then
         assertThat(course.getName()).isNull();
         assertThat(course.getCourseProfile().getElevationAverage()).isEqualTo(processedTelemetriesDto.avgElevation());
-        assertThat(course.getCourseProfile().getDistance()).isEqualTo(runRecordDto.distance());
-        assertThat(course.getCourseProfile().getElevationLoss()).isEqualTo(runRecordDto.elevationLoss());
+        assertThat(course.getCourseProfile().getDistance()).isEqualTo(runRecordDto.getDistance());
+        assertThat(course.getCourseProfile().getElevationLoss()).isEqualTo(runRecordDto.getElevationLoss());
         assertThat(course.getStartCoordinate().getLatitude()).isEqualTo(37.2);
         assertThat(course.getCourseDataUrls().getRouteUrl()).isEqualTo("PATH_DATA_URL");
         assertThat(course.getCourseDataUrls().getThumbnailUrl()).isEqualTo("SCREEN_SHOT_URL");

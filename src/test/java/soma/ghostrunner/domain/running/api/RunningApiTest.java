@@ -411,7 +411,7 @@ class RunningApiTest extends ApiTestSupport {
 
     @DisplayName("러닝 ID에 대한 시계열 데이터를 조회한다.")
     @Test
-    void testGetTelemetries() throws Exception{
+    void getRunningTelemetries() throws Exception{
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/1/telemetries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -500,8 +500,11 @@ class RunningApiTest extends ApiTestSupport {
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
                         .queryParam("runningMode", "SOLO")
+                        .queryParam("filteredBy", "DATE")
                         .queryParam("cursorStartedAt", "1")
-                        .queryParam("cursorRunningId", "2"))
+                        .queryParam("cursorRunningId", "2")
+                        .queryParam("startEpoch", "1")
+                        .queryParam("endEpoch", "2"))
                 .andDo(print())
                 .andExpect(status().isOk());
     }
@@ -510,7 +513,35 @@ class RunningApiTest extends ApiTestSupport {
     @Test
     void runningModeCannotBeNullWhenGetRunInfos() throws Exception {
         // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs"))
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+                        .queryParam("filteredBy", "DATE"))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("G-002"))
+                .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
+    }
+
+    @DisplayName("러닝 기록을 조회할 떄 필터 방식은 필수 파라미터이다.")
+    @Test
+    void filteredByCannotBeNullWhenGetRunInfos() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+                        .queryParam("runningMode", "SOLO"))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("G-002"))
+                .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
+    }
+
+    @DisplayName("러닝 기록을 조회할 때 시작/끝 날짜는 필수 파라미터이다.")
+    @Test
+    void epochCannotBeNullWhenGetRunInfos() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+                        .queryParam("runningMode", "SOLO")
+                        .queryParam("filteredBy", "DATE")
+                        .queryParam("cursorStartedAt", "1")
+                        .queryParam("cursorRunningId", "2"))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("G-002"))
@@ -522,35 +553,25 @@ class RunningApiTest extends ApiTestSupport {
     void runningModeMustBeInRunningModeWhenGetRunInfos() throws Exception {
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
-                        .queryParam("runningMode", "FAKE_SOLO"))
+                        .queryParam("runningMode", "FAKE_SOLO")
+                        .queryParam("filteredBy", "DATE"))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("G-002"))
                 .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
     }
 
-    @DisplayName("코스별 러닝 기록을 조회한다.")
+    @DisplayName("러닝 기록을 조회할 떄 필터 방식은 DATE 또는 COURSE이어야 한다.")
     @Test
-    void getRunInfosFilteredByCourse() throws Exception {
+    void filteredByMustBeInRunningInfoFilterWhenGetRunInfos() throws Exception {
         // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/by-course")
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
                         .queryParam("runningMode", "SOLO")
-                        .queryParam("cursorCourseName", "태화강 러닝")
-                        .queryParam("cursorRunningId", "2"))
+                        .queryParam("filteredBy", "FAKE_DATE"))
                 .andDo(print())
-                .andExpect(status().isOk());
-    }
-
-    @DisplayName("갤러리 보기 방식을 위해 러닝 기록을 조회한다.")
-    @Test
-    void getRunInfosForGalleryView() throws Exception {
-        // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/gallery-view")
-                        .queryParam("runningMode", "SOLO")
-                        .queryParam("cursorStartedAt", "1")
-                        .queryParam("cursorRunningId", "2"))
-                .andDo(print())
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("G-002"))
+                .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
     }
 
 }

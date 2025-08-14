@@ -20,8 +20,13 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
 
     Optional<Running> findByIdAndMemberId(Long runningId, Long memberId);
 
-    @Query("select r.runningDataUrls.interpolatedTelemetryUrl from Running r join r.member m where r.id = :runningId and m.uuid = :memberUuid")
-    Optional<String> findTelemetryUrlById(Long runningId, String memberUuid);
+    @Query("""
+        select r.runningDataUrls.interpolatedTelemetryUrl
+        from Running r
+        where r.id = :runningId
+          and r.member.uuid = :memberUuid
+    """)
+    Optional<String> findInterpolatedTelemetryUrlByIdAndMemberUuid(Long runningId, String memberUuid);
 
     @Query("SELECT r FROM Running r JOIN FETCH r.member "
         + "WHERE r.course.id = :courseId AND r.isPublic = true")
@@ -50,5 +55,8 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
     @Modifying(clearAutomatically = true)
     @Query("delete from Running r where r.id in :runningIds")
     void deleteAllByIdIn(@Param("runningIds") List<Long> runningIds);
+
+    @Query("select count(r.id) from Running r where r.course.id = :courseId")
+    long countTotalRunningsCount(Long courseId);
 
 }

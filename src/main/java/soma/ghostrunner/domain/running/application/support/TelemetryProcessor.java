@@ -68,8 +68,9 @@ public class TelemetryProcessor {
         }
 
         // 평균 상대 고도 계산
+        BigDecimal initialElevation = BigDecimal.valueOf(relativeTelemetries.get(0).getAlt());
         BigDecimal averageElevation = totalElevation.divide(BigDecimal.valueOf(relativeTelemetries.size()), 2, BigDecimal.ROUND_HALF_UP);
-        averageElevation = averageElevation.subtract(BigDecimal.valueOf(relativeTelemetries.get(0).getAlt()));
+        averageElevation = averageElevation.subtract(initialElevation);
 
         return new ProcessedTelemetriesDto(
                 relativeTelemetries,
@@ -77,7 +78,8 @@ public class TelemetryProcessor {
                 coordinates,
                 highestPace,
                 lowestPace,
-                averageElevation.doubleValue()
+                averageElevation.doubleValue(),
+                initialElevation.doubleValue()
         );
     }
 

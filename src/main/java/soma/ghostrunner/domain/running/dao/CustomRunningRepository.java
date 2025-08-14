@@ -19,14 +19,19 @@ public interface CustomRunningRepository {
 
     Optional<MemberAndRunRecordInfo> findMemberAndRunRecordInfoById(long id);
 
-    List<RunInfo> findRunInfosByCursorIds(
-            RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid);
+    List<RunInfo> findRunInfosFilteredByDate(
+            RunningMode runningMode,
+            Long cursorStartedAt, Long cursorRunningId,
+            Long startEpoch, Long endEpoch,
+            Long memberId
+    );
 
-    List<RunInfo> findRunInfosFilteredByCoursesByCursorIds(
-            RunningMode runningMode, String cursorCourseName, Long cursorRunningId, String memberUuid);
-
-    List<RunInfo> findRunInfosForGalleryViewByCursorIds(
-            RunningMode runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid);
+    List<RunInfo> findRunInfosFilteredByCourses(
+            RunningMode runningMode,
+            String cursorCourseName, Long cursorRunningId,
+            Long startEpoch, Long endEpoch,
+            Long memberId
+    );
 
     Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId);
 

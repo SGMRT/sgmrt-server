@@ -82,6 +82,13 @@ public class CourseApi {
         return courseFacade.findTopRankingGhosts(courseId, count);
     }
 
+    @GetMapping("/courses/{courseId}/top-percentage")
+    public List<CourseGhostResponse> getTopPercentageGhosts(
+            @PathVariable("courseId") Long courseId,
+            @RequestParam @Min(value = 0) @Max(value = 1) Double percentage) {
+        return courseFacade.findTopPercentageGhosts(courseId, percentage);
+    }
+
     @GetMapping("/courses/{courseId}/first-telemetry")
     public CourseCoordinatesResponse getCourseCoordinates(
             @PathVariable("courseId") Long courseId) {

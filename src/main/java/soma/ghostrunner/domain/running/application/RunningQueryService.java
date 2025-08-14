@@ -6,15 +6,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
+import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.course.enums.GhostSortType;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
+import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -32,26 +35,18 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class RunningQueryService {
 
-    private final RunningTelemetryQueryService runningTelemetryQueryService;
-
     private final RunningRepository runningRepository;
 
     private final RunningApiMapper runningApiMapper;
+    private final MemberService memberService;
 
     public SoloRunDetailInfo findSoloRunInfo(Long runningId, String memberUuid) {
-        SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId, memberUuid);
-        List<TelemetryDto> telemetries = downloadTelemetries(runningId, soloRunDetailInfo.getTelemetryUrl());
-        soloRunDetailInfo.setTelemetries(telemetries);
-        return soloRunDetailInfo;
+        return findSoloRunInfoByRunningId(runningId, memberUuid);
     }
 
     private SoloRunDetailInfo findSoloRunInfoByRunningId(Long runningId, String memberUuid) {
         return runningRepository.findSoloRunInfoById(runningId, memberUuid)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
-    }
-
-    private List<TelemetryDto> downloadTelemetries(Long runningId, String telemetryUrl) {
-        return runningTelemetryQueryService.findTotalTelemetries(runningId, telemetryUrl);
     }
 
     public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId, String memberUuid) {
@@ -60,9 +55,6 @@ public class RunningQueryService {
 
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfoByRunningId(ghostRunningId);
         myGhostRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
-
-        List<TelemetryDto> telemetries = downloadTelemetries(myRunningId, myGhostRunDetailInfo.getTelemetryUrl());
-        myGhostRunDetailInfo.setTelemetries(telemetries);
         return myGhostRunDetailInfo;
     }
 
@@ -83,14 +75,16 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, ghostRunningId));
     }
 
-    public List<TelemetryDto> findRunningTelemetries(Long runningId, String memberUuid) {
-        String telemetryUrl = findTelemetryUrlByRunningId(runningId, memberUuid);
-        return downloadTelemetries(runningId, telemetryUrl);
+    public String findRunningTelemetries(Long runningId, String memberUuid) {
+        return runningRepository.findInterpolatedTelemetryUrlByIdAndMemberUuid(runningId, memberUuid)
+                .orElseThrow(() -> new AccessDeniedException("접근할 수 없는 러닝 데이터입니다."));
     }
 
-    private String findTelemetryUrlByRunningId(Long runningId, String memberUuid) {
-        return runningRepository.findTelemetryUrlById(runningId, memberUuid)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
+    public Page<CourseGhostResponse> findTopRankingGhostsByCourseId(
+            Long courseId, Integer count) {
+        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
+        Pageable topNPageable = PageRequest.of(0, count, defaultSort);
+        return findPublicGhostRunsByCourseId(courseId, topNPageable);
     }
 
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
@@ -100,11 +94,16 @@ public class RunningQueryService {
         return ghostRuns.map(runningApiMapper::toGhostResponse);
     }
 
-    public Page<CourseGhostResponse> findTopRankingGhostsByCourseId(
-            Long courseId, Integer count) {
+    public Page<CourseGhostResponse> findTopPercentageGhostsByCourseId(
+            Long courseId, Double percentage) {
+        int percentageToCount = (int) Math.ceil(findRunningsCountInCourse(courseId) * percentage) + 1;
         Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
-        Pageable topNPageable = PageRequest.of(0, count, defaultSort);
+        Pageable topNPageable = PageRequest.of(0, percentageToCount, defaultSort);
         return findPublicGhostRunsByCourseId(courseId, topNPageable);
+    }
+
+    private long findRunningsCountInCourse(Long courseId) {
+        return runningRepository.countTotalRunningsCount(courseId);
     }
 
     public Optional<CourseRunStatisticsDto> findCourseRunStatistics(Long courseId) {
@@ -146,19 +145,28 @@ public class RunningQueryService {
             });
     }
 
-    public List<RunInfo> findRunnings(String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
-        return runningRepository.findRunInfosByCursorIds(
-                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
+    public List<RunInfo> findRunnings(String runningMode, String filteredBy,
+                                      Long startEpoch, Long endEpoch,
+                                      Long cursorStartedAt,
+                                      String cursorCourseName,
+                                      Long cursorRunningId,String memberUuid) {
+        Member member = findMember(memberUuid);
+        if (filteredBy.equals(RunningInfoFilter.DATE.name())) {
+            return runningRepository.findRunInfosFilteredByDate(
+                    RunningMode.valueOf(runningMode),
+                    cursorStartedAt, cursorRunningId,
+                    startEpoch, endEpoch, member.getId());
+        } else if (filteredBy.equals(RunningInfoFilter.COURSE.name())) {
+            return runningRepository.findRunInfosFilteredByCourses(
+                    RunningMode.valueOf(runningMode),
+                    cursorCourseName, cursorRunningId,
+                    startEpoch, endEpoch, member.getId());
+        }
+        throw new IllegalArgumentException("올바르지 않은 필터 형식이 요청됐습니다.");
     }
 
-    public List<RunInfo> findRunningsFilteredByCourse(String runningMode, String courseName, Long cursorRunningId, String memberUuid) {
-        return runningRepository.findRunInfosFilteredByCoursesByCursorIds(
-                RunningMode.valueOf(runningMode), courseName, cursorRunningId, memberUuid);
-    }
-
-    public List<RunInfo> findRunningsForGalleryView(String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
-        return runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
+    private Member findMember(String memberUuid) {
+        return memberService.findMemberByUuid(memberUuid);
     }
   
 }
