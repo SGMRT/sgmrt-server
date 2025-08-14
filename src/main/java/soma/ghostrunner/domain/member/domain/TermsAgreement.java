@@ -64,8 +64,7 @@ public class TermsAgreement {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof TermsAgreement)) return false;
-        TermsAgreement other = (TermsAgreement) o;
+        if (!(o instanceof TermsAgreement other)) return false;
         return this.isServiceTermsAgreed ==  other.isServiceTermsAgreed
             && this.isDataConsignmentAgreed == other.isDataConsignmentAgreed
             && this.isPrivacyPolicyAgreed ==  other.isPrivacyPolicyAgreed

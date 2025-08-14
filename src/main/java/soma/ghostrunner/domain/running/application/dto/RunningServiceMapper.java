@@ -88,5 +88,5 @@ public interface RunningServiceMapper {
     @Mapping(source = "running.id", target = "runningId")
     @Mapping(source = "course.id", target = "courseId")
     CreateCourseAndRunResponse toResponse(Running running, Course course);
-
+  
 }

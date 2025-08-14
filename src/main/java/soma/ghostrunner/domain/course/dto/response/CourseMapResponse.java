@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.course.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 
 import java.util.List;
 
@@ -11,7 +10,8 @@ public record CourseMapResponse(
         String name,
         Double startLat,
         Double startLng,
-        List<CoordinateDto> pathData,
+        String routeUrl,
+        String thumbnailUrl,
         Integer distance,
         Integer elevationGain,
         Integer elevationLoss,

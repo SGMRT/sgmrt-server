@@ -54,9 +54,11 @@ public class MemberApi {
         memberService.updateMemberSettings(memberUuid, request);
     }
 
+    @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
     @DeleteMapping("/{memberUuid}")
-    public void deleteMember(@PathVariable("memberUuid") String memberUuid) {
-        // todo 본인만 수정 가능
+    public void deleteMember(
+            @PathVariable("memberUuid") String memberUuid,
+            @AuthenticationPrincipal JwtUserDetails userDetails) {
         memberService.removeAccount(memberUuid);
     }
   

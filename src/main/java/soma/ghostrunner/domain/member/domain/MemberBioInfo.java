@@ -20,6 +20,9 @@ public class MemberBioInfo {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
+    @Column(name = "age")
+    private Integer age;
+
     @Column(name = "weight")
     private Integer weight;
 

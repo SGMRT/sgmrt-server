@@ -14,9 +14,7 @@ import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
-import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
-import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -435,5 +433,5 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 .isInstanceOf(RunningNotFoundException.class)
                 .hasMessage("코스 ID : " + course.getId() + "에 대한 러닝 데이터가 없습니다.");
     }
-
+  
 }

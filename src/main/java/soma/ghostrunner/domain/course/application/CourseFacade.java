@@ -8,12 +8,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.dto.CourseMapper;
-import soma.ghostrunner.domain.course.dto.CourseWithCoordinatesDto;
-import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
-import soma.ghostrunner.domain.course.dto.CourseWithMemberDetailsDto;
+import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
+import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
@@ -32,14 +30,11 @@ public class CourseFacade {
     private final CourseMapper courseMapper;
 
     @Transactional(readOnly = true)
-    public List<CourseMapResponse> findCoursesByPosition(
-            Double lat, Double lng, Integer radiusM,
-            Integer minDistanceM, Integer maxDistanceM,
-            Integer minElevationM, Integer maxElevationM,
-            String ownerUuid) {
+    public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
+                                                         CourseSearchFilterDto filters) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
-        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(lat, lng, radiusM,
-                minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid);
+        List<CourseWithCoordinatesDto> courses = courseService.searchCourses(lat, lng, radiusM, sort, filters);
+        // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
         return courses.stream().map(course -> {
             Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
             long runnersCount = rankers.getTotalElements();
@@ -48,14 +43,15 @@ public class CourseFacade {
     }
 
     @Transactional(readOnly = true)
-    public CourseDetailedResponse findCourse(Long courseId) {
+    public CourseDetailedResponse findCourse(Long courseId, String viewerUuid) {
         Course course = courseService.findCourseById(courseId);
         CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseId)
                 .orElse(new CourseRunStatisticsDto());
-        return courseMapper.toCourseDetailedResponse(
-                course,
-                courseStatistics.getAvgCompletionTime(), courseStatistics.getAvgFinisherPace(),
-                courseStatistics.getAvgFinisherCadence(), courseStatistics.getLowestFinisherPace());
+        UserPaceStatsDto userPaceStats = runningQueryService.findUserPaceStatistics(courseId, viewerUuid)
+                .orElse(new UserPaceStatsDto());
+        String telemetryUrl = runningQueryService.findFirstRunning(course.getId()).getRunningDataUrls()
+                .getInterpolatedTelemetryUrl();
+        return courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStatistics, userPaceStats);
     }
 
     public void updateCourse(Long courseId, CoursePatchRequest request) {

@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
