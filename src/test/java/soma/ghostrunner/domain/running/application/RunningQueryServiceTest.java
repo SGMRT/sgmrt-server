@@ -194,11 +194,6 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 1750729987181L, true, false, "URL", "URL", "URL", followingMember, course);
         runningRepository.saveAll(List.of(followingRunning, followingRunning2));
 
-        List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(
-                followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetryUrl()))
-                .willReturn(mockTelemetryDtos);
-
         // when
         GhostRunDetailInfo ghostRunDetailInfo = runningQueryService.findGhostRunInfo(
                 followingRunning.getId(), running.getId(), followingMember.getUuid());
@@ -260,10 +255,6 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 1750729987181L, true, false, "URL", "URL", "URL", followingMember, course);
         runningRepository.save(followingRunning);
 
-        List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-        given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetryUrl()))
-                .willReturn(mockTelemetryDtos);
-
         // when // then
         Assertions.assertThatThrownBy(() ->
                         runningQueryService.findGhostRunInfo(
@@ -294,10 +285,6 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
          Running followingRunning = Running.of("고스트 러닝 제목", RunningMode.GHOST, running.getId(), ghostRunningRecord,
                  1750729987181L, true, false, "URL", "URL", "URL", followingMember, course);
          runningRepository.save(followingRunning);
-
-         List<TelemetryDto> mockTelemetryDtos = createTelemetryDtos();
-         given(runningTelemetryQueryService.findTotalTelemetries(followingRunning.getId(), followingRunning.getRunningDataUrls().getInterpolatedTelemetryUrl()))
-                 .willReturn(mockTelemetryDtos);
 
          // when // then
          Assertions.assertThatThrownBy(() ->
@@ -447,70 +434,6 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Assertions.assertThatThrownBy(() -> runningQueryService.findFirstRunning(course.getId()))
                 .isInstanceOf(RunningNotFoundException.class)
                 .hasMessage("코스 ID : " + course.getId() + "에 대한 러닝 데이터가 없습니다.");
-    }
-
-    private Running createRunning(String runningName, Course course, Member member, Long startedAt, RunningMode runningMode) {
-        if (runningMode.equals(RunningMode.SOLO)) {
-            return Running.of(runningName, runningMode, null, createRunningRecord(), startedAt,
-                    true, false, "시계열 URL", "시계열 URL", "시계열 URL", member, course);
-        } else {
-            Random random = new Random();
-            return Running.of(runningName, runningMode, random.nextLong(), createRunningRecord(), startedAt,
-                    true, false, "시계열 URL", "시계열 URL", "시계열 URL", member, course);
-        }
-    }
-
-    @DisplayName("코스별 러닝 기록을 조회한다.")
-    @Test
-    void findRunningsGroupedByCourse() {
-        // given
-        Member member = createMember("이복둥");
-        memberRepository.save(member);
-
-        List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
-        List<Course> courses = new ArrayList<>();
-        randomCourseNames.forEach(name -> {
-            Course newCourse = createPublicCourse(member, name);
-            newCourse.setIsPublic(true);
-            courses.add(newCourse);
-        });
-        courseRepository.saveAll(courses);
-
-        Random random = new Random();
-        List<Running> runnings = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 5)),
-                    member, random.nextLong(), RunningMode.SOLO));
-        }
-        for (int i = 100; i < 200; i++) {
-            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 5)),
-                    member, random.nextLong(), RunningMode.GHOST));
-        }
-        runningRepository.saveAll(runnings);
-
-        List<Running> sortedSoloRunnings = runnings.stream()
-                .filter(running -> running.getRunningMode().equals(RunningMode.SOLO))
-                .sorted(Comparator.comparing((Running r) -> r.getCourse().getName())
-                        .thenComparing(Running::getId, Comparator.reverseOrder()))
-                .toList();
-
-        // when
-        List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO", null, null, member.getUuid()));
-        for (int i = 0; i < 4; i++) {
-            RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
-            runInfos.addAll(runningQueryService.findRunningsFilteredByCourse("SOLO",
-                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getUuid()));
-        }
-
-        // then
-        Assertions.assertThat(runInfos).hasSize(100);
-        IntStream.range(0, runInfos.size()).forEach(idx -> {
-             Assertions.assertThat(runInfos.get(idx).getCourseInfo().getName()).isEqualTo(sortedSoloRunnings.get(idx).getCourse().getName());
-            Assertions.assertThat(runInfos.get(idx).getRunningId()).isEqualTo(sortedSoloRunnings.get(idx).getId());
-            Assertions.assertThat(runInfos.get(idx).getName()).isEqualTo(sortedSoloRunnings.get(idx).getRunningName());
-            Assertions.assertThat(runInfos.get(idx).getStartedAt()).isEqualTo(sortedSoloRunnings.get(idx).getStartedAt());
-        });
     }
 
 }

@@ -20,7 +20,7 @@ import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
 import java.util.*;
-import java.util.stream.IntStream;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -474,8 +474,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         long endEpoch   = 1_000_000L;
 
         // when: 첫 페이지(커서 없음)
-        List<RunInfo> page1Solo = runningRepository.findRunInfosByCursorIds(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getUuid());
+        List<RunInfo> page1Solo = runningRepository.findRunInfosFilteredByDate(
+                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId());
 
         // 페이지 크기(= 구현의 limit 결과)를 관측값으로 사용
         int page1Size = page1Solo.size();
@@ -485,13 +485,13 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         RunInfo cursor = page1Solo.get(page1Size - 1);
 
         // when: 둘째 페이지(커서 after)
-        List<RunInfo> page2Solo = runningRepository.findRunInfosByCursorIds(
+        List<RunInfo> page2Solo = runningRepository.findRunInfosFilteredByDate(
                 RunningMode.SOLO, cursor.getStartedAt(), cursor.getRunningId(),
-                startEpoch, endEpoch, member.getUuid());
+                startEpoch, endEpoch, member.getId());
 
         // when: GHOST 첫 페이지
-        List<RunInfo> page1Ghost = runningRepository.findRunInfosByCursorIds(
-                RunningMode.GHOST, null, null, startEpoch, endEpoch, member.getUuid());
+        List<RunInfo> page1Ghost = runningRepository.findRunInfosFilteredByDate(
+                RunningMode.GHOST, null, null, startEpoch, endEpoch, member.getId());
 
         // then 1) SOLO 1페이지 값 검증 (정확히 기대 리스트의 앞부분)
         for (int i = 0; i < page1Solo.size(); i++) {
@@ -580,8 +580,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         long endEpoch   = 10_000L;
 
         // when: 커서 없음(첫 페이지)
-        List<RunInfo> result = runningRepository.findRunInfosByCursorIds(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getUuid()
+        List<RunInfo> result = runningRepository.findRunInfosFilteredByDate(
+                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId()
         );
 
         // then: 전체가 startedAt ASC, id ASC
@@ -621,8 +621,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         long endEpoch   = 10_000L;
 
         // when
-        List<RunInfo> result = runningRepository.findRunInfosByCursorIds(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getUuid()
+        List<RunInfo> result = runningRepository.findRunInfosFilteredByDate(
+                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId()
         );
 
         // then
@@ -653,8 +653,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         long endEpoch   = 2000L;  // start == end (between inclusive)
 
         // when
-        List<RunInfo> result = runningRepository.findRunInfosByCursorIds(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getUuid()
+        List<RunInfo> result = runningRepository.findRunInfosFilteredByDate(
+                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId()
         );
 
         // then: startedAt == 2000 인 것들만 전부 포함(동률 여러 건도 포함)
@@ -701,13 +701,13 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         long endEpoch   = 1_000_000L;
 
         // when
-        List<RunInfo> runInfos = runningRepository.findRunInfosByCursorIds(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getUuid());
+        List<RunInfo> runInfos = runningRepository.findRunInfosFilteredByDate(
+                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId());
         for (int i = 0; i < 4; i++) {
             RunInfo cursor = runInfos.get(runInfos.size() - 1);
-            List<RunInfo> nextRunInfos = runningRepository.findRunInfosByCursorIds(
+            List<RunInfo> nextRunInfos = runningRepository.findRunInfosFilteredByDate(
                     RunningMode.SOLO, cursor.getStartedAt(), cursor.getRunningId(),
-                    startEpoch, endEpoch, member.getUuid());
+                    startEpoch, endEpoch, member.getId());
             runInfos.addAll(nextRunInfos);
         }
 
@@ -737,58 +737,247 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
     }
 
-    @DisplayName("코스명, 러닝 ID를 기준으로 커서 페이징 방식을 활용해 조회한다.")
+    @DisplayName("코스명, 러닝ID(ASC) 커서로 기간 내 SOLO 러닝을 페이지네이션한다 — 정렬·연속성·중복없음")
     @Test
-    void findRunInfosFilteredByCoursesByCursorIds() {
+    void findRunInfosFilteredByCoursesByCursorIds_basicPaging() {
         // given
+        long START_MS = 0L;
+        long END_MS   = 1_000_000L;
+
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        List<String> randomCourseNames = List.of("한강 코스", "반포 코스", "태화강 코스", "공덕역 코스", "이대역 코스");
-        List<Course> courses = new ArrayList<>();
-        randomCourseNames.forEach(name -> {
-            Course newCourse = createPublicCourse(member, name);
-            newCourse.setIsPublic(true);
-            courses.add(newCourse);
-        });
+        List<String> names = List.of("공덕역 코스", "반포 코스", "이대역 코스", "태화강 코스", "한강 코스");
+        List<Course> courses = names.stream()
+                .map(n -> { Course c = createPublicCourse(member, n); c.setIsPublic(true); return c; })
+                .toList();
         courseRepository.saveAll(courses);
 
-        Random random = new Random();
-        List<Running> runnings = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 5)),
-                    member, random.nextLong(), RunningMode.SOLO));
-        }
-        for (int i = 100; i < 200; i++) {
-            runnings.add(createRunning("러닝" + i, courses.get(random.nextInt(0, 5)),
-                    member, random.nextLong(), RunningMode.GHOST));
-        }
-        runningRepository.saveAll(runnings);
+        // 재현성 있는 데이터: startedAt은 [0, END_MS) 범위, 코스는 랜덤 배정
+        Random rnd = new Random(42);
+        List<Running> all = new ArrayList<>();
 
-        List<Running> sortedSoloRunnings = runnings.stream()
-                .filter(running -> running.getRunningMode().equals(RunningMode.SOLO))
-                .sorted(Comparator.comparing((Running r) -> r.getCourse().getName())
-                        .thenComparing(Running::getId, Comparator.reverseOrder()))
+        // SOLO 100건
+        for (int i = 0; i < 100; i++) {
+            long ts = Math.abs(rnd.nextLong() % END_MS);
+            all.add(createRunning("러닝" + i, courses.get(rnd.nextInt(courses.size())),
+                    member, ts, RunningMode.SOLO));
+        }
+        // GHOST 100건(필터 검증용)
+        for (int i = 100; i < 200; i++) {
+            long ts = Math.abs(rnd.nextLong() % END_MS);
+            all.add(createRunning("러닝" + i, courses.get(rnd.nextInt(courses.size())),
+                    member, ts, RunningMode.GHOST));
+        }
+        runningRepository.saveAll(all);
+
+        // 기대 목록(필터: SOLO) — 코스명 ASC, id ASC
+        Comparator<Running> courseAscIdAsc = Comparator
+                .comparing((Running r) -> r.getCourse().getName())
+                .thenComparing(Running::getId);
+
+        List<Running> expectedSolo = all.stream()
+                .filter(r -> r.getRunningMode() == RunningMode.SOLO)
+                .sorted(courseAscIdAsc)
                 .toList();
 
-        // when
-        List<RunInfo> runInfos = new ArrayList<>();
-        runInfos.addAll(runningRepository.findRunInfosFilteredByCoursesByCursorIds(RunningMode.SOLO, null, null, member.getUuid()));
-        for (int i = 0; i < 4; i++) {
-            RunInfo lastRunInfo = runInfos.get(runInfos.size() - 1);
-            runInfos.addAll(runningRepository.findRunInfosFilteredByCoursesByCursorIds(RunningMode.SOLO,
-                    lastRunInfo.getCourseInfo().getName(), lastRunInfo.getRunningId(), member.getUuid()));
+        // when: 커서 없이 1페이지
+        List<RunInfo> page = runningRepository.findRunInfosFilteredByCourses(
+                RunningMode.SOLO, null, null, START_MS, END_MS, member.getId());
+
+        // 페이지 크기는 관측값 사용(구현의 LIMIT에 의존하지 않도록)
+        int pageSize = page.size();
+        assertThat(pageSize).isGreaterThan(0);
+
+        // 커서로 누적 수집(여러 페이지)
+        List<RunInfo> collected = new ArrayList<>(page);
+        while (true) {
+            RunInfo cursor = collected.get(collected.size() - 1);
+            List<RunInfo> next = runningRepository.findRunInfosFilteredByCourses(
+                    RunningMode.SOLO, cursor.getCourseInfo().getName(), cursor.getRunningId(),
+                    START_MS, END_MS, member.getId());
+            if (next.isEmpty()) break;
+
+            // 커서 경계: strict after (ASC)
+            RunInfo first = next.get(0);
+            boolean strictlyAfter =
+                    first.getCourseInfo().getName().compareTo(cursor.getCourseInfo().getName()) > 0
+                            || (Objects.equals(first.getCourseInfo().getName(), cursor.getCourseInfo().getName())
+                            && first.getRunningId() > cursor.getRunningId());
+            assertThat(strictlyAfter).isTrue();
+
+            // 페이지 간 중복 없음
+            Set<Long> prevIds = collected.stream().map(RunInfo::getRunningId).collect(Collectors.toSet());
+            Set<Long> nextIds = next.stream().map(RunInfo::getRunningId).collect(Collectors.toSet());
+            assertThat(Collections.disjoint(prevIds, nextIds)).isTrue();
+
+            collected.addAll(next);
+
+            // 방어: 과도 루프 방지
+            if (collected.size() > expectedSolo.size()) {
+                throw new AssertionError("Collected more than expected; check cursor logic");
+            }
         }
 
+        // then: 전체 SOLO 수와 동일, 정렬/내용 일치
+        assertThat(collected).hasSize(expectedSolo.size());
+        assertSortedByCourseThenIdAsc(collected);
+
+        for (int i = 0; i < collected.size(); i++) {
+            RunInfo a = collected.get(i);
+            Running e = expectedSolo.get(i);
+            assertThat(a.getCourseInfo().getName()).isEqualTo(e.getCourse().getName());
+            assertThat(a.getRunningId()).isEqualTo(e.getId());
+            assertThat(a.getName()).isEqualTo(e.getRunningName());
+            assertThat(a.getStartedAt()).isEqualTo(e.getStartedAt());
+            assertThat(a.getGhostRunningId()).isNull(); // SOLO
+        }
+    }
+
+    @DisplayName("동일 코스명 다건이 있는 경우에도 ID ASC로 안정 정렬되고 커서 경계가 정확하다")
+    @Test
+    void sameCourseNameMany_rows_areStableAndSeekIsStrict() {
+        // given
+        long START_MS = 0L;
+        long END_MS   = 1_000_000L;
+
+        Member member = createMember("동률테스트");
+        memberRepository.save(member);
+
+        Course c = createPublicCourse(member, "같은 이름 코스");
+        c.setIsPublic(true);
+        courseRepository.save(c);
+
+        // 같은 코스명으로 SOLO 30건 — startedAt은 섞지만 정렬 키는 (name, id)
+        List<Running> list = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            long ts = (i % 2 == 0) ? 1000L : 2000L; // 일부 동률 타임스탬프
+            list.add(createRunning("S" + i, c, member, ts, RunningMode.SOLO));
+        }
+        runningRepository.saveAll(list);
+
+        // when: 첫 페이지
+        List<RunInfo> p1 = runningRepository.findRunInfosFilteredByCourses(
+                RunningMode.SOLO, null, null, START_MS, END_MS, member.getId());
+        assertThat(p1).isNotEmpty();
+
+        // 커서로 다음 페이지 조회
+        RunInfo cursor = p1.get(p1.size() - 1);
+        List<RunInfo> p2 = runningRepository.findRunInfosFilteredByCourses(
+                RunningMode.SOLO, cursor.getCourseInfo().getName(), cursor.getRunningId(),
+                START_MS, END_MS, member.getId());
+
         // then
-        assertThat(runInfos).hasSize(100);
-        IntStream.range(0, runInfos.size()).forEach(idx -> {
-            assertThat(runInfos.get(idx).getCourseInfo().getName()).isEqualTo(sortedSoloRunnings.get(idx).getCourse().getName());
-            assertThat(runInfos.get(idx).getRunningId()).isEqualTo(sortedSoloRunnings.get(idx).getId());
-            assertThat(runInfos.get(idx).getName()).isEqualTo(sortedSoloRunnings.get(idx).getRunningName());
-            assertThat(runInfos.get(idx).getStartedAt()).isEqualTo(sortedSoloRunnings.get(idx).getStartedAt());
-            assertThat(runInfos.get(idx).getGhostRunningId()).isNull();
-        });
+        assertSortedByCourseThenIdAsc(p1);
+        assertSortedByCourseThenIdAsc(p2);
+
+        if (!p2.isEmpty()) {
+            RunInfo first = p2.get(0);
+            boolean strictlyAfter =
+                    first.getCourseInfo().getName().compareTo(cursor.getCourseInfo().getName()) > 0
+                            || (Objects.equals(first.getCourseInfo().getName(), cursor.getCourseInfo().getName())
+                            && first.getRunningId() > cursor.getRunningId());
+            assertThat(strictlyAfter).isTrue();
+        }
+
+        // 중복 없음
+        Set<Long> ids1 = p1.stream().map(RunInfo::getRunningId).collect(Collectors.toSet());
+        Set<Long> ids2 = p2.stream().map(RunInfo::getRunningId).collect(Collectors.toSet());
+        assertThat(Collections.disjoint(ids1, ids2)).isTrue();
+    }
+
+    @DisplayName("기간 필터: start==end(포함)일 때 해당 시각의 레코드만 반환한다 (between inclusive)")
+    @Test
+    void range_inclusive_when_start_equals_end() {
+        // given
+        Member member = createMember("기간검증");
+        memberRepository.save(member);
+
+        Course c1 = createPublicCourse(member, "A");
+        Course c2 = createPublicCourse(member, "B");
+        c1.setIsPublic(true); c2.setIsPublic(true);
+        courseRepository.saveAll(List.of(c1, c2));
+
+        long target = 555_555L;
+        Running in1  = createRunning("IN1", c1, member, target, RunningMode.SOLO);
+        Running in2  = createRunning("IN2", c2, member, target, RunningMode.SOLO);
+        Running out1 = createRunning("OUT_LOW",  c1, member, target - 1, RunningMode.SOLO);
+        Running out2 = createRunning("OUT_HIGH", c2, member, target + 1, RunningMode.SOLO);
+        runningRepository.saveAll(List.of(in1, in2, out1, out2));
+
+        // when
+        List<RunInfo> result = runningRepository.findRunInfosFilteredByCourses(
+                RunningMode.SOLO, null, null, target, target, member.getId());
+
+        // then: target 시각만 포함, 정렬은 (코스명, id)
+        assertThat(result).isNotEmpty();
+        assertThat(result).allMatch(r -> Objects.equals(r.getStartedAt(), target));
+        assertSortedByCourseThenIdAsc(result);
+
+        List<Long> got = result.stream().map(RunInfo::getRunningId).toList();
+        List<Long> expect = List.of(Math.min(in1.getId(), in2.getId()), Math.max(in1.getId(), in2.getId()));
+        assertThat(got).containsExactlyElementsOf(expect);
+    }
+
+    @DisplayName("기간 밖이면 빈 결과를 반환한다")
+    @Test
+    void outOfRange_returnsEmpty() {
+        // given
+        Member member = createMember("기간빈");
+        memberRepository.save(member);
+
+        Course c = createPublicCourse(member, "X");
+        c.setIsPublic(true);
+        courseRepository.save(c);
+
+        runningRepository.save(createRunning("R", c, member, 1000L, RunningMode.SOLO));
+
+        // when
+        List<RunInfo> r = runningRepository.findRunInfosFilteredByCourses(
+                RunningMode.SOLO, null, null, 2000L, 3000L, member.getId());
+
+        // then
+        assertThat(r).isEmpty();
+    }
+
+    @DisplayName("다른 멤버/다른 모드 데이터는 포함되지 않는다")
+    @Test
+    void filters_by_member_and_mode() {
+        // given
+        long START_MS = 0L;
+        long END_MS   = 1_000_000L;
+
+        Member me = createMember("me");
+        Member other = createMember("other");
+        memberRepository.saveAll(List.of(me, other));
+
+        Course c1 = createPublicCourse(me, "A");  c1.setIsPublic(true);
+        Course c2 = createPublicCourse(other, "A"); c2.setIsPublic(true);
+        courseRepository.saveAll(List.of(c1, c2));
+
+        Running s1 = createRunning("ME_SOLO", c1, me, 1000L, RunningMode.SOLO);
+        Running g1 = createRunning("ME_GHOST", c1, me, 2000L, RunningMode.GHOST);
+        Running s2 = createRunning("OTHER_SOLO", c2, other, 1500L, RunningMode.SOLO);
+        runningRepository.saveAll(List.of(s1, g1, s2));
+
+        // when
+        List<RunInfo> result = runningRepository.findRunInfosFilteredByCourses(
+                RunningMode.SOLO, null, null, START_MS, END_MS, me.getId());
+
+        // then
+        assertThat(result).extracting(RunInfo::getRunningId).containsExactly(s1.getId());
+    }
+
+    private void assertSortedByCourseThenIdAsc(List<RunInfo> list) {
+        for (int i = 1; i < list.size(); i++) {
+            RunInfo prev = list.get(i - 1);
+            RunInfo curr = list.get(i);
+            int nameCmp = curr.getCourseInfo().getName().compareTo(prev.getCourseInfo().getName());
+            boolean ok = nameCmp > 0 || (nameCmp == 0 && curr.getRunningId() > prev.getRunningId());
+            assertThat(ok)
+                    .as("List must be sorted by course.name ASC, then id ASC at index " + i)
+                    .isTrue();
+        }
     }
   
 }

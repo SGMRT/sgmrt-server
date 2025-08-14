@@ -18,13 +18,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RunningTelemetryQueryService {
 
-    private final GhostRunnerS3Client ghostRunnerS3Client;
-
-    public List<TelemetryDto> findTotalTelemetries(Long runningId, String telemetryUrl) {
-        List<String> stringTelemetries = downloadTelemetries(runningId, telemetryUrl);
-        return TelemetryTypeConverter.convertFromStringToDtos(stringTelemetries);
-    }
-
     public List<CoordinateDto> findCoordinateTelemetries(Long runningId, String telemetryUrl) {
         List<String> stringTelemetries = downloadTelemetries(runningId, telemetryUrl);
         return CoordinateConverter.convertToCoordinateList(stringTelemetries);

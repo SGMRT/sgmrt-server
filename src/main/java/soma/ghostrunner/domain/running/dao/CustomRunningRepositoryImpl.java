@@ -2,13 +2,11 @@ package soma.ghostrunner.domain.running.dao;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.Projections;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
-import soma.ghostrunner.domain.running.domain.QRunning;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 
 import java.util.List;
@@ -119,11 +117,11 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         .fetchOne());
     }
 
-    public List<RunInfo> findRunInfosByCursorIds(
+    public List<RunInfo> findRunInfosFilteredByDate(
             RunningMode runningMode,
             Long cursorStartedAt, Long cursorRunningId,
             Long startEpoch, Long endEpoch,
-            String memberUuid
+            Long memberId
     ) {
         return queryFactory
                 .select(new QRunInfo(
@@ -141,12 +139,13 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 running.course.name,
                                 running.course.isPublic
                         ),
-                        running.ghostRunningId
+                        running.ghostRunningId,
+                        running.runningDataUrls.screenShotUrl
                 ))
                 .from(running)
                 .join(running.course, course)
                 .where(
-                        running.member.uuid.eq(memberUuid),
+                        running.member.id.eq(memberId),
                         running.runningMode.eq(runningMode),
                         startedAtRange(startEpoch, endEpoch),
                         seekAfterAsc(cursorStartedAt, cursorRunningId)
@@ -166,42 +165,52 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                 .or(running.startedAt.eq(cursorStartedAt).and(running.id.gt(cursorId)));
     }
 
-    private BooleanExpression cursorCondition(Long cursorStartedAt, Long cursorRunningId) {
-        if (cursorRunningId == null || cursorStartedAt == null) {
-            return null;
-        }
-        return running.startedAt.lt(cursorStartedAt)
-                .or(running.startedAt.eq(cursorStartedAt)
-                        .and(running.id.lt(cursorRunningId)));
-    }
-
     @Override
-    public List<RunInfo> findRunInfosFilteredByCoursesByCursorIds(
-            RunningMode runningMode, String cursorCourseName, Long cursorRunningId, String memberUuid) {
+    public List<RunInfo> findRunInfosFilteredByCourses(
+            RunningMode runningMode,
+            String cursorCourseName, Long cursorRunningId,
+            Long startEpoch, Long endEpoch,
+            Long memberId
+    ) {
         return queryFactory
                 .select(new QRunInfo(
-                        running.id, running.runningName, running.startedAt,
-                        new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
-                                running.runningRecord.averagePace, running.runningRecord.cadence),
-                        new QCourseInfo(running.course.id, running.course.name, running.course.isPublic),
-                        running.ghostRunningId
+                        running.id,
+                        running.runningName,
+                        running.startedAt,
+                        new QRunRecordInfo(
+                                running.runningRecord.distance,
+                                running.runningRecord.duration,
+                                running.runningRecord.averagePace,
+                                running.runningRecord.cadence
+                        ),
+                        new QCourseInfo(
+                                running.course.id,
+                                running.course.name,
+                                running.course.isPublic
+                        ),
+                        running.ghostRunningId,
+                        running.runningDataUrls.screenShotUrl
                 ))
                 .from(running)
                 .join(running.course, course)
-                .where(cursorCondition(cursorCourseName, cursorRunningId))
-                .where(running.member.uuid.eq(memberUuid), running.runningMode.eq(runningMode), running.course.isPublic.eq(true))
-                .orderBy(running.course.name.asc(), running.id.desc())
-                .limit(DEFAULT_PAGE_SIZE)
+                .where(
+                        running.member.id.eq(memberId),
+                        running.runningMode.eq(runningMode),
+                        startedAtRange(startEpoch, endEpoch),
+                        seekAfterAsc(cursorCourseName, cursorRunningId)
+
+                )
+                .orderBy(running.course.name.asc(), running.id.asc())
+                .limit(DEFAULT_PAGE_SIZE + 1)
                 .fetch();
     }
 
-    private BooleanExpression cursorCondition(String cursorCourseName, Long cursorRunningId) {
+    private BooleanExpression seekAfterAsc(String cursorCourseName, Long cursorRunningId) {
         if (cursorRunningId == null || cursorCourseName == null) {
             return null;
         }
         return running.course.name.gt(cursorCourseName)
-                .or(running.course.name.eq(cursorCourseName)
-                        .and(running.id.lt(cursorRunningId)));
+                .or(running.course.name.eq(cursorCourseName).and(running.id.gt(cursorRunningId)));
     }
 
     @Override

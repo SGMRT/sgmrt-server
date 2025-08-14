@@ -12,16 +12,19 @@ public class RunInfo {
     private RunRecordInfo recordInfo;
     private CourseInfo courseInfo;
     private Long ghostRunningId;
+    private String screenShotUrl;
 
     @QueryProjection
-    public RunInfo(Long runningId, String name, Long startedAt, RunRecordInfo recordInfo,
-                   CourseInfo courseInfo, Long ghostRunningId) {
+    public RunInfo(Long runningId, String name, Long startedAt,
+                   RunRecordInfo recordInfo, CourseInfo courseInfo,
+                   Long ghostRunningId, String screenShotUrl) {
         this.runningId = runningId;
         this.name = name;
         this.startedAt = startedAt;
         this.recordInfo = recordInfo;
         this.courseInfo = courseInfo.getIsPublic() ? courseInfo : null;
         this.ghostRunningId = ghostRunningId;
+        this.screenShotUrl = screenShotUrl;
     }
 
 }
