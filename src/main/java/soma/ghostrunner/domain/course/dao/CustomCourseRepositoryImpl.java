@@ -72,7 +72,7 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
 
     return query.fetch();
   }
-
+  
   /** Haversine 공식을 사용하여 (lat, lng)와 코스 사이 실제 거리를 계산하는 표현식 반환 */
   private NumberExpression<Double> calculateDistance(Double lat, Double lng) {
     NumberExpression<Double> latRad = Expressions.numberTemplate(Double.class, "RADIANS({0})", course.startCoordinate.latitude);

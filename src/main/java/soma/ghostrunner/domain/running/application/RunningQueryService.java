@@ -12,10 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
+import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
+import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.course.enums.GhostSortType;
 import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
+import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -36,6 +39,7 @@ public class RunningQueryService {
     private final RunningRepository runningRepository;
 
     private final RunningApiMapper runningApiMapper;
+    private final MemberService memberService;
 
     public SoloRunDetailInfo findSoloRunInfo(Long runningId, String memberUuid) {
         return findSoloRunInfoByRunningId(runningId, memberUuid);
@@ -130,19 +134,28 @@ public class RunningQueryService {
             });
     }
 
-    public List<RunInfo> findRunnings(String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
-        return runningRepository.findRunInfosByCursorIds(
-                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
+    public List<RunInfo> findRunnings(String runningMode, String filteredBy,
+                                      Long startEpoch, Long endEpoch,
+                                      Long cursorStartedAt,
+                                      String cursorCourseName,
+                                      Long cursorRunningId,String memberUuid) {
+        Member member = findMember(memberUuid);
+        if (filteredBy.equals(RunningInfoFilter.DATE.name())) {
+            return runningRepository.findRunInfosFilteredByDate(
+                    RunningMode.valueOf(runningMode),
+                    cursorStartedAt, cursorRunningId,
+                    startEpoch, endEpoch, member.getId());
+        } else if (filteredBy.equals(RunningInfoFilter.COURSE.name())) {
+            return runningRepository.findRunInfosFilteredByCourses(
+                    RunningMode.valueOf(runningMode),
+                    cursorCourseName, cursorRunningId,
+                    startEpoch, endEpoch, member.getId());
+        }
+        throw new IllegalArgumentException("올바르지 않은 필터 형식이 요청됐습니다.");
     }
 
-    public List<RunInfo> findRunningsFilteredByCourse(String runningMode, String courseName, Long cursorRunningId, String memberUuid) {
-        return runningRepository.findRunInfosFilteredByCoursesByCursorIds(
-                RunningMode.valueOf(runningMode), courseName, cursorRunningId, memberUuid);
-    }
-
-    public List<RunInfo> findRunningsForGalleryView(String runningMode, Long cursorStartedAt, Long cursorRunningId, String memberUuid) {
-        return runningRepository.findRunInfosForGalleryViewByCursorIds(
-                RunningMode.valueOf(runningMode), cursorStartedAt, cursorRunningId, memberUuid);
+    private Member findMember(String memberUuid) {
+        return memberService.findMemberByUuid(memberUuid);
     }
   
 }

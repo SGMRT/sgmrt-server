@@ -16,7 +16,7 @@ import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.validator.enums.EnumValid;
@@ -130,35 +130,25 @@ public class RunningApi {
 
     @GetMapping("/v1/runs")
     public List<RunInfo> getRunInfos(
-            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @AuthenticationPrincipal
+            JwtUserDetails userDetails,
+            @RequestParam
+            @EnumValid(enumClass = RunningInfoFilter.class, message = "유효하지 않은 필터입니다.", ignoreCase = true)
+            String filteredBy,
             @RequestParam
             @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
             String runningMode,
-            @RequestParam(required = false) Long cursorStartedAt, @RequestParam(required = false) Long cursorRunningId) {
+            @RequestParam Long startEpoch, @RequestParam Long endEpoch,
+            @RequestParam(required = false) Long cursorRunningId,
+            @RequestParam(required = false) Long cursorStartedAt,
+            @RequestParam(required = false) String cursorCourseName) {
         String memberUuid = userDetails.getUserId();
-        return runningQueryService.findRunnings(runningMode, cursorStartedAt, cursorRunningId, memberUuid);
-    }
-
-    @GetMapping("/v1/runs/by-course")
-    public List<RunInfo> getRunInfosFilteredByCourse(
-            @AuthenticationPrincipal JwtUserDetails userDetails,
-            @RequestParam
-            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
-            String runningMode,
-            @RequestParam(required = false) String cursorCourseName, @RequestParam(required = false) Long cursorRunningId) {
-        String memberUuid = userDetails.getUserId();
-        return runningQueryService.findRunningsFilteredByCourse(runningMode, cursorCourseName, cursorRunningId, memberUuid);
-    }
-
-    @GetMapping("/v1/runs/gallery-view")
-    public List<RunInfo> getRunInfosForGalleryView(
-            @AuthenticationPrincipal JwtUserDetails userDetails,
-            @RequestParam
-            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
-            String runningMode,
-            @RequestParam(required = false) Long cursorStartedAt, @RequestParam(required = false) Long cursorRunningId) {
-        String memberUuid = userDetails.getUserId();
-        return runningQueryService.findRunningsForGalleryView(runningMode, cursorStartedAt, cursorRunningId, memberUuid);
+        return runningQueryService.findRunnings(
+                runningMode, filteredBy,
+                startEpoch, endEpoch,
+                cursorStartedAt,
+                cursorCourseName,
+                cursorRunningId, memberUuid);
     }
 
 }
