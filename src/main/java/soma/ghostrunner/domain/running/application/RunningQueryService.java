@@ -80,6 +80,13 @@ public class RunningQueryService {
                 .orElseThrow(() -> new AccessDeniedException("접근할 수 없는 러닝 데이터입니다."));
     }
 
+    public Page<CourseGhostResponse> findTopRankingGhostsByCourseId(
+            Long courseId, Integer count) {
+        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
+        Pageable topNPageable = PageRequest.of(0, count, defaultSort);
+        return findPublicGhostRunsByCourseId(courseId, topNPageable);
+    }
+
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
         Long courseId, Pageable pageable) {
         validateSortProperty(pageable);
@@ -87,11 +94,16 @@ public class RunningQueryService {
         return ghostRuns.map(runningApiMapper::toGhostResponse);
     }
 
-    public Page<CourseGhostResponse> findTopRankingGhostsByCourseId(
-            Long courseId, Integer count) {
+    public Page<CourseGhostResponse> findTopPercentageGhostsByCourseId(
+            Long courseId, Double percentage) {
+        int percentageToCount = (int) Math.ceil(findRunningsCountInCourse(courseId) * percentage) + 1;
         Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
-        Pageable topNPageable = PageRequest.of(0, count, defaultSort);
+        Pageable topNPageable = PageRequest.of(0, percentageToCount, defaultSort);
         return findPublicGhostRunsByCourseId(courseId, topNPageable);
+    }
+
+    private long findRunningsCountInCourse(Long courseId) {
+        return runningRepository.countTotalRunningsCount(courseId);
     }
 
     public Optional<CourseRunStatisticsDto> findCourseRunStatistics(Long courseId) {

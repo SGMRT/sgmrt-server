@@ -78,6 +78,11 @@ public class CourseFacade {
         return rankedGhostsPage.getContent();
     }
 
+    public List<CourseGhostResponse> findTopPercentageGhosts(Long courseId, double percentage) {
+        Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findTopPercentageGhostsByCourseId(courseId, percentage);
+        return rankedGhostsPage.getContent();
+    }
+
     @Transactional(readOnly = true)
     public CourseCoordinatesResponse findCourseFirstRunCoordinatesWithDetails(Long courseId) {
         Course course = courseService.findCourseById(courseId);

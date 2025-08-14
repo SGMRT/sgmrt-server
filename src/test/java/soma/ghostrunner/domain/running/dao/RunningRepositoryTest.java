@@ -979,5 +979,43 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                     .isTrue();
         }
     }
+
+    @DisplayName("코스에 대한 전체 러닝 갯수를 출력한다. 같은 사용자라도 중복 허용된다.")
+    @Test
+    void countTotalRunningsCount() {
+        // given
+        Member member1 = createMember("이복둥");
+        Member member2 = createMember("이복둥 주인");
+        memberRepository.saveAll(List.of(member1, member2));
+
+        Course c1 = createCourse(member1);
+        Course c2 = createCourse(member1);
+        List<Course> courses = List.of(c1, c2);
+        courseRepository.saveAll(courses);
+
+        Random rnd = new Random(42);
+        List<Running> runnings = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            long startedAt = Math.abs(rnd.nextLong() % 1_000_000L);
+            runnings.add(createRunning("러닝" + i, courses.get(rnd.nextInt(2)),
+                    member1, startedAt, RunningMode.SOLO));
+        }
+        for (int i = 51; i < 100; i++) {
+            long startedAt = Math.abs(rnd.nextLong() % 1_000_000L);
+            runnings.add(createRunning("러닝" + i, courses.get(rnd.nextInt(2)),
+                    member2, startedAt, RunningMode.SOLO));
+        }
+        runningRepository.saveAll(runnings);
+
+        List<Running> c1Runnings = runnings.stream()
+                .filter(running -> running.getCourse().getId().equals(c1.getId()))
+                .toList();
+
+        // when
+        long c1RunCounts = runningRepository.countTotalRunningsCount(c1.getId());
+
+        // then
+        assertThat(c1RunCounts).isEqualTo(c1Runnings.size());
+    }
   
 }
