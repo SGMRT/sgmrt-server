@@ -88,6 +88,12 @@ public class CourseApi {
         return courseFacade.findCourseFirstRunCoordinatesWithDetails(courseId);
     }
 
+    @GetMapping("/courses/{courseId}/statistics")
+    public CourseStatisticsResponse getCourseStatistics(
+            @PathVariable("courseId") Long courseId) {
+        return courseFacade.findCourseStatistics(courseId);
+    }
+
     @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
     @GetMapping("/members/{memberUuid}/courses")
     public PagedModel<CourseSummaryResponse> getMemberCourses(

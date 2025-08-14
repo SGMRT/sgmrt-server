@@ -12,6 +12,7 @@ import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
+import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
@@ -102,6 +103,12 @@ public class CourseFacade {
         }
 
         return new PageImpl<>(results, pageable, courseDetails.getTotalElements());
+    }
+
+    public CourseStatisticsResponse findCourseStatistics(Long courseId) {
+        CourseRunStatisticsDto stats = runningQueryService.findCourseRunStatistics(courseId)
+                .orElseThrow(() -> new CourseNotFoundException(courseId));
+        return courseMapper.toCourseStatisticsResponse(stats);
     }
 
 }

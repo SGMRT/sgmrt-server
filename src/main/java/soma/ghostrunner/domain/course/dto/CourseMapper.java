@@ -85,6 +85,12 @@ public interface CourseMapper {
                                                   Integer totalRunsCount, Double averageCompletionTime,
                                                   Double averageFinisherPace, Double averageFinisherCadence);
 
+    @Mapping(source = "avgCompletionTime", target = "averageCompletionTime")
+    @Mapping(source = "avgFinisherPace", target = "averageFinisherPace")
+    @Mapping(source = "avgFinisherCadence", target = "averageFinisherCadence")
+    @Mapping(source = "avgCaloriesBurned", target = "averageCaloriesBurned")
+    CourseStatisticsResponse toCourseStatisticsResponse(CourseRunStatisticsDto stats);
+
 }
 
 @Mapper(componentModel = "spring")
