@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
-import soma.ghostrunner.domain.course.enums.AvailableGhostSortField;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.course.enums.GhostSortType;
