@@ -1,9 +1,11 @@
 package soma.ghostrunner.domain.running.application.dto;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordDto;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -21,17 +23,17 @@ public interface RunningServiceMapper {
                               Member member,
                               Course course) {
 
-        RunningRecord runningRecord = toRunningRecord(command.record(), processedTelemetry);
-        RunningMode mode = RunningMode.valueOf(command.mode());
+        RunningRecord runningRecord = toRunningRecord(command.getRecord(), processedTelemetry);
+        RunningMode mode = RunningMode.valueOf(command.getMode());
 
         return Running.of(
-                command.runningName(),
+                command.getRunningName(),
                 mode,
-                command.ghostRunningId(),
+                command.getGhostRunningId(),
                 runningRecord,
-                command.startedAt(),
-                command.isPublic(),
-                command.hasPaused(),
+                command.getStartedAt(),
+                command.getIsPublic(),
+                command.getHasPaused(),
                 runningDataUrlsDto.getRawTelemetryUrl(),
                 runningDataUrlsDto.getInterpolatedTelemetryUrl(),
                 runningDataUrlsDto.getScreenShotUrl(),
@@ -43,17 +45,17 @@ public interface RunningServiceMapper {
     default RunningRecord toRunningRecord(RunRecordDto record, ProcessedTelemetriesDto processedTelemetry) {
 
         return RunningRecord.of(
-                record.distance(),
+                record.getDistance(),
                 processedTelemetry.avgElevation(),
-                record.elevationGain(),
-                record.elevationLoss(),
-                record.avgPace(),
+                record.getElevationGain(),
+                record.getElevationLoss(),
+                record.getAvgPace(),
                 processedTelemetry.highestPace(),
                 processedTelemetry.lowestPace(),
-                record.duration(),
-                record.calories(),
-                record.avgCadence(),
-                record.avgBpm()
+                record.getDuration(),
+                record.getCalories(),
+                record.getAvgCadence(),
+                record.getAvgBpm()
         );
     }
 
@@ -83,4 +85,8 @@ public interface RunningServiceMapper {
         );
     }
 
+    @Mapping(source = "running.id", target = "runningId")
+    @Mapping(source = "course.id", target = "courseId")
+    CreateCourseAndRunResponse toResponse(Running running, Course course);
+  
 }

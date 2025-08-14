@@ -19,8 +19,10 @@ public class GhostRunDetailInfo extends RunDetailInfo {
     private RunComparisonInfo comparisonInfo;
 
     @QueryProjection
-    public GhostRunDetailInfo(Long startedAt, String runningName, CourseInfo courseInfo, MemberAndRunRecordInfo myRunInfo, Long ghostRunId, String telemetryUrl) {
-        super(startedAt, runningName, telemetryUrl);
+    public GhostRunDetailInfo(Long startedAt, String runningName,
+                              CourseInfo courseInfo, MemberAndRunRecordInfo myRunInfo,
+                              Long ghostRunId, String telemetryUrl, Boolean isPublic) {
+        super(startedAt, runningName, telemetryUrl, isPublic);
         this.courseInfo = courseInfo;
         this.ghostRunId = ghostRunId;
         this.myRunInfo = myRunInfo;

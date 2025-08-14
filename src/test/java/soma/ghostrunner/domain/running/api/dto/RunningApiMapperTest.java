@@ -27,12 +27,12 @@ class RunningApiMapperTest {
         CreateRunCommand command = mapper.toCommand(request);
 
         // then
-        Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
-        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(command.mode()).isEqualTo("SOLO");
-        Assertions.assertThat(command.ghostRunningId()).isNull();
+        Assertions.assertThat(request.getRunningName()).isEqualTo(command.getRunningName());
+        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.getRecord().getDuration());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(command.getMode()).isEqualTo("SOLO");
+        Assertions.assertThat(command.getGhostRunningId()).isNull();
     }
 
     @DisplayName("Solo's CreateRunRequest -> CreateRunCommand")
@@ -45,12 +45,12 @@ class RunningApiMapperTest {
         CreateRunCommand command = mapper.toCommand(request);
 
         // then
-        Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
-        Assertions.assertThat(request.getMode()).isEqualTo(command.mode());
-        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(command.ghostRunningId()).isNull();
+        Assertions.assertThat(request.getRunningName()).isEqualTo(command.getRunningName());
+        Assertions.assertThat(request.getMode()).isEqualTo(command.getMode());
+        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.getRecord().getDuration());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(command.getGhostRunningId()).isNull();
     }
 
     @DisplayName("Ghost's CreateRunRequest -> CreateRunCommand")
@@ -63,12 +63,12 @@ class RunningApiMapperTest {
         CreateRunCommand command = mapper.toCommand(request);
 
         // then
-        Assertions.assertThat(request.getRunningName()).isEqualTo(command.runningName());
-        Assertions.assertThat(request.getMode()).isEqualTo(command.mode());
-        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.record().duration());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.hasPaused());
-        Assertions.assertThat(command.ghostRunningId()).isEqualTo(1L);
+        Assertions.assertThat(request.getRunningName()).isEqualTo(command.getRunningName());
+        Assertions.assertThat(request.getMode()).isEqualTo(command.getMode());
+        Assertions.assertThat(request.getRecord().getDuration()).isEqualTo(command.getRecord().getDuration());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(request.getHasPaused()).isEqualTo(command.getHasPaused());
+        Assertions.assertThat(command.getGhostRunningId()).isEqualTo(1L);
     }
 
     private CreateCourseAndRunRequest validCreateCourseAndRunRequest() {
@@ -94,20 +94,6 @@ class RunningApiMapperTest {
                 .build();
     }
 
-    private List<TelemetryRequest> validTelemetries() {
-        List<TelemetryRequest> telemetryRequests = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
-            telemetryRequests.add(TelemetryRequest.builder()
-                    .timeStamp(1750729987181L)
-                    .lat(37.5).lng(127.0)
-                    .dist(4.2).pace(5.48).alt(100)
-                    .cadence(80).bpm(150)
-                    .isRunning(true)
-                    .build());
-        }
-        return telemetryRequests;
-    }
-
     private CreateRunRequest validCreateSoloRunRequest() {
         return CreateRunRequest.builder()
                 .runningName("테스트 러닝 제목")
@@ -130,4 +116,5 @@ class RunningApiMapperTest {
                 .isPublic(true)
                 .build();
     }
+
 }

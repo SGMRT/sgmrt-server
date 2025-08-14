@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
@@ -32,26 +33,17 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class RunningQueryService {
 
-    private final RunningTelemetryQueryService runningTelemetryQueryService;
-
     private final RunningRepository runningRepository;
 
     private final RunningApiMapper runningApiMapper;
 
     public SoloRunDetailInfo findSoloRunInfo(Long runningId, String memberUuid) {
-        SoloRunDetailInfo soloRunDetailInfo = findSoloRunInfoByRunningId(runningId, memberUuid);
-        List<TelemetryDto> telemetries = downloadTelemetries(runningId, soloRunDetailInfo.getTelemetryUrl());
-        soloRunDetailInfo.setTelemetries(telemetries);
-        return soloRunDetailInfo;
+        return findSoloRunInfoByRunningId(runningId, memberUuid);
     }
 
     private SoloRunDetailInfo findSoloRunInfoByRunningId(Long runningId, String memberUuid) {
         return runningRepository.findSoloRunInfoById(runningId, memberUuid)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
-    }
-
-    private List<TelemetryDto> downloadTelemetries(Long runningId, String telemetryUrl) {
-        return runningTelemetryQueryService.findTotalTelemetries(runningId, telemetryUrl);
     }
 
     public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId, String memberUuid) {
@@ -60,9 +52,6 @@ public class RunningQueryService {
 
         MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfoByRunningId(ghostRunningId);
         myGhostRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
-
-        List<TelemetryDto> telemetries = downloadTelemetries(myRunningId, myGhostRunDetailInfo.getTelemetryUrl());
-        myGhostRunDetailInfo.setTelemetries(telemetries);
         return myGhostRunDetailInfo;
     }
 
@@ -83,14 +72,9 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, ghostRunningId));
     }
 
-    public List<TelemetryDto> findRunningTelemetries(Long runningId, String memberUuid) {
-        String telemetryUrl = findTelemetryUrlByRunningId(runningId, memberUuid);
-        return downloadTelemetries(runningId, telemetryUrl);
-    }
-
-    private String findTelemetryUrlByRunningId(Long runningId, String memberUuid) {
-        return runningRepository.findTelemetryUrlById(runningId, memberUuid)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
+    public String findRunningTelemetries(Long runningId, String memberUuid) {
+        return runningRepository.findInterpolatedTelemetryUrlByIdAndMemberUuid(runningId, memberUuid)
+                .orElseThrow(() -> new AccessDeniedException("접근할 수 없는 러닝 데이터입니다."));
     }
 
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(

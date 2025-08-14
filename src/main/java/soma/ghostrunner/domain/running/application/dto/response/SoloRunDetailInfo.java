@@ -10,9 +10,12 @@ public class SoloRunDetailInfo extends RunDetailInfo {
     private RunRecordInfo recordInfo;
 
     @QueryProjection
-    public SoloRunDetailInfo(Long startedAt, String runningName, CourseInfo courseInfo, RunRecordInfo recordInfo, String telemetryUrl) {
-        super(startedAt, runningName, telemetryUrl);
-        this.courseInfo = courseInfo;
+    public SoloRunDetailInfo(Long startedAt, String runningName,
+                             CourseInfo courseInfo, RunRecordInfo recordInfo,
+                             String telemetryUrl, Boolean isPublic) {
+        super(startedAt, runningName, telemetryUrl, isPublic);
+        this.courseInfo = courseInfo.getIsPublic() ? courseInfo : null;
         this.recordInfo = recordInfo;
     }
+
 }

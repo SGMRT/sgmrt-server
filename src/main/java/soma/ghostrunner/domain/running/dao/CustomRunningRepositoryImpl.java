@@ -32,8 +32,6 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
     @Override
     public Optional<SoloRunDetailInfo> findSoloRunInfoById(long runningId, String memberUuid) {
 
-        QRunning subRunning = new QRunning("subRunning");
-
         return Optional.ofNullable(
                 queryFactory
                         .select(new QSoloRunDetailInfo(
@@ -42,8 +40,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 new QCourseInfo(
                                         course.id,
                                         course.name,
-                                        course.isPublic,
-                                        JPAExpressions.select(subRunning.count()).from(subRunning).where(subRunning.course.id.eq(course.id))),
+                                        course.isPublic),
                                 new QRunRecordInfo(
                                         running.runningRecord.distance,
                                         running.runningRecord.duration,
@@ -54,9 +51,11 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                         running.runningRecord.highestPace,
                                         running.runningRecord.lowestPace,
                                         running.runningRecord.elevationGain,
-                                        running.runningRecord.elevationLoss
+                                        running.runningRecord.elevationLoss,
+                                        running.runningRecord.elevationAverage
                                 ),
-                                running.runningDataUrls.interpolatedTelemetryUrl
+                                running.runningDataUrls.interpolatedTelemetryUrl,
+                                running.isPublic
                         ))
                         .from(running)
                         .join(running.course, course)
@@ -68,8 +67,6 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
     @Override
     public Optional<GhostRunDetailInfo> findGhostRunInfoById(long runningId, String memberUuid) {
 
-        QRunning subRunning = new QRunning("subRunning");
-
         return Optional.ofNullable(
                 queryFactory
                         .select(new QGhostRunDetailInfo(
@@ -77,9 +74,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 running.runningName,
                                 new QCourseInfo(
                                         course.id,
-                                        course.name,
-                                        course.isPublic,
-                                        JPAExpressions.select(subRunning.count()).from(subRunning).where(subRunning.course.id.eq(course.id))),
+                                        course.name
+                                ),
                                 new QMemberAndRunRecordInfo(
                                         member.nickname,
                                         member.profilePictureUrl,
@@ -93,10 +89,12 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                                 running.runningRecord.highestPace,
                                                 running.runningRecord.lowestPace,
                                                 running.runningRecord.elevationGain,
-                                                running.runningRecord.elevationLoss
+                                                running.runningRecord.elevationLoss,
+                                                running.runningRecord.elevationAverage
                                         )),
                                 running.ghostRunningId,
-                                running.runningDataUrls.interpolatedTelemetryUrl
+                                running.runningDataUrls.interpolatedTelemetryUrl,
+                                running.isPublic
                         ))
                         .from(running)
                         .join(running.course, course)
@@ -161,7 +159,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         running.id, running.runningName, running.startedAt,
                         new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
                                 running.runningRecord.averagePace, running.runningRecord.cadence),
-                        new QCourseInfo(running.course.id, running.course.name),
+                        new QCourseInfo(running.course.id, running.course.name, running.course.isPublic),
                         running.ghostRunningId
                 ))
                 .from(running)
@@ -190,8 +188,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         running.id, running.runningName, running.startedAt,
                         new QRunRecordInfo(running.runningRecord.distance, running.runningRecord.duration,
                                 running.runningRecord.averagePace, running.runningRecord.cadence),
-                        new QCourseInfo(running.course.id, running.course.name,
-                                running.course.isPublic, running.course.courseDataUrls.routeUrl),
+                        new QCourseInfo(running.course.id, running.course.name, running.course.isPublic),
                         running.ghostRunningId
                 ))
                 .from(running)

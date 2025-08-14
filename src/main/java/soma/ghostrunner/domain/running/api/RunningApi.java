@@ -94,7 +94,7 @@ public class RunningApi {
     }
 
     @GetMapping("/v1/runs/{runningId}/telemetries")
-    public List<TelemetryDto> getRunningTelemetries(
+    public String getRunningTelemetries(
             @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long runningId) {
         String memberUuid = userDetails.getUserId();
         return runningQueryService.findRunningTelemetries(runningId, memberUuid);

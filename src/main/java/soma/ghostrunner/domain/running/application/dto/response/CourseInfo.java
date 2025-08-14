@@ -15,40 +15,18 @@ public class CourseInfo {
     private String name;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean isPublic;
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private Long runnersCount;
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private List<CoordinateDto> pathData;
 
     @QueryProjection
-    public CourseInfo(Long id, String name, Boolean isPublic, Long runnersCount) {
+    public CourseInfo(Long id, String name, Boolean isPublic) {
         this.id = id;
         this.name = name;
         this.isPublic = isPublic;
-        this.runnersCount = runnersCount;
     }
 
     @QueryProjection
     public CourseInfo(Long id, String name) {
         this.id = id;
         this.name = name;
-    }
-
-    @QueryProjection
-    public CourseInfo(Long id, String name, Boolean isPublic) {
-        if (isPublic) {
-            this.id = id;
-            this.name = name;
-        }
-    }
-
-    @QueryProjection
-    public CourseInfo(Long id, String name, Boolean isPublic, String pathData) {
-        if (isPublic) {
-            this.id = id;
-            this.name = name;
-            this.pathData = CoordinateConverter.convertToCoordinateList(pathData);
-        }
     }
 
 }

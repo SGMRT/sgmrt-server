@@ -1,12 +1,19 @@
 package soma.ghostrunner.domain.running.application.dto.request;
 
-public record RunRecordDto(
-        Double distance,
-        Double elevationGain,
-        Double elevationLoss,
-        Long duration,
-        Double avgPace,
-        Integer calories,
-        Integer avgBpm,
-        Integer avgCadence
-) {}
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class RunRecordDto {
+
+    private Double distance;
+    private Double elevationGain;
+    private Double elevationLoss;
+    private Long duration;
+    private Double avgPace;
+    private Integer calories;
+    private Integer avgBpm;
+    private Integer avgCadence;
+
+}
