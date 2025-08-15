@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.course.dto.response;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record CourseMapResponse(
@@ -13,8 +14,10 @@ public record CourseMapResponse(
         String routeUrl,
         String thumbnailUrl,
         Integer distance,
+        Integer elevationAverage,
         Integer elevationGain,
         Integer elevationLoss,
+        LocalDateTime createdAt,
 
         List<MemberRecord> runners,
         long runnersCount

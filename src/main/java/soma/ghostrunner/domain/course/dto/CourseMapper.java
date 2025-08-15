@@ -19,6 +19,7 @@ public interface CourseMapper {
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
                     ": null)")
+    @Mapping(source = "courseProfile.elevationAverage", target = "elevationAverage")
     @Mapping(source = "courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "courseProfile.elevationLoss", target = "elevationLoss")
     CourseWithCoordinatesDto toCourseWithCoordinateDto(Course course);
@@ -31,8 +32,10 @@ public interface CourseMapper {
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
                     ": null)")
+    @Mapping(source = "course.courseProfile.elevationAverage", target = "elevationAverage")
     @Mapping(source = "course.courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "course.courseProfile.elevationLoss", target = "elevationLoss")
+    @Mapping(source = "course.createdAt", target = "createdAt")
     @Mapping(source = "courseStats.avgCompletionTime", target = "averageCompletionTime")
     @Mapping(source = "courseStats.avgFinisherPace", target = "averageFinisherPace")
     @Mapping(source = "courseStats.avgFinisherCadence", target = "averageFinisherCadence")
@@ -59,6 +62,7 @@ public interface CourseMapper {
 
     @Mapping(source = "course.id", target = "courseId")
     @Mapping(source = "course.name", target = "courseName")
+    @Mapping(source = "course.courseDataUrls.thumbnailUrl", target = "courseThumbnailUrl")
     @Mapping(source = "course.startCoordinate.latitude", target = "startLat")
     @Mapping(source = "course.startCoordinate.longitude", target = "startLng")
     @Mapping(target = "distance",
@@ -75,12 +79,19 @@ public interface CourseMapper {
 
     @Mapping(source = "courseDto.courseId", target = "id")
     @Mapping(source = "courseDto.courseName", target = "name")
+    @Mapping(source = "courseDto.courseThumbnailUrl", target = "thumbnailUrl")
     @Mapping(source = "courseDto.distance", target = "distance")
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")
     CourseSummaryResponse toCourseSummaryResponse(CourseWithMemberDetailsDto courseDto, Integer uniqueRunnersCount,
                                                   Integer totalRunsCount, Double averageCompletionTime,
                                                   Double averageFinisherPace, Double averageFinisherCadence);
+
+    @Mapping(source = "avgCompletionTime", target = "averageCompletionTime")
+    @Mapping(source = "avgFinisherPace", target = "averageFinisherPace")
+    @Mapping(source = "avgFinisherCadence", target = "averageFinisherCadence")
+    @Mapping(source = "avgCaloriesBurned", target = "averageCaloriesBurned")
+    CourseStatisticsResponse toCourseStatisticsResponse(CourseRunStatisticsDto stats);
 
 }
 

@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public record CourseSummaryResponse (
         Long id,
         String name,
+        String thumbnailUrl,
         LocalDateTime createdAt,
         Integer uniqueRunnersCount,
         Integer totalRunsCount,
@@ -14,4 +15,4 @@ public record CourseSummaryResponse (
         Double averageFinisherPace,
         Integer averageFinisherCadence,
         Boolean isPublic
-) { }
+) {}
