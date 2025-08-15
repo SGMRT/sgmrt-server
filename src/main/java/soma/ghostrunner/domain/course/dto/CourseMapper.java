@@ -62,6 +62,7 @@ public interface CourseMapper {
 
     @Mapping(source = "course.id", target = "courseId")
     @Mapping(source = "course.name", target = "courseName")
+    @Mapping(source = "course.courseDataUrls.thumbnailUrl", target = "courseThumbnailUrl")
     @Mapping(source = "course.startCoordinate.latitude", target = "startLat")
     @Mapping(source = "course.startCoordinate.longitude", target = "startLng")
     @Mapping(target = "distance",
@@ -78,6 +79,7 @@ public interface CourseMapper {
 
     @Mapping(source = "courseDto.courseId", target = "id")
     @Mapping(source = "courseDto.courseName", target = "name")
+    @Mapping(source = "courseDto.courseThumbnailUrl", target = "thumbnailUrl")
     @Mapping(source = "courseDto.distance", target = "distance")
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")

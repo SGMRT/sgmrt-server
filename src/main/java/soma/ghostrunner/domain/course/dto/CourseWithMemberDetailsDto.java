@@ -14,6 +14,7 @@ public class CourseWithMemberDetailsDto {
     // Course 정보
     private Long courseId;
     private String courseName;
+    private String courseThumbnailUrl;
     private Double startLat;
     private Double startLng;
     private Integer distance;
