@@ -19,8 +19,8 @@ public class TelemetryDto {
     private Integer bpm;
     private Boolean isRunning;
 
-    public void setRelativeTimeStamp(Long timeStamp) {
-        this.timeStamp = timeStamp;
+    public void calculateRelativeTimeStamp(Long startedAt) {
+        this.timeStamp = this.timeStamp - startedAt;
     }
 
 }

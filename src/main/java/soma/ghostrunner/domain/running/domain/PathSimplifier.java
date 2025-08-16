@@ -1,24 +1,36 @@
 package soma.ghostrunner.domain.running.domain;
 
+import soma.ghostrunner.domain.running.application.CoordinateDtoWithTs;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class PathSimplifier {
 
     private static final double EPSILON_METER = 8.0;
 
-    public static List<CoordinateDto> simplify(List<CoordinateDto> points) {
+    public static List<CoordinateDto> simplify(List<CoordinateDtoWithTs> points) {
+        // RDP
         if (points.size() <= 2) {
-            return points;
+            return toCoordinateDtos(points);
         }
-        List<CoordinateDto> out = new ArrayList<>();
+        List<CoordinateDtoWithTs> out = new ArrayList<>();
         rdp(points, 0, points.size() - 1, out);
-        return out;
+
+        // ts 기준 정렬
+        out.sort(Comparator.naturalOrder());
+        return toCoordinateDtos(out);
     }
 
-    private static void rdp(List<CoordinateDto> pts, int start, int end, List<CoordinateDto> out) {
+    private static List<CoordinateDto> toCoordinateDtos(List<CoordinateDtoWithTs> points) {
+        return points.stream()
+                .map(CoordinateDtoWithTs::toCoordinateDto)
+                .toList();
+    }
+
+    private static void rdp(List<CoordinateDtoWithTs> pts, int start, int end, List<CoordinateDtoWithTs> out) {
         if (start == 0) {
             // 처음 진입에서 시작점 넣기
             out.add(pts.get(start));
@@ -27,8 +39,8 @@ public class PathSimplifier {
         double dmax = -1.0;
         int index = -1;
 
-        CoordinateDto a = pts.get(start);
-        CoordinateDto b = pts.get(end);
+        CoordinateDtoWithTs a = pts.get(start);
+        CoordinateDtoWithTs b = pts.get(end);
 
         for (int i = start + 1; i < end; i++) {
             double d = perpendicularDistanceMeters(pts.get(i), a, b);
@@ -49,14 +61,14 @@ public class PathSimplifier {
     }
 
     // 점 - 선분 거리 계산
-    private static double perpendicularDistanceMeters(CoordinateDto p, CoordinateDto a, CoordinateDto b) {
+    private static double perpendicularDistanceMeters(CoordinateDtoWithTs p, CoordinateDtoWithTs a, CoordinateDtoWithTs b) {
         // 같은 점(선분 길이 0) 처리
-        if (a.lat() == b.lat() && a.lng() == b.lng()) {
+        if (a.getLat() == b.getLat() && a.getLng() == b.getLng()) {
             return haversineMeters(p, a);
         }
 
         // 기준 위도(지역)로 간단한 평면 근사
-        double refLat = Math.toRadians((a.lat() + b.lat()) * 0.5);
+        double refLat = Math.toRadians((a.getLat() + b.getLat()) * 0.5);
 
         // 위도/경도를 (x: 동서, y: 남북) 미터 좌표로 변환
         Vec2 A = toLocalMeters(a, refLat);
@@ -73,23 +85,23 @@ public class PathSimplifier {
         return P.minus(proj).length();
     }
 
-    private static Vec2 toLocalMeters(CoordinateDto c, double refLatRad) {
+    private static Vec2 toLocalMeters(CoordinateDtoWithTs c, double refLatRad) {
         // 위도 1도 ≈ 111_132 m, 경도 1도 ≈ 111_320 * cos(lat) m (근사)
         double metersPerDegLat = 111_132.0;
         double metersPerDegLon = 111_320.0 * Math.cos(refLatRad);
 
-        double x = c.lng() * metersPerDegLon;
-        double y = c.lat() * metersPerDegLat;
+        double x = c.getLng() * metersPerDegLon;
+        double y = c.getLat() * metersPerDegLat;
         return new Vec2(x, y);
     }
 
     // 필요시 두 점 사이의 구면 거리(하버사인). 여기선 선분 길이 0일 때만 사용.
-    private static double haversineMeters(CoordinateDto p1, CoordinateDto p2) {
+    private static double haversineMeters(CoordinateDtoWithTs p1, CoordinateDtoWithTs p2) {
         double R = 6371_000.0; // meters
-        double lat1 = Math.toRadians(p1.lat());
-        double lat2 = Math.toRadians(p2.lat());
+        double lat1 = Math.toRadians(p1.getLat());
+        double lat2 = Math.toRadians(p2.getLat());
         double dLat = lat2 - lat1;
-        double dLon = Math.toRadians(p2.lng() - p1.lng());
+        double dLon = Math.toRadians(p2.getLng() - p1.getLng());
         double a = Math.sin(dLat/2)*Math.sin(dLat/2)
                 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)*Math.sin(dLon/2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
