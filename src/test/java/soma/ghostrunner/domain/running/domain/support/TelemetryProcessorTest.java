@@ -32,13 +32,13 @@ class TelemetryProcessorTest {
         MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
 
         // when
-        ProcessedTelemetriesDto processedTelemetry = TelemetryProcessor.process(multipartTelemetryList);
+        ProcessedTelemetriesDto processedTelemetry = TelemetryProcessor.process(multipartTelemetryList, startedAt);
 
         // then
         for (int i = 0; i < telemetryList.size(); i++) {
-            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getTimeStamp()).isEqualTo(i);
-            Assertions.assertThat(processedTelemetry.coordinates().get(i).lat()).isEqualTo(telemetryList.get(i).getLat());
-            Assertions.assertThat(processedTelemetry.coordinates().get(i).lng()).isEqualTo(telemetryList.get(i).getLng());
+            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getTimeStamp()).isEqualTo(i*5);
+            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getLat()).isEqualTo(telemetryList.get(i).getLat());
+            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getLng()).isEqualTo(telemetryList.get(i).getLng());
         }
 
         Assertions.assertThat(processedTelemetry.startPoint().lat()).isEqualTo(37.5665);
@@ -58,7 +58,7 @@ class TelemetryProcessorTest {
         MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList))
+        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList, startedAt))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Telemetry data is empty.");
     }
@@ -109,7 +109,7 @@ class TelemetryProcessorTest {
         MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList))
+        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList, startedAt))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("마이너스 값이 포함되어 있습니다.");
     }
@@ -143,7 +143,7 @@ class TelemetryProcessorTest {
         MultipartFile multipartTelemetryList = createInvalidTelemetryJsonlFile(invalidTelemetryDtos);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList))
+        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList, startedAt))
                 .isInstanceOf(TelemetryCalculationException.class)
                 .hasMessage("시계열 좌표를 가공하는 중 에러가 발생했습니다.");
     }
