@@ -40,7 +40,7 @@ public class RunningCommandService {
 
         Member member = findMember(memberUuid);
 
-        ProcessedTelemetriesDto processedTelemetries = processTelemetries(interpolatedTelemetry);
+        ProcessedTelemetriesDto processedTelemetries = processTelemetries(interpolatedTelemetry, command);
         List<CoordinateDto> simplifiedCoordinates = simplifyCoordinates(processedTelemetries);
 
         RunningDataUrlsDto runningDataUrlsDto = saveRunningAndCourseDataToS3(
@@ -55,12 +55,12 @@ public class RunningCommandService {
         return memberService.findMemberByUuid(memberUuid);
     }
 
-    private ProcessedTelemetriesDto processTelemetries(MultipartFile interpolatedTelemetry) {
-        return TelemetryProcessor.process(interpolatedTelemetry);
+    private ProcessedTelemetriesDto processTelemetries(MultipartFile interpolatedTelemetry, CreateRunCommand command) {
+        return TelemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
     }
 
     private List<CoordinateDto> simplifyCoordinates(ProcessedTelemetriesDto processedTelemetries) {
-        return PathSimplifier.simplify(processedTelemetries.coordinates());
+        return PathSimplifier.simplify(CoordinateDtoWithTs.toCoordinateDtoWithTsList(processedTelemetries.relativeTelemetries()));
     }
 
     private RunningDataUrlsDto saveRunningAndCourseDataToS3(
@@ -109,7 +109,7 @@ public class RunningCommandService {
         Course course = findCourse(courseId);
 
         validateBelongsToCourseIfGhostMode(command, courseId);
-        ProcessedTelemetriesDto processedTelemetries = processTelemetries(interpolatedTelemetry);
+        ProcessedTelemetriesDto processedTelemetries = processTelemetries(interpolatedTelemetry, command);
 
         RunningDataUrlsDto runningDataUrlsDto = saveRunningDataToS3(memberUuid, rawTelemetry, screenShotImage, processedTelemetries);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);

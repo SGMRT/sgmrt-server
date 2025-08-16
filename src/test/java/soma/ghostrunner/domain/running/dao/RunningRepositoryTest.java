@@ -156,14 +156,14 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 .isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
     }
 
-    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회한다. 공개한 코스가 있다면 코스 정보를 함께 응답한다.")
+    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회한다. 코스는 공개/비공개 유무에 상관 없이 코스 정보를 함께 응답한다.")
     @Test
     void findSoloRunInfoById() {
         // given
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createPublicCourse(member, "테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createSoloRunning(member, course);
@@ -193,7 +193,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 true, false, "URL", "URL", "URL", testMember, testCourse);
     }
 
-    private Course createPublicCourse(Member testMember, String courseName) {
+    private Course createCourse(Member testMember, String courseName) {
         CourseProfile testCourseProfile = createCourseProfile();
         Coordinate testCoordinate = createStartPoint();
         Course course = Course.of(testMember, testCourseProfile.getDistance(),
@@ -205,7 +205,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         return course;
     }
 
-    @DisplayName("기존 코스를 기반으로 혼자 뛴 러닝에 대한 상세 정보를 조회한다. 비공개 코스라면 코스 정보는 Null을 응답한다.")
+    @DisplayName("기존 코스를 기반으로 혼자 뛴 러닝에 대한 상세 정보를 조회한다. 비공개 코스라도 정보를 모두 응답한다.")
     @Test
     void findSoloRunInfoByIdWithUnPublicCourse() {
         // given
@@ -223,7 +223,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         SoloRunDetailInfo soloRunDetailInfo = runningRepository.findSoloRunInfoById(running1.getId(), member.getUuid()).get();
 
         // then
-        assertThat(soloRunDetailInfo.getCourseInfo()).isNull();
+        assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(course.getId());
+        assertThat(soloRunDetailInfo.getCourseInfo().getIsPublic()).isFalse();
     }
 
     private Course createUnPublicCourse(Member testMember) {
@@ -253,7 +254,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member ghostMember = createMember("고스트 이복둥");
         memberRepository.saveAll(List.of(member, ghostMember));
 
-        Course course = createPublicCourse(member, "테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running ghostRunning = createRunning(ghostMember, course);
@@ -294,7 +295,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createPublicCourse(member, "테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running = createSoloRunning(member, course);
@@ -318,7 +319,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createPublicCourse(member, "테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running = createSoloRunning(member, course);
@@ -338,7 +339,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createPublicCourse(member, "테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createSoloRunning(member, course);
@@ -360,7 +361,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createPublicCourse(member, "테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course, "러닝 제목1");
@@ -397,7 +398,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createPublicCourse(member, "테스트 코스");
+        Course course = createCourse(member, "테스트 코스");
         courseRepository.save(course);
 
         Running running1 = createRunning(member, course, "러닝 제목1");
@@ -749,7 +750,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         List<String> names = List.of("공덕역 코스", "반포 코스", "이대역 코스", "태화강 코스", "한강 코스");
         List<Course> courses = names.stream()
-                .map(n -> { Course c = createPublicCourse(member, n); c.setIsPublic(true); return c; })
+                .map(n -> { Course c = createCourse(member, n); c.setIsPublic(true); return c; })
                 .toList();
         courseRepository.saveAll(courses);
 
@@ -844,7 +845,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("동률테스트");
         memberRepository.save(member);
 
-        Course c = createPublicCourse(member, "같은 이름 코스");
+        Course c = createCourse(member, "같은 이름 코스");
         c.setIsPublic(true);
         courseRepository.save(c);
 
@@ -893,8 +894,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("기간검증");
         memberRepository.save(member);
 
-        Course c1 = createPublicCourse(member, "A");
-        Course c2 = createPublicCourse(member, "B");
+        Course c1 = createCourse(member, "A");
+        Course c2 = createCourse(member, "B");
         c1.setIsPublic(true); c2.setIsPublic(true);
         courseRepository.saveAll(List.of(c1, c2));
 
@@ -926,7 +927,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("기간빈");
         memberRepository.save(member);
 
-        Course c = createPublicCourse(member, "X");
+        Course c = createCourse(member, "X");
         c.setIsPublic(true);
         courseRepository.save(c);
 
@@ -951,8 +952,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member other = createMember("other");
         memberRepository.saveAll(List.of(me, other));
 
-        Course c1 = createPublicCourse(me, "A");  c1.setIsPublic(true);
-        Course c2 = createPublicCourse(other, "A"); c2.setIsPublic(true);
+        Course c1 = createCourse(me, "A");  c1.setIsPublic(true);
+        Course c2 = createCourse(other, "A"); c2.setIsPublic(true);
         courseRepository.saveAll(List.of(c1, c2));
 
         Running s1 = createRunning("ME_SOLO", c1, me, 1000L, RunningMode.SOLO);

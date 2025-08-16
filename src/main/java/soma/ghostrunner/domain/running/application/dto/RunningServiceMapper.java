@@ -3,11 +3,13 @@ package soma.ghostrunner.domain.running.application.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
+import soma.ghostrunner.domain.running.application.CoordinateDtoWithTs;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
-import soma.ghostrunner.domain.running.application.dto.request.RunRecordDto;
+import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
@@ -42,7 +44,7 @@ public interface RunningServiceMapper {
         );
     }
 
-    default RunningRecord toRunningRecord(RunRecordDto record, ProcessedTelemetriesDto processedTelemetry) {
+    default RunningRecord toRunningRecord(RunRecordCommand record, ProcessedTelemetriesDto processedTelemetry) {
 
         return RunningRecord.of(
                 record.getDistance(),
@@ -88,5 +90,7 @@ public interface RunningServiceMapper {
     @Mapping(source = "running.id", target = "runningId")
     @Mapping(source = "course.id", target = "courseId")
     CreateCourseAndRunResponse toResponse(Running running, Course course);
+
+    CoordinateDto toCoordinateDto(CoordinateDtoWithTs coordinateDtoWithTs);
   
 }

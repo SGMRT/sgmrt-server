@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.running.application;
 
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +14,6 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
-import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -25,9 +23,8 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
 import java.util.*;
-import java.util.stream.IntStream;
 
-import static org.mockito.BDDMockito.*;
+import static org.assertj.core.api.Assertions.*;
 
 // TODO : 단위 테스트로 전환
 class RunningQueryServiceTest extends IntegrationTestSupport {
@@ -64,14 +61,14 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         SoloRunDetailInfo soloRunDetailInfo = runningQueryService.findSoloRunInfo(running.getId(), member.getUuid());
 
         // then
-        Assertions.assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running.getStartedAt());
-        Assertions.assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running.getRunningName());
-        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
-        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(running.getRunningRecord().getDistance());
-        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(running.getRunningRecord().getDuration());
+        assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running.getStartedAt());
+        assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running.getRunningName());
+        assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
+        assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(running.getRunningRecord().getDistance());
+        assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(running.getRunningRecord().getDuration());
 
-        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(running.getCourse().getId());
-        Assertions.assertThat(soloRunDetailInfo.getCourseInfo().getName()).isEqualTo(running.getCourse().getName());
+        assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(running.getCourse().getId());
+        assertThat(soloRunDetailInfo.getCourseInfo().getName()).isEqualTo(running.getCourse().getName());
     }
 
     private Member createMember(String name) {
@@ -113,7 +110,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         );
     }
 
-    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회할 때 공개되지 않은 코스 정보라면 CourseInfo는 Null이 조회된다..")
+    @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회할 때 공개되지 않은 코스 정보라도 CourseInfo는 모두 조회된다.")
     @Test
     void findSoloRunInUnPublicCourseInfoById() {
         // given
@@ -130,12 +127,8 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         SoloRunDetailInfo soloRunDetailInfo = runningQueryService.findSoloRunInfo(running.getId(), member.getUuid());
 
         // then
-        Assertions.assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running.getStartedAt());
-        Assertions.assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running.getRunningName());
-        Assertions.assertThat(soloRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
-        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDistance()).isEqualTo(running.getRunningRecord().getDistance());
-        Assertions.assertThat(soloRunDetailInfo.getRecordInfo().getDuration()).isEqualTo(running.getRunningRecord().getDuration());
-        Assertions.assertThat(soloRunDetailInfo.getCourseInfo()).isNull();
+        assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(course.getId());
+        assertThat(soloRunDetailInfo.getCourseInfo().getIsPublic()).isFalse();
     }
 
     private Course createPrivateCourse(Member testMember, String courseName) {
@@ -163,7 +156,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when // then
-        Assertions.assertThatThrownBy(
+        assertThatThrownBy(
                         () -> runningQueryService.findSoloRunInfo(running.getId(), UUID.randomUUID().toString()))
                 .isInstanceOf(RunningNotFoundException.class)
                 .hasMessage("id " + running.getId() +" is not found");
@@ -199,37 +192,37 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 followingRunning.getId(), running.getId(), followingMember.getUuid());
 
         // then
-        Assertions.assertThat(ghostRunDetailInfo.getStartedAt()).isEqualTo(followingRunning.getStartedAt());
-        Assertions.assertThat(ghostRunDetailInfo.getRunningName()).isEqualTo(followingRunning.getRunningName());
-        Assertions.assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(followingRunning.getRunningDataUrls().getInterpolatedTelemetryUrl());
+        assertThat(ghostRunDetailInfo.getStartedAt()).isEqualTo(followingRunning.getStartedAt());
+        assertThat(ghostRunDetailInfo.getRunningName()).isEqualTo(followingRunning.getRunningName());
+        assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(followingRunning.getRunningDataUrls().getInterpolatedTelemetryUrl());
 
-        Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getId()).isEqualTo(course.getId());
-        Assertions.assertThat(ghostRunDetailInfo.getCourseInfo().getName()).isEqualTo(course.getName());
+        assertThat(ghostRunDetailInfo.getCourseInfo().getId()).isEqualTo(course.getId());
+        assertThat(ghostRunDetailInfo.getCourseInfo().getName()).isEqualTo(course.getName());
 
-        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getNickname())
+        assertThat(ghostRunDetailInfo.getMyRunInfo().getNickname())
                 .isEqualTo(followingMember.getNickname());
-        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getProfileUrl())
+        assertThat(ghostRunDetailInfo.getMyRunInfo().getProfileUrl())
                 .isEqualTo(followingMember.getProfilePictureUrl());
-        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDistance())
+        assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDistance())
                 .isEqualTo(followingRunning.getRunningRecord().getDistance());
-        Assertions.assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDuration())
+        assertThat(ghostRunDetailInfo.getMyRunInfo().getRecordInfo().getDuration())
                 .isEqualTo(followingRunning.getRunningRecord().getDuration());
 
-        Assertions.assertThat(ghostRunDetailInfo.getGhostRunId()).isEqualTo(running.getId());
+        assertThat(ghostRunDetailInfo.getGhostRunId()).isEqualTo(running.getId());
 
-        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getNickname())
+        assertThat(ghostRunDetailInfo.getGhostRunInfo().getNickname())
                 .isEqualTo(member.getNickname());
-        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getProfileUrl())
+        assertThat(ghostRunDetailInfo.getGhostRunInfo().getProfileUrl())
                 .isEqualTo(member.getProfilePictureUrl());
-        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getRecordInfo().getCadence())
+        assertThat(ghostRunDetailInfo.getGhostRunInfo().getRecordInfo().getCadence())
                 .isEqualTo(running.getRunningRecord().getCadence());
-        Assertions.assertThat(ghostRunDetailInfo.getGhostRunInfo().getRecordInfo().getDuration())
+        assertThat(ghostRunDetailInfo.getGhostRunInfo().getRecordInfo().getDuration())
                 .isEqualTo(running.getRunningRecord().getDuration());
 
-        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getDistance()).isEqualTo(-0.8);
-        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getDuration()).isEqualTo(10L);
-        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getCadence()).isEqualTo(10);
-        Assertions.assertThat(ghostRunDetailInfo.getComparisonInfo().getPace()).isEqualTo(1.0);
+        assertThat(ghostRunDetailInfo.getComparisonInfo().getDistance()).isEqualTo(-0.8);
+        assertThat(ghostRunDetailInfo.getComparisonInfo().getDuration()).isEqualTo(10L);
+        assertThat(ghostRunDetailInfo.getComparisonInfo().getCadence()).isEqualTo(10);
+        assertThat(ghostRunDetailInfo.getComparisonInfo().getPace()).isEqualTo(1.0);
     }
 
     @DisplayName("고스트와 뛴 러닝에 대한 상세 정보를 조회할 때 입력한 고스트 러닝 ID가 실제 고스트 러닝 ID와 일치하지 않을 때 예외가 발생한다.")
@@ -256,7 +249,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.save(followingRunning);
 
         // when // then
-        Assertions.assertThatThrownBy(() ->
+        assertThatThrownBy(() ->
                         runningQueryService.findGhostRunInfo(
                                 followingRunning.getId(), running.getId() + 1L, followingMember.getUuid()))
                 .isInstanceOf(InvalidRunningException.class)
@@ -287,7 +280,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
          runningRepository.save(followingRunning);
 
          // when // then
-         Assertions.assertThatThrownBy(() ->
+         assertThatThrownBy(() ->
                          runningQueryService.findGhostRunInfo(
                                  followingRunning.getId(), running.getId(), UUID.randomUUID().toString()))
                  .isInstanceOf(RunningNotFoundException.class)
@@ -311,7 +304,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         String interpolatedTelemetryUrl = runningQueryService.findRunningTelemetries(running.getId(), member.getUuid());
 
         // then
-        Assertions.assertThat(interpolatedTelemetryUrl).isEqualTo("Interpolated Telemetry Mock URL");
+        assertThat(interpolatedTelemetryUrl).isEqualTo("Interpolated Telemetry Mock URL");
     }
 
     private Running createRunning(String runningName, Course course, Member member, String interpolatedMockUrl) {
@@ -359,7 +352,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> runningQueryService.findRunningTelemetries(running.getId(), other.getUuid()))
+        assertThatThrownBy(() -> runningQueryService.findRunningTelemetries(running.getId(), other.getUuid()))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
     }
@@ -381,9 +374,9 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Running savedRunning = runningQueryService.findRunningByRunningId(running.getId());
 
         // then
-        Assertions.assertThat(savedRunning.getRunningName()).isEqualTo(running.getRunningName());
-        Assertions.assertThat(savedRunning.getGhostRunningId()).isEqualTo(running.getGhostRunningId());
-        Assertions.assertThat(savedRunning.getRunningDataUrls().getInterpolatedTelemetryUrl())
+        assertThat(savedRunning.getRunningName()).isEqualTo(running.getRunningName());
+        assertThat(savedRunning.getGhostRunningId()).isEqualTo(running.getGhostRunningId());
+        assertThat(savedRunning.getRunningDataUrls().getInterpolatedTelemetryUrl())
                 .isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
     }
 
@@ -391,7 +384,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     @Test
     void findRunningByNoneRunningId() {
         // when // then
-        Assertions.assertThatThrownBy(() -> runningQueryService.findRunningByRunningId(1L))
+        assertThatThrownBy(() -> runningQueryService.findRunningByRunningId(1L))
                 .isInstanceOf(RunningNotFoundException.class)
                 .hasMessage("id " + 1L +" is not found");
     }
@@ -416,7 +409,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Running firstRunning = runningQueryService.findFirstRunning(course.getId());
 
         // then
-        Assertions.assertThat(firstRunning.getRunningName()).isEqualTo(running1.getRunningName());
+        assertThat(firstRunning.getRunningName()).isEqualTo(running1.getRunningName());
     }
 
     @DisplayName("코스 ID를 기반으로 코스에 대한 첫 번째 러닝 데이터를 조회할 때 존재하지 않는다면 NOT_FOUND를 응답한다.")
@@ -431,7 +424,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         courseRepository.save(course);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> runningQueryService.findFirstRunning(course.getId()))
+        assertThatThrownBy(() -> runningQueryService.findFirstRunning(course.getId()))
                 .isInstanceOf(RunningNotFoundException.class)
                 .hasMessage("코스 ID : " + course.getId() + "에 대한 러닝 데이터가 없습니다.");
     }
