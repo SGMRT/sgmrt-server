@@ -48,6 +48,11 @@ public class Course extends BaseTimeEntity {
         this.courseDataUrls = courseDataUrls;
     }
 
+    public static Course of(Member member, String name, CourseProfile courseProfile, Coordinate startCoordinate,
+                            Boolean isPublic, CourseDataUrls courseDataUrls) {
+        return new Course(courseProfile, member, name, startCoordinate, isPublic, courseDataUrls);
+    }
+
     public static Course of(Member member, Double distance,
                             Double elevationAverage, Double elevationGain, Double elevationLoss,
                             Double startLatitude, Double startLongitude,

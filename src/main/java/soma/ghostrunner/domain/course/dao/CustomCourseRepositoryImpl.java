@@ -32,13 +32,22 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
             .select(Projections.constructor(CourseDetailedResponse.class,
                 course.id,
                 course.name,
+                Expressions.nullExpression(String.class), // course join running에서는 group by가 이뤄지므로 telemetry url을 조회할 수 없음 (새로운 쿼리 필요)
                 course.courseProfile.distance.castToNum(Integer.class),
-                course.courseProfile.elevationGain,
-                course.courseProfile.elevationLoss,
+                course.courseProfile.elevationAverage.castToNum(Integer.class),
+                course.courseProfile.elevationGain.castToNum(Integer.class),
+                course.courseProfile.elevationLoss.castToNum(Integer.class),
+                course.createdAt,
                 running.runningRecord.duration.avg().castToNum(Integer.class),
                 running.runningRecord.averagePace.avg().castToNum(Integer.class),
                 running.runningRecord.cadence.avg().castToNum(Integer.class),
-                running.runningRecord.lowestPace.min().castToNum(Integer.class)
+                running.runningRecord.burnedCalories.avg().castToNum(Integer.class),
+                running.runningRecord.lowestPace.min().castToNum(Integer.class),
+                running.member.id.countDistinct().castToNum(Integer.class),
+                running.id.count().castToNum(Integer.class),
+                Expressions.nullExpression(Double.class),
+                Expressions.nullExpression(Double.class),
+                Expressions.nullExpression(Double.class)
             ))
             .from(course)
             .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
