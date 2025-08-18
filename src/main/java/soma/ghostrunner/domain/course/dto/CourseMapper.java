@@ -13,12 +13,15 @@ import java.util.List;
 
 @Mapper(componentModel = "spring", uses = {CoordinateConverter.class, CourseSubMapper.class})
 public interface CourseMapper {
+
     @Mapping(source = "startCoordinate.latitude", target = "startLat")
     @Mapping(source = "startCoordinate.longitude", target = "startLng")
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
                     ": null)")
+    @Mapping(source = "courseDataUrls.routeUrl", target = "routeUrl")
+    @Mapping(source = "courseDataUrls.thumbnailUrl", target = "thumbnailUrl")
     @Mapping(source = "courseProfile.elevationAverage", target = "elevationAverage")
     @Mapping(source = "courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "courseProfile.elevationLoss", target = "elevationLoss")

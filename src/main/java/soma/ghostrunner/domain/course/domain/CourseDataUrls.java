@@ -24,7 +24,7 @@ public class CourseDataUrls {
         this.thumbnailUrl = thumbnailUrl;
     }
 
-    static CourseDataUrls of(String routeUrl, String thumbnailUrl) {
+    public static CourseDataUrls of(String routeUrl, String thumbnailUrl) {
         return CourseDataUrls.builder()
                 .routeUrl(routeUrl)
                 .thumbnailUrl(thumbnailUrl)
