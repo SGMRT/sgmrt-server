@@ -13,7 +13,7 @@ public class CreateRunCommand {
     private Long ghostRunningId;
     private String mode;
     private Long startedAt;
-    private RunRecordDto record;
+    private RunRecordCommand record;
     private Boolean hasPaused;
     private Boolean isPublic;
 

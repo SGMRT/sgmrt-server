@@ -14,7 +14,7 @@ public class SoloRunDetailInfo extends RunDetailInfo {
                              CourseInfo courseInfo, RunRecordInfo recordInfo,
                              String telemetryUrl, Boolean isPublic) {
         super(startedAt, runningName, telemetryUrl, isPublic);
-        this.courseInfo = courseInfo.getIsPublic() ? courseInfo : null;
+        this.courseInfo = courseInfo;
         this.recordInfo = recordInfo;
     }
 

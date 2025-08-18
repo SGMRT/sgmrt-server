@@ -71,7 +71,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                                 running.runningName,
                                 new QCourseInfo(
                                         course.id,
-                                        course.name
+                                        course.name,
+                                        course.isPublic
                                 ),
                                 new QMemberAndRunRecordInfo(
                                         member.nickname,

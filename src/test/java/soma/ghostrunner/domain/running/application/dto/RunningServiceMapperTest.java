@@ -7,7 +7,7 @@ import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
-import soma.ghostrunner.domain.running.application.dto.request.RunRecordDto;
+import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 
@@ -26,8 +26,8 @@ class RunningServiceMapperTest {
         Member member = createMember();
         Course course = createCourse(member);
 
-        RunRecordDto runRecordDto = createRunRecordDto();
-        CreateRunCommand createRunCommand = createRunCommand(runRecordDto);
+        RunRecordCommand runRecordCommand = createRunRecordDto();
+        CreateRunCommand createRunCommand = createRunCommand(runRecordCommand);
 
         List<TelemetryDto> relativeTelemetries = createTelemetryDtos();
         CoordinateDto startPointCoordinateDto = new CoordinateDto(37.2, 37.5);
@@ -59,7 +59,7 @@ class RunningServiceMapperTest {
 
     private ProcessedTelemetriesDto createProcessedTelemetriesDto(
             List<TelemetryDto> relativeTelemetries, CoordinateDto startPointCoordinateDto, List<CoordinateDto> coordinateDtos) {
-        return new ProcessedTelemetriesDto(relativeTelemetries, startPointCoordinateDto, coordinateDtos, 6.5, 5.2, 120.2, 120.2);
+        return new ProcessedTelemetriesDto(relativeTelemetries, startPointCoordinateDto, 6.5, 5.2, 120.2, 120.2);
     }
 
     private List<CoordinateDto> createCoordinateDtos() {
@@ -80,14 +80,14 @@ class RunningServiceMapperTest {
         );
     }
 
-    private @NotNull CreateRunCommand createRunCommand(RunRecordDto runRecordDto) {
+    private @NotNull CreateRunCommand createRunCommand(RunRecordCommand runRecordCommand) {
         return new CreateRunCommand(
                 "테스트 러닝 이름", null, "SOLO", 1000L,
-                runRecordDto, true, true);
+                runRecordCommand, true, true);
     }
 
-    private RunRecordDto createRunRecordDto() {
-        return new RunRecordDto(5.5, 100.0, 100.0, 23L,
+    private RunRecordCommand createRunRecordDto() {
+        return new RunRecordCommand(5.5, 100.0, 100.0, 23L,
                 5.4, 100, 100, 100);
     }
 
@@ -107,8 +107,8 @@ class RunningServiceMapperTest {
     void toCourse() {
         // given
         Member member = createMember();
-        RunRecordDto runRecordDto = createRunRecordDto();
-        CreateRunCommand createRunCommand = createRunCommand(runRecordDto);
+        RunRecordCommand runRecordCommand = createRunRecordDto();
+        CreateRunCommand createRunCommand = createRunCommand(runRecordCommand);
 
         List<TelemetryDto> relativeTelemetries = createTelemetryDtos();
         CoordinateDto startPointCoordinateDto = new CoordinateDto(37.2, 37.5);
@@ -123,8 +123,8 @@ class RunningServiceMapperTest {
         // then
         assertThat(course.getName()).isNull();
         assertThat(course.getCourseProfile().getElevationAverage()).isEqualTo(processedTelemetriesDto.avgElevation());
-        assertThat(course.getCourseProfile().getDistance()).isEqualTo(runRecordDto.getDistance());
-        assertThat(course.getCourseProfile().getElevationLoss()).isEqualTo(runRecordDto.getElevationLoss());
+        assertThat(course.getCourseProfile().getDistance()).isEqualTo(runRecordCommand.getDistance());
+        assertThat(course.getCourseProfile().getElevationLoss()).isEqualTo(runRecordCommand.getElevationLoss());
         assertThat(course.getStartCoordinate().getLatitude()).isEqualTo(37.2);
         assertThat(course.getCourseDataUrls().getRouteUrl()).isEqualTo("PATH_DATA_URL");
         assertThat(course.getCourseDataUrls().getThumbnailUrl()).isEqualTo("SCREEN_SHOT_URL");

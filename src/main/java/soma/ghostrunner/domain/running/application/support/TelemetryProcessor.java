@@ -20,10 +20,9 @@ public class TelemetryProcessor {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    public static ProcessedTelemetriesDto process(MultipartFile interpolatedTelemetry) {
+    public static ProcessedTelemetriesDto process(MultipartFile interpolatedTelemetry, Long startedAt) {
 
         List<TelemetryDto> relativeTelemetries = new ArrayList<>();
-        List<CoordinateDto> coordinates = new ArrayList<>();
 
         Double highestPace = Double.MIN_VALUE;
         Double lowestPace = Double.MAX_VALUE;
@@ -32,7 +31,6 @@ public class TelemetryProcessor {
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(interpolatedTelemetry.getInputStream()))) {
             String line;
-            long ts = 0;
 
             while ((line = reader.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -46,18 +44,14 @@ public class TelemetryProcessor {
                 verifyMinusValue(telemetryDto);
 
                 // 상대시간 변환
-                telemetryDto.setRelativeTimeStamp(ts);
+                telemetryDto.calculateRelativeTimeStamp(startedAt);
                 relativeTelemetries.add(telemetryDto);
-
-                // 좌표 수집
-                coordinates.add(new CoordinateDto(telemetryDto.getLat(), telemetryDto.getLng()));
 
                 // 최고/최저 속도 계산
                 highestPace = Math.max(highestPace, telemetryDto.getPace());
                 lowestPace = Math.min(lowestPace, telemetryDto.getPace());
 
                 totalElevation = totalElevation.add(BigDecimal.valueOf(telemetryDto.getAlt()));
-                ts += 1;
             }
         } catch (IOException exception) {
             throw new TelemetryCalculationException(ErrorCode.SERVICE_UNAVAILABLE, "시계열 좌표를 가공하는 중 에러가 발생했습니다.");
@@ -75,7 +69,6 @@ public class TelemetryProcessor {
         return new ProcessedTelemetriesDto(
                 relativeTelemetries,
                 new CoordinateDto(relativeTelemetries.get(0).getLat(), relativeTelemetries.get(0).getLng()),
-                coordinates,
                 highestPace,
                 lowestPace,
                 averageElevation.doubleValue(),

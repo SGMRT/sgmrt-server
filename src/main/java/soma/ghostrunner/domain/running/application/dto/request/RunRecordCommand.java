@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class RunRecordDto {
+public class RunRecordCommand {
 
     private Double distance;
     private Double elevationGain;
