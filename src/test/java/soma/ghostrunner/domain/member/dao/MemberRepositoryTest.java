@@ -1,12 +1,10 @@
-package soma.ghostrunner.domain.member;
+package soma.ghostrunner.domain.member.dao;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
-import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
 
