@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.running.domain;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -15,10 +14,10 @@ import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class PathSimplifierTest {
 
@@ -35,8 +34,8 @@ class PathSimplifierTest {
         );
 
         // when
-        List<CoordinateDto> coordinateDtos1 = PathSimplifier.simplify(pts1);
-        List<CoordinateDto> coordinateDtos2 = PathSimplifier.simplify(pts2);
+        List<CoordinateDto> coordinateDtos1 = PathSimplifier.extractEdgePoints(pts1);
+        List<CoordinateDto> coordinateDtos2 = PathSimplifier.extractEdgePoints(pts2);
 
         // then
         assertThat(coordinateDtos1.get(0).lat()).isEqualTo(pts1.get(0).getLat());
@@ -50,12 +49,12 @@ class PathSimplifierTest {
 
     @DisplayName("data7.jsonl을 List<CoordinateDto>로 변환하고 RDP 알고리즘을 적용한다. 적용 후 해상도 줄인 데이터는 뛴 순서대로 정렬된다.")
     @Test
-    void simplifyFromData7Jsonl() throws Exception {
+    void extractEdgePointsFromData7Jsonl() throws Exception {
         // given
         List<CoordinateDtoWithTs> original = readCoordinatesFromJsonl("data7.jsonl");
 
         // when
-        List<CoordinateDto> simplified = PathSimplifier.simplify(original);
+        List<CoordinateDto> simplified = PathSimplifier.extractEdgePoints(original);
 
         // then
         // 포인트 수가 줄었는지(줄지 않을 수도 있으니 안전하게 체크)
@@ -132,6 +131,84 @@ class PathSimplifierTest {
             }
         }
         System.out.println("Saved to: " + outputFile.getAbsolutePath());
+    }
+
+    @Test
+    @DisplayName("빈 입력이면 빈 리스트를 반환한다")
+    void resample_emptyInput_returnsEmpty() {
+        List<CoordinateDtoWithTs> in = List.of();
+        List<CoordinateDto> out = PathSimplifier.simplifyToRenderingTelemetries(in);
+        assertThat(out).isEmpty();
+    }
+
+    @Test
+    @DisplayName("3개씩 묶어 평균 후 반환한다 (불완전 꼬리(2개 이하는) 버림)")
+    void resample_averageByTriplets_dropsTail() {
+        // (lat, lng) = (0,0), (3,3), (6,6) → 평균 (2,2)
+        List<CoordinateDtoWithTs> in = new ArrayList<>();
+        in.add(pt(0.0, 0.0, 1000));
+        in.add(pt(3.0, 3.0, 2000));
+        in.add(pt(6.0, 6.0, 3000));
+        // 꼬리(두 점) — 평균 대상 아님 → 버려짐
+        in.add(pt(9.0, 9.0, 4000));
+        in.add(pt(12.0, 12.0, 5000));
+
+        List<CoordinateDto> out = PathSimplifier.simplifyToRenderingTelemetries(in);
+
+        assertEquals(1, out.size(), "3개 묶음 1개만 평균되어야 함");
+        assertLatLngAlmostEquals(3.0, 3.0, out.get(0), 1e-9);
+    }
+
+    @Test
+    @DisplayName("3m 미만 이동은 필터링되어 유지되지 않는다")
+    void resample_filtersBelow3m() {
+        // 위도 1도 ≈ 111,132 m → 0.00002도 ≈ 2.22 m (3m 미만)
+        // 3개 평균 후 나온 점들 간 거리가 3m 미만이면 제외되어 결과는 1개만 남아야 한다.
+        List<CoordinateDtoWithTs> in = new ArrayList<>();
+        // 첫 묶음 평균 ~ (37.000010, 127.000010)
+        in.add(pt(37.000000, 127.000000, 1000));
+        in.add(pt(37.000015, 127.000015, 2000));
+        in.add(pt(37.000015, 127.000015, 3000));
+        // 둘째 묶음 평균 ~ (37.000030, 127.000030) → 첫 평균과의 차 ~ 0.00002도*? ≈ 2m대
+        in.add(pt(37.000030, 127.000030, 4000));
+        in.add(pt(37.000030, 127.000030, 5000));
+        in.add(pt(37.000030, 127.000030, 6000));
+
+        List<CoordinateDto> out = PathSimplifier.simplifyToRenderingTelemetries(in);
+
+        // 3m 미만이라면 두 번째 평균점은 필터됨 → 1개만 남음
+        assertEquals(1, out.size(), "3m 미만 이동은 필터링되어야 함");
+    }
+
+    @Test
+    @DisplayName("3m 이상 이동은 보존된다")
+    void resample_keepsPointsWhenAtLeast3m() {
+        // 위도 차이 0.000030도 ≈ 3.33 m → 3m 이상
+        List<CoordinateDtoWithTs> in = new ArrayList<>();
+        // 첫 평균 ~ (37.000000, 127.000000)
+        in.add(pt(37.000000, 127.000000, 1000));
+        in.add(pt(37.000000, 127.000000, 2000));
+        in.add(pt(37.000000, 127.000000, 3000));
+        // 둘째 평균 ~ (37.000030, 127.000000) → 위도만 +0.000030
+        in.add(pt(37.000030, 127.000000, 4000));
+        in.add(pt(37.000030, 127.000000, 5000));
+        in.add(pt(37.000030, 127.000000, 6000));
+
+        List<CoordinateDto> out = PathSimplifier.simplifyToRenderingTelemetries(in);
+
+        assertEquals(2, out.size(), "3m 이상 이동한 평균점은 남아야 함");
+        assertLatLngAlmostEquals(37.000000, 127.000000, out.get(0), 1e-9);
+        assertLatLngAlmostEquals(37.000030, 127.000000, out.get(1), 1e-9);
+    }
+
+    // ---- helpers ----
+    private static CoordinateDtoWithTs pt(double lat, double lng, long ts) {
+        return new CoordinateDtoWithTs(ts, lat, lng);
+    }
+
+    private static void assertLatLngAlmostEquals(double expLat, double expLng, CoordinateDto actual, double eps) {
+        assertEquals(expLat, actual.lat(), eps, "lat mismatch");
+        assertEquals(expLng, actual.lng(), eps, "lng mismatch");
     }
 
 }

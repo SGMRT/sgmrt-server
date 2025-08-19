@@ -9,9 +9,10 @@ import java.util.List;
 
 public class PathSimplifier {
 
-    private static final double EPSILON_METER = 8.0;
+    private static final double EPSILON_METER = 10.0;
+    private static final double TARGET_DISTANCE_M = 3.0;
 
-    public static List<CoordinateDto> simplify(List<CoordinateDtoWithTs> points) {
+    public static List<CoordinateDto> extractEdgePoints(List<CoordinateDtoWithTs> points) {
         // RDP
         if (points.size() <= 2) {
             return toCoordinateDtos(points);
@@ -86,7 +87,6 @@ public class PathSimplifier {
     }
 
     private static Vec2 toLocalMeters(CoordinateDtoWithTs c, double refLatRad) {
-        // 위도 1도 ≈ 111_132 m, 경도 1도 ≈ 111_320 * cos(lat) m (근사)
         double metersPerDegLat = 111_132.0;
         double metersPerDegLon = 111_320.0 * Math.cos(refLatRad);
 
@@ -95,7 +95,48 @@ public class PathSimplifier {
         return new Vec2(x, y);
     }
 
-    // 필요시 두 점 사이의 구면 거리(하버사인). 여기선 선분 길이 0일 때만 사용.
+    // 3초 평균 -> 3m 추출로 해상도 축소
+    public static List<CoordinateDto> simplifyToRenderingTelemetries(List<CoordinateDtoWithTs> points) {
+        if (points == null || points.isEmpty()) return List.of();
+
+        List<CoordinateDtoWithTs> averaged = averageByThreeSeconds(points);
+        List<CoordinateDtoWithTs> filtered = filterByDistanceMeters(averaged, TARGET_DISTANCE_M);
+
+        return toCoordinateDtos(filtered);
+    }
+
+    // 3초 평균
+    private static List<CoordinateDtoWithTs> averageByThreeSeconds(List<CoordinateDtoWithTs> points) {
+        List<CoordinateDtoWithTs> result = new ArrayList<>();
+        for (int i = 2; i < points.size(); i += 3) {
+            double avgLat = (points.get(i - 2).getLat() + points.get(i - 1).getLat() + points.get(i).getLat()) / 3.0;
+            double avgLng = (points.get(i - 2).getLng() + points.get(i - 1).getLng() + points.get(i).getLng()) / 3.0;
+            long ts = points.get(i).getTs(); // 마지막 값 기준
+            result.add(new CoordinateDtoWithTs(ts, avgLat, avgLng));
+        }
+        return result;
+    }
+
+    // 3m 이상 채택
+    private static List<CoordinateDtoWithTs> filterByDistanceMeters(List<CoordinateDtoWithTs> points, double targetDistance) {
+        if (points == null || points.isEmpty()) return List.of();
+
+        List<CoordinateDtoWithTs> filtered = new ArrayList<>();
+        CoordinateDtoWithTs last = points.get(0);
+        filtered.add(last);
+
+        for (int i = 1; i < points.size(); i++) {
+            CoordinateDtoWithTs p = points.get(i);
+            double d = haversineMeters(last, p); 
+            if (d >= targetDistance) {
+                filtered.add(p);
+                last = p;
+            }
+        }
+        return filtered;
+    }
+
+    // 하버사인 : 두 점 사이 거리 계산
     private static double haversineMeters(CoordinateDtoWithTs p1, CoordinateDtoWithTs p2) {
         double R = 6371_000.0; // meters
         double lat1 = Math.toRadians(p1.getLat());

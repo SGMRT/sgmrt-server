@@ -32,7 +32,6 @@ public class RunningCommandService {
     private final CourseService courseService;
     private final MemberService memberService;
 
-    // TODO : 러닝 저장 시 이벤트 발행
     @Transactional
     public CreateCourseAndRunResponse createCourseAndRun(
             CreateRunCommand command, String memberUuid,
@@ -41,7 +40,7 @@ public class RunningCommandService {
         Member member = findMember(memberUuid);
 
         ProcessedTelemetriesDto processedTelemetries = processTelemetries(interpolatedTelemetry, command);
-        List<CoordinateDto> simplifiedCoordinates = simplifyCoordinates(processedTelemetries);
+        List<CoordinateDto> simplifiedCoordinates = simplifyToRenderingTelemetries(processedTelemetries);
 
         RunningDataUrlsDto runningDataUrlsDto = saveRunningAndCourseDataToS3(
                 rawTelemetry, processedTelemetries, simplifiedCoordinates, screenShotImage, memberUuid);
@@ -59,8 +58,9 @@ public class RunningCommandService {
         return TelemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
     }
 
-    private List<CoordinateDto> simplifyCoordinates(ProcessedTelemetriesDto processedTelemetries) {
-        return PathSimplifier.simplify(CoordinateDtoWithTs.toCoordinateDtoWithTsList(processedTelemetries.relativeTelemetries()));
+    private List<CoordinateDto> simplifyToRenderingTelemetries(ProcessedTelemetriesDto processedTelemetries) {
+        return PathSimplifier.simplifyToRenderingTelemetries(
+                CoordinateDtoWithTs.toCoordinateDtosWithTsList(processedTelemetries.relativeTelemetries()));
     }
 
     private RunningDataUrlsDto saveRunningAndCourseDataToS3(
