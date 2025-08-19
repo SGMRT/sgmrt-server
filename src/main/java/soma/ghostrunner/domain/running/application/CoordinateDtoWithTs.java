@@ -16,7 +16,7 @@ public class CoordinateDtoWithTs implements Comparable<CoordinateDtoWithTs> {
     private double lat;
     private double lng;
 
-    public static List<CoordinateDtoWithTs> toCoordinateDtoWithTsList(List<TelemetryDto> telemetryDtos) {
+    public static List<CoordinateDtoWithTs> toCoordinateDtosWithTsList(List<TelemetryDto> telemetryDtos) {
         return telemetryDtos.stream()
                 .map(telemetryDto ->
                         new CoordinateDtoWithTs(telemetryDto.getTimeStamp(), telemetryDto.getLat(), telemetryDto.getLng()))
