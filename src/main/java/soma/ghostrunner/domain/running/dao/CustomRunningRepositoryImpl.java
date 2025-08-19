@@ -120,6 +120,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         .fetchOne());
     }
 
+    @Override
     public List<RunInfo> findRunInfosFilteredByDate(
             RunningMode runningMode,
             Long cursorStartedAt, Long cursorRunningId,
@@ -146,15 +147,15 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         running.runningDataUrls.screenShotUrl
                 ))
                 .from(running)
-                .join(running.course, course)
+                .leftJoin(running.course, course).on(course.isPublic.isTrue())
                 .where(
                         running.member.id.eq(memberId),
                         running.runningMode.eq(runningMode),
                         startedAtRange(startEpoch, endEpoch),
                         seekAfterAsc(cursorStartedAt, cursorRunningId)
                 )
-                .orderBy(running.startedAt.asc(), running.id.asc())
-                .limit(DEFAULT_PAGE_SIZE + 1)
+                .orderBy(running.startedAt.desc(), running.id.desc())
+                .limit(DEFAULT_PAGE_SIZE)
                 .fetch();
     }
 
@@ -164,8 +165,8 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
 
     private BooleanExpression seekAfterAsc(Long cursorStartedAt, Long cursorId) {
         if (cursorStartedAt == null || cursorId == null) return null; // 첫 페이지
-        return running.startedAt.gt(cursorStartedAt)
-                .or(running.startedAt.eq(cursorStartedAt).and(running.id.gt(cursorId)));
+        return running.startedAt.lt(cursorStartedAt)
+                .or(running.startedAt.eq(cursorStartedAt).and(running.id.lt(cursorId)));
     }
 
     @Override
@@ -195,16 +196,15 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
                         running.runningDataUrls.screenShotUrl
                 ))
                 .from(running)
-                .join(running.course, course)
+                .leftJoin(running.course, course).on(course.isPublic.isTrue())
                 .where(
                         running.member.id.eq(memberId),
                         running.runningMode.eq(runningMode),
                         startedAtRange(startEpoch, endEpoch),
                         seekAfterAsc(cursorCourseName, cursorRunningId)
-
                 )
-                .orderBy(running.course.name.asc(), running.id.asc())
-                .limit(DEFAULT_PAGE_SIZE + 1)
+                .orderBy(running.course.name.asc(), running.id.desc())
+                .limit(DEFAULT_PAGE_SIZE)
                 .fetch();
     }
 
@@ -213,7 +213,7 @@ public class CustomRunningRepositoryImpl implements CustomRunningRepository {
             return null;
         }
         return running.course.name.gt(cursorCourseName)
-                .or(running.course.name.eq(cursorCourseName).and(running.id.gt(cursorRunningId)));
+                .or(running.course.name.eq(cursorCourseName).and(running.id.lt(cursorRunningId)));
     }
 
     @Override
