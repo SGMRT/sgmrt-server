@@ -46,18 +46,10 @@ public class RunningApi {
             @RequestPart MultipartFile interpolatedTelemetry,
             @RequestPart(required = false) MultipartFile screenShotImage) {
         validateTelemetryFiles(rawTelemetry, interpolatedTelemetry);
-        validateScreenShotFiles(screenShotImage);
+        validateScreenShotImage(screenShotImage);
         String memberUuid = userDetails.getUserId();
         return runningCommandService.createCourseAndRun(
                 mapper.toCommand(req), memberUuid, rawTelemetry, interpolatedTelemetry, screenShotImage);
-    }
-
-    private void validateScreenShotFiles(MultipartFile screenShotImage) {
-        if (screenShotImage != null) {
-            if (screenShotImage.isEmpty()) {
-                throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "ScreenShot MultipartFile이 비어있습니다.");
-            }
-        }
     }
 
     private void validateTelemetryFiles(MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry) {
@@ -79,10 +71,18 @@ public class RunningApi {
             @RequestPart MultipartFile screenShotImage,
             @PathVariable Long courseId) {
         validateTelemetryFiles(rawTelemetry, interpolatedTelemetry);
-        validateScreenShotFiles(screenShotImage);
+        validateScreenShotImage(screenShotImage);
         String memberUuid = userDetails.getUserId();
         return runningCommandService.createRun(
                 mapper.toCommand(req), memberUuid, courseId, rawTelemetry, interpolatedTelemetry, screenShotImage);
+    }
+
+    private void validateScreenShotImage(MultipartFile screenShotImage) {
+        if (screenShotImage != null) {
+            if (screenShotImage.isEmpty()) {
+                throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "ScreenShot MultipartFile이 비어있습니다.");
+            }
+        }
     }
 
     @PatchMapping("/v1/runs/{runningId}/name")

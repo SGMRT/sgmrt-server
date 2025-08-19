@@ -81,7 +81,7 @@ public class RunningCommandService {
 
         String screenShotSavedUrl = null;
         if (screenShotImage != null) {
-            screenShotSavedUrl = ghostRunnerS3Client.uploadRunningCaptureImage(screenShotImage, memberUuid);
+            screenShotSavedUrl = uploadRunningScreenShotImage(memberUuid, screenShotImage);
         }
 
         return new RunningDataUrlsDto(rawTelemetrySavedUrl, interpolatedTelemetrySavedUrl, null, screenShotSavedUrl);
@@ -150,6 +150,18 @@ public class RunningCommandService {
         List<Running> runnings = runningRepository.findByIds(runningIds);
         runnings.forEach(running -> running.verifyMember(memberUuid));
         runningRepository.deleteAllByIdIn(runningIds);
+    }
+
+    @Transactional
+    public void updateScreenShotImage(String memberUuid, Long runningId, MultipartFile screenShotImage) {
+        Running running = findRunning(runningId);
+        running.verifyMember(memberUuid);
+        String savedUrl = uploadRunningScreenShotImage(memberUuid, screenShotImage);
+        running.updateScreenShotUrl(savedUrl);
+    }
+
+    private String uploadRunningScreenShotImage(String memberUuid, MultipartFile screenShotImage) {
+        return ghostRunnerS3Client.uploadRunningCaptureImage(screenShotImage, memberUuid);
     }
 
 }

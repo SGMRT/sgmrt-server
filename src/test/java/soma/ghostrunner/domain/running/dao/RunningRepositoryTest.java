@@ -428,7 +428,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 );
     }
 
-    @DisplayName("시간, 러닝 ID를 기준으로 커서 페이징(ASC)으로 러닝을 조회한다.")
+    @DisplayName("시간, 러닝 ID를 기준으로 커서 페이징(DESC)으로 러닝을 조회한다.")
     @Test
     void findRunInfosByCursorIds() {
         // given
@@ -456,18 +456,18 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         }
         runningRepository.saveAll(runnings);
 
-        // 기대값: ASC 정렬(동률 시 id ASC)
-        Comparator<Running> asc = Comparator.comparing(Running::getStartedAt)
-                .thenComparing(Running::getId);
+        // 기대값: DESC 정렬(동률 시 id DESC)
+        Comparator<Running> desc = Comparator.comparing(Running::getStartedAt, Comparator.reverseOrder())
+                .thenComparing(Running::getId, Comparator.reverseOrder());
 
         List<Running> expectedSolo = runnings.stream()
                 .filter(r -> r.getRunningMode() == RunningMode.SOLO)
-                .sorted(asc)
+                .sorted(desc)
                 .toList();
 
         List<Running> expectedGhost = runnings.stream()
                 .filter(r -> r.getRunningMode() == RunningMode.GHOST)
-                .sorted(asc)
+                .sorted(desc)
                 .toList();
 
         // 기간: 우리가 생성한 범위를 정확히 커버
@@ -480,12 +480,12 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // 페이지 크기(= 구현의 limit 결과)를 관측값으로 사용
         int page1Size = page1Solo.size();
-        assertThat(page1Size).isEqualTo(21);
+        assertThat(page1Size).isEqualTo(20);
 
         // 커서: 첫 페이지의 마지막 요소
         RunInfo cursor = page1Solo.get(page1Size - 1);
 
-        // when: 둘째 페이지(커서 after)
+        // when: 둘째 페이지(커서 before; DESC)
         List<RunInfo> page2Solo = runningRepository.findRunInfosFilteredByDate(
                 RunningMode.SOLO, cursor.getStartedAt(), cursor.getRunningId(),
                 startEpoch, endEpoch, member.getId());
@@ -519,20 +519,20 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         var ids2 = page2Solo.stream().map(RunInfo::getRunningId).toList();
         assertThat(Collections.disjoint(ids1, ids2)).isTrue();
 
-        // then 4) 커서 경계(ASC: 엄격히 이후) 확인
+        // then 4) 커서 경계(DESC: 엄격히 이전) 확인
         if (!page2Solo.isEmpty()) {
             RunInfo firstOfPage2 = page2Solo.get(0);
-            boolean strictlyAfter =
-                    (firstOfPage2.getStartedAt() > cursor.getStartedAt()) ||
+            boolean strictlyBefore =
+                    (firstOfPage2.getStartedAt() < cursor.getStartedAt()) ||
                             (Objects.equals(firstOfPage2.getStartedAt(), cursor.getStartedAt()) &&
-                                    firstOfPage2.getRunningId() > cursor.getRunningId());
-            assertThat(strictlyAfter).isTrue();
+                                    firstOfPage2.getRunningId() < cursor.getRunningId());
+            assertThat(strictlyBefore).isTrue();
         }
 
-        // then 5) 각 결과 자체가 startedAt ASC, id ASC로 정렬되어 있는지
-        assertSortedByStartedAtThenIdAsc(page1Solo);
-        assertSortedByStartedAtThenIdAsc(page2Solo);
-        assertSortedByStartedAtThenIdAsc(page1Ghost);
+        // then 5) 각 결과 자체가 startedAt DESC, id DESC로 정렬되어 있는지
+        assertSortedByStartedAtThenIdDesc(page1Solo);
+        assertSortedByStartedAtThenIdDesc(page2Solo);
+        assertSortedByStartedAtThenIdDesc(page1Ghost);
 
         // then 6) GHOST 1페이지 값 검증
         for (int i = 0; i < page1Ghost.size(); i++) {
@@ -545,20 +545,20 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         }
     }
 
-    private static void assertSortedByStartedAtThenIdAsc(List<RunInfo> list) {
+    private static void assertSortedByStartedAtThenIdDesc(List<RunInfo> list) {
         for (int i = 1; i < list.size(); i++) {
             RunInfo prev = list.get(i - 1);
             RunInfo curr = list.get(i);
-            boolean ok = (curr.getStartedAt() > prev.getStartedAt()) ||
+            boolean ok = (curr.getStartedAt() < prev.getStartedAt()) ||
                     (Objects.equals(curr.getStartedAt(), prev.getStartedAt())
-                            && curr.getRunningId() > prev.getRunningId());
+                            && curr.getRunningId() < prev.getRunningId());
             assertThat(ok)
-                    .as("must be sorted by startedAt ASC, then id ASC at index " + i)
+                    .as("must be sorted by startedAt DESC, then id DESC at index " + i)
                     .isTrue();
         }
     }
 
-    @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 시작 시간이 같다면 ID를 기반으로 정렬된다.")
+    @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 시작 시간이 같다면 ID 내림차순으로 정렬된다.")
     @Test
     void sortByIdWhenStartTimesAreEqual() {
         // given
@@ -585,10 +585,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId()
         );
 
-        // then: 전체가 startedAt ASC, id ASC
-        assertSortedByStartedAtThenIdAsc(result);
+        // then: 전체가 startedAt DESC, id DESC
+        assertSortedByStartedAtThenIdDesc(result);
 
-        // 동률(2000) 집합만 골라서 id가 오름차순인지 확인
+        // 동률(2000) 집합만 골라서 id가 내림차순인지 확인
         List<RunInfo> at2000 = result.stream()
                 .filter(r -> Objects.equals(r.getStartedAt(), 2000L))
                 .toList();
@@ -597,7 +597,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         for (int i = 1; i < at2000.size(); i++) {
             Long prev = at2000.get(i - 1).getRunningId();
             Long curr = at2000.get(i).getRunningId();
-            assertThat(curr).isGreaterThan(prev); // ID 기반 정렬 보장
+            assertThat(curr).isLessThan(prev); // ID DESC 보장
         }
     }
 
@@ -630,7 +630,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         List<Long> ids = result.stream().map(RunInfo::getRunningId).toList();
         assertThat(ids).contains(r1.getId(), r3.getId());
         assertThat(ids).doesNotContain(r2.getId());
-        assertSortedByStartedAtThenIdAsc(result);
+        assertSortedByStartedAtThenIdDesc(result);
     }
 
     @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 필터링 조건에서 시작/끝이 완전히 같아도 조회된다.")
@@ -661,12 +661,12 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         // then: startedAt == 2000 인 것들만 전부 포함(동률 여러 건도 포함)
         assertThat(result).isNotEmpty();
         assertThat(result).allMatch(r -> Objects.equals(r.getStartedAt(), 2000L));
-        // 동률 집합 내에서도 id ASC
-        assertSortedByStartedAtThenIdAsc(result);
-        // 결과 아이디 집합이 정확히 r2, r3 로만 구성되었는지(순서는 ASC)
+        // 동률 집합 내에서도 id DESC
+        assertSortedByStartedAtThenIdDesc(result);
+        // 결과 아이디 집합이 정확히 r2, r3 로만 구성되었는지(순서는 DESC)
         List<Long> gotIds = result.stream().map(RunInfo::getRunningId).toList();
         assertThat(gotIds).containsExactlyElementsOf(
-                List.of(Math.min(r2.getId(), r3.getId()), Math.max(r2.getId(), r3.getId()))
+                List.of(Math.max(r2.getId(), r3.getId()), Math.min(r2.getId(), r3.getId()))
         );
     }
 
@@ -738,7 +738,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
     }
 
-    @DisplayName("코스명, 러닝ID(ASC) 커서로 기간 내 SOLO 러닝을 페이지네이션한다 — 정렬·연속성·중복없음")
+    @DisplayName("코스명, 러닝ID(DESC) 커서로 기간 내 SOLO 러닝을 페이지네이션한다 — 정렬·연속성·중복없음")
     @Test
     void findRunInfosFilteredByCoursesByCursorIds_basicPaging() {
         // given
@@ -772,14 +772,14 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         }
         runningRepository.saveAll(all);
 
-        // 기대 목록(필터: SOLO) — 코스명 ASC, id ASC
-        Comparator<Running> courseAscIdAsc = Comparator
+        // 기대 목록(필터: SOLO) — 코스명 ASC, id DESC
+        Comparator<Running> courseAscIdDesc = Comparator
                 .comparing((Running r) -> r.getCourse().getName())
-                .thenComparing(Running::getId);
+                .thenComparing(Running::getId, Comparator.reverseOrder());
 
         List<Running> expectedSolo = all.stream()
                 .filter(r -> r.getRunningMode() == RunningMode.SOLO)
-                .sorted(courseAscIdAsc)
+                .sorted(courseAscIdDesc)
                 .toList();
 
         // when: 커서 없이 1페이지
@@ -799,12 +799,12 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                     START_MS, END_MS, member.getId());
             if (next.isEmpty()) break;
 
-            // 커서 경계: strict after (ASC)
+            // 커서 경계
             RunInfo first = next.get(0);
             boolean strictlyAfter =
                     first.getCourseInfo().getName().compareTo(cursor.getCourseInfo().getName()) > 0
                             || (Objects.equals(first.getCourseInfo().getName(), cursor.getCourseInfo().getName())
-                            && first.getRunningId() > cursor.getRunningId());
+                            && first.getRunningId() < cursor.getRunningId()); // 같으면 ID 더 작아야
             assertThat(strictlyAfter).isTrue();
 
             // 페이지 간 중복 없음
@@ -822,7 +822,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // then: 전체 SOLO 수와 동일, 정렬/내용 일치
         assertThat(collected).hasSize(expectedSolo.size());
-        assertSortedByCourseThenIdAsc(collected);
+        assertSortedByCourseAscThenIdDesc(collected);
 
         for (int i = 0; i < collected.size(); i++) {
             RunInfo a = collected.get(i);
@@ -835,7 +835,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         }
     }
 
-    @DisplayName("동일 코스명 다건이 있는 경우에도 ID ASC로 안정 정렬되고 커서 경계가 정확하다")
+    @DisplayName("동일 코스명 다건이 있는 경우에도 ID 내림차순으로 정렬되고 커서 경계가 정확하다")
     @Test
     void sameCourseNameMany_rows_areStableAndSeekIsStrict() {
         // given
@@ -869,16 +869,16 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 START_MS, END_MS, member.getId());
 
         // then
-        assertSortedByCourseThenIdAsc(p1);
-        assertSortedByCourseThenIdAsc(p2);
+        assertSortedByCourseAscThenIdDesc(p1);
+        assertSortedByCourseAscThenIdDesc(p2);
 
         if (!p2.isEmpty()) {
             RunInfo first = p2.get(0);
-            boolean strictlyAfter =
-                    first.getCourseInfo().getName().compareTo(cursor.getCourseInfo().getName()) > 0
+            boolean strictlyBefore =
+                    first.getCourseInfo().getName().compareTo(cursor.getCourseInfo().getName()) < 0
                             || (Objects.equals(first.getCourseInfo().getName(), cursor.getCourseInfo().getName())
-                            && first.getRunningId() > cursor.getRunningId());
-            assertThat(strictlyAfter).isTrue();
+                            && first.getRunningId() < cursor.getRunningId());
+            assertThat(strictlyBefore).isTrue();
         }
 
         // 중복 없음
@@ -887,7 +887,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         assertThat(Collections.disjoint(ids1, ids2)).isTrue();
     }
 
-    @DisplayName("기간 필터: start==end(포함)일 때 해당 시각의 레코드만 반환한다 (between inclusive)")
+    @DisplayName("기간 필터: start==end(포함)일 때 해당 시각의 레코드만 반환한다 (between inclusive, 정렬 DESC)")
     @Test
     void range_inclusive_when_start_equals_end() {
         // given
@@ -910,14 +910,32 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         List<RunInfo> result = runningRepository.findRunInfosFilteredByCourses(
                 RunningMode.SOLO, null, null, target, target, member.getId());
 
-        // then: target 시각만 포함, 정렬은 (코스명, id)
+        // then: target 시각만 포함, 정렬은 (코스명 ASC, id DESC)
         assertThat(result).isNotEmpty();
         assertThat(result).allMatch(r -> Objects.equals(r.getStartedAt(), target));
-        assertSortedByCourseThenIdAsc(result);
+        assertSortedByCourseAscThenIdDesc(result);
 
         List<Long> got = result.stream().map(RunInfo::getRunningId).toList();
-        List<Long> expect = List.of(Math.min(in1.getId(), in2.getId()), Math.max(in1.getId(), in2.getId()));
+        List<Running> expectOrder = List.of(in1, in2).stream()
+                .sorted(Comparator
+                        .comparing((Running r) -> r.getCourse().getName()) // ASC
+                        .thenComparing(Running::getId, Comparator.reverseOrder())) // DESC
+                .toList();
+        List<Long> expect = expectOrder.stream().map(Running::getId).toList();
         assertThat(got).containsExactlyElementsOf(expect);
+    }
+
+    private void assertSortedByCourseAscThenIdDesc(List<RunInfo> list) {
+        for (int i = 1; i < list.size(); i++) {
+            RunInfo prev = list.get(i - 1);
+            RunInfo curr = list.get(i);
+            int nameCmp = curr.getCourseInfo().getName().compareTo(prev.getCourseInfo().getName());
+            boolean ok = nameCmp > 0 // ASC
+                    || (nameCmp == 0 && curr.getRunningId() < prev.getRunningId()); // 같으면 ID DESC
+            assertThat(ok)
+                    .as("List must be sorted by course.name ASC, then id DESC at index " + i)
+                    .isTrue();
+        }
     }
 
     @DisplayName("기간 밖이면 빈 결과를 반환한다")
@@ -967,18 +985,6 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // then
         assertThat(result).extracting(RunInfo::getRunningId).containsExactly(s1.getId());
-    }
-
-    private void assertSortedByCourseThenIdAsc(List<RunInfo> list) {
-        for (int i = 1; i < list.size(); i++) {
-            RunInfo prev = list.get(i - 1);
-            RunInfo curr = list.get(i);
-            int nameCmp = curr.getCourseInfo().getName().compareTo(prev.getCourseInfo().getName());
-            boolean ok = nameCmp > 0 || (nameCmp == 0 && curr.getRunningId() > prev.getRunningId());
-            assertThat(ok)
-                    .as("List must be sorted by course.name ASC, then id ASC at index " + i)
-                    .isTrue();
-        }
     }
 
     @DisplayName("코스에 대한 전체 러닝 갯수를 출력한다. 같은 사용자라도 중복 허용된다.")
