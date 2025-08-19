@@ -140,4 +140,8 @@ public class Running extends BaseTimeEntity {
         }
     }
 
+    public void updateScreenShotUrl(String screenShotUrl) {
+        this.getRunningDataUrls().updateScreenShotUrl(screenShotUrl);
+    }
+
 }

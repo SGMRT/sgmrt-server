@@ -38,4 +38,8 @@ public class RunningDataUrls {
                 .build();
     }
 
+    public void updateScreenShotUrl(String screenShotUrl) {
+        this.screenShotUrl = screenShotUrl;
+    }
+
 }

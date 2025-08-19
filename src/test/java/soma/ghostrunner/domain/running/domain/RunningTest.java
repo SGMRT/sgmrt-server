@@ -11,6 +11,8 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 
 import java.lang.reflect.Field;
 
+import static org.assertj.core.api.Assertions.*;
+
 class RunningTest {
 
     @DisplayName("이름을 변경한다.")
@@ -25,7 +27,7 @@ class RunningTest {
         running.updateName("업데이트된 이름");
 
         // then
-        Assertions.assertThat(running.getRunningName()).isEqualTo("업데이트된 이름");
+        assertThat(running.getRunningName()).isEqualTo("업데이트된 이름");
     }
 
     private Member createMember() {
@@ -76,8 +78,8 @@ class RunningTest {
         privateRunning.updatePublicStatus();
 
         // then
-        Assertions.assertThat(publicRunning.isPublic()).isFalse();
-        Assertions.assertThat(privateRunning.isPublic()).isTrue();
+        assertThat(publicRunning.isPublic()).isFalse();
+        assertThat(privateRunning.isPublic()).isTrue();
     }
 
     @DisplayName("정지한 기록이 있다면 공개로 변경할 수 없다.")
@@ -89,7 +91,7 @@ class RunningTest {
         Running hasPausedAndPrivateRunning = createRunning("테스트 러닝제목", member, course, false, true);
 
         // when // then
-        Assertions.assertThatThrownBy(hasPausedAndPrivateRunning::updatePublicStatus)
+        assertThatThrownBy(hasPausedAndPrivateRunning::updatePublicStatus)
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("정지한 기록이 있다면 공개할 수 없습니다.");
     }
@@ -123,11 +125,11 @@ class RunningTest {
         Running running = createRunning("테스트 러닝제목", member, course);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> running.validateBelongsToCourse(101L))
+        assertThatThrownBy(() -> running.validateBelongsToCourse(101L))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("고스트가 뛴 코스가 아닙니다.");
 
-        Assertions.assertThatThrownBy(() -> running.validateBelongsToCourse(null))
+        assertThatThrownBy(() -> running.validateBelongsToCourse(null))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("고스트가 뛴 코스가 아닙니다.");
     }
@@ -141,5 +143,22 @@ class RunningTest {
             throw new RuntimeException(e);
         }
     }
+
+    @DisplayName("스크린샷 URL을 업데이트한다.")
+    @Test
+    void updateScreenShotUrl() {
+        // given
+        Member member = createMember();
+        Course course = createCourse(member);
+        Running running = createRunning("테스트 러닝제목", member, course);
+
+        String screenShotUrl = "New ScreenShot Url";
+
+        // when
+        running.updateScreenShotUrl(screenShotUrl);
+
+        // then
+        assertThat(running.getRunningDataUrls().getScreenShotUrl()).isEqualTo(screenShotUrl);
+     }
   
 }

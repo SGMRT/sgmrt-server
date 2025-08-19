@@ -1,9 +1,9 @@
 package soma.ghostrunner.domain.running.application;
 
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
@@ -26,6 +26,11 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 
 class RunningCommandServiceTest extends IntegrationTestSupport {
 
@@ -51,22 +56,31 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 //        Member member = createMember("테스트 유저");
 //        memberRepository.save(member);
 //
-//        RunRecordDto runRecordDto = createRunRecordDto(5.1, 130.0, -120.0, 3600L);
+//        RunRecordCommand runRecordDto = createRunRecordDto(5.1, 130.0, -120.0, 3600L);
 //        CreateRunCommand createRunCommand = createRunCommandRequest("러닝 이름", "SOLO", 100L, runRecordDto);
 //
 //        byte[] bytes = "line1\nline2\n".getBytes(StandardCharsets.UTF_8);
 //        MockMultipartFile rawTelemetry = new MockMultipartFile(
 //                "rawTelemetry", "telemetry.jsonl", "application/jsonl", bytes
 //        );
+//        MockMultipartFile interpolatedTelemetry = new MockMultipartFile(
+//                "rawTelemetry", "telemetry.jsonl", "application/jsonl", bytes
+//        );
 //        MockMultipartFile image = new MockMultipartFile(
 //                "img", "capture.png", "image/png", new byte[]{1, 2, 3}
 //        );
 //
-////        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
-////                .willReturn("Mock Telemetries Url");
+//        given(ghostRunnerS3Client.uploadInterpolatedTelemetry(ArgumentMatchers.any(), anyString()))
+//                .willReturn("Mock Telemetries Url");
+//        given(ghostRunnerS3Client.uploadRawTelemetry(ArgumentMatchers.any(), anyString()))
+//                .willReturn("Mock Telemetries Url");
+//        given(ghostRunnerS3Client.uploadSimplifiedTelemetry(ArgumentMatchers.any(), anyString()))
+//                .willReturn("Mock Telemetries Url");
+//        given(ghostRunnerS3Client.uploadRunningCaptureImage(ArgumentMatchers.any(), anyString()))
+//                .willReturn("Mock Telemetries Url");
 //
 //        // when
-////        CreateCourseAndRunResponse response = runningCommandService.createCourseAndRun(request, member.getUuid());
+//        CreateCourseAndRunResponse response = runningCommandService.createCourseAndRun(createRunCommand, member.getUuid());
 //        CreateCourseAndRunResponse response = null;
 //
 //        // then
@@ -280,10 +294,10 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 
         // then
         Running updatedToPublicRunning = runningRepository.findById(privateRunning.getId()).get();
-        Assertions.assertThat(updatedToPublicRunning.isPublic()).isTrue();
+        assertThat(updatedToPublicRunning.isPublic()).isTrue();
 
         Running updatedToPrivateRunning = runningRepository.findById(publicRunning.getId()).get();
-        Assertions.assertThat(updatedToPrivateRunning.isPublic()).isFalse();
+        assertThat(updatedToPrivateRunning.isPublic()).isFalse();
     }
 
     @DisplayName("러닝을 중지한 기록이 있다면 공개 설정이 불가능하다.")
@@ -300,7 +314,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         runningRepository.save(hasPausedRunning);
 
         // when // then
-        Assertions.assertThatThrownBy(
+        assertThatThrownBy(
                 () -> runningCommandService.updateRunningPublicStatus(hasPausedRunning.getId(), member.getUuid()))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("정지한 기록이 있다면 공개할 수 없습니다.");
@@ -319,7 +333,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Running publicRunning = runningRepository.save(createRunning(member, course, true));
 
         // when // then
-        Assertions.assertThatThrownBy(
+        assertThatThrownBy(
                         () -> runningCommandService.updateRunningPublicStatus(publicRunning.getId(), UUID.randomUUID().toString()))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
@@ -363,7 +377,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 
         // then
         List<Running> runnings = runningRepository.findByIds(List.of(running1.getId(), running2.getId(), running3.getId()));
-        Assertions.assertThat(runnings.size()).isEqualTo(0);
+        assertThat(runnings.size()).isEqualTo(0);
     }
 
     @DisplayName("자신의 러닝 데이터가 아니라면 삭제할 수 없다.")
@@ -384,7 +398,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 
         // when // then
         List<Long> runningIds = List.of(running1.getId(), running2.getId(), running3.getId());
-        Assertions.assertThatThrownBy(
+        assertThatThrownBy(
                 () -> runningCommandService.deleteRunnings(runningIds, UUID.randomUUID().toString()))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
@@ -408,7 +422,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 
         // then
         Running updatedRunning = runningRepository.findById(running.getId()).get();
-        Assertions.assertThat(updatedRunning.getRunningName()).isEqualTo("변경할 러닝명");
+        assertThat(updatedRunning.getRunningName()).isEqualTo("변경할 러닝명");
     }
 
     @DisplayName("자신의 러닝이 아니라면 이름을 변경하지 못한다.")
@@ -425,11 +439,66 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when // then
-        Assertions.assertThatThrownBy(
+        assertThatThrownBy(
                 () -> runningCommandService.updateRunningName(
                         "변경할 러닝명", running.getId(), UUID.randomUUID().toString()))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
     }
+
+    @DisplayName("러닝 스크린샷 이미지를 업데이트한다.")
+    @Test
+    void saveRunningScreenShotImage() {
+        // given
+        Member member = createMember("테스트 유저");
+        memberRepository.save(member);
+
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        Running running = createRunning(member, course);
+        runningRepository.save(running);
+
+        MockMultipartFile screenShotImage = new MockMultipartFile(
+                "img", "capture.png", "image/png", new byte[]{1, 2, 3}
+        );
+
+        given(ghostRunnerS3Client.uploadRunningCaptureImage(any(), anyString()))
+                .willReturn("Mock ScreenShotImage Url");
+
+        // when
+        runningCommandService.updateScreenShotImage(member.getUuid(), running.getId(), screenShotImage);
+
+        // then
+        Running savedRunning = runningRepository.findById(running.getId()).get();
+        assertThat(savedRunning.getRunningDataUrls().getScreenShotUrl()).isEqualTo("Mock ScreenShotImage Url");
+     }
+
+     @DisplayName("자신의 러닝이 아니라면 예외를 발생시킨다.")
+     @Test
+     void throwAuthenticationExceptionWhenSaveNotMyRunningScreenShotImage() {
+         // given
+         Member member = createMember("테스트 유저");
+         memberRepository.save(member);
+
+         Course course = createCourse(member);
+         courseRepository.save(course);
+
+         Running running = createRunning(member, course);
+         runningRepository.save(running);
+
+         MockMultipartFile screenShotImage = new MockMultipartFile(
+                 "img", "capture.png", "image/png", new byte[]{1, 2, 3}
+         );
+
+         given(ghostRunnerS3Client.uploadRunningCaptureImage(any(), anyString()))
+                 .willReturn("Mock ScreenShotImage Url");
+
+         // when // then
+         assertThatThrownBy(() ->
+                 runningCommandService.updateScreenShotImage("Fake Member Uuid", running.getId(), screenShotImage))
+                 .isInstanceOf(AccessDeniedException.class)
+                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
+     }
 
 }
