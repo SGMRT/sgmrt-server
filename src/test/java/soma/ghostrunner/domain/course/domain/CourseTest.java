@@ -43,7 +43,7 @@ class CourseTest {
         // given
         Coordinate coord = Coordinate.of(37d, 129d);
         CourseProfile profile = CourseProfile.of(180.0, 10.0, 10.0, 10.0);
-        CourseDataUrls urls = CourseDataUrls.of("route.url", "thumb.url");
+        CourseDataUrls urls = CourseDataUrls.of("route.url", "checkpoint.url", "thumb.url");
 
         // when
         Course course = Course.of(member, "Test Course", profile, coord, true, urls);

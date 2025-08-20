@@ -12,6 +12,8 @@ public class RunningDataUrlsDto {
     private String interpolatedTelemetryUrl;
     @Setter
     private String simplifiedPathSavedUrl;
+    @Setter
+    private String checkpointUrl;
     private String screenShotUrl;
 
 }
