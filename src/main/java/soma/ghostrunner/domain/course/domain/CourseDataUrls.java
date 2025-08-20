@@ -15,7 +15,7 @@ public class CourseDataUrls {
     @Column(name = "route_url")
     private String routeUrl;
 
-    @Column(name = "checkpoint_url")
+    @Column(name = "checkpoints_url")
     private String checkpointsUrl;
 
     @Column(name = "thumbnail_url")
