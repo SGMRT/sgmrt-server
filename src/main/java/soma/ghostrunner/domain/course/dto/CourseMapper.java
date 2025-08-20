@@ -21,6 +21,7 @@ public interface CourseMapper {
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
                     ": null)")
     @Mapping(source = "courseDataUrls.routeUrl", target = "routeUrl")
+    @Mapping(source = "courseDataUrls.checkpointsUrl", target = "checkpointsUrl")
     @Mapping(source = "courseDataUrls.thumbnailUrl", target = "thumbnailUrl")
     @Mapping(source = "courseProfile.elevationAverage", target = "elevationAverage")
     @Mapping(source = "courseProfile.elevationGain", target = "elevationGain")
@@ -35,6 +36,7 @@ public interface CourseMapper {
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
                     ": null)")
+    @Mapping(source = "course.courseDataUrls.checkpointsUrl", target = "checkpointsUrl")
     @Mapping(source = "course.courseProfile.elevationAverage", target = "elevationAverage")
     @Mapping(source = "course.courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "course.courseProfile.elevationLoss", target = "elevationLoss")

@@ -6,6 +6,7 @@ public record CourseDetailedResponse (
   Long id,
   String name,
   String telemetryUrl,
+  String checkpointsUrl,
   Integer distance,
   Integer elevationAverage,
   Integer elevationGain,
