@@ -59,7 +59,7 @@ class RunningServiceMapperTest {
 
     private ProcessedTelemetriesDto createProcessedTelemetriesDto(
             List<TelemetryDto> relativeTelemetries, CoordinateDto startPointCoordinateDto, List<CoordinateDto> coordinateDtos) {
-        return new ProcessedTelemetriesDto(relativeTelemetries, startPointCoordinateDto, 6.5, 5.2, 120.2, 120.2);
+        return new ProcessedTelemetriesDto(relativeTelemetries, startPointCoordinateDto, 6.5, 5.2, 120.2);
     }
 
     private List<CoordinateDto> createCoordinateDtos() {

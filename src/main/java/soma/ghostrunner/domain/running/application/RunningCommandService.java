@@ -97,7 +97,6 @@ public class RunningCommandService {
 
     private Running createAndSaveRunning(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry,
                                          RunningDataUrlsDto runningDataUrlsDto, Member member, Course course) {
-        command.subtractInitialElevation(processedTelemetry.initialElevation());
         return runningRepository.save(mapper.toRunning(command, processedTelemetry, runningDataUrlsDto, member, course));
     }
 

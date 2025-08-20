@@ -17,15 +17,4 @@ public class CreateRunCommand {
     private Boolean hasPaused;
     private Boolean isPublic;
 
-    public void subtractInitialElevation(Double initialElevation) {
-        BigDecimal currentElevationGain = BigDecimal.valueOf(this.getRecord().getElevationGain());
-        BigDecimal currentElevationLoss = BigDecimal.valueOf(this.getRecord().getElevationLoss());
-
-        BigDecimal relativeElevationGain = currentElevationGain.subtract(BigDecimal.valueOf(initialElevation));
-        BigDecimal relativeElevationLoss = currentElevationLoss.subtract(BigDecimal.valueOf(initialElevation));
-
-        this.record.setElevationGain(Double.valueOf(relativeElevationGain.toString()));
-        this.record.setElevationLoss(Double.valueOf(relativeElevationLoss.toString()));
-    }
-
 }

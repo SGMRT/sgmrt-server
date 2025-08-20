@@ -71,8 +71,7 @@ public class TelemetryProcessor {
                 new CoordinateDto(relativeTelemetries.get(0).getLat(), relativeTelemetries.get(0).getLng()),
                 highestPace,
                 lowestPace,
-                averageElevation.doubleValue(),
-                initialElevation.doubleValue()
+                averageElevation.doubleValue()
         );
     }
 
