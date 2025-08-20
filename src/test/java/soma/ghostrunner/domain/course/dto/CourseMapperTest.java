@@ -3,11 +3,7 @@ package soma.ghostrunner.domain.course.dto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
-import org.mockito.InjectMocks;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -234,7 +230,7 @@ class CourseMapperTest {
     }
 
     private CourseWithCoordinatesDto createCourseWithCoordinatesDto() {
-        return new CourseWithCoordinatesDto(1L, "Test Course", 37.0, 127.0, "route.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
+        return new CourseWithCoordinatesDto(1L, "Test Course", 37.0, 127.0, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
     }
 
     private CourseGhostResponse createCourseGhostResponse() {
