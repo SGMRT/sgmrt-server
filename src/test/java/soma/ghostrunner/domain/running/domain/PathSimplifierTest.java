@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
-import soma.ghostrunner.domain.running.application.CoordinateDtoWithTs;
+import soma.ghostrunner.domain.running.application.dto.CoordinateDtoWithTs;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 
 import java.io.BufferedReader;

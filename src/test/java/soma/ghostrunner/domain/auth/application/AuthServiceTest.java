@@ -18,7 +18,7 @@ import soma.ghostrunner.domain.member.dao.MemberRepository;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.dao.MemberAuthInfoRepository;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
-import soma.ghostrunner.domain.member.enums.Gender;
+import soma.ghostrunner.domain.member.domain.Gender;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 import soma.ghostrunner.global.security.jwt.factory.JwtTokenFactory;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;

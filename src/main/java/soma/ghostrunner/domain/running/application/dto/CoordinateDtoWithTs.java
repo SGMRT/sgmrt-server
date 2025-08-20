@@ -1,9 +1,7 @@
-package soma.ghostrunner.domain.running.application;
+package soma.ghostrunner.domain.running.application.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 
 import java.util.List;
 import java.util.stream.Collectors;

@@ -1,6 +1,6 @@
 package soma.ghostrunner.domain.running.domain;
 
-import soma.ghostrunner.domain.running.application.CoordinateDtoWithTs;
+import soma.ghostrunner.domain.running.application.dto.CoordinateDtoWithTs;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 
 import java.util.ArrayList;

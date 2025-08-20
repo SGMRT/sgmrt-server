@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.member.application;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +15,7 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
 import soma.ghostrunner.domain.member.domain.MemberSettings;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
-import soma.ghostrunner.domain.member.enums.Gender;
+import soma.ghostrunner.domain.member.domain.Gender;
 import soma.ghostrunner.domain.member.exception.InvalidMemberException;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
