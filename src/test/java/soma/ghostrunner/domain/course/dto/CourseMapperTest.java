@@ -36,13 +36,13 @@ class CourseMapperTest {
 
     @DisplayName("Course 엔티티를 CourseWithCoordinatesDto로 변환한다.")
     @Test
-    void toCourseWithCoordinateDto() {
+    void toCoursePreviewDto() {
         // given
         Member member = createMember();
         Course course = createCourse(member);
 
         // when
-        CourseWithCoordinatesDto dto = courseMapper.toCourseWithCoordinateDto(course);
+        CoursePreviewDto dto = courseMapper.toCoursePreviewDto(course);
 
         // then
         assertThat(dto.id()).isEqualTo(course.getId());
@@ -58,7 +58,7 @@ class CourseMapperTest {
     @Test
     void toCourseMapResponse() {
         // given
-        CourseWithCoordinatesDto courseDto = createCourseWithCoordinatesDto();
+        CoursePreviewDto courseDto = createCourseWithCoordinatesDto();
         List<CourseGhostResponse> ghosts = List.of(createCourseGhostResponse());
         long runnersCount = 1L;
 
@@ -229,8 +229,8 @@ class CourseMapperTest {
                 "interpolated-data.url", "screenshot.url", member, course);
     }
 
-    private CourseWithCoordinatesDto createCourseWithCoordinatesDto() {
-        return new CourseWithCoordinatesDto(1L, "Test Course", 37.0, 127.0, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
+    private CoursePreviewDto createCourseWithCoordinatesDto() {
+        return new CoursePreviewDto(1L, "Test Course", 37.0, 127.0, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
     }
 
     private CourseGhostResponse createCourseGhostResponse() {

@@ -26,10 +26,10 @@ public interface CourseMapper {
     @Mapping(source = "courseProfile.elevationAverage", target = "elevationAverage")
     @Mapping(source = "courseProfile.elevationGain", target = "elevationGain")
     @Mapping(source = "courseProfile.elevationLoss", target = "elevationLoss")
-    CourseWithCoordinatesDto toCourseWithCoordinateDto(Course course);
+    CoursePreviewDto toCoursePreviewDto(Course course);
 
     @Mapping(source = "ghosts", target = "runners")
-    CourseMapResponse toCourseMapResponse(CourseWithCoordinatesDto courseDto, List<CourseGhostResponse> ghosts,
+    CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts,
                                           long runnersCount);
 
     @Mapping(target = "distance",

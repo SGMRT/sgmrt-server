@@ -2,7 +2,7 @@ package soma.ghostrunner.domain.course.dto;
 
 import java.time.LocalDateTime;
 
-public record CourseWithCoordinatesDto(
+public record CoursePreviewDto(
     Long id,
     String name,
     Double startLat,
