@@ -56,11 +56,11 @@ public class Course extends BaseTimeEntity {
     public static Course of(Member member, Double distance,
                             Double elevationAverage, Double elevationGain, Double elevationLoss,
                             Double startLatitude, Double startLongitude,
-                            String pathDataSavedUrl, String thumbnailImageSavedUrl) {
+                            String pathDataSavedUrl, String checkpointsUrl, String thumbnailImageSavedUrl) {
 
         CourseProfile courseProfile = CourseProfile.of(distance, elevationAverage, elevationGain, elevationLoss);
         Coordinate startCoordinate = Coordinate.of(startLatitude, startLongitude);
-        CourseDataUrls courseDataUrls1 = CourseDataUrls.of(pathDataSavedUrl, thumbnailImageSavedUrl);
+        CourseDataUrls courseDataUrls1 = CourseDataUrls.of(pathDataSavedUrl, checkpointsUrl, thumbnailImageSavedUrl);
 
         return Course.builder()
                 .member(member)

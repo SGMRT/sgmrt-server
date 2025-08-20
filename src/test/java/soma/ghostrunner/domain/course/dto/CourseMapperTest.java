@@ -218,7 +218,7 @@ class CourseMapperTest {
     private Course createCourse(Member member) {
         CourseProfile profile = CourseProfile.of(5.0, 10.0, 100.0, 50.0);
         Coordinate coordinate = Coordinate.of(37d, 129d);
-        CourseDataUrls urls = CourseDataUrls.of("http://route.url", "http://thumbnail.url");
+        CourseDataUrls urls = CourseDataUrls.of("route.url", "checkpoint.url", "thumbnail.url");
 
         return Course.of(member, "Test Course", profile, coordinate, true, urls);
     }
