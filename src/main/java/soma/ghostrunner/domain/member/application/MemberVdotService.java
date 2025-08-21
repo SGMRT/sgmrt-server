@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
-import soma.ghostrunner.domain.member.dao.MemberVdotRepository;
+import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
 import soma.ghostrunner.domain.member.domain.VdotCalculator;

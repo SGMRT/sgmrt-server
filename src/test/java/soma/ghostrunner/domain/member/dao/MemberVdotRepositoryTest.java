@@ -7,6 +7,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
+import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
+import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 
 import static org.assertj.core.api.Assertions.*;
 

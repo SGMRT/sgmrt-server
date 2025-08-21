@@ -5,7 +5,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
-import soma.ghostrunner.domain.member.dao.MemberRepository;
+import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 
 class RunningTelemetryQueryServiceTest extends IntegrationTestSupport {
