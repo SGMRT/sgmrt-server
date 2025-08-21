@@ -3,11 +3,8 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.support.CoordinateConverter;
-import soma.ghostrunner.domain.running.application.support.TelemetryTypeConverter;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.error.exception.ExternalIOException;
 

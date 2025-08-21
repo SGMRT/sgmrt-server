@@ -17,6 +17,7 @@ import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
+import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
 import soma.ghostrunner.domain.running.infra.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -48,6 +49,9 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
 
     @MockitoBean
     private GhostRunnerS3Client ghostRunnerS3Client;
+
+    @MockitoBean
+    private TelemetryProcessor telemetryProcessor;
 
 //    @DisplayName("새로운 코스에 대한 러닝 기록을 생성한다.")
 //    @Test
@@ -445,60 +449,5 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
     }
-
-    @DisplayName("러닝 스크린샷 이미지를 업데이트한다.")
-    @Test
-    void saveRunningScreenShotImage() {
-        // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
-
-        Course course = createCourse(member);
-        courseRepository.save(course);
-
-        Running running = createRunning(member, course);
-        runningRepository.save(running);
-
-        MockMultipartFile screenShotImage = new MockMultipartFile(
-                "img", "capture.png", "image/png", new byte[]{1, 2, 3}
-        );
-
-        given(ghostRunnerS3Client.uploadRunningCaptureImage(any(), anyString()))
-                .willReturn("Mock ScreenShotImage Url");
-
-        // when
-        runningCommandService.updateScreenShotImage(member.getUuid(), running.getId(), screenShotImage);
-
-        // then
-        Running savedRunning = runningRepository.findById(running.getId()).get();
-        assertThat(savedRunning.getRunningDataUrls().getScreenShotUrl()).isEqualTo("Mock ScreenShotImage Url");
-     }
-
-     @DisplayName("자신의 러닝이 아니라면 예외를 발생시킨다.")
-     @Test
-     void throwAuthenticationExceptionWhenSaveNotMyRunningScreenShotImage() {
-         // given
-         Member member = createMember("테스트 유저");
-         memberRepository.save(member);
-
-         Course course = createCourse(member);
-         courseRepository.save(course);
-
-         Running running = createRunning(member, course);
-         runningRepository.save(running);
-
-         MockMultipartFile screenShotImage = new MockMultipartFile(
-                 "img", "capture.png", "image/png", new byte[]{1, 2, 3}
-         );
-
-         given(ghostRunnerS3Client.uploadRunningCaptureImage(any(), anyString()))
-                 .willReturn("Mock ScreenShotImage Url");
-
-         // when // then
-         assertThatThrownBy(() ->
-                 runningCommandService.updateScreenShotImage("Fake Member Uuid", running.getId(), screenShotImage))
-                 .isInstanceOf(AccessDeniedException.class)
-                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
-     }
 
 }

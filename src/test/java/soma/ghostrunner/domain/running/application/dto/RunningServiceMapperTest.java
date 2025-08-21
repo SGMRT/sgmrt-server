@@ -116,9 +116,12 @@ class RunningServiceMapperTest {
         ProcessedTelemetriesDto processedTelemetriesDto =
                 createProcessedTelemetriesDto(relativeTelemetries, startPointCoordinateDto, coordinateDtos);
 
-        // when
-        Course course = mapper.toCourse(member, createRunCommand, processedTelemetriesDto,
+        RunningDataUrlsDto runningDataUrlsDto = new RunningDataUrlsDto(
+                "RAW URL", "INTERPOLATED URL",
                 "PATH_DATA_URL", "CHECKPOINT_URL", "SCREEN_SHOT_URL");
+
+        // when
+        Course course = mapper.toCourse(member, createRunCommand, processedTelemetriesDto, runningDataUrlsDto);
 
         // then
         assertThat(course.getName()).isNull();
