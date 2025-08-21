@@ -35,4 +35,8 @@ public class MemberVdot {
                 .build();
     }
 
+    public void updateVdot(Integer vdot) {
+        this.vdot = vdot;
+    }
+
 }

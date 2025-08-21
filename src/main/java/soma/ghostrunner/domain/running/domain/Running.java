@@ -3,13 +3,20 @@ package soma.ghostrunner.domain.running.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SoftDelete;
+import org.springframework.data.domain.AfterDomainEventPublication;
+import org.springframework.data.domain.DomainEvents;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.error.ErrorCode;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 @Entity
@@ -55,6 +62,19 @@ public class Running extends BaseTimeEntity {
     @JoinColumn(name = "course_id")
     private Course course;
 
+    @Transient
+    private final List<Object> domainEvents = new ArrayList<>();
+
+    @DomainEvents
+    public Collection<Object> events() {
+        return Collections.unmodifiableList(domainEvents);
+    }
+
+    @AfterDomainEventPublication
+    public void clearEvents() {
+        this.domainEvents.clear();
+    }
+
     @Builder(access = AccessLevel.PRIVATE)
     private Running(String runningName, RunningMode runningMode, Long ghostRunningId,
                     RunningRecord runningRecord, Long startedAt, boolean isPublic, boolean hasPaused,
@@ -69,6 +89,7 @@ public class Running extends BaseTimeEntity {
         this.runningDataUrls = runningDataUrls;
         this.member = member;
         this.course = course;
+        this.domainEvents.add(new RunFinishedEvent(this.member.getUuid(), this.runningRecord.getAveragePace()));
     }
 
     public static Running of(String runningName, RunningMode runningMode, Long ghostRunningId,
@@ -142,6 +163,12 @@ public class Running extends BaseTimeEntity {
 
     public void updateScreenShotUrl(String screenShotUrl) {
         this.getRunningDataUrls().updateScreenShotUrl(screenShotUrl);
+    }
+
+    public static double calculateOneMilePace(double averagePace) {
+        BigDecimal bigDecimalAveragePace = BigDecimal.valueOf(averagePace);
+        BigDecimal oneMilePace = bigDecimalAveragePace.multiply(BigDecimal.valueOf(1.6));
+        return oneMilePace.doubleValue();
     }
 
 }

@@ -159,6 +159,13 @@ class RunningTest {
 
         // then
         assertThat(running.getRunningDataUrls().getScreenShotUrl()).isEqualTo(screenShotUrl);
-     }
+    }
+
+    @DisplayName("1마일 페이스를 계산한다.")
+    @Test
+    void calculateOneMilePace() {
+        // when // then
+        assertThat(Running.calculateOneMilePace(6.0)).isEqualTo(9.6);
+    }
   
 }

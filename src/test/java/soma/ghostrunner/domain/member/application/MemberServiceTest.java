@@ -20,6 +20,7 @@ import soma.ghostrunner.domain.member.exception.InvalidMemberException;
 import soma.ghostrunner.domain.running.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.domain.running.domain.RunningRecord;
 
 import java.util.List;
 import java.util.Set;
@@ -247,10 +248,16 @@ class MemberServiceTest extends IntegrationTestSupport {
     }
 
     private Running createRunning(String name, Member member) {
-        return Running.of("name", RunningMode.SOLO, null, null,
+        return Running.of("name", RunningMode.SOLO, null, createRunningRecord(),
                 System.currentTimeMillis(), true, false,
                 "telemetry-url", "telemetry-url", "telemetry-url",
                 member, null);
+    }
+
+    private RunningRecord createRunningRecord() {
+        return RunningRecord.of(
+                5.2, 40.0, 30.0, -20.0,
+                6.1, 3423.2, 302.2, 120L, 56, 100, 120);
     }
 
     private TermsAgreement createTermsAgreement() {
