@@ -1,6 +1,6 @@
 package soma.ghostrunner.domain.member.api.dto.response;
 
-import soma.ghostrunner.domain.member.enums.Gender;
+import soma.ghostrunner.domain.member.domain.Gender;
 
 public record MemberResponse (
         String uuid,

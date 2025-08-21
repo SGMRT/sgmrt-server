@@ -10,7 +10,7 @@ import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
 import soma.ghostrunner.domain.member.dao.MemberSettingsRepository;
 import soma.ghostrunner.domain.member.domain.*;
-import soma.ghostrunner.domain.member.enums.Gender;
+import soma.ghostrunner.domain.member.domain.Gender;
 import soma.ghostrunner.domain.member.exception.InvalidMemberException;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.dao.MemberRepository;
