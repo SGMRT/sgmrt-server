@@ -33,6 +33,7 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
                 course.id,
                 course.name,
                 Expressions.nullExpression(String.class), // course join running에서는 group by가 이뤄지므로 telemetry url을 조회할 수 없음 (새로운 쿼리 필요)
+                course.courseDataUrls.checkpointsUrl,
                 course.courseProfile.distance.castToNum(Integer.class),
                 course.courseProfile.elevationAverage.castToNum(Integer.class),
                 course.courseProfile.elevationGain.castToNum(Integer.class),
