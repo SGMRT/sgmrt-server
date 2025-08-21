@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,13 +17,16 @@ import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.TelemetryCalculationException;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+@SpringBootTest
 class TelemetryProcessorTest {
+
+    @Autowired
+    TelemetryProcessor telemetryProcessor;
 
     @DisplayName(".jsonl Multipart 파일을 역직렬화 후 상대 시간 변환, 좌표 수집, 최고 / 최저 속도, 평균 고도를 계산한다.")
     @Test
@@ -32,7 +37,7 @@ class TelemetryProcessorTest {
         MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
 
         // when
-        ProcessedTelemetriesDto processedTelemetry = TelemetryProcessor.process(multipartTelemetryList, startedAt);
+        ProcessedTelemetriesDto processedTelemetry = telemetryProcessor.process(multipartTelemetryList, startedAt);
 
         // then
         for (int i = 0; i < telemetryList.size(); i++) {
@@ -58,7 +63,7 @@ class TelemetryProcessorTest {
         MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList, startedAt))
+        Assertions.assertThatThrownBy(() -> telemetryProcessor.process(multipartTelemetryList, startedAt))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Telemetry data is empty.");
     }
@@ -109,7 +114,7 @@ class TelemetryProcessorTest {
         MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList, startedAt))
+        Assertions.assertThatThrownBy(() -> telemetryProcessor.process(multipartTelemetryList, startedAt))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("마이너스 값이 포함되어 있습니다.");
     }
@@ -143,7 +148,7 @@ class TelemetryProcessorTest {
         MultipartFile multipartTelemetryList = createInvalidTelemetryJsonlFile(invalidTelemetryDtos);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> TelemetryProcessor.process(multipartTelemetryList, startedAt))
+        Assertions.assertThatThrownBy(() -> telemetryProcessor.process(multipartTelemetryList, startedAt))
                 .isInstanceOf(TelemetryCalculationException.class)
                 .hasMessage("시계열 좌표를 가공하는 중 에러가 발생했습니다.");
     }

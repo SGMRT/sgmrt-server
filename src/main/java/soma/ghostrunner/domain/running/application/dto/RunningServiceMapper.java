@@ -62,8 +62,7 @@ public interface RunningServiceMapper {
     default Course toCourse(Member member,
                             CreateRunCommand createRunCommand,
                             ProcessedTelemetriesDto processedTelemetry,
-                            String pathDataSavedUrl, String checkpointUrl,
-                            String thumbnailImageUrl) {
+                            RunningDataUrlsDto runningDataUrlsDto) {
 
         Double distance = createRunCommand.getRecord().getDistance();
         Double elevationAverage = processedTelemetry.avgElevation();
@@ -71,6 +70,10 @@ public interface RunningServiceMapper {
         Double elevationLoss = createRunCommand.getRecord().getElevationLoss();
         Double startLat = processedTelemetry.startPoint().lat();
         Double startLng = processedTelemetry.startPoint().lng();
+
+        String pathDataSavedUrl = runningDataUrlsDto.getSimplifiedPathSavedUrl();
+        String checkpointUrl = runningDataUrlsDto.getCheckpointUrl();
+        String thumbnailImageUrl = runningDataUrlsDto.getScreenShotUrl();
 
         return Course.of(
                 member,
@@ -89,7 +92,5 @@ public interface RunningServiceMapper {
     @Mapping(source = "running.id", target = "runningId")
     @Mapping(source = "course.id", target = "courseId")
     CreateCourseAndRunResponse toResponse(Running running, Course course);
-
-    CoordinateDto toCoordinateDto(CoordinateDtoWithTs coordinateDtoWithTs);
   
 }

@@ -48,7 +48,7 @@ public class RunningApi {
         validateTelemetryFiles(rawTelemetry, interpolatedTelemetry);
         validateScreenShotImage(screenShotImage);
         String memberUuid = userDetails.getUserId();
-        return runningCommandService.createCourseAndRun(
+        return runningCommandService.createRunAndCourse(
                 mapper.toCommand(req), memberUuid, rawTelemetry, interpolatedTelemetry, screenShotImage);
     }
 

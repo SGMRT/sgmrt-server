@@ -1,6 +1,7 @@
 package soma.ghostrunner.domain.running.application.support;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
@@ -16,11 +17,12 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+@Component
 public class TelemetryProcessor {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public static ProcessedTelemetriesDto process(MultipartFile interpolatedTelemetry, Long startedAt) {
+    public ProcessedTelemetriesDto process(MultipartFile interpolatedTelemetry, Long startedAt) {
 
         List<TelemetryDto> relativeTelemetries = new ArrayList<>();
 
@@ -75,7 +77,7 @@ public class TelemetryProcessor {
         );
     }
 
-    private static void verifyMinusValue(TelemetryDto telemetryDto) {
+    private void verifyMinusValue(TelemetryDto telemetryDto) {
         if (telemetryDto.getPace() < 0 || telemetryDto.getBpm() < 0
                 || telemetryDto.getCadence() < 0 || telemetryDto.getDist() < 0) {
             throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "마이너스 값이 포함되어 있습니다.");
