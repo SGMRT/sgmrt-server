@@ -22,7 +22,7 @@ class CourseTest {
     void createCourse_Success() {
         // when
         Course course = Course.of(member, 180.0, 10.0, 10.0, 10.0,
-                37d, 129d, "route.url", "thumb.url");
+                37d, 129d, "route.url", "checkpoint.url", "thumb.url");
 
         // then
         assertThat(course).isNotNull();
@@ -91,6 +91,6 @@ class CourseTest {
     }
 
     private Course createDefaultCourse() {
-        return Course.of(member, 5.0, 10.0, 100.0, -50.0, 37.123, 127.123, "route.url", "thumb.url");
+        return Course.of(member, 5.0, 10.0, 100.0, -50.0, 37.123, 127.123, "route.url", "checkpoint.url", "thumb.url");
     }
 }

@@ -81,7 +81,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Course course = Course.of(testMember, testCourseProfile.getDistance(),
                 testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
                 testCoordinate.getLatitude(), testCoordinate.getLongitude(),
-                "Mock URL", "Mock URL");
+                "Mock URL", "Mock URL", "Mock URL");
         course.setName(courseName);
         course.setIsPublic(true);
         return course;
@@ -137,7 +137,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Course course = Course.of(testMember, testCourseProfile.getDistance(),
                 testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
                 testCoordinate.getLatitude(), testCoordinate.getLongitude(),
-                "Mock URL", "Mock URL");
+                "Mock URL", "Mock URL", "Mock URL");
         course.setName(courseName);
         return course;
     }
@@ -323,7 +323,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         Course course = Course.of(testMember, testCourseProfile.getDistance(),
                 testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
                 testCoordinate.getLatitude(), testCoordinate.getLongitude(),
-                "Mock URL", "Mock URL");
+                "Mock URL", "Mock URL", "Mock URL");
         course.setIsPublic(true);
         return course;
     }

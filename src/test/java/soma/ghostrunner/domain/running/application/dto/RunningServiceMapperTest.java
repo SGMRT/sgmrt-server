@@ -40,7 +40,7 @@ class RunningServiceMapperTest {
                 createRunCommand, processedTelemetriesDto,
                 new RunningDataUrlsDto(
                         "RAW URL", "INTERPOLATED URL",
-                        "SIMPLIFIED URL", "SCREEN SHOT URL"), member, course);
+                        "SIMPLIFIED URL", "CHECKPOINT URL", "SCREEN SHOT URL"), member, course);
 
         // then
         assertThat(running.getRunningName()).isEqualTo(createRunCommand.getRunningName());
@@ -95,7 +95,7 @@ class RunningServiceMapperTest {
         return Course.of(member, 5.6,
                 110.0, 110.0, 120.0,
                 37.2, 37.3,
-                "PATH_DATA_URL", "PATH_DATA_URL");
+                "PATH_DATA_URL", "CHECKPOINT_URL", "PATH_DATA_URL");
     }
 
     private Member createMember() {
@@ -118,7 +118,7 @@ class RunningServiceMapperTest {
 
         // when
         Course course = mapper.toCourse(member, createRunCommand, processedTelemetriesDto,
-                "PATH_DATA_URL", "SCREEN_SHOT_URL");
+                "PATH_DATA_URL", "CHECKPOINT_URL", "SCREEN_SHOT_URL");
 
         // then
         assertThat(course.getName()).isNull();

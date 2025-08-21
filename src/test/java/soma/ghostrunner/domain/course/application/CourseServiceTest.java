@@ -240,7 +240,7 @@ class CourseServiceTest extends IntegrationTestSupport {
     }
 
     private Course createCourse(String name, Member member, double lat, double lng, CourseProfile courseProfile, boolean isPublic) {
-        Course course = Course.of(member, 0d, 0d, 0d, 0d, lat, lng, "url", "url");
+        Course course = Course.of(member, 0d, 0d, 0d, 0d, lat, lng, "url", "url", "url");
         course.setName(name);
         course.setIsPublic(isPublic);
         return course;
