@@ -17,7 +17,7 @@ import soma.ghostrunner.domain.member.domain.MemberSettings;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.domain.member.domain.Gender;
 import soma.ghostrunner.domain.member.exception.InvalidMemberException;
-import soma.ghostrunner.domain.running.dao.RunningRepository;
+import soma.ghostrunner.domain.running.infra.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;

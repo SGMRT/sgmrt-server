@@ -7,18 +7,16 @@ import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseDataUrls;
 import soma.ghostrunner.domain.running.application.dto.*;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
-import soma.ghostrunner.domain.running.dao.RunningRepository;
+import soma.ghostrunner.domain.running.infra.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.PathSimplifier;
 import soma.ghostrunner.domain.running.domain.Running;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service

@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.dao;
+package soma.ghostrunner.domain.running.infra.dao;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
