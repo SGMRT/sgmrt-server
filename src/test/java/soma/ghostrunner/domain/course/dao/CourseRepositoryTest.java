@@ -174,7 +174,7 @@ class CourseRepositoryTest extends IntegrationTestSupport {
     }
 
     private Course createCourse(Member member, String name, boolean isPublic, double lat, double lng, double distance, double elevation) {
-        Course course = Course.of(member, distance / 1000.0, 0.0, elevation, 0.0, lat, lng, "route.url", "thumb.url");
+        Course course = Course.of(member, distance / 1000.0, 0.0, elevation, 0.0, lat, lng, "route.url", "checkpoint.url", "thumb.url");
         course.setName(name);
         course.setIsPublic(isPublic);
         return course;

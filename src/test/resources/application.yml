@@ -21,6 +21,7 @@ s3:
   bucket: ghostrunner-test-bucket
   running-directory: running
   course-directory: course
+  course-checkpoint-directory: course-checkpoint
   member-directory: member
 
 jwt:
