@@ -1,7 +1,9 @@
 package soma.ghostrunner.domain.running.domain;
 
 import soma.ghostrunner.domain.running.application.dto.CoordinateDtoWithTs;
+import soma.ghostrunner.domain.running.application.dto.CheckpointDto;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -148,6 +150,56 @@ public class PathSimplifier {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         return R * c;
     }
+
+    /** checkpoint 각 점마다, 다음 점으로 이동할 때의 각도 차이인 angle 필드를 추가하여 반환 */
+    public static List<CheckpointDto> calculateAngles(List<CoordinateDto> checkpoints) {
+        if (checkpoints == null || checkpoints.size() < 2) {
+            return new ArrayList<>();
+        }
+
+        List<CheckpointDto> result = new ArrayList<>();
+
+        // 첫 체크포인트의 angle은 0으로 설정 (전방으로 향함)
+        result.add(new CheckpointDto(checkpoints.get(0).lat(), checkpoints.get(0).lng(), 0));
+
+        // 중간 체크포인트 angle 계산
+        for (int i = 1; i < checkpoints.size() - 1; i++) {
+            CoordinateDto prev = checkpoints.get(i - 1);
+            CoordinateDto current = checkpoints.get(i);
+            CoordinateDto next = checkpoints.get(i + 1);
+
+            // 이전 벡터와 현재 벡터의 방위각을 각각 계산하여 차이를 구함
+            double bearing1 = calculateBearing(prev, current);
+            double bearing2 = calculateBearing(current, next);
+
+            double relativeAngle = (bearing2 - bearing1 + 360) % 360;
+
+            result.add(new CheckpointDto(current.lat(), current.lng(), (int) relativeAngle));
+        }
+
+        // 마지막 체크포인트 angle은 null로 설정
+        int lastIndex = checkpoints.size() - 1;
+        result.add(new CheckpointDto(checkpoints.get(lastIndex).lat(), checkpoints.get(lastIndex).lng(), null));
+
+        return result;
+    }
+
+    /** 두 점을 이은 벡터의 방위각을 계산 */
+    private static double calculateBearing(CoordinateDto start, CoordinateDto end) {
+        double startLat = Math.toRadians(start.lat());
+        double startLng = Math.toRadians(start.lng());
+        double endLat = Math.toRadians(end.lat());
+        double endLng = Math.toRadians(end.lng());
+
+        double dLng = endLng - startLng;
+
+        double y = Math.sin(dLng) * Math.cos(endLat);
+        double x = Math.cos(startLat) * Math.sin(endLat) - Math.sin(startLat) * Math.cos(endLat) * Math.cos(dLng);
+
+        // atan2의 결과(= 라디안)를 각도로 변환
+        return (Math.toDegrees(Math.atan2(y, x)) + 360) % 360;
+    }
+
 
     private record Vec2(double x, double y) {
         Vec2 minus(Vec2 o) { return new Vec2(x - o.x, y - o.y); }

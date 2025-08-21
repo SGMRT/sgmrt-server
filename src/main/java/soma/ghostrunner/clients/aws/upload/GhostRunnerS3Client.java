@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import soma.ghostrunner.domain.running.application.dto.CheckpointDto;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.global.error.ErrorCode;
@@ -37,6 +38,9 @@ public class GhostRunnerS3Client {
     @Value("${s3.course-directory}")
     private String courseDirectory;
 
+    @Value("${s3.course-checkpoint-directory}")
+    private String courseCheckpointDirectory;
+
     @Value("${s3.member-directory}")
     private String memberDirectory;
 
@@ -46,6 +50,10 @@ public class GhostRunnerS3Client {
 
     public String uploadSimplifiedTelemetry(List<CoordinateDto> coordinateDtos, String memberUuid) {
         return uploadObjectList(coordinateDtos, courseDirectory, memberUuid);
+    }
+
+    public String uploadCourseCheckpoint(List<CheckpointDto> checkpointDtos, String memberUuid) {
+        return uploadObjectList(checkpointDtos, courseCheckpointDirectory, memberUuid);
     }
 
     private String uploadObjectList(List<?> objectList, String directory, String memberUuid) {

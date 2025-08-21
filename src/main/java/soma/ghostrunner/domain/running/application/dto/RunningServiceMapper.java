@@ -62,7 +62,7 @@ public interface RunningServiceMapper {
     default Course toCourse(Member member,
                             CreateRunCommand createRunCommand,
                             ProcessedTelemetriesDto processedTelemetry,
-                            String pathDataSavedUrl,
+                            String pathDataSavedUrl, String checkpointUrl,
                             String thumbnailImageUrl) {
 
         Double distance = createRunCommand.getRecord().getDistance();
@@ -81,6 +81,7 @@ public interface RunningServiceMapper {
                 startLat,
                 startLng,
                 pathDataSavedUrl,
+                checkpointUrl,
                 thumbnailImageUrl
         );
     }

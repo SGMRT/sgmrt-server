@@ -12,6 +12,7 @@ public record CourseMapResponse(
         Double startLat,
         Double startLng,
         String routeUrl,
+        String checkpointsUrl,
         String thumbnailUrl,
         Integer distance,
         Integer elevationAverage,
