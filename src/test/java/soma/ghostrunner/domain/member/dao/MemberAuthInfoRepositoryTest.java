@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
+import soma.ghostrunner.domain.member.infra.dao.MemberAuthInfoRepository;
+import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 
 import java.util.Optional;
 

@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.dao;
+package soma.ghostrunner.domain.running.infra.dao;
 
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;

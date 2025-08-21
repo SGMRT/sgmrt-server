@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.dao;
+package soma.ghostrunner.domain.running.infra.dao;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.Projections;

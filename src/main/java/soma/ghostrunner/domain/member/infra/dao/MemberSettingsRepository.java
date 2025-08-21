@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.member.dao;
+package soma.ghostrunner.domain.member.infra.dao;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import soma.ghostrunner.domain.member.domain.MemberSettings;
