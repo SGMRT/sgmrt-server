@@ -36,8 +36,8 @@ public abstract class IntegrationTestSupport {
         registry.add("spring.datasource.username", MYSQL_CONTAINER::getUsername);
 
         // Redis
-        registry.add("spring.data.redis.host", REDIS_CONTAINER::getHost);
-        registry.add("spring.data.redis.port", () -> REDIS_CONTAINER.getMappedPort(6379).toString());
+        registry.add("spring.redis.host", REDIS_CONTAINER::getHost);
+        registry.add("spring.redis.port", () -> REDIS_CONTAINER.getMappedPort(6379).toString());
     }
 
 }
