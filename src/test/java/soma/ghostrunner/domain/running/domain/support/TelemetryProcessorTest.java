@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
@@ -23,7 +24,7 @@ import java.util.List;
 import java.util.Random;
 
 @SpringBootTest
-class TelemetryProcessorTest {
+class TelemetryProcessorTest extends IntegrationTestSupport {
 
     @Autowired
     TelemetryProcessor telemetryProcessor;

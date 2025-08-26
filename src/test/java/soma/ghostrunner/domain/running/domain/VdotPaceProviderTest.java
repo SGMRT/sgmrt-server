@@ -4,11 +4,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import soma.ghostrunner.IntegrationTestSupport;
 
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest
-class VdotPaceProviderTest {
+class VdotPaceProviderTest extends IntegrationTestSupport {
 
     @Autowired
     private VdotPaceProvider vdotPaceProvider;
