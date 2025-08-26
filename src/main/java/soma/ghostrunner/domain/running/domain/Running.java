@@ -75,6 +75,15 @@ public class Running extends BaseTimeEntity {
         this.domainEvents.clear();
     }
 
+    @PostPersist
+    private void onPersisted() {
+        domainEvents.add(new RunFinishedEvent(
+                id,
+                member.getUuid(),
+                runningRecord.getAveragePace()
+        ));
+    }
+
     @Builder(access = AccessLevel.PRIVATE)
     private Running(String runningName, RunningMode runningMode, Long ghostRunningId,
                     RunningRecord runningRecord, Long startedAt, boolean isPublic, boolean hasPaused,
@@ -89,7 +98,6 @@ public class Running extends BaseTimeEntity {
         this.runningDataUrls = runningDataUrls;
         this.member = member;
         this.course = course;
-        this.domainEvents.add(new RunFinishedEvent(this.member.getUuid(), this.runningRecord.getAveragePace()));
     }
 
     public static Running of(String runningName, RunningMode runningMode, Long ghostRunningId,

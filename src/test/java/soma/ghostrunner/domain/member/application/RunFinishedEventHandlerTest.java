@@ -19,7 +19,7 @@ import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class MemberVdotServiceTest {
+class RunFinishedEventHandlerTest {
 
     @Mock
     private MemberService memberService;
@@ -31,14 +31,14 @@ class MemberVdotServiceTest {
     private MemberMapper mapper;
 
     @InjectMocks
-    private MemberVdotService memberVdotService;
+    private RunFinishedEventHandler runFinishedEventHandler;
 
     @DisplayName("VDOT가 기존에 없다면 새롭게 VDOT가 저장된다.")
     @Test
     void handleRunFinishedAndSaveNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(memberUuid, 6.0);
+        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0);
 
         Member mockMember = mock(Member.class);
 
@@ -51,7 +51,7 @@ class MemberVdotServiceTest {
         given(mapper.toMemberVdot(mockMember, 50)).willReturn(mapped);
 
         // when
-        memberVdotService.handleRunFinished(event);
+        runFinishedEventHandler.handleRunFinished(event);
 
         // then
         verify(memberVdotRepository, times(1)).save(mapped);
@@ -62,7 +62,7 @@ class MemberVdotServiceTest {
     void handleRunFinishedAndUpdateNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(memberUuid, 6.0);
+        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0);
 
         Member mockMember = mock(Member.class);
         MemberVdot mockMemberVdot = mock(MemberVdot.class);
@@ -72,7 +72,7 @@ class MemberVdotServiceTest {
         given(memberVdotRepository.findByMemberId(mockMember.getId())).willReturn(Optional.of(mockMemberVdot));
 
         // when
-        memberVdotService.handleRunFinished(event);
+        runFinishedEventHandler.handleRunFinished(event);
 
         // then
         verify(mockMemberVdot, times(1)).updateVdot(50);
