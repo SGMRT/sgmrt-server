@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.member.application;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,15 +8,8 @@ import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
-import soma.ghostrunner.domain.member.infra.dao.MemberAuthInfoRepository;
-import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.member.infra.dao.MemberSettingsRepository;
-import soma.ghostrunner.domain.member.infra.dao.TermsAgreementRepository;
-import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
-import soma.ghostrunner.domain.member.domain.MemberSettings;
-import soma.ghostrunner.domain.member.domain.TermsAgreement;
-import soma.ghostrunner.domain.member.domain.Gender;
+import soma.ghostrunner.domain.member.domain.*;
+import soma.ghostrunner.domain.member.infra.dao.*;
 import soma.ghostrunner.domain.member.exception.InvalidMemberException;
 import soma.ghostrunner.domain.running.infra.dao.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -38,6 +32,7 @@ class MemberServiceTest extends IntegrationTestSupport {
     @Autowired TermsAgreementRepository termsAgreementRepository;
     @Autowired RunningRepository runningRepository;
     @Autowired CourseRepository courseRepository;
+    @Autowired MemberVdotRepository memberVdotRepository;
 
     @DisplayName("회원가입 성공 시 입력한 정보대로 회원을 저장한다.")
     @Test
@@ -262,6 +257,23 @@ class MemberServiceTest extends IntegrationTestSupport {
 
     private TermsAgreement createTermsAgreement() {
         return TermsAgreement.createIfAllMandatoryTermsAgreed(true, true, true, true, true, null);
+    }
+
+    @DisplayName("멤버의 VDOT를 조회한다.")
+    @Test
+    void findMemberVdot() {
+        // given
+        Member member = createMember("카리나");
+        memberRepository.save(member);
+
+        MemberVdot memberVdot = new MemberVdot(25, member);
+        memberVdotRepository.save(memberVdot);
+
+        // when
+        MemberVdot savedMemberVdot = memberService.findMemberVdot(member);
+
+        // then
+        Assertions.assertThat(savedMemberVdot.getVdot()).isEqualTo(memberVdot.getVdot());
     }
 
 }

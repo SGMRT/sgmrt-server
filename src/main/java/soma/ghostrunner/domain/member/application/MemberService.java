@@ -8,15 +8,12 @@ import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
-import soma.ghostrunner.domain.member.infra.dao.MemberSettingsRepository;
+import soma.ghostrunner.domain.member.infra.dao.*;
 import soma.ghostrunner.domain.member.domain.*;
 import soma.ghostrunner.domain.member.domain.Gender;
 import soma.ghostrunner.domain.member.exception.InvalidMemberException;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
-import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
-import soma.ghostrunner.domain.member.infra.dao.MemberAuthInfoRepository;
-import soma.ghostrunner.domain.member.infra.dao.TermsAgreementRepository;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.global.error.ErrorCode;
@@ -36,6 +33,7 @@ public class MemberService {
     private final TermsAgreementRepository termsAgreementRepository;
     private final MemberAuthInfoRepository memberAuthInfoRepository;
     private final MemberSettingsRepository memberSettingsRepository;
+    private final MemberVdotRepository memberVdotRepository;
 
     @Transactional(readOnly = true)
     public Member findMemberByUuid(String uuid) {
@@ -212,6 +210,12 @@ public class MemberService {
     public void removeAccount(String memberUuid) {
         if(!memberRepository.existsByUuid(memberUuid)) throw new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, memberUuid);
         memberRepository.deleteByUuid(memberUuid);
+    }
+
+    @Transactional(readOnly = true)
+    public MemberVdot findMemberVdot(Member member) {
+        return memberVdotRepository.findByMemberId(member.getId())
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find memberId: " + member.getId()));
     }
 
 }
