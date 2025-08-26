@@ -45,7 +45,6 @@ public class PaceMakerService {
     private static final String KEY_EXPIRATION_TIME_SECONDS = String.valueOf(86400);
 
     public void createPaceMaker(String memberUuid, LocalDate localDate) throws InterruptedException {
-
         // 사용자 & VDOT
         Member member = memberService.findMemberByUuid(memberUuid);
         MemberVdot memberVdot = memberService.findMemberVdot(member);
@@ -65,7 +64,6 @@ public class PaceMakerService {
         } finally {
             lock.unlock();
         }
-
     }
 
     private void verifyLockAlreadyGotten(String memberUuid, boolean isLocked) {
@@ -76,7 +74,6 @@ public class PaceMakerService {
     }
 
     private void handleApiRateLimit(String memberUuid, LocalDate localDate) {
-
         String rateLimitKey = "ratelimit:" + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
         Long currentCount = redisTemplate.execute(
