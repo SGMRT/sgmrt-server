@@ -6,8 +6,11 @@ import org.redisson.api.RedissonClient;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
@@ -16,6 +19,7 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static soma.ghostrunner.global.error.ErrorCode.*;
@@ -29,14 +33,20 @@ public class PaceMakerService {
     private final DefaultRedisScript<Long> rateLimiterScript;
     private final MemberService memberService;
 
+    private final RestTemplate restTemplate;
+    private final String MOCK_API_URL = "http://0.0.0.0:3000/llm-test";
+    private final WebClient webClient;
+
     public PaceMakerService(RedissonClient redissonClient, RedisTemplate<String, String> redisTemplate,
-                            MemberService memberService) {
+                            MemberService memberService, RestTemplate restTemplate, WebClient webClient) {
         this.redissonClient = redissonClient;
         this.redisTemplate = redisTemplate;
         this.rateLimiterScript = new DefaultRedisScript<>();
         this.rateLimiterScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("rate-limiter.lua")));
         this.rateLimiterScript.setResultType(Long.class);
         this.memberService = memberService;
+        this.restTemplate = restTemplate;
+        this.webClient = webClient;
     }
 
     private static final long LOCK_WAIT_TIME_SECONDS = 0;
@@ -96,6 +106,41 @@ public class PaceMakerService {
 
     private void handleLlmApiRequest(String memberUuid) throws InterruptedException {
         Thread.sleep(1000);
+    }
+
+    public String callSync() {
+        log.info("동기 호출 시작: {}", Thread.currentThread().getName());
+        String result = restTemplate.getForObject(MOCK_API_URL, String.class);
+        log.info("동기 호출 완료: {}", Thread.currentThread().getName());
+        return result;
+    }
+
+    @Async
+    public CompletableFuture<String> callAsync(Long startTime) {
+        log.info("비동기 호출 시작: {}", Thread.currentThread().getName());
+        String response = restTemplate.getForObject(MOCK_API_URL, String.class);
+        log.info("비동기 호출 완료: {}", Thread.currentThread().getName());
+        log.info("비동기 응답시간 : {}", System.currentTimeMillis() - startTime);
+        return CompletableFuture.completedFuture(response);
+    }
+
+    public void callMockApiNonBlocking(Long startTime) {
+        webClient.get()
+                .uri("/llm-test")
+                .retrieve()
+                .bodyToMono(String.class)
+                .subscribe(
+                        // onNext: 응답이 성공적으로 왔을 때 실행될 로직
+                        response -> {
+                            log.info("논블로킹 호출 완료: {}", Thread.currentThread().getName());
+                            log.info("논블로킹 응답시간 : {}", System.currentTimeMillis() - startTime);
+                        },
+                        // onError: 오류가 발생했을 때 실행될 로직
+                        error -> {
+                            log.info("논블로킹 호출 실패: {}", Thread.currentThread().getName());
+                            log.info("논블로킹 응답시간 : {}", System.currentTimeMillis() - startTime);
+                        }
+                );
     }
 
 }

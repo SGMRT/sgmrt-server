@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.DeleteRunningRequest;
 import soma.ghostrunner.domain.running.api.dto.request.UpdateRunNameRequest;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
+import soma.ghostrunner.domain.running.application.PaceMakerService;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
@@ -32,7 +33,8 @@ public class RunningApi {
     private final RunningQueryService runningQueryService;
     private final RunningCommandService runningCommandService;
     private final RunningApiMapper mapper;
-  
+    private final PaceMakerService paceMakerService;
+
     @GetMapping("/")
     public String hello() {
         return "Hello World";
@@ -149,6 +151,23 @@ public class RunningApi {
                 cursorStartedAt,
                 cursorCourseName,
                 cursorRunningId, memberUuid);
+    }
+
+    @GetMapping("/test/sync")
+    public String syncTest() {
+        return paceMakerService.callSync();
+    }
+
+    @GetMapping("/test/async")
+    public String asyncTest() {
+        paceMakerService.callAsync(System.currentTimeMillis());
+        return "비동기 요청 후 바로 리턴";
+    }
+
+    @GetMapping("/test/non-blocking")
+    public String nonBlockingTest() {
+        paceMakerService.callMockApiNonBlocking(System.currentTimeMillis());
+        return "논블로킹 요청 후 바로 리턴";
     }
 
 }
