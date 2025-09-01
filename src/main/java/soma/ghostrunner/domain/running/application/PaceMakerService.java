@@ -62,7 +62,7 @@ public class PaceMakerService {
         // 러닝 목적 -> 러닝 유형
         // VDOT + 러닝 유형 + 목표 거리 -> 훈련표
 
-        // 분산락
+        // Lock
         String lockKey = "pacemaker_api_lock:" + memberUuid;
         RLock lock = redissonClient.getLock(lockKey);
 

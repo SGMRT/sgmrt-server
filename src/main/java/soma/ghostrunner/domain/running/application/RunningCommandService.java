@@ -13,7 +13,7 @@ import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.support.RunningDataUploader;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
-import soma.ghostrunner.domain.running.infra.dao.RunningRepository;
+import soma.ghostrunner.domain.running.infra.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
