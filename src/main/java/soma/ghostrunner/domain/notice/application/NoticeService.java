@@ -1,0 +1,150 @@
+package soma.ghostrunner.domain.notice.application;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
+import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.notice.api.dto.*;
+import soma.ghostrunner.domain.notice.api.dto.request.NoticeCreationRequest;
+import soma.ghostrunner.domain.notice.api.dto.request.NoticeDismissRequest;
+import soma.ghostrunner.domain.notice.api.dto.request.NoticeUpdateRequest;
+import soma.ghostrunner.domain.notice.api.dto.response.NoticeDetailedResponse;
+import soma.ghostrunner.domain.notice.dao.NoticeDismissalRepository;
+import soma.ghostrunner.domain.notice.dao.NoticeRepository;
+import soma.ghostrunner.domain.notice.domain.Notice;
+import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class NoticeService {
+
+    private final MemberService memberService;
+    private final GhostRunnerS3Client s3Client;
+    private final NoticeRepository noticeRepository;
+    private final NoticeDismissalRepository noticeDismissalRepository;
+    private final NoticeMapper noticeMapper;
+
+    @Transactional(readOnly = true)
+    public Notice findNoticeById(Long id) {
+        return noticeRepository.findById(id).orElseThrow();
+    }
+
+    @Transactional
+    public Long saveNotice(NoticeCreationRequest request) {
+        Assert.notNull(request, "공지 생성 request는 null일 수 없음");
+
+        Notice notice = Notice.of(request.getTitle(),
+                request.getContent(),
+                null,
+                request.getPriority(),
+                request.getStartAt(),
+                request.getEndAt()
+                );
+        Notice savedNotice = noticeRepository.save(notice);
+        Long noticeId =  savedNotice.getId();
+
+        // 파일이 존재하는 경우 공지사항 id에 맞게 S3에 업로드
+        if(request.getImage() != null) {
+            validateFile(request.getImage());
+            String imageUrl = s3Client.uploadNoticeImage(request.getImage(), noticeId);
+            savedNotice.setImageUrl(imageUrl); // dirty checking 으로 DB에 반영
+        }
+
+        return noticeId;
+    }
+
+    @Transactional(readOnly = true)
+    public List<NoticeDetailedResponse> findActiveNotices(String memberUuid) {
+        // 노출 기간 내의 공지사항을 숨김 처리 여부로 필터링하여 조회
+        List<Notice> filteredNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), memberUuid);
+        return filteredNotices.stream().map(noticeMapper::toDetailedResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Notice> findAllNotices(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return noticeRepository.findAll(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public NoticeDetailedResponse findNotice(Long id) {
+        Notice notice = noticeRepository.findById(id).orElseThrow();
+        return noticeMapper.toDetailedResponse(notice);
+    }
+
+    @Transactional
+    public void dismiss(Long noticeId, NoticeDismissRequest request, String memberUuid) {
+        Notice notice = findNoticeById(noticeId);
+        Member member = memberService.findMemberByUuid(memberUuid);
+        LocalDateTime dismissUntil = calculateDismissalDate(LocalDateTime.now(), request.getDismissDays());
+
+        // 이미 숨김 기록이 존재한다면 INSERT 대신 UPDATE
+        Optional<NoticeDismissal> dismissal = noticeDismissalRepository.findByNoticeIdAndMemberUuid(noticeId, memberUuid);
+        if (dismissal.isPresent()) {
+            dismissal.get().updateDismissUntil(dismissUntil);
+        } else {
+            noticeDismissalRepository.save(NoticeDismissal.of(member, notice, dismissUntil));
+        }
+    }
+
+    @Transactional
+    public void updateNotice(Long noticeId, NoticeUpdateRequest request) {
+        Notice notice = findNoticeById(noticeId);
+        for(NoticeUpdateRequest.UpdateAttrs attr : request.getUpdateAttrs()) {
+            switch (attr) {
+                case TITLE -> notice.setTitle(request.getTitle());
+                case CONTENT -> notice.setContent(request.getContent());
+                case PRIORITY -> notice.setPriority(request.getPriority());
+                case START_AT -> notice.setStartAt(request.getStartAt());
+                case END_AT -> notice.setEndAt(request.getEndAt());
+                case IMAGE -> {
+                    validateFile(request.getImage());
+                    String imageUrl = s3Client.uploadNoticeImage(request.getImage(), noticeId);
+                    notice.setImageUrl(imageUrl);
+                }
+            }
+        }
+    }
+
+    @Transactional
+    public void deleteById(Long id) {
+        noticeRepository.deleteById(id);
+    }
+
+    private LocalDateTime calculateDismissalDate(LocalDateTime now, Integer dismissDays) {
+        LocalDate date = now.toLocalDate();
+        LocalDate dismissDate = date.plusDays(dismissDays);
+        return dismissDate.atStartOfDay();
+    }
+
+    private void validateFile(MultipartFile file) {
+        long MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+        List<String> allowedExtensions = List.of("jpg", "png", "jpeg");
+
+        Assert.notNull(file, "업로드할 파일이 없습니다.");
+        Assert.notNull(file.isEmpty(), "업로드할 파일이 없습니다.");
+        if(file.getSize() > MAX_FILE_SIZE) {
+            throw new IllegalArgumentException("파일 크기는 " + (int) (MAX_FILE_SIZE / 1024 / 1024) + "MB 이하여야 합니다.");
+        }
+
+        String ext = StringUtils.getFilenameExtension(file.getOriginalFilename());
+        if(ext == null || !allowedExtensions.contains(ext)) {
+            throw new IllegalArgumentException("'" + ext + "'는 허용되지 않은 확장자입니다.");
+        }
+    }
+
+}
