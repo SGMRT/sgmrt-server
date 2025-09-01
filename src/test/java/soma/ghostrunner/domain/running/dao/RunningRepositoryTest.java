@@ -409,7 +409,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         runningRepository.saveAll(List.of(running1, running2, running3, running4));
 
         // when
-        runningRepository.deleteAllByIdIn(List.of(running1.getId(), running2.getId(), running3.getId(), running4.getId()));
+        runningRepository.deleteInRunningIds(List.of(running1.getId(), running2.getId(), running3.getId(), running4.getId()));
 
         // then
         List<Running> runnings = runningRepository.findByIds(List.of(running1.getId(), running2.getId(),
@@ -617,7 +617,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Running r3 = createRunning("R3", course, member, 3000L, RunningMode.SOLO);
         runningRepository.saveAll(List.of(r1, r2, r3));
 
-        runningRepository.deleteAllByIdIn(List.of(r2.getId()));
+        runningRepository.deleteInRunningIds(List.of(r2.getId()));
 
         long startEpoch = 0L;
         long endEpoch   = 10_000L;

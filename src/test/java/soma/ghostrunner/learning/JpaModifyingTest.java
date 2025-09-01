@@ -88,7 +88,7 @@ public class JpaModifyingTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when
-        runningRepository.deleteAllByIdIn(List.of(running.getId()));
+        runningRepository.deleteInRunningIds(List.of(running.getId()));
 
         // then
         Assertions.assertThatThrownBy(() -> runningRepository.findById(running.getId()).get())
