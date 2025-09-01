@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.running.application;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -15,10 +16,11 @@ import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+import soma.ghostrunner.domain.running.infra.RedisDistributedLockManager;
+import soma.ghostrunner.domain.running.infra.RedisRateLimiterRepository;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -26,33 +28,24 @@ import static soma.ghostrunner.global.error.ErrorCode.*;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PaceMakerService {
 
-    private final RedissonClient redissonClient;
-    private final RedisTemplate<String, String> redisTemplate;
-    private final DefaultRedisScript<Long> rateLimiterScript;
+    private final RedisRateLimiterRepository redisRateLimiterRepository;
+    private final RedisDistributedLockManager redisDistributedLockManager;
     private final MemberService memberService;
 
     private final RestTemplate restTemplate;
     private final String MOCK_API_URL = "http://0.0.0.0:3000/llm-test";
     private final WebClient webClient;
 
-    public PaceMakerService(RedissonClient redissonClient, RedisTemplate<String, String> redisTemplate,
-                            MemberService memberService, RestTemplate restTemplate, WebClient webClient) {
-        this.redissonClient = redissonClient;
-        this.redisTemplate = redisTemplate;
-        this.rateLimiterScript = new DefaultRedisScript<>();
-        this.rateLimiterScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("rate-limiter.lua")));
-        this.rateLimiterScript.setResultType(Long.class);
-        this.memberService = memberService;
-        this.restTemplate = restTemplate;
-        this.webClient = webClient;
-    }
+    private static final String PACEMAKER_LOCK_KEY_PREFIX = "pacemaker_api_lock:";
+    private static final String PACEMAKER_API_RATE_LIMIT_KEY_PREFIX = "pacemaker_api_rate_limit:";
 
     private static final long LOCK_WAIT_TIME_SECONDS = 0;
     private static final long LOCK_LEASE_TIME_SECONDS = 60;
     private static final long DAILY_LIMIT = 3;
-    private static final String KEY_EXPIRATION_TIME_SECONDS = String.valueOf(86400);
+    private static final int KEY_EXPIRATION_TIME_SECONDS = 86400;
 
     public void createPaceMaker(String memberUuid, LocalDate localDate) throws InterruptedException {
         // 사용자 & VDOT
@@ -62,10 +55,7 @@ public class PaceMakerService {
         // 러닝 목적 -> 러닝 유형
         // VDOT + 러닝 유형 + 목표 거리 -> 훈련표
 
-        // Lock
-        String lockKey = "pacemaker_api_lock:" + memberUuid;
-        RLock lock = redissonClient.getLock(lockKey);
-
+        RLock lock = redisDistributedLockManager.getLock(PACEMAKER_LOCK_KEY_PREFIX + memberUuid);
         try {
             boolean isLocked = lock.tryLock(LOCK_WAIT_TIME_SECONDS, LOCK_LEASE_TIME_SECONDS, TimeUnit.SECONDS);
             verifyLockAlreadyGotten(memberUuid, isLocked);
@@ -84,12 +74,11 @@ public class PaceMakerService {
     }
 
     private void handleApiRateLimit(String memberUuid, LocalDate localDate) {
-        String rateLimitKey = "ratelimit:" + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        String rateLimitKey = PACEMAKER_API_RATE_LIMIT_KEY_PREFIX + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        Long currentCount = redisTemplate.execute(
-                rateLimiterScript,
-                Collections.singletonList(rateLimitKey),
-                String.valueOf(DAILY_LIMIT),
+        Long currentCount = redisRateLimiterRepository.incrementAndGet(
+                rateLimitKey,
+                DAILY_LIMIT,
                 KEY_EXPIRATION_TIME_SECONDS
         );
 
