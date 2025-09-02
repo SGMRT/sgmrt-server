@@ -22,6 +22,7 @@ import soma.ghostrunner.domain.notice.dao.NoticeDismissalRepository;
 import soma.ghostrunner.domain.notice.dao.NoticeRepository;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
+import soma.ghostrunner.domain.notice.exceptions.NoticeNotFoundException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,7 +41,7 @@ public class NoticeService {
 
     @Transactional(readOnly = true)
     public Notice findNoticeById(Long id) {
-        return noticeRepository.findById(id).orElseThrow();
+        return noticeRepository.findById(id).orElseThrow((NoticeNotFoundException::new));
     }
 
     @Transactional
@@ -82,7 +83,7 @@ public class NoticeService {
 
     @Transactional(readOnly = true)
     public NoticeDetailedResponse findNotice(Long id) {
-        Notice notice = noticeRepository.findById(id).orElseThrow();
+        Notice notice = findNoticeById(id);
         return noticeMapper.toDetailedResponse(notice);
     }
 
@@ -126,6 +127,7 @@ public class NoticeService {
     }
 
     private LocalDateTime calculateDismissalDate(LocalDateTime now, Integer dismissDays) {
+        if(dismissDays == null) return null; // 숨김 기한을 무제한으로 설정한 경우
         LocalDate date = now.toLocalDate();
         LocalDate dismissDate = date.plusDays(dismissDays);
         return dismissDate.atStartOfDay();
