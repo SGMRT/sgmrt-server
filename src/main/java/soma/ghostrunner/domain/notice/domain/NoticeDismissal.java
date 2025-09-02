@@ -15,7 +15,10 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"member_id", "notice_id"})) // 동일한 공지 중복 숨김처리 방지
+@Table(name = "notice_dismissal",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"member_id", "notice_id"}), // 동일한 공지에 중복 숨김 처리 방지
+        indexes = {@Index(name = "idx_notice_dismissal_member_id", columnList = "member_id, notice_id")
+})
 public class NoticeDismissal extends BaseTimeEntity {
 
     @Id

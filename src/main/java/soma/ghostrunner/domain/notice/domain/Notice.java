@@ -11,6 +11,10 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "notice", indexes = {
+        @Index(name = "idx_notice_active_period", columnList = "start_at, end_at, priority, created_at"),
+        @Index(name = "idx_notice_created_at", columnList = "created_at")
+})
 public class Notice extends BaseTimeEntity {
 
     @Id
