@@ -15,7 +15,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class JsonBasedVdotCalculator implements VdotCalculator {
+public class JsonBasedVdotProvider implements VdotCalculator {
 
     private final ObjectMapper objectMapper;
     private List<PaceVdot> paceVdotTable;

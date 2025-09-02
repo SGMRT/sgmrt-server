@@ -1,0 +1,155 @@
+[
+  {
+    "id": "M-01",
+    "sets": [
+      {
+        "runningType": "E",
+        "runningDuration": 15
+      },
+      {
+        "runningType": "M",
+        "runningDuration": 50
+      },
+      {
+        "runningType": "E",
+        "runningDuration": 10
+      }
+    ]
+  },
+  {
+    "id": "M-02",
+    "sets": [
+      {
+        "runningType": "E",
+        "runningDuration": 35
+      },
+      {
+        "runningType": "M",
+        "runningDuration": 50
+      },
+      {
+        "runningType": "E",
+        "runningDuration": 10
+      }
+    ]
+  },
+  {
+    "id": "M-03",
+    "sets": [
+      {
+        "runningType": "E",
+        "runningDuration": 60
+      },
+      {
+        "runningType": "M",
+        "runningDuration": 50
+      },
+      {
+        "runningType": "E",
+        "runningDuration": 10
+      }
+    ]
+  },
+  {
+    "id": "M-04",
+    "sets": [
+      {
+        "runningType": "E",
+        "runningDuration": 15
+      },
+      {
+        "runningType": "M",
+        "runningDuration": 60
+      },
+      {
+        "runningType": "E",
+        "runningDuration": 15
+      }
+    ]
+  },
+  {
+    "id": "M-05",
+    "sets": [
+      {
+        "runningType": "E",
+        "runningDuration": 35
+      },
+      {
+        "runningType": "M",
+        "runningDuration": 60
+      },
+      {
+        "runningType": "E",
+        "runningDuration": 15
+      }
+    ]
+  },
+  {
+    "id": "M-06",
+    "sets": [
+      {
+        "runningType": "E",
+        "runningDuration": 55
+      },
+      {
+        "runningType": "M",
+        "runningDuration": 60
+      },
+      {
+        "runningType": "E",
+        "runningDuration": 15
+      }
+    ]
+  },
+  {
+    "id": "M-07",
+    "sets": [
+      {
+        "runningType": "E",
+        "runningDuration": 15
+      },
+      {
+        "runningType": "M",
+        "runningDuration": 50
+      },
+      {
+        "runningType": "E",
+        "runningDuration": 10
+      }
+    ]
+  },
+  {
+    "id": "M-08",
+    "sets": [
+      {
+        "runningType": "E",
+        "runningDuration": 35
+      },
+      {
+        "runningType": "M",
+        "runningDuration": 75
+      },
+      {
+        "runningType": "E",
+        "runningDuration": 15
+      }
+    ]
+  },
+  {
+    "id": "M-09",
+    "sets": [
+      {
+        "runningType": "E",
+        "runningDuration": 45
+      },
+      {
+        "runningType": "M",
+        "runningDuration": 75
+      },
+      {
+        "runningType": "E",
+        "runningDuration": 15
+      }
+    ]
+  }
+]
