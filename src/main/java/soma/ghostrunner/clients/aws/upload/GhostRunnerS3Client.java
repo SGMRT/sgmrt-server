@@ -35,7 +35,7 @@ public class GhostRunnerS3Client {
     @Value("${s3.running-directory}")
     private String runningDirectory;
 
-    @Value("{s3.notice-directory}")
+    @Value("${s3.notice-directory}")
     private String noticeDirectory;
 
     @Value("${s3.course-directory}")
