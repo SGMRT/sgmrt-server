@@ -13,10 +13,11 @@ import java.util.List;
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
     @Query("SELECT n FROM Notice n " +
-            "WHERE n.startAt <= :now " +
-            "AND n.endAt >= :now OR n.endAt IS NULL " +
+            "WHERE (n.startAt <= :now AND (n.endAt >= :now OR n.endAt IS NULL)) " +
             "AND n.id NOT IN (" +
-            "   SELECT nd.notice FROM NoticeDismissal nd WHERE nd.member.uuid = :memberUuid " +
+            "   SELECT nd.notice.id FROM NoticeDismissal nd " +
+            "   WHERE nd.member.uuid = :memberUuid " +
+            "   AND (nd.dismissUntil IS NULL OR nd.dismissUntil >= :now) " +
             ") " +
             "ORDER BY n.priority DESC, n.createdAt DESC")
     List<Notice> findActiveNoticesForMember(@Param("now") LocalDateTime now, @Param("memberUuid") String memberUuid);
