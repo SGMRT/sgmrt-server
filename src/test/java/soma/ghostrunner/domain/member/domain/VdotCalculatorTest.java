@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.running.domain.VdotCalculator;
 
 import static org.assertj.core.api.Assertions.*;
 

@@ -9,13 +9,16 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.member.domain.MemberVdot;
+import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
+import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
+import soma.ghostrunner.domain.running.domain.RunningType;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.infra.RedisDistributedLockManager;
 import soma.ghostrunner.domain.running.infra.RedisRateLimiterRepository;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -28,7 +31,9 @@ public class PaceMakerService {
 
     private final RedisRateLimiterRepository redisRateLimiterRepository;
     private final RedisDistributedLockManager redisDistributedLockManager;
+
     private final MemberService memberService;
+    private final RunningVdotService runningVdotService;
 
     private final RestTemplate restTemplate;
     private final String MOCK_API_URL = "http://0.0.0.0:3000/llm-test";
@@ -42,22 +47,43 @@ public class PaceMakerService {
     private static final long DAILY_LIMIT = 3;
     private static final int KEY_EXPIRATION_TIME_SECONDS = 86400;
 
-    public void createPaceMaker(String memberUuid, LocalDate localDate) throws InterruptedException {
-        // 사용자 & VDOT
+    public void createPaceMaker(String memberUuid, CreatePacemakerCommand command) throws InterruptedException {
         Member member = memberService.findMemberByUuid(memberUuid);
-        MemberVdot memberVdot = memberService.findMemberVdot(member);
+        int vdot = determineVdot(command, member);
 
-        // 러닝 목적 -> 러닝 유형
-        // VDOT + 러닝 유형 + 목표 거리 -> 훈련표
+        verifyTargetDistanceAtLeast3K(command);
+        Map<RunningType, Double> expectedPaces = runningVdotService.getExpectedPaces(vdot);
+        RunningType runningType = RunningType.convertToRunningType(command.getPurpose());
+        // 러닝 유형 -> 해당 유형의 모든 훈련표
+        // 모든 훈련표 + 권장 페이스 -> 거리계산 -> 가장 가까운 거리합의 훈련표
+        // 훈련표의 각 세트 거리 * ( 목표 거리 / 거리합 )
 
         RLock lock = redisDistributedLockManager.getLock(PACEMAKER_LOCK_KEY_PREFIX + memberUuid);
         try {
             boolean isLocked = lock.tryLock(LOCK_WAIT_TIME_SECONDS, LOCK_LEASE_TIME_SECONDS, TimeUnit.SECONDS);
             verifyLockAlreadyGotten(memberUuid, isLocked);
-            handleApiRateLimit(memberUuid, localDate);
+            handleApiRateLimit(memberUuid, command.getLocalDate());
             handleLlmApiRequest(memberUuid);
         } finally {
             lock.unlock();
+        }
+    }
+
+    private void verifyTargetDistanceAtLeast3K(CreatePacemakerCommand command) {
+        final double MINIMUM_DISTANCE_KM = 3.0;
+        if (command.getTargetDistance() < MINIMUM_DISTANCE_KM) {
+            throw new IllegalStateException("3km 미만의 거리는 페이스메이커를 생성할 수 없습니다.");
+        }
+    }
+
+    private int determineVdot(CreatePacemakerCommand command, Member member) {
+        if (command.getPacePerKm() != null) {
+            return runningVdotService.calculateVdot(command.getPacePerKm());
+        }
+        try {
+            return memberService.findMemberVdot(member).getVdot();
+        } catch (MemberNotFoundException e) {
+            throw new InvalidRunningException(VDOT_NOT_FOUND, "기존 VDOT 기록이 없어 페이스메이커를 생성할 수 없습니다.");
         }
     }
 
@@ -89,7 +115,7 @@ public class PaceMakerService {
     }
 
     private void handleLlmApiRequest(String memberUuid) throws InterruptedException {
-        Thread.sleep(1000);
+        Thread.sleep(3000);
     }
 
     public String callSync() {

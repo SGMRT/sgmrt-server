@@ -1,11 +1,11 @@
-package soma.ghostrunner.domain.member.infra;
+package soma.ghostrunner.domain.running.infra;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-import soma.ghostrunner.domain.member.domain.VdotCalculator;
+import soma.ghostrunner.domain.running.domain.VdotCalculator;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -15,7 +15,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class TableBasedVdotCalculator implements VdotCalculator {
+public class JsonBasedVdotCalculator implements VdotCalculator {
 
     private final ObjectMapper objectMapper;
     private List<PaceVdot> paceVdotTable;

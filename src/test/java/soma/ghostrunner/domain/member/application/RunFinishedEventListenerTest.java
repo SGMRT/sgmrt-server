@@ -10,7 +10,8 @@ import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
-import soma.ghostrunner.domain.member.domain.VdotCalculator;
+import soma.ghostrunner.domain.running.application.RunningVdotService;
+import soma.ghostrunner.domain.running.domain.VdotCalculator;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 
 import java.util.Optional;
@@ -19,19 +20,19 @@ import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class RunFinishedEventHandlerTest {
+class RunFinishedEventListenerTest {
 
     @Mock
     private MemberService memberService;
     @Mock
-    private VdotCalculator vdotCalculator;
+    private RunningVdotService runningVdotService;
     @Mock
     private MemberVdotRepository memberVdotRepository;
     @Mock
     private MemberMapper mapper;
 
     @InjectMocks
-    private RunFinishedEventHandler runFinishedEventHandler;
+    private RunFinishedEventListener runFinishedEventListener;
 
     @DisplayName("VDOT가 기존에 없다면 새롭게 VDOT가 저장된다.")
     @Test
@@ -43,7 +44,7 @@ class RunFinishedEventHandlerTest {
         Member mockMember = mock(Member.class);
 
         given(memberService.findMemberByUuid(memberUuid)).willReturn(mockMember);
-        given(vdotCalculator.calculateFromPace(9.6)).willReturn(50);
+        given(runningVdotService.calculateVdot(6.0)).willReturn(50);
 
         given(memberVdotRepository.findByMemberId(mockMember.getId())).willReturn(Optional.empty());
 
@@ -51,7 +52,7 @@ class RunFinishedEventHandlerTest {
         given(mapper.toMemberVdot(mockMember, 50)).willReturn(mapped);
 
         // when
-        runFinishedEventHandler.handleRunFinished(event);
+        runFinishedEventListener.handleRunFinished(event);
 
         // then
         verify(memberVdotRepository, times(1)).save(mapped);
@@ -68,11 +69,11 @@ class RunFinishedEventHandlerTest {
         MemberVdot mockMemberVdot = mock(MemberVdot.class);
 
         given(memberService.findMemberByUuid(memberUuid)).willReturn(mockMember);
-        given(vdotCalculator.calculateFromPace(9.6)).willReturn(50);
+        given(runningVdotService.calculateVdot(6.0)).willReturn(50);
         given(memberVdotRepository.findByMemberId(mockMember.getId())).willReturn(Optional.of(mockMemberVdot));
 
         // when
-        runFinishedEventHandler.handleRunFinished(event);
+        runFinishedEventListener.handleRunFinished(event);
 
         // then
         verify(mockMemberVdot, times(1)).updateVdot(50);

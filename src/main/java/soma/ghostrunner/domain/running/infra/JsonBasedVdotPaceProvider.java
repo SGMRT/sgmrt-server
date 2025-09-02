@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class TableBasedVdotPaceProvider implements VdotPaceProvider {
+public class JsonBasedVdotPaceProvider implements VdotPaceProvider {
 
     private final ObjectMapper objectMapper;
     private Map<Integer, List<VdotPaceDto>> cache;
@@ -57,6 +57,11 @@ public class TableBasedVdotPaceProvider implements VdotPaceProvider {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "VDOT " + vdot + " 또는 러닝 타입 " + runningType + "에 대한 페이스 정보를 찾을 수 없습니다."
                 ));
+    }
+
+    @Override
+    public List<VdotPaceDto> getVdotPaceByVdot(int vdot) {
+        return cache.getOrDefault(vdot, Collections.emptyList());
     }
 
     @Getter
