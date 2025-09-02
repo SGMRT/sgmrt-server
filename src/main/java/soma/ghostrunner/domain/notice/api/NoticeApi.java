@@ -17,6 +17,7 @@ import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -27,13 +28,13 @@ public class NoticeApi {
     private final NoticeService noticeService;
 
     @GetMapping
-    public PagedModel<Notice> getAllNotices(@RequestParam(value = "page", defaultValue = "0") Integer page,
+    public PagedModel<NoticeDetailedResponse> getAllNotices(@RequestParam(value = "page", defaultValue = "0") Integer page,
                                             @RequestParam(value = "size", defaultValue = "10") Integer size) {
         return new PagedModel<>(noticeService.findAllNotices(page, size));
     }
 
     @GetMapping("/active")
-    public Object getActiveNotices(@AuthenticationPrincipal JwtUserDetails userDetails) {
+    public List<NoticeDetailedResponse> getActiveNotices(@AuthenticationPrincipal JwtUserDetails userDetails) {
         log.info("Getting active notices (now() = {})", LocalDateTime.now());
         return noticeService.findActiveNotices(userDetails.getUserId());
     }

@@ -76,9 +76,9 @@ public class NoticeService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Notice> findAllNotices(int page, int size) {
+    public Page<NoticeDetailedResponse> findAllNotices(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return noticeRepository.findAll(pageable);
+        return noticeRepository.findAll(pageable).map(noticeMapper::toDetailedResponse);
     }
 
     @Transactional(readOnly = true)

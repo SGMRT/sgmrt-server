@@ -131,7 +131,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
         createAndSaveNotice("공지2", LocalDateTime.now(), LocalDateTime.now().plusDays(2));
 
         // when
-        Page<Notice> notices = noticeService.findAllNotices(0, 10);
+        Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10);
 
         // then
         assertThat(notices.getTotalElements()).isEqualTo(2);
