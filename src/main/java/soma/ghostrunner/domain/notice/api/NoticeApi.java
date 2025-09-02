@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.notice.api;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,7 +16,10 @@ import soma.ghostrunner.domain.notice.api.dto.request.NoticeUpdateRequest;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
-@Controller
+import java.time.LocalDateTime;
+
+@Slf4j
+@RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/notices")
 public class NoticeApi {
@@ -23,13 +27,14 @@ public class NoticeApi {
     private final NoticeService noticeService;
 
     @GetMapping
-    public PagedModel<Notice> getAllNotices(@RequestParam("page") Integer page,
-                                            @RequestParam("size") Integer size) {
+    public PagedModel<Notice> getAllNotices(@RequestParam(value = "page", defaultValue = "0") Integer page,
+                                            @RequestParam(value = "size", defaultValue = "10") Integer size) {
         return new PagedModel<>(noticeService.findAllNotices(page, size));
     }
 
     @GetMapping("/active")
     public Object getActiveNotices(@AuthenticationPrincipal JwtUserDetails userDetails) {
+        log.info("Getting active notices (now() = {})", LocalDateTime.now());
         return noticeService.findActiveNotices(userDetails.getUserId());
     }
 

@@ -2,14 +2,17 @@ package soma.ghostrunner.domain.notice.api.dto.request;
 
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.Set;
 
 @Getter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class NoticeUpdateRequest {
@@ -23,10 +26,13 @@ public class NoticeUpdateRequest {
 
     private MultipartFile image;
 
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime startAt;
 
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime endAt;
 
+    @Builder.Default
     private Set<UpdateAttrs> updateAttrs = Set.of();
 
     public enum UpdateAttrs {

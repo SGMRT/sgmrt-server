@@ -30,7 +30,7 @@ public class NoticeDismissal extends BaseTimeEntity {
     @JoinColumn(name = "notice_id")
     private Notice notice;
 
-    @Column(name = "dismiss_until", nullable = false)
+    @Column(name = "dismiss_until")
     private LocalDateTime dismissUntil;
 
     public static NoticeDismissal of(Member member, Notice notice) {
