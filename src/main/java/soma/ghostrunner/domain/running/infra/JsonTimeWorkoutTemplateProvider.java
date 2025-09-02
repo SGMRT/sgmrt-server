@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.running.domain.RunningType;
-import soma.ghostrunner.domain.running.domain.WorkoutTemplate;
-import soma.ghostrunner.domain.running.domain.WorkoutTemplateProvider;
+import soma.ghostrunner.domain.running.domain.TimeWorkoutTemplate;
+import soma.ghostrunner.domain.running.domain.TimeWorkoutTemplateProvider;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -18,14 +18,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static soma.ghostrunner.domain.running.domain.WorkoutTemplate.*;
+import static soma.ghostrunner.domain.running.domain.TimeWorkoutTemplate.*;
 
 @Component
 @RequiredArgsConstructor
-public class JsonWorkoutTemplateProvider implements WorkoutTemplateProvider {
+public class JsonTimeWorkoutTemplateProvider implements TimeWorkoutTemplateProvider {
 
     private final ObjectMapper objectMapper;
-    private final Map<RunningType, List<WorkoutTemplate>> templateCache = new EnumMap<>(RunningType.class);
+    private final Map<RunningType, List<TimeWorkoutTemplate>> templateCache = new EnumMap<>(RunningType.class);
 
     @PostConstruct
     public void init() {
@@ -33,8 +33,8 @@ public class JsonWorkoutTemplateProvider implements WorkoutTemplateProvider {
             try {
                 ClassPathResource resource = new ClassPathResource("static/" + type.name() + "_workouts.json");
                 if (resource.exists()) {
-                    List<WorkoutTemplateDto> dtos = objectMapper.readValue(resource.getInputStream(), new TypeReference<>() {});
-                    List<WorkoutTemplate> templates = dtos.stream().map(this::toDomain).collect(Collectors.toList());
+                    List<TimeWorkoutTemplateDto> dtos = objectMapper.readValue(resource.getInputStream(), new TypeReference<>() {});
+                    List<TimeWorkoutTemplate> templates = dtos.stream().map(this::toDomain).collect(Collectors.toList());
                     templateCache.put(type, templates);
                 }
             } catch (IOException e) {
@@ -44,32 +44,32 @@ public class JsonWorkoutTemplateProvider implements WorkoutTemplateProvider {
     }
 
     @Override
-    public WorkoutTemplate findBestFitWorkoutTemplate(RunningType runningType, double goalDistance,
-                                                      Map<RunningType, Double> expectedPaces) {
+    public TimeWorkoutTemplate findBestFitWorkoutTemplate(RunningType runningType, double goalDistance,
+                                                          Map<RunningType, Double> expectedPaces) {
         return null;
     }
 
-    private WorkoutTemplate toDomain(WorkoutTemplateDto dto) {
-        List<WorkoutSetTemplate> domainSets = dto.getSets().stream()
-                .map(setDto -> new WorkoutSetTemplate(
+    private TimeWorkoutTemplate toDomain(TimeWorkoutTemplateDto dto) {
+        List<TimeWorkoutSetTemplate> domainSets = dto.getSets().stream()
+                .map(setDto -> new TimeWorkoutSetTemplate(
                         setDto.getRunningType(),
                         setDto.getRunningDuration(),
                         setDto.getRecoveryDuration()
                 ))
                 .collect(Collectors.toList());
-        return new WorkoutTemplate(dto.getId(), domainSets);
+        return new TimeWorkoutTemplate(dto.getId(), domainSets);
     }
 
     @Getter
     @AllArgsConstructor
-    private static class WorkoutTemplateDto {
+    private static class TimeWorkoutTemplateDto {
         private String id;
-        private List<WorkoutSetTemplateDto> sets;
+        private List<TimeWorkoutSetTemplateDto> sets;
     }
 
     @Getter
     @AllArgsConstructor
-    private static class WorkoutSetTemplateDto {
+    private static class TimeWorkoutSetTemplateDto {
         private String runningType;
         private Integer runningDuration;
         private Integer recoveryDuration;

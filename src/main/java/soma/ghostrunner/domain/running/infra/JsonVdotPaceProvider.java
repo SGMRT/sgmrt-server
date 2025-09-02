@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class JsonBasedVdotPaceProvider implements VdotPaceProvider {
+public class JsonVdotPaceProvider implements VdotPaceProvider {
 
     private final ObjectMapper objectMapper;
     private Map<Integer, List<VdotPaceDto>> cache;

@@ -4,18 +4,17 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @AllArgsConstructor
-public class WorkoutTemplate {
+public class TimeWorkoutTemplate {
 
     private String id;
-    private List<WorkoutSetTemplate> sets;
+    private List<TimeWorkoutSetTemplate> sets;
 
     @Getter
     @AllArgsConstructor
-    public static class WorkoutSetTemplate {
+    public static class TimeWorkoutSetTemplate {
         private String runningType;
         private Integer runningDuration;
         private Integer recoveryDuration;
