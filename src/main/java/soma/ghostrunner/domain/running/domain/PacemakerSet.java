@@ -21,60 +21,38 @@ public class PacemakerSet {
     @Column(name = "message", nullable = false)
     private String message;
 
-    @Column(name = "run_start_point", nullable = false)
-    private Double runStartPoint;
+    @Column(name = "start_point", nullable = false)
+    private Double startPoint;
 
-    @Column(name = "run_end_point", nullable = false)
-    private Double runEndPoint;
+    @Column(name = "end_point", nullable = false)
+    private Double endPoint;
 
-    @Column(name = "run_pace_min/km", nullable = false)
-    private Double runPaceMinKm;
-
-    @Column(name = "recovery_start_point")
-    private Double recoveryStartPoint;
-
-    @Column(name = "recovery_end_point")
-    private Double recoveryEndPoint;
-
-    @Column(name = "recovery_pace_min/km")
-    private Double recoveryPaceMinKm;
-
-    @Column(name = "recovery_duration_sec")
-    private Long recoveryDuration;
+    @Column(name = "pace_min/km", nullable = false)
+    private Double pace;
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     @JoinColumn(name = "pacemaker_id", nullable = false)
     private Pacemaker pacemaker;
 
     @Builder(access = AccessLevel.PRIVATE)
-    public PacemakerSet(Integer setNum, String message, Double runStartPoint, Double runEndPoint,
-                        Double runPaceMinKm, Double recoveryStartPoint, Double recoveryEndPoint,
-                        Double recoveryPaceMinKm, Long recoveryDuration, Pacemaker pacemaker) {
+    public PacemakerSet(Integer setNum, String message, Double startPoint, Double endPoint,
+                        Double pace, Pacemaker pacemaker) {
         this.setNum = setNum;
         this.message = message;
-        this.runStartPoint = runStartPoint;
-        this.runEndPoint = runEndPoint;
-        this.runPaceMinKm = runPaceMinKm;
-        this.recoveryStartPoint = recoveryStartPoint;
-        this.recoveryEndPoint = recoveryEndPoint;
-        this.recoveryPaceMinKm = recoveryPaceMinKm;
-        this.recoveryDuration = recoveryDuration;
+        this.startPoint = startPoint;
+        this.endPoint = endPoint;
+        this.pace = pace;
         this.pacemaker = pacemaker;
     }
 
-    public static PacemakerSet of(Integer setNum, String message, Double runStartPoint, Double runEndPoint,
-                                  Double runPaceMinKm, Double recoveryStartPoint, Double recoveryEndPoint,
-                                  Double recoveryPaceMinKm, Pacemaker pacemaker) {
+    public static PacemakerSet of(Integer setNum, String message, Double startPoint, Double endPoint,
+                                  Double pace, Pacemaker pacemaker) {
         return PacemakerSet.builder()
                 .setNum(setNum)
                 .message(message)
-                .runStartPoint(runStartPoint)
-                .runEndPoint(runEndPoint)
-                .runPaceMinKm(runPaceMinKm)
-                .recoveryStartPoint(recoveryStartPoint)
-                .recoveryEndPoint(recoveryEndPoint)
-                .recoveryPaceMinKm(recoveryPaceMinKm)
-                .recoveryDuration(0L)
+                .startPoint(startPoint)
+                .endPoint(endPoint)
+                .pace(pace)
                 .pacemaker(pacemaker)
                 .build();
     }
