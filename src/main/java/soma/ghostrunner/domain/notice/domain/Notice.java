@@ -5,12 +5,13 @@ import lombok.*;
 import org.springframework.util.Assert;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
+import java.net.URL;
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Table(name = "notice", indexes = {
         @Index(name = "idx_notice_active_period", columnList = "start_at, end_at, priority, created_at"),
         @Index(name = "idx_notice_created_at", columnList = "created_at")
@@ -21,24 +22,20 @@ public class Notice extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Setter
     @Column(nullable = false)
     private String title;
 
-    @Setter
+    @Column(length = 2048)
     private String content;
 
-    @Setter
+    @Column(length = 2048)
     private String imageUrl;
 
-    @Setter
     @Column(nullable = false, columnDefinition = "INTEGER DEFAULT 0")
     private Integer priority;
 
-    @Setter
     private LocalDateTime startAt;
 
-    @Setter
     private LocalDateTime endAt;
 
     public static Notice of(String title, String content, String imageUrl) {
@@ -57,6 +54,44 @@ public class Notice extends BaseTimeEntity {
         }
 
         return new Notice(null, title, content, imageUrl, priority, startAt, endAt);
+    }
+
+    public void updateTitle(String title) {
+        Assert.notNull(title, "title은 null로 변경할 수 없습니다.");
+        this.title = title;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public void updateImageUrl(String imageUrl) {
+        try {
+            new URL(imageUrl).toURI(); // 형식 검증
+            this.imageUrl = imageUrl;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("imageUrl이 URL 형식이 아닙니다:" + imageUrl);
+        }
+    }
+
+    public void updatePriority(Integer priority) {
+        Assert.notNull(priority, "Priority는 null로 변경할 수 없습니다.");
+        this.priority = priority;
+    }
+
+    public void updateStartAt(LocalDateTime startAt) {
+        Assert.notNull(startAt, "공지 노출 시작기간은 null로 변경할 수 없습니다.");
+        if(endAt != null && startAt.isAfter(endAt)) {
+            throw new IllegalArgumentException("공지 노출 시작기간은 종료기간보다 앞이어야 합니다.");
+        }
+        this.startAt = startAt;
+    }
+
+    public void updateEndAt(LocalDateTime endAt) {
+        if(endAt.isBefore(startAt)) {
+            throw new IllegalArgumentException("공지 노출 종료기간은 시작기간보다 뒤여야 합니다.");
+        }
+        this.endAt = endAt;
     }
 
 }

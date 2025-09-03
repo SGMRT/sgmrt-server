@@ -62,7 +62,7 @@ public class NoticeService {
         if(request.getImage() != null) {
             validateFile(request.getImage());
             String imageUrl = s3Client.uploadNoticeImage(request.getImage(), noticeId);
-            savedNotice.setImageUrl(imageUrl); // dirty checking 으로 DB에 반영
+            savedNotice.updateImageUrl(imageUrl); // dirty checking 으로 DB에 반영
         }
 
         return noticeId;
@@ -107,15 +107,15 @@ public class NoticeService {
         Notice notice = findNoticeById(noticeId);
         for(NoticeUpdateRequest.UpdateAttrs attr : request.getUpdateAttrs()) {
             switch (attr) {
-                case TITLE -> notice.setTitle(request.getTitle());
-                case CONTENT -> notice.setContent(request.getContent());
-                case PRIORITY -> notice.setPriority(request.getPriority());
-                case START_AT -> notice.setStartAt(request.getStartAt());
-                case END_AT -> notice.setEndAt(request.getEndAt());
+                case TITLE -> notice.updateTitle(request.getTitle());
+                case CONTENT -> notice.updateContent(request.getContent());
+                case PRIORITY -> notice.updatePriority(request.getPriority());
+                case START_AT -> notice.updateStartAt(request.getStartAt());
+                case END_AT -> notice.updateEndAt(request.getEndAt());
                 case IMAGE -> {
                     validateFile(request.getImage());
                     String imageUrl = s3Client.uploadNoticeImage(request.getImage(), noticeId);
-                    notice.setImageUrl(imageUrl);
+                    notice.updateImageUrl(imageUrl);
                 }
             }
         }

@@ -113,17 +113,17 @@ class NoticeTest {
         LocalDateTime newEndAt = LocalDateTime.now().plusDays(1);
 
         // when
-        notice.setTitle("수정된 제목");
-        notice.setContent("수정된 내용");
-        notice.setImageUrl("updated.png");
-        notice.setPriority(5);
-        notice.setStartAt(newStartAt);
-        notice.setEndAt(newEndAt);
+        notice.updateTitle("수정된 제목");
+        notice.updateContent("수정된 내용");
+        notice.updateImageUrl("http://www.updated.png");
+        notice.updatePriority(5);
+        notice.updateStartAt(newStartAt);
+        notice.updateEndAt(newEndAt);
 
         // then
         assertThat(notice.getTitle()).isEqualTo("수정된 제목");
         assertThat(notice.getContent()).isEqualTo("수정된 내용");
-        assertThat(notice.getImageUrl()).isEqualTo("updated.png");
+        assertThat(notice.getImageUrl()).isEqualTo("http://www.updated.png");
         assertThat(notice.getPriority()).isEqualTo(5);
         assertThat(notice.getStartAt()).isEqualTo(newStartAt);
         assertThat(notice.getEndAt()).isEqualTo(newEndAt);
