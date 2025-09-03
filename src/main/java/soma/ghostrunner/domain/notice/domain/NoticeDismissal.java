@@ -14,23 +14,22 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Table(name = "notice_dismissal",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"member_id", "notice_id"}), // 동일한 공지에 중복 숨김 처리 방지
-        indexes = {@Index(name = "idx_notice_dismissal_member_id", columnList = "member_id, notice_id")
-})
+        // 동일한 공지에 중복 숨김 처리 방지 + 인덱스 생성
+        uniqueConstraints = @UniqueConstraint(columnNames = {"member_id", "notice_id"}))
 public class NoticeDismissal extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "member_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    @ManyToOne
-    @JoinColumn(name = "notice_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "notice_id",  nullable = false)
     private Notice notice;
 
     @Column(name = "dismiss_until")
