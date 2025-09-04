@@ -23,6 +23,7 @@ s3:
   course-directory: course
   course-checkpoint-directory: course-checkpoint
   member-directory: member
+  notice-directory: notice
 
 jwt:
   secret: ca4af8af65f788e32f267de8dcac28271b886a302a99fdc19aba24557ac095922384b9a05febb1ea7bc67df87a898bb589aa357e877fb06fa3470b3e5dcff8cf
