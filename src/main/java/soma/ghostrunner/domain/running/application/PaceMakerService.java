@@ -10,14 +10,17 @@ import org.springframework.web.reactive.function.client.WebClient;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
+import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.domain.RunningType;
+import soma.ghostrunner.domain.running.domain.formula.WorkoutTemplate;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
-import soma.ghostrunner.domain.running.infra.RedisDistributedLockManager;
-import soma.ghostrunner.domain.running.infra.RedisRateLimiterRepository;
+import soma.ghostrunner.domain.running.infra.redis.RedisDistributedLockManager;
+import soma.ghostrunner.domain.running.infra.redis.RedisRateLimiterRepository;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +37,7 @@ public class PaceMakerService {
 
     private final MemberService memberService;
     private final RunningVdotService runningVdotService;
+    private final WorkoutService workoutService;
 
     private final RestTemplate restTemplate;
     private final String MOCK_API_URL = "http://0.0.0.0:3000/llm-test";
@@ -54,9 +58,7 @@ public class PaceMakerService {
         verifyTargetDistanceAtLeast3K(command);
         Map<RunningType, Double> expectedPaces = runningVdotService.getExpectedPaces(vdot);
         RunningType runningType = RunningType.convertToRunningType(command.getPurpose());
-        // 러닝 유형 -> 해당 유형의 모든 훈련표
-        // 모든 훈련표 + 권장 페이스 -> 거리계산 -> 가장 가까운 거리합의 훈련표
-        // 훈련표의 각 세트 거리 * ( 목표 거리 / 거리합 )
+        List<ProcessedWorkoutDto> workouts = workoutService.generatePlan(command.getTargetDistance(), runningType, expectedPaces);
 
         RLock lock = redisDistributedLockManager.getLock(PACEMAKER_LOCK_KEY_PREFIX + memberUuid);
         try {

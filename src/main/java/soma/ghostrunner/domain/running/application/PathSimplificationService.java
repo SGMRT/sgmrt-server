@@ -2,7 +2,7 @@ package soma.ghostrunner.domain.running.application;
 
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.running.application.dto.*;
-import soma.ghostrunner.domain.running.domain.PathSimplifier;
+import soma.ghostrunner.domain.running.domain.path.PathSimplifier;
 
 import java.util.List;
 

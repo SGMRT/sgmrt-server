@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.infra;
+package soma.ghostrunner.domain.running.infra.persistence;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

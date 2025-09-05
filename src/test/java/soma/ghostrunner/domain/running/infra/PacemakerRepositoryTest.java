@@ -11,7 +11,14 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.running.domain.*;
+import soma.ghostrunner.domain.running.domain.Pacemaker;
+import soma.ghostrunner.domain.running.domain.PacemakerSet;
+import soma.ghostrunner.domain.running.domain.Running;
+import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
+import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;
+import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.util.List;
 
@@ -58,23 +65,19 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
 
         PacemakerSet pacemaker1Set1 = PacemakerSet.of(
                 1, "첫 세트 - 워밍업",
-                0.0, 1.0, 6.0,
-                1.0, 2.0, 8.0, pacemaker1
+                0.0, 1.0, 6.0, pacemaker1
         );
         PacemakerSet pacemaker1Set2 = PacemakerSet.of(
                 2, "두 번째 세트 - 본훈련",
-                2.0, 4.0, 5.5,
-                4.0, 5.0, 7.5, pacemaker1
+                2.0, 4.0, 5.5, pacemaker1
         );
         PacemakerSet pacemaker3Set1 = PacemakerSet.of(
                 1, "첫 세트 - 워밍업",
-                0.0, 1.0, 6.0,
-                1.0, 2.0, 8.0, pacemaker3
+                0.0, 1.0, 6.0, pacemaker3
         );
         PacemakerSet pacemaker3Set2 = PacemakerSet.of(
                 2, "두 번째 세트 - 본훈련",
-                2.0, 4.0, 5.5,
-                4.0, 5.0, 7.5, pacemaker3
+                2.0, 4.0, 5.5, pacemaker3
         );
         pacemakerSetRepository.saveAll(List.of(pacemaker1Set1, pacemaker1Set2, pacemaker3Set1, pacemaker3Set2));
 

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDtoWithTs;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.domain.path.PathSimplifier;
 
 import java.io.BufferedReader;
 import java.io.File;

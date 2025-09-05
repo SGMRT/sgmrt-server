@@ -1,11 +1,11 @@
-package soma.ghostrunner.domain.running.infra;
+package soma.ghostrunner.domain.running.infra.external;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-import soma.ghostrunner.domain.running.domain.VdotCalculator;
+import soma.ghostrunner.domain.running.domain.formula.VdotCalculator;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;

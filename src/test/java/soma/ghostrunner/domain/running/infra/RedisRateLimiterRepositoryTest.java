@@ -13,6 +13,7 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
+import soma.ghostrunner.domain.running.infra.redis.RedisRateLimiterRepository;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;

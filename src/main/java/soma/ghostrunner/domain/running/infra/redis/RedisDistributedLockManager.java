@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.infra;
+package soma.ghostrunner.domain.running.infra.redis;
 
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RLock;

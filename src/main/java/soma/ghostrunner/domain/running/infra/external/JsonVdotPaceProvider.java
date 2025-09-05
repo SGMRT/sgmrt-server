@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.infra;
+package soma.ghostrunner.domain.running.infra.external;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,8 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.running.domain.RunningType;
-import soma.ghostrunner.domain.running.infra.dto.VdotPaceDto;
-import soma.ghostrunner.domain.running.domain.VdotPaceProvider;
+import soma.ghostrunner.domain.running.domain.formula.VdotPace;
+import soma.ghostrunner.domain.running.domain.formula.VdotPaceProvider;
 
 import javax.annotation.PostConstruct;
 import java.io.InputStream;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class JsonVdotPaceProvider implements VdotPaceProvider {
 
     private final ObjectMapper objectMapper;
-    private Map<Integer, List<VdotPaceDto>> cache;
+    private Map<Integer, List<VdotPace>> cache;
 
     @PostConstruct
     public void init() {
@@ -48,11 +48,11 @@ public class JsonVdotPaceProvider implements VdotPaceProvider {
 
     @Override
     public Double getPaceByVdotAndRunningType(int vdot, RunningType runningType) {
-        List<VdotPaceDto> vdotPaceDtos = cache.getOrDefault(vdot, Collections.emptyList());
+        List<VdotPace> vdotPaces = cache.getOrDefault(vdot, Collections.emptyList());
 
-        return vdotPaceDtos.stream()
+        return vdotPaces.stream()
                 .filter(pace -> pace.type().equals(runningType))
-                .map(VdotPaceDto::pacePerKm)
+                .map(VdotPace::pacePerKm)
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "VDOT " + vdot + " 또는 러닝 타입 " + runningType + "에 대한 페이스 정보를 찾을 수 없습니다."
@@ -60,7 +60,7 @@ public class JsonVdotPaceProvider implements VdotPaceProvider {
     }
 
     @Override
-    public List<VdotPaceDto> getVdotPaceByVdot(int vdot) {
+    public List<VdotPace> getVdotPaceByVdot(int vdot) {
         return cache.getOrDefault(vdot, Collections.emptyList());
     }
 
@@ -71,13 +71,13 @@ public class JsonVdotPaceProvider implements VdotPaceProvider {
         private String pacePerKm;
     }
 
-    private VdotPaceDto toVdotPace(VdotPaceRecord record) {
+    private VdotPace toVdotPace(VdotPaceRecord record) {
         String paceStr = record.getPacePerKm();
         if (paceStr.contains("-")) {
             double middlePace = calculateMiddlePace(paceStr);
-            return new VdotPaceDto(RunningType.valueOf(record.getType()), secondsToDouble(middlePace));
+            return new VdotPace(RunningType.valueOf(record.getType()), secondsToDouble(middlePace));
         } else {
-            return new VdotPaceDto(RunningType.valueOf(record.getType()), stringFormatToDouble(paceStr));
+            return new VdotPace(RunningType.valueOf(record.getType()), stringFormatToDouble(paceStr));
         }
     }
 

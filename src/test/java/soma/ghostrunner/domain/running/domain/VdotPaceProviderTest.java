@@ -6,7 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.domain.running.infra.dto.VdotPaceDto;
+import soma.ghostrunner.domain.running.domain.formula.VdotPaceProvider;
+import soma.ghostrunner.domain.running.domain.formula.VdotPace;
 
 import java.util.List;
 
@@ -37,7 +38,7 @@ class VdotPaceProviderTest extends IntegrationTestSupport {
     @Test
     void getVdotPaceByVdot() {
         // when
-        List<VdotPaceDto> vdotPaces = vdotPaceProvider.getVdotPaceByVdot(41);
+        List<VdotPace> vdotPaces = vdotPaceProvider.getVdotPaceByVdot(41);
 
         // then
         Assertions.assertThat(vdotPaces)
