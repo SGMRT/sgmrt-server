@@ -35,6 +35,9 @@ public class GhostRunnerS3Client {
     @Value("${s3.running-directory}")
     private String runningDirectory;
 
+    @Value("${s3.notice-directory}")
+    private String noticeDirectory;
+
     @Value("${s3.course-directory}")
     private String courseDirectory;
 
@@ -119,6 +122,10 @@ public class GhostRunnerS3Client {
         return uploadImageFile(memberProfileImage, memberDirectory, memberUuid);
     }
 
+    public String uploadNoticeImage(MultipartFile noticeImage, Long noticeId) {
+        return uploadFileWithName(noticeImage, noticeDirectory + "/" + noticeId, noticeImage.getOriginalFilename());
+    }
+
     private String uploadImageFile(MultipartFile imageFile, String directory, String memberUuid) {
         String originalFilename = imageFile.getOriginalFilename();
         String extension = ".jpg";
@@ -143,6 +150,22 @@ public class GhostRunnerS3Client {
             return getS3FileUrl(fileName);
         } catch (Exception e) {
             throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3에 이미지를 업로드하는데 실패했습니다.");
+        }
+    }
+
+    private String uploadFileWithName(MultipartFile file, String directory, String filename) {
+        try {
+            String filePath = String.format("%s/%s", directory, filename);
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(s3Bucket)
+                    .key(filePath)
+                    .contentType(file.getContentType())
+                    .contentLength(file.getSize())
+                    .build();
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+            return getS3FileUrl(filePath);
+        } catch (Exception e) {
+            throw new ExternalIOException(ErrorCode.SERVICE_UNAVAILABLE, "S3 파일 업로드에 실패했습니다.");
         }
     }
 
