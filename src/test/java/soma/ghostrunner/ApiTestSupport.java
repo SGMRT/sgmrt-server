@@ -16,7 +16,6 @@ import soma.ghostrunner.domain.running.api.dto.RunningApiMapperImpl;
 import soma.ghostrunner.domain.running.application.PaceMakerService;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
-import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.global.common.CommonApi;
 import soma.ghostrunner.global.common.log.HttpLogger;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;

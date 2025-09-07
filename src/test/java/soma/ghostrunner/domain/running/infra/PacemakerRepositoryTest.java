@@ -57,10 +57,8 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         List<Running> runnings = List.of(running1, running3);
         runningRepository.saveAll(runnings);
 
-        Pacemaker pacemaker1 = Pacemaker.of("페이스메이커1 요약", 10.0, 60,
-                "페이스메이커1 메세지입니다.", running1.getId());
-        Pacemaker pacemaker3 = Pacemaker.of("페이스메이커3 요약", 10.0, 60,
-                "페이스메이커3 메세지입니다.", running3.getId());
+        Pacemaker pacemaker1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, running1.getId());
+        Pacemaker pacemaker3 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, running1.getId());
         pacemakerRepository.saveAll(List.of(pacemaker1, pacemaker3));
 
         PacemakerSet pacemaker1Set1 = PacemakerSet.of(

@@ -51,14 +51,10 @@ public class Pacemaker extends BaseTimeEntity {
         this.status = Status.PROCEEDING;
     }
 
-    public static Pacemaker of(String summary, Double goalDistance,
-                               Integer expectedTime, String initialMessage, Long runningId) {
+    public static Pacemaker of(Norm norm, Double goalDistance, Long runningId) {
         return Pacemaker.builder()
-                .norm(Norm.DISTANCE)
-                .summary(summary)
+                .norm(norm)
                 .goalDistance(goalDistance)
-                .expectedTime(expectedTime)
-                .initialMessage(initialMessage)
                 .runningId(runningId)
                 .build();
     }
