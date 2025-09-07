@@ -8,8 +8,10 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
+import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
+import soma.ghostrunner.domain.running.domain.Pacemaker;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
@@ -95,6 +97,8 @@ public interface RunningServiceMapper {
     @Mapping(source = "course.id", target = "courseId")
     CreateCourseAndRunResponse toResponse(Running running, Course course);
 
-
+    default Pacemaker toPacemaker(Pacemaker.Norm norm, CreatePacemakerCommand command) {
+        return Pacemaker.of(norm, command.getTargetDistance());
+    }
   
 }

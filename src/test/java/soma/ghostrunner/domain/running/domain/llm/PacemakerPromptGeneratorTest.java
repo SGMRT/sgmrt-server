@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.domain.prompt;
+package soma.ghostrunner.domain.running.domain.llm;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.infra;
+package soma.ghostrunner.domain.running.infra.redis;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -13,16 +13,24 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
-import soma.ghostrunner.domain.running.infra.redis.RedisRateLimiterRepository;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest
-class RedisRateLimiterRepositoryTest extends IntegrationTestSupport {
+class RedisRunningRepositoryTest extends IntegrationTestSupport {
+
+    @Autowired
+    private RedisRunningRepository repository;
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
 
     @Autowired
     MemberRepository memberRepository;
@@ -30,15 +38,44 @@ class RedisRateLimiterRepositoryTest extends IntegrationTestSupport {
     @Autowired
     MemberVdotRepository memberVdotRepository;
 
-    @Autowired
-    private RedisRateLimiterRepository redisRateLimiterRepository;
+    @DisplayName("레디스에 Key-Value(String) 을 저장한다.")
+    @Test
+    void save() {
+        // given
+        String key = "test:running:session";
+        String value = "payload";
+        long timeout = 2L;
+        TimeUnit unit = TimeUnit.SECONDS;
 
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+        // when
+        repository.save(key, value, unit, timeout);
+
+        // then
+        String saved = redisTemplate.opsForValue().get(key);
+        assertThat(saved).isEqualTo(value);
+    }
+
+    @DisplayName("만료 기한 후 제거됐는지 검사한다.")
+    @Test
+    void saveWithExpiration() throws InterruptedException {
+        // given
+        String key = "test:running:session";
+        String value = "payload-expire";
+        long timeout = 1L;
+        TimeUnit unit = TimeUnit.SECONDS;
+
+        // when
+        repository.save(key, value, unit, timeout);
+
+        // then
+        Thread.sleep(1200);
+        assertThat(redisTemplate.opsForValue().get(key)).isNull();
+        redisTemplate.delete(key);
+    }
 
     @Test
     @DisplayName("일일 제한 횟수를 카운팅한다.")
-    void createRateLimitExceededPaceMakerRequest() {
+    void createRateLimitExceededPacemakerRequest() {
         // given
         Member member = createMember();
         String memberUuid = member.getUuid();
@@ -51,12 +88,12 @@ class RedisRateLimiterRepositoryTest extends IntegrationTestSupport {
         String rateLimitKey = "ratelimit:" + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
         // when
-        redisRateLimiterRepository.incrementAndGet(rateLimitKey, 3, 86400);
-        redisRateLimiterRepository.incrementAndGet(rateLimitKey, 3, 86400);
-        redisRateLimiterRepository.incrementAndGet(rateLimitKey, 3, 86400);
+        repository.incrementAndGet(rateLimitKey, 3, 86400);
+        repository.incrementAndGet(rateLimitKey, 3, 86400);
+        repository.incrementAndGet(rateLimitKey, 3, 86400);
 
         // then
-        Assertions.assertThat(redisRateLimiterRepository.incrementAndGet(rateLimitKey, 3, 86400))
+        Assertions.assertThat(repository.incrementAndGet(rateLimitKey, 3, 86400))
                 .isEqualTo(4);
     }
 
@@ -90,14 +127,14 @@ class RedisRateLimiterRepositoryTest extends IntegrationTestSupport {
         // when
         for (int i = 0; i < threadCount; i++) {
             executorService.submit(() -> {
-                redisRateLimiterRepository.incrementAndGet(rateLimitKey, 3, 86400);
+                repository.incrementAndGet(rateLimitKey, 3, 86400);
                 latch.countDown();
             });
         }
         latch.await();
 
         // then
-        Assertions.assertThat(redisRateLimiterRepository.incrementAndGet(rateLimitKey, 3, 86400))
+        Assertions.assertThat(repository.incrementAndGet(rateLimitKey, 3, 86400))
                 .isEqualTo(11);
         deleteData();
     }

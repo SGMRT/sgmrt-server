@@ -1,11 +1,13 @@
-package soma.ghostrunner.domain.running.api.dto;
+package soma.ghostrunner.domain.running.api.support;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
+import soma.ghostrunner.domain.running.api.dto.request.CreatePacemakerRequest;
 import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
+import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.domain.Running;
 
@@ -29,5 +31,7 @@ public interface RunningApiMapper {
     @Mapping(source = "runningRecord.duration", target = "duration")
     @Mapping(source = "createdAt", target = "startedAt")
     CourseGhostResponse toGhostResponse(Running running);
+
+    CreatePacemakerCommand toCommand(CreatePacemakerRequest request);
 
 }

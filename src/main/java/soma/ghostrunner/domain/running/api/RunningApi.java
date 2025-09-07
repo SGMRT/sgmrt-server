@@ -5,13 +5,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
-import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
-import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
-import soma.ghostrunner.domain.running.api.dto.request.DeleteRunningRequest;
-import soma.ghostrunner.domain.running.api.dto.request.UpdateRunNameRequest;
+import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
+import soma.ghostrunner.domain.running.api.dto.request.*;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.application.PaceMakerService;
+import soma.ghostrunner.domain.running.application.PacemakerService;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
@@ -33,7 +30,7 @@ public class RunningApi {
     private final RunningQueryService runningQueryService;
     private final RunningCommandService runningCommandService;
     private final RunningApiMapper mapper;
-    private final PaceMakerService paceMakerService;
+    private final PacemakerService paceMakerService;
 
     @GetMapping("/")
     public String hello() {
@@ -153,21 +150,12 @@ public class RunningApi {
                 cursorRunningId, memberUuid);
     }
 
-    @GetMapping("/test/sync")
-    public String syncTest() {
-        return paceMakerService.callSync();
-    }
-
-    @GetMapping("/test/async")
-    public String asyncTest() {
-        paceMakerService.callAsync(System.currentTimeMillis());
-        return "비동기 요청 후 바로 리턴";
-    }
-
-    @GetMapping("/test/non-blocking")
-    public String nonBlockingTest() {
-        paceMakerService.callMockApiNonBlocking(System.currentTimeMillis());
-        return "논블로킹 요청 후 바로 리턴";
+    @PostMapping("/v1/runs/pacemaker")
+    public void createPacemaker(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @RequestBody @Valid CreatePacemakerRequest request) throws InterruptedException {
+        String memberUuid = userDetails.getUserId();
+        paceMakerService.createPaceMaker(memberUuid, mapper.toCommand(request));
     }
 
 }

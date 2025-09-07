@@ -20,23 +20,23 @@ public class Pacemaker extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private Norm norm;
 
-    @Column(name = "summary", nullable = false)
+    @Column(name = "summary")
     private String summary;
 
     @Column(name = "goal_km", nullable = false)
     private Double goalDistance;
 
-    @Column(name = "expected_time_min", nullable = false)
+    @Column(name = "expected_time_min")
     private Integer expectedTime;
 
-    @Column(name = "initial_message", nullable = false)
+    @Column(name = "initial_message")
     private String initialMessage;
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
     private Status status;
 
-    @Column(name = "running_id", nullable = false)
+    @Column(name = "running_id")
     private Long runningId;
 
     @Builder(access = AccessLevel.PRIVATE)
@@ -49,6 +49,13 @@ public class Pacemaker extends BaseTimeEntity {
         this.initialMessage = initialMessage;
         this.runningId = runningId;
         this.status = Status.PROCEEDING;
+    }
+
+    public static Pacemaker of(Norm norm, Double goalDistance) {
+        return Pacemaker.builder()
+                .norm(norm)
+                .goalDistance(goalDistance)
+                .build();
     }
 
     public static Pacemaker of(Norm norm, Double goalDistance, Long runningId) {

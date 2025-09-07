@@ -106,6 +106,9 @@ dependencies {
 	// WebFlux
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	runtimeOnly 'io.netty:netty-resolver-dns-native-macos:4.1.104.Final:osx-aarch_64'
+
+	// OpenAi
+	implementation "com.openai:openai-java:3.4.1"
 }
 
 

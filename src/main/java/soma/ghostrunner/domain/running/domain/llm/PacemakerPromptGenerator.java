@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.domain.prompt;
+package soma.ghostrunner.domain.running.domain.llm;
 
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutDto;

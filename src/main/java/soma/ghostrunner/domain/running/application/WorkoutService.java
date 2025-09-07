@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.running.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutSetDto;
 import soma.ghostrunner.domain.running.domain.RunningType;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutSet;
@@ -20,7 +21,7 @@ public class WorkoutService {
 
     private final WorkoutTemplateProvider workoutTemplateProvider;
 
-    public List<ProcessedWorkoutSetDto> generatePlan(double targetDistance, RunningType type, Map<RunningType, Double> paces) {
+    public ProcessedWorkoutDto generateWorkouts(double targetDistance, RunningType type, Map<RunningType, Double> paces) {
         List<Workout> workouts = workoutTemplateProvider.findWorkoutTemplates(WorkoutType.valueOf(type.name()));
 
         Workout bestWorkout = workouts.stream()
@@ -29,11 +30,12 @@ public class WorkoutService {
 
         double totalDistanceOfWorkout = bestWorkout.calculateTotalDistance(paces);
         double scaleFactor = targetDistance / totalDistanceOfWorkout;
-        return scaleAndProcessWorkout(bestWorkout, scaleFactor, paces);
+        List<ProcessedWorkoutSetDto> workoutSetDtos = scaleAndProcessWorkout(bestWorkout, scaleFactor, paces);
+        return ProcessedWorkoutDto.of(type, targetDistance, workoutSetDtos);
     }
 
-    private List<ProcessedWorkoutSetDto> scaleAndProcessWorkout(Workout template,
-                                                                double scaleFactor, Map<RunningType, Double> paces) {
+    private List<ProcessedWorkoutSetDto> scaleAndProcessWorkout(Workout template, double scaleFactor,
+                                                                Map<RunningType, Double> paces) {
 
         double currentDistance = 0;
 

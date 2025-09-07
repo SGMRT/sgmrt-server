@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest
-class PaceMakerServiceTest extends IntegrationTestSupport {
+class PacemakerServiceTest extends IntegrationTestSupport {
 
     @Autowired
     MemberRepository memberRepository;
@@ -34,7 +34,7 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
     MemberVdotRepository memberVdotRepository;
 
     @Autowired
-    private PaceMakerService paceMakerService;
+    private PacemakerService pacemakerService;
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
@@ -50,7 +50,7 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         memberVdotRepository.save(memberVdot);
 
         // when // then
-        paceMakerService.createPaceMaker(member.getUuid(), createCommand());
+        pacemakerService.createPaceMaker(member.getUuid(), createCommand());
     }
 
     private Member createMember() {
@@ -78,12 +78,12 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         memberVdotRepository.save(memberVdot);
 
         // when
-        paceMakerService.createPaceMaker(memberUuid, createCommand());
-        paceMakerService.createPaceMaker(memberUuid, createCommand());
-        paceMakerService.createPaceMaker(memberUuid, createCommand());
+        pacemakerService.createPaceMaker(memberUuid, createCommand());
+        pacemakerService.createPaceMaker(memberUuid, createCommand());
+        pacemakerService.createPaceMaker(memberUuid, createCommand());
 
         // then
-        assertThatThrownBy(() -> paceMakerService.createPaceMaker(memberUuid, createCommand()))
+        assertThatThrownBy(() -> pacemakerService.createPaceMaker(memberUuid, createCommand()))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("일일 사용량을 초과했습니다.");
     }
@@ -103,15 +103,15 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         LocalDate nextDay = today.plusDays(1);
 
         // when
-        paceMakerService.createPaceMaker(memberUuid, createCommand(today));
-        paceMakerService.createPaceMaker(memberUuid, createCommand(today));
-        paceMakerService.createPaceMaker(memberUuid, createCommand(today));
+        pacemakerService.createPaceMaker(memberUuid, createCommand(today));
+        pacemakerService.createPaceMaker(memberUuid, createCommand(today));
+        pacemakerService.createPaceMaker(memberUuid, createCommand(today));
 
         // then
-        assertThatThrownBy(() -> paceMakerService.createPaceMaker(memberUuid, createCommand(today)))
+        assertThatThrownBy(() -> pacemakerService.createPaceMaker(memberUuid, createCommand(today)))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("일일 사용량을 초과했습니다.");
-        paceMakerService.createPaceMaker(memberUuid, createCommand(nextDay));
+        pacemakerService.createPaceMaker(memberUuid, createCommand(nextDay));
     }
 
     private CreatePacemakerCommand createCommand(LocalDate localDate) {
@@ -130,7 +130,7 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         memberVdotRepository.save(memberVdot);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> paceMakerService.createPaceMaker(member.getUuid(), createCommand(2.0)))
+        Assertions.assertThatThrownBy(() -> pacemakerService.createPaceMaker(member.getUuid(), createCommand(2.0)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("3km 미만의 거리는 페이스메이커를 생성할 수 없습니다.");
     }
@@ -148,7 +148,7 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
          memberRepository.save(member);
 
          // when // then
-         Assertions.assertThatThrownBy(() -> paceMakerService.createPaceMaker(member.getUuid(), createNonePacePerKmCommand()))
+         Assertions.assertThatThrownBy(() -> pacemakerService.createPaceMaker(member.getUuid(), createNonePacePerKmCommand()))
                  .isInstanceOf(InvalidRunningException.class)
                  .hasMessage("기존 VDOT 기록이 없어 페이스메이커를 생성할 수 없습니다.");
      }
@@ -184,7 +184,7 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         for (int i = 0; i < threadCount; i++) {
             executorService.submit(() -> {
                 try {
-                    paceMakerService.createPaceMaker(member.getUuid(), createCommand());
+                    pacemakerService.createPaceMaker(member.getUuid(), createCommand());
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failureCount.incrementAndGet();

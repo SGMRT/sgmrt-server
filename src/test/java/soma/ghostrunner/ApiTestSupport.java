@@ -11,9 +11,9 @@ import soma.ghostrunner.clients.aws.presign.S3PresignUrlClient;
 import soma.ghostrunner.domain.auth.api.AuthApi;
 import soma.ghostrunner.domain.auth.application.AuthService;
 import soma.ghostrunner.domain.running.api.RunningApi;
-import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
-import soma.ghostrunner.domain.running.api.dto.RunningApiMapperImpl;
-import soma.ghostrunner.domain.running.application.PaceMakerService;
+import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
+import soma.ghostrunner.domain.running.api.support.RunningApiMapperImpl;
+import soma.ghostrunner.domain.running.application.PacemakerService;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.global.common.CommonApi;
@@ -44,7 +44,7 @@ public abstract class ApiTestSupport {
     protected AuthService authService;
 
     @MockitoBean
-    protected PaceMakerService paceMakerService;
+    protected PacemakerService paceMakerService;
 
     @MockitoBean
     protected HttpLogger httpLogger;
