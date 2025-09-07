@@ -41,9 +41,6 @@ public abstract class ApiTestSupport {
     protected RunningQueryService runningQueryService;
 
     @MockitoBean
-    protected RunningTelemetryQueryService runningTelemetryQueryService;
-
-    @MockitoBean
     protected AuthService authService;
 
     @MockitoBean

@@ -14,6 +14,7 @@ import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutSetDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.domain.RunningType;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.running.infra.redis.RedisDistributedLockManager;
 import soma.ghostrunner.domain.running.infra.redis.RedisRateLimiterRepository;
 
@@ -31,6 +32,7 @@ import static soma.ghostrunner.global.error.ErrorCode.*;
 @RequiredArgsConstructor
 public class PaceMakerService {
 
+    private final PacemakerRepository pacemakerRepository;
     private final RedisRateLimiterRepository redisRateLimiterRepository;
     private final RedisDistributedLockManager redisDistributedLockManager;
 

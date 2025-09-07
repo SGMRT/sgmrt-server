@@ -41,9 +41,6 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
     @Autowired
     RunningRepository runningRepository;
 
-    @MockitoBean
-    RunningTelemetryQueryService runningTelemetryQueryService;
-
     @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
     @Test
     void findSoloRunInfoById() {
