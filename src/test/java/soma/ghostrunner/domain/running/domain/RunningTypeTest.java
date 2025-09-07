@@ -8,20 +8,20 @@ class RunningTypeTest {
 
     @DisplayName("목적에 따라 러닝 타입으로 변환한다.")
     @Test
-    void convertToRunningType() {
+    void toRunningType() {
         // when // then
-        Assertions.assertThat(RunningType.convertToRunningType("RECOVERY_JOGGING"))
+        Assertions.assertThat(RunningType.toRunningType("RECOVERY_JOGGING"))
                 .isEqualTo(RunningType.E);
 
-        Assertions.assertThat(RunningType.convertToRunningType("MARATHON"))
+        Assertions.assertThat(RunningType.toRunningType("MARATHON"))
                 .isEqualTo(RunningType.M);
     }
 
     @DisplayName("올바른 러닝 목적이 아니라면 예외를 발생한다.")
     @Test
-    void convertToRunningTypeWithInvalidRunningPurpose() {
+    void toRunningTypeWithInvalidRunningPurpose() {
         // when // then
-        Assertions.assertThatThrownBy(() -> RunningType.convertToRunningType("INVALID_PURPOSE"))
+        Assertions.assertThatThrownBy(() -> RunningType.toRunningType("INVALID_PURPOSE"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Unknown running purpose: " + "INVALID_PURPOSE");
     }

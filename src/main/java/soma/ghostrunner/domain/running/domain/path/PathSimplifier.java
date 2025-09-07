@@ -1,6 +1,6 @@
 package soma.ghostrunner.domain.running.domain.path;
 
-import soma.ghostrunner.domain.running.application.dto.CoordinateDtoWithTs;
+import soma.ghostrunner.domain.running.application.dto.CoordinateWithTsDto;
 import soma.ghostrunner.domain.running.application.dto.CheckpointDto;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 
@@ -8,17 +8,18 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+// TODO : 반환하는 애플리케이션의 DTO를 도메인단에서는 모르도록 변경
 public class PathSimplifier {
 
     private static final double EPSILON_METER = 10.0;
     private static final double TARGET_DISTANCE_M = 3.0;
 
-    public static List<CoordinateDto> extractEdgePoints(List<CoordinateDtoWithTs> points) {
+    public static List<CoordinateDto> extractEdgePoints(List<CoordinateWithTsDto> points) {
         // RDP
         if (points.size() <= 2) {
             return toCoordinateDtos(points);
         }
-        List<CoordinateDtoWithTs> out = new ArrayList<>();
+        List<CoordinateWithTsDto> out = new ArrayList<>();
         rdp(points, 0, points.size() - 1, out);
 
         // ts 기준 정렬
@@ -26,13 +27,13 @@ public class PathSimplifier {
         return toCoordinateDtos(out);
     }
 
-    private static List<CoordinateDto> toCoordinateDtos(List<CoordinateDtoWithTs> points) {
+    private static List<CoordinateDto> toCoordinateDtos(List<CoordinateWithTsDto> points) {
         return points.stream()
-                .map(CoordinateDtoWithTs::toCoordinateDto)
+                .map(CoordinateWithTsDto::toCoordinateDto)
                 .toList();
     }
 
-    private static void rdp(List<CoordinateDtoWithTs> pts, int start, int end, List<CoordinateDtoWithTs> out) {
+    private static void rdp(List<CoordinateWithTsDto> pts, int start, int end, List<CoordinateWithTsDto> out) {
         if (start == 0) {
             // 처음 진입에서 시작점 넣기
             out.add(pts.get(start));
@@ -41,8 +42,8 @@ public class PathSimplifier {
         double dmax = -1.0;
         int index = -1;
 
-        CoordinateDtoWithTs a = pts.get(start);
-        CoordinateDtoWithTs b = pts.get(end);
+        CoordinateWithTsDto a = pts.get(start);
+        CoordinateWithTsDto b = pts.get(end);
 
         for (int i = start + 1; i < end; i++) {
             double d = perpendicularDistanceMeters(pts.get(i), a, b);
@@ -63,7 +64,7 @@ public class PathSimplifier {
     }
 
     // 점 - 선분 거리 계산
-    private static double perpendicularDistanceMeters(CoordinateDtoWithTs p, CoordinateDtoWithTs a, CoordinateDtoWithTs b) {
+    private static double perpendicularDistanceMeters(CoordinateWithTsDto p, CoordinateWithTsDto a, CoordinateWithTsDto b) {
         // 같은 점(선분 길이 0) 처리
         if (a.getLat() == b.getLat() && a.getLng() == b.getLng()) {
             return haversineMeters(p, a);
@@ -87,7 +88,7 @@ public class PathSimplifier {
         return P.minus(proj).length();
     }
 
-    private static Vec2 toLocalMeters(CoordinateDtoWithTs c, double refLatRad) {
+    private static Vec2 toLocalMeters(CoordinateWithTsDto c, double refLatRad) {
         double metersPerDegLat = 111_132.0;
         double metersPerDegLon = 111_320.0 * Math.cos(refLatRad);
 
@@ -97,37 +98,37 @@ public class PathSimplifier {
     }
 
     // 3초 평균 -> 3m 추출로 해상도 축소
-    public static List<CoordinateDto> simplifyToRenderingTelemetries(List<CoordinateDtoWithTs> points) {
+    public static List<CoordinateDto> simplifyToRenderingTelemetries(List<CoordinateWithTsDto> points) {
         if (points == null || points.isEmpty()) return List.of();
 
-        List<CoordinateDtoWithTs> averaged = averageByThreeSeconds(points);
-        List<CoordinateDtoWithTs> filtered = filterByDistanceMeters(averaged, TARGET_DISTANCE_M);
+        List<CoordinateWithTsDto> averaged = averageByThreeSeconds(points);
+        List<CoordinateWithTsDto> filtered = filterByDistanceMeters(averaged, TARGET_DISTANCE_M);
 
         return toCoordinateDtos(filtered);
     }
 
     // 3초 평균
-    private static List<CoordinateDtoWithTs> averageByThreeSeconds(List<CoordinateDtoWithTs> points) {
-        List<CoordinateDtoWithTs> result = new ArrayList<>();
+    private static List<CoordinateWithTsDto> averageByThreeSeconds(List<CoordinateWithTsDto> points) {
+        List<CoordinateWithTsDto> result = new ArrayList<>();
         for (int i = 2; i < points.size(); i += 3) {
             double avgLat = (points.get(i - 2).getLat() + points.get(i - 1).getLat() + points.get(i).getLat()) / 3.0;
             double avgLng = (points.get(i - 2).getLng() + points.get(i - 1).getLng() + points.get(i).getLng()) / 3.0;
             long ts = points.get(i).getTs(); // 마지막 값 기준
-            result.add(new CoordinateDtoWithTs(ts, avgLat, avgLng));
+            result.add(new CoordinateWithTsDto(ts, avgLat, avgLng));
         }
         return result;
     }
 
     // 3m 이상 채택
-    private static List<CoordinateDtoWithTs> filterByDistanceMeters(List<CoordinateDtoWithTs> points, double targetDistance) {
+    private static List<CoordinateWithTsDto> filterByDistanceMeters(List<CoordinateWithTsDto> points, double targetDistance) {
         if (points == null || points.isEmpty()) return List.of();
 
-        List<CoordinateDtoWithTs> filtered = new ArrayList<>();
-        CoordinateDtoWithTs last = points.get(0);
+        List<CoordinateWithTsDto> filtered = new ArrayList<>();
+        CoordinateWithTsDto last = points.get(0);
         filtered.add(last);
 
         for (int i = 1; i < points.size(); i++) {
-            CoordinateDtoWithTs p = points.get(i);
+            CoordinateWithTsDto p = points.get(i);
             double d = haversineMeters(last, p); 
             if (d >= targetDistance) {
                 filtered.add(p);
@@ -138,7 +139,7 @@ public class PathSimplifier {
     }
 
     // 하버사인 : 두 점 사이 거리 계산
-    private static double haversineMeters(CoordinateDtoWithTs p1, CoordinateDtoWithTs p2) {
+    private static double haversineMeters(CoordinateWithTsDto p1, CoordinateWithTsDto p2) {
         double R = 6371_000.0; // meters
         double lat1 = Math.toRadians(p1.getLat());
         double lat2 = Math.toRadians(p2.getLat());

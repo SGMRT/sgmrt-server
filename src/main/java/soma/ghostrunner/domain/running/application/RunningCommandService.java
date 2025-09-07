@@ -12,6 +12,7 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.support.RunningDataUploader;
+import soma.ghostrunner.domain.running.application.support.RunningServiceMapper;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;

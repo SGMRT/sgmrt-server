@@ -10,10 +10,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
-import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutDto;
+import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutSetDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.domain.RunningType;
-import soma.ghostrunner.domain.running.domain.formula.WorkoutTemplate;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.infra.redis.RedisDistributedLockManager;
 import soma.ghostrunner.domain.running.infra.redis.RedisRateLimiterRepository;
@@ -52,13 +51,14 @@ public class PaceMakerService {
     private static final int KEY_EXPIRATION_TIME_SECONDS = 86400;
 
     public void createPaceMaker(String memberUuid, CreatePacemakerCommand command) throws InterruptedException {
+        verifyTargetDistanceAtLeast3K(command);
+
         Member member = memberService.findMemberByUuid(memberUuid);
         int vdot = determineVdot(command, member);
 
-        verifyTargetDistanceAtLeast3K(command);
-        Map<RunningType, Double> expectedPaces = runningVdotService.getExpectedPaces(vdot);
-        RunningType runningType = RunningType.convertToRunningType(command.getPurpose());
-        List<ProcessedWorkoutDto> workouts = workoutService.generatePlan(command.getTargetDistance(), runningType, expectedPaces);
+        Map<RunningType, Double> expectedPaces = runningVdotService.getExpectedPacesByVdot(vdot);
+        RunningType runningType = RunningType.toRunningType(command.getPurpose());
+        List<ProcessedWorkoutSetDto> workouts = workoutService.generatePlan(command.getTargetDistance(), runningType, expectedPaces);
 
         RLock lock = redisDistributedLockManager.getLock(PACEMAKER_LOCK_KEY_PREFIX + memberUuid);
         try {

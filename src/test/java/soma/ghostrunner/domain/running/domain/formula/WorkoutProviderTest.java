@@ -11,7 +11,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest
-class WorkoutTemplateProviderTest extends IntegrationTestSupport {
+class WorkoutProviderTest extends IntegrationTestSupport {
 
     @Autowired
     private WorkoutTemplateProvider workoutTemplateProvider;
@@ -20,13 +20,13 @@ class WorkoutTemplateProviderTest extends IntegrationTestSupport {
     @Test
     void findMWorkoutTemplate() {
         // when
-        List<WorkoutTemplate> mWorkoutTemplates = workoutTemplateProvider.findWorkoutTemplates(WorkoutType.M);
+        List<Workout> mWorkouts = workoutTemplateProvider.findWorkoutTemplates(WorkoutType.M);
 
         // then
-        WorkoutTemplate mWorkoutTemplate = mWorkoutTemplates.get(0);
-        assertThat(mWorkoutTemplate.getId()).isEqualTo("M-01");
+        Workout mWorkout = mWorkouts.get(0);
+        assertThat(mWorkout.getId()).isEqualTo("M-01");
 
-        List<WorkoutSet> workoutSets = mWorkoutTemplate.getSets();
+        List<WorkoutSet> workoutSets = mWorkout.getSets();
         assertThat(workoutSets).hasSize(3);
 
         WorkoutSet firstWorkoutSet = workoutSets.get(0);

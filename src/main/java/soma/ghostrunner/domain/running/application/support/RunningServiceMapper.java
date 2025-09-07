@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.application.dto;
+package soma.ghostrunner.domain.running.application.support;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -6,6 +6,8 @@ import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
+import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
+import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.domain.Running;

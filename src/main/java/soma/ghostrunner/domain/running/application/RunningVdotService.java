@@ -25,10 +25,10 @@ public class RunningVdotService {
     }
 
     public Double calculateExpectedPace(int vdot, String runningPurpose) {
-        return vdotPaceProvider.getPaceByVdotAndRunningType(vdot, RunningType.convertToRunningType(runningPurpose));
+        return vdotPaceProvider.getPaceByVdotAndRunningType(vdot, RunningType.toRunningType(runningPurpose));
     }
 
-    public Map<RunningType, Double> getExpectedPaces(int vdot) {
+    public Map<RunningType, Double> getExpectedPacesByVdot(int vdot) {
         List<VdotPace> vdotPaces = vdotPaceProvider.getVdotPaceByVdot(vdot);
         return vdotPaces.stream()
                 .collect(Collectors.toMap(VdotPace::type, VdotPace::pacePerKm, (a, b) -> b));

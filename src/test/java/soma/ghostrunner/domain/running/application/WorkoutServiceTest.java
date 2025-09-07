@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutDto;
+import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutSetDto;
 import soma.ghostrunner.domain.running.domain.RunningType;
 
 import java.util.HashMap;
@@ -31,10 +31,13 @@ class WorkoutServiceTest extends IntegrationTestSupport {
         expectedPaces.put(RunningType.R, 6.2);
 
         // when
-        List<ProcessedWorkoutDto> processedWorkouts = workoutService.generatePlan(12, RunningType.M, expectedPaces);
+        List<ProcessedWorkoutSetDto> processedWorkouts = workoutService.generatePlan(12, RunningType.M, expectedPaces);
 
         // then
         Assertions.assertThat(processedWorkouts.get(processedWorkouts.size()-1).getEndPoint()).isEqualTo(12.00);
+        for (ProcessedWorkoutSetDto processedWorkout : processedWorkouts) {
+            System.out.println(processedWorkout);
+        }
     }
 
 }

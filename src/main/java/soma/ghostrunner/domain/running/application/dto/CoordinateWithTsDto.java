@@ -8,16 +8,16 @@ import java.util.stream.Collectors;
 
 @Getter
 @AllArgsConstructor
-public class CoordinateDtoWithTs implements Comparable<CoordinateDtoWithTs> {
+public class CoordinateWithTsDto implements Comparable<CoordinateWithTsDto> {
 
     private long ts;
     private double lat;
     private double lng;
 
-    public static List<CoordinateDtoWithTs> toCoordinateDtosWithTsList(List<TelemetryDto> telemetryDtos) {
+    public static List<CoordinateWithTsDto> toCoordinateDtosWithTsList(List<TelemetryDto> telemetryDtos) {
         return telemetryDtos.stream()
                 .map(telemetryDto ->
-                        new CoordinateDtoWithTs(telemetryDto.getTimeStamp(), telemetryDto.getLat(), telemetryDto.getLng()))
+                        new CoordinateWithTsDto(telemetryDto.getTimeStamp(), telemetryDto.getLat(), telemetryDto.getLng()))
                 .collect(Collectors.toList());
     }
 
@@ -26,7 +26,7 @@ public class CoordinateDtoWithTs implements Comparable<CoordinateDtoWithTs> {
     }
 
     @Override
-    public int compareTo(CoordinateDtoWithTs c) {
+    public int compareTo(CoordinateWithTsDto c) {
         return (int) (this.getTs() - c.getTs());
     }
 

@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutSet;
-import soma.ghostrunner.domain.running.domain.formula.WorkoutTemplate;
+import soma.ghostrunner.domain.running.domain.formula.Workout;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutTemplateProvider;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutType;
 
@@ -25,10 +25,10 @@ import java.util.stream.Stream;
 public class JsonWorkoutTemplateProvider implements WorkoutTemplateProvider {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private Map<WorkoutType, List<WorkoutTemplate>> workoutTemplatesMap;
+    private Map<WorkoutType, List<Workout>> workoutTemplatesMap;
 
     @Override
-    public List<WorkoutTemplate> findWorkoutTemplates(WorkoutType type) {
+    public List<Workout> findWorkoutTemplates(WorkoutType type) {
         return workoutTemplatesMap.getOrDefault(type, List.of());
     }
 
@@ -46,12 +46,12 @@ public class JsonWorkoutTemplateProvider implements WorkoutTemplateProvider {
         iWorkouts.forEach(JsonWorkoutDto::cloneInRepetitions);
 
         // WorkoutTemplate 변환
-        List<WorkoutTemplate> workoutTemplatesList = Stream.of(eWorkouts, iWorkouts, mWorkouts, rWorkouts, tWorkouts)
+        List<Workout> workoutTemplatesList = Stream.of(eWorkouts, iWorkouts, mWorkouts, rWorkouts, tWorkouts)
                 .flatMap(List::stream)
                 .map(JsonWorkoutDto::toWorkoutTemplate)
                 .toList();
         this.workoutTemplatesMap = workoutTemplatesList.stream()
-                .collect(Collectors.groupingBy(WorkoutTemplate::getWorkoutType));
+                .collect(Collectors.groupingBy(Workout::getWorkoutType));
     }
 
     private List<JsonWorkoutDto> loadFromJson(String filePath) throws IOException {
@@ -85,7 +85,7 @@ public class JsonWorkoutTemplateProvider implements WorkoutTemplateProvider {
             this.repetitions = null;
         }
 
-        protected WorkoutTemplate toWorkoutTemplate() {
+        protected Workout toWorkoutTemplate() {
             WorkoutType primaryType = WorkoutType.valueOf(this.id.split("-")[0]);
 
             List<WorkoutSet> sets = this.sets.stream()
@@ -101,7 +101,7 @@ public class JsonWorkoutTemplateProvider implements WorkoutTemplateProvider {
                     })
                     .toList();
 
-            return new WorkoutTemplate(this.id, primaryType, sets);
+            return new Workout(this.id, primaryType, sets);
         }
 
     }

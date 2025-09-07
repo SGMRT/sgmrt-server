@@ -4,6 +4,6 @@ import java.util.List;
 
 public interface WorkoutTemplateProvider {
 
-    List<WorkoutTemplate> findWorkoutTemplates(WorkoutType type);
+    List<Workout> findWorkoutTemplates(WorkoutType type);
 
 }
