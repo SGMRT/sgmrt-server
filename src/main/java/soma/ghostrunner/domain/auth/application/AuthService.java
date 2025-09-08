@@ -38,14 +38,11 @@ public class AuthService {
     private final JwtTokenFactory jwtTokenFactory;
     private final JwtProvider jwtProvider;
 
-    private final ApplicationEventPublisher eventPublisher;
-
     @Transactional
     public AuthenticationResponse signIn(String firebaseToken) {
         String externalAuthId = authIdResolver.resolveAuthId(firebaseToken);
         String memberUuid = findMemberUuid(externalAuthId);
         JwtTokens jwtTokens = createAndSaveTokens(memberUuid);
-        // todo MemberLoggedInEvent publish
         return authMapper.toAuthenticationResponse(memberUuid, jwtTokens);
     }
 
@@ -69,7 +66,6 @@ public class AuthService {
 
         String memberUuid = member.getUuid();
         JwtTokens jwtTokens = createAndSaveTokens(memberUuid);
-        // todo MemberLoggedInEvent publish ??
         return authMapper.toAuthenticationResponse(memberUuid, jwtTokens);
     }
 
