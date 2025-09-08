@@ -3,21 +3,31 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.async.DeferredResult;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerResponse;
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
-import soma.ghostrunner.domain.running.application.support.RunningServiceMapper;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
+import soma.ghostrunner.domain.running.domain.PacemakerSet;
 import soma.ghostrunner.domain.running.domain.RunningType;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
+import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;
 import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
+import soma.ghostrunner.global.error.ErrorCode;
+import soma.ghostrunner.global.error.exception.BusinessException;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -29,6 +39,7 @@ import static soma.ghostrunner.global.error.ErrorCode.*;
 public class PacemakerService {
 
     private final PacemakerRepository pacemakerRepository;
+    private final PacemakerSetRepository pacemakerSetRepository;
     private final RedisRunningRepository redisRunningRepository;
 
     private final MemberService memberService;
@@ -36,7 +47,7 @@ public class PacemakerService {
     private final WorkoutService workoutService;
     private final PacemakerLlmService llmService;
 
-    private final RunningServiceMapper mapper;
+    private final RunningApplicationMapper mapper;
 
     private final String PACEMAKER_LOCK_KEY_PREFIX = "pacemaker_api_lock:";
     private final String PACEMAKER_API_RATE_LIMIT_KEY_PREFIX = "pacemaker_api_rate_limit:";
@@ -65,7 +76,7 @@ public class PacemakerService {
             verifyLockAlreadyGotten(memberUuid, isLocked);
             String rateLimitKey = handleApiRateLimit(memberUuid, command.getLocalDate());
 
-            Pacemaker pacemaker = savePacemaker(command);
+            Pacemaker pacemaker = savePacemaker(command, member);
             requestLlmToCreatePacemaker(command, member, workoutDto, vdot, pacemaker, rateLimitKey);
             return pacemaker.getId();
         } finally {
@@ -99,6 +110,7 @@ public class PacemakerService {
     }
 
     private String handleApiRateLimit(String memberUuid, LocalDate localDate) {
+
         String rateLimitKey = PACEMAKER_API_RATE_LIMIT_KEY_PREFIX + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
         Long currentCount = redisRunningRepository.incrementRateLimitCounter(
@@ -120,10 +132,13 @@ public class PacemakerService {
         return rateLimitKey;
     }
 
-    private Pacemaker savePacemaker(CreatePacemakerCommand command) {
-        Pacemaker pacemaker = pacemakerRepository.save(mapper.toPacemaker(Pacemaker.Norm.DISTANCE, command));
+    private Pacemaker savePacemaker(CreatePacemakerCommand command, Member member) {
+        Pacemaker pacemaker = pacemakerRepository.save(mapper.toPacemaker(Pacemaker.Norm.DISTANCE, command, member));
+
         String key = PACEMAKER_PROCESSING_STATE_KEY_PREFIX + pacemaker.getId();
-        redisRunningRepository.save(key, PACEMAKER_PROCESSING_STATE, TimeUnit.DAYS, 1);
+        String value = member.getUuid() + ":" + PACEMAKER_PROCESSING_STATE;
+        redisRunningRepository.save(key, value, TimeUnit.DAYS, 1);
+
         return pacemaker;
     }
 
@@ -135,6 +150,49 @@ public class PacemakerService {
                 command.getCondition(), command.getTemperature(), pacemaker.getId(),
                 rateLimitKey
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PacemakerResponse getPacemaker(Long pacemakerId, String memberUuid) {
+
+        String value = readProcessStatusFromRedis(pacemakerId);
+        verifyStatusIfNotNull(memberUuid, value);
+
+        Pacemaker pacemaker = findPacemaker(pacemakerId);
+        pacemaker.verifyMember(memberUuid);
+        pacemaker.verifyStatusProceedingOrFailed();
+
+        List<PacemakerSet> pacemakerSets = pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId);
+
+        return mapper.toResponse(pacemaker, pacemakerSets);
+    }
+
+    private String readProcessStatusFromRedis(Long pacemakerId) {
+        String key = PACEMAKER_PROCESSING_STATE_KEY_PREFIX + pacemakerId;
+        return redisRunningRepository.get(key);
+    }
+
+    private void verifyStatusIfNotNull(String memberUuid, String value) {
+        if (value != null) {
+            String savedMemberUuid = value.split(":")[0];
+            String status = value.split(":")[1];
+
+            if (!savedMemberUuid.equals(memberUuid)) {
+                throw new AccessDeniedException("접근할 수 없는 러닝 데이터입니다.");
+            }
+
+            switch(status) {
+                case "PROCESSING":
+                    throw new InvalidRunningException(PROCESSING_PACEMAKER, "페이스메이커가 아직 생성되고 있습니다.");
+                case "FAILED":
+                    throw new BusinessException(FAILED_PACEMAKER, "페이스메이커를 생성하는데 실패했습니다.");
+            }
+        }
+    }
+
+    private Pacemaker findPacemaker(Long pacemakerId) {
+        return pacemakerRepository.findById(pacemakerId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, pacemakerId));
     }
 
 }

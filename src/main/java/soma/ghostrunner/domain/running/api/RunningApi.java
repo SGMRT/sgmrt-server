@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerResponse;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.*;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
@@ -156,6 +157,14 @@ public class RunningApi {
             @RequestBody @Valid CreatePacemakerRequest request) throws InterruptedException {
         String memberUuid = userDetails.getUserId();
         return paceMakerService.createPaceMaker(memberUuid, mapper.toCommand(request));
+    }
+
+    @GetMapping("/v1/runs/pacemaker/{pacemakerId}")
+    public PacemakerResponse getPacemaker(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @PathVariable Long pacemakerId) {
+        String memberUuid = userDetails.getUserId();
+        return paceMakerService.getPacemaker(pacemakerId, memberUuid);
     }
 
 }

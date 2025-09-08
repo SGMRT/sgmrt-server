@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
 import soma.ghostrunner.domain.running.domain.Pacemaker.Status;
@@ -31,7 +32,7 @@ public class PacemakerLlmCallbackService {
     private final String PACEMAKER_FAILED_STATE = "FAILED";
 
     @Transactional
-    public void handleSuccess(Long pacemakerId, String workoutDtoStr) {
+    public void handleSuccess(Long pacemakerId, String workoutDtoStr, Member member) {
         WorkoutDto workoutDto = WorkoutDto.fromVoiceGuidanceGeneratedWorkoutDto(workoutDtoStr);
 
         Pacemaker pacemaker = findPacemaker(pacemakerId);
@@ -41,23 +42,23 @@ public class PacemakerLlmCallbackService {
         List<PacemakerSet> sets = PacemakerSet.createPacemakerSets(workoutDto.getSets(), pacemaker);
         pacemakerSetRepository.saveAll(sets);
 
-        updatePacemakerStatusInRedis(pacemakerId, COMPLETED);
+        updatePacemakerStatusInRedis(pacemakerId, COMPLETED, member);
     }
 
     @Transactional
-    public void handleError(String rateLimitKey, Long pacemakerId) {
+    public void handleError(String rateLimitKey, Long pacemakerId, Member member) {
         compensateRateLimitCount(rateLimitKey);
-        updatePacemakerStatus(pacemakerId, FAILED);
+        updatePacemakerStatus(pacemakerId, FAILED, member);
     }
 
     private void compensateRateLimitCount(String rateLimitKey) {
         redisRunningRepository.decrementRateLimitCounter(rateLimitKey);
     }
 
-    private void updatePacemakerStatus(Long pacemakerId, Status status) {
+    private void updatePacemakerStatus(Long pacemakerId, Status status, Member member) {
         Pacemaker pacemaker = findPacemaker(pacemakerId);
         pacemaker.updateStatus(status);
-        updatePacemakerStatusInRedis(pacemakerId, status);
+        updatePacemakerStatusInRedis(pacemakerId, status, member);
     }
 
     private Pacemaker findPacemaker(Long pacemakerId) {
@@ -65,12 +66,14 @@ public class PacemakerLlmCallbackService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, pacemakerId));
     }
 
-    private void updatePacemakerStatusInRedis(Long pacemakerId, Status status) {
+    private void updatePacemakerStatusInRedis(Long pacemakerId, Status status, Member member) {
         String key = PACEMAKER_PROCESSING_STATE_KEY_PREFIX + pacemakerId;
         if (status == COMPLETED) {
-            redisRunningRepository.save(key, PACEMAKER_SUCCEED_STATE, TimeUnit.DAYS, 1);
+            String value = member.getUuid() + ":" + PACEMAKER_SUCCEED_STATE;
+            redisRunningRepository.save(key, value, TimeUnit.DAYS, 1);
         } else {
-            redisRunningRepository.save(key, PACEMAKER_FAILED_STATE, TimeUnit.DAYS, 1);
+            String value = member.getUuid() + ":" + PACEMAKER_FAILED_STATE;
+            redisRunningRepository.save(key, value, TimeUnit.DAYS, 1);
         }
     }
 

@@ -5,8 +5,14 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
+import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
+import soma.ghostrunner.global.error.exception.BusinessException;
+
+import static soma.ghostrunner.global.error.ErrorCode.FAILED_PACEMAKER;
+import static soma.ghostrunner.global.error.ErrorCode.PROCESSING_PACEMAKER;
 
 @Entity
 @Getter
@@ -40,9 +46,13 @@ public class Pacemaker extends BaseTimeEntity {
     @Column(name = "running_id")
     private Long runningId;
 
+    @Column(name = "member_uuid")
+    private String memberUuid;
+
     @Builder(access = AccessLevel.PRIVATE)
-    public Pacemaker(Norm norm, String summary, Double goalDistance,
-                     Integer expectedTime, String initialMessage, Long runningId) {
+    public Pacemaker(Norm norm, String summary,
+                     Double goalDistance, Integer expectedTime, String initialMessage,
+                     Long runningId, String memberUuid) {
         this.norm = norm;
         this.summary = summary;
         this.goalDistance = goalDistance;
@@ -50,6 +60,7 @@ public class Pacemaker extends BaseTimeEntity {
         this.initialMessage = initialMessage;
         this.runningId = runningId;
         this.status = Status.PROCEEDING;
+        this.memberUuid = memberUuid;
     }
 
     public static Pacemaker of(Norm norm, Double goalDistance) {
@@ -59,11 +70,11 @@ public class Pacemaker extends BaseTimeEntity {
                 .build();
     }
 
-    public static Pacemaker of(Norm norm, Double goalDistance, Long runningId) {
+    public static Pacemaker of(Norm norm, Double goalDistance, String memberUuid) {
         return Pacemaker.builder()
                 .norm(norm)
                 .goalDistance(goalDistance)
-                .runningId(runningId)
+                .memberUuid(memberUuid)
                 .build();
     }
 
@@ -83,9 +94,23 @@ public class Pacemaker extends BaseTimeEntity {
         PROCEEDING, COMPLETED, FAILED
     }
 
-    public Status updateStatus(Status status) {
+    public void updateStatus(Status status) {
         this.status = status;
-        return this.status;
+    }
+
+    public void verifyMember(String memberUuid) {
+        if (!this.memberUuid.equals(memberUuid)) {
+            throw new AccessDeniedException("접근할 수 없는 러닝 데이터입니다.");
+        }
+    }
+
+    public void verifyStatusProceedingOrFailed() {
+        switch (status) {
+            case PROCEEDING:
+                throw new InvalidRunningException(PROCESSING_PACEMAKER, "페이스메이커가 아직 생성되고 있습니다.");
+            case FAILED:
+                throw new BusinessException(FAILED_PACEMAKER, "페이스메이커를 생성하는데 실패했습니다.");
+        }
     }
 
 }

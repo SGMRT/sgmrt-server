@@ -39,11 +39,11 @@ public class PacemakerLlmService {
                 .subscribe(
                         result -> {
                             log.info("✅ [{}]에 대한 LLM API 요청을 성공했습니다.", pacemakerId);
-                            callbackService.handleSuccess(pacemakerId, result);
+                            callbackService.handleSuccess(pacemakerId, result, member);
                         },
                         error -> {
                             log.error("🚫 [{}]에 대한 LLM API 요청을 실패했습니다. : {}", pacemakerId, error.getMessage());
-                            callbackService.handleError(rateLimitKey, pacemakerId);
+                            callbackService.handleError(rateLimitKey, pacemakerId, member);
                         }
                 );
     }

@@ -12,9 +12,7 @@ import java.util.List;
 @Repository
 public interface PacemakerSetRepository extends JpaRepository<PacemakerSet, Long> {
 
-    @Modifying(clearAutomatically = true)
-    @Query("delete from PacemakerSet ps where ps.pacemaker.id in " +
-            "(select p.id from Pacemaker p where p.runningId in :runningIds)")
-    void deletePacemakerSetsInRunningIds(@Param("runningIds") List<Long> runningIds);
+    @Query("select s from PacemakerSet s where s.pacemaker.id = :pacemakerId order by s.setNum asc, s.pace desc ")
+    List<PacemakerSet> findByPacemakerIdOrderBySetNumAsc(@Param("pacemakerId") Long pacemakerId);
 
 }

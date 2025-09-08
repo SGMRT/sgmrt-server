@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.IntegrationTestSupport;
@@ -38,6 +39,9 @@ class PacemakerServiceTest extends IntegrationTestSupport {
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
+
+    @MockitoBean
+    PacemakerLlmService pacemakerLlmService;
 
     @DisplayName("AI 페이스메이커를 생성한다.")
     @Test

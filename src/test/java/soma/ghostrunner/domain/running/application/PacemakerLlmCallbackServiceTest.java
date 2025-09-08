@@ -7,6 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.WorkoutSetDto;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
@@ -40,6 +41,8 @@ class PacemakerLlmCallbackServiceTest {
     @Test
     void handleSuccess_shouldUpdateEntitiesAndRedis() {
         // given
+        Member member = mock(Member.class);
+
         Long pacemakerId = 100L;
         String workoutJson = "{...any json...}";
 
@@ -66,7 +69,7 @@ class PacemakerLlmCallbackServiceTest {
 
             // when
             assertThatNoException()
-                    .isThrownBy(() -> service.handleSuccess(pacemakerId, workoutJson));
+                    .isThrownBy(() -> service.handleSuccess(pacemakerId, workoutJson, member));
 
             // then
             // 1) 도메인 업데이트
@@ -95,7 +98,7 @@ class PacemakerLlmCallbackServiceTest {
             org.assertj.core.api.Assertions.assertThat(keyCap.getValue())
                     .isEqualTo(expectedKeyPrefix + pacemakerId);
             org.assertj.core.api.Assertions.assertThat(valCap.getValue())
-                    .isEqualTo("SUCCEED");
+                    .isEqualTo("null:SUCCEED");
             org.assertj.core.api.Assertions.assertThat(unitCap.getValue())
                     .isEqualTo(TimeUnit.DAYS);
             org.assertj.core.api.Assertions.assertThat(timeoutCap.getValue())
@@ -106,6 +109,8 @@ class PacemakerLlmCallbackServiceTest {
     @Test
     void handleError_shouldCompensateAndUpdateFailedStatus() {
         // given
+        Member member = mock(Member.class);
+
         String rateLimitKey = "rl:member:1";
         Long pacemakerId = 200L;
 
@@ -114,7 +119,7 @@ class PacemakerLlmCallbackServiceTest {
 
         // when
         assertThatNoException()
-                .isThrownBy(() -> service.handleError(rateLimitKey, pacemakerId));
+                .isThrownBy(() -> service.handleError(rateLimitKey, pacemakerId, member));
 
         // then
         // 1) 레이트리밋 보상
@@ -141,7 +146,7 @@ class PacemakerLlmCallbackServiceTest {
         org.assertj.core.api.Assertions.assertThat(keyCap.getValue())
                 .isEqualTo(expectedKeyPrefix + pacemakerId);
         org.assertj.core.api.Assertions.assertThat(valCap.getValue())
-                .isEqualTo("FAILED");
+                .isEqualTo("null:FAILED");
         org.assertj.core.api.Assertions.assertThat(unitCap.getValue())
                 .isEqualTo(TimeUnit.DAYS);
         org.assertj.core.api.Assertions.assertThat(timeoutCap.getValue())

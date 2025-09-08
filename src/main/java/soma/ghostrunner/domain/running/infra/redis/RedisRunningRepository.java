@@ -23,6 +23,10 @@ public class RedisRunningRepository {
         redisTemplate.opsForValue().set(key, value, timeout, timeUnit);
     }
 
+    public String get(String key) {
+        return redisTemplate.opsForValue().get(key);
+    }
+
     public RLock getLock(String lockKey) {
         return redissonClient.getLock(lockKey);
     }

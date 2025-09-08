@@ -42,56 +42,6 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
     @Autowired
     private MemberRepository memberRepository;
 
-    @DisplayName("러닝 ID에 있는 모든 페이스메이커를 삭제한다.")
-    @Test
-    void deletePacemakersInRunningIds() {
-        // given
-        Member member = createMember("이복둥");
-        memberRepository.save(member);
-
-        Course course = createCourse(member);
-        courseRepository.save(course);
-
-        Running running1 = createRunning(member, course, "러닝 제목1");
-        Running running3 = createRunning(member, course, "러닝 제목3");
-        List<Running> runnings = List.of(running1, running3);
-        runningRepository.saveAll(runnings);
-
-        Pacemaker pacemaker1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, running1.getId());
-        Pacemaker pacemaker3 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, running1.getId());
-        pacemakerRepository.saveAll(List.of(pacemaker1, pacemaker3));
-
-        PacemakerSet pacemaker1Set1 = PacemakerSet.of(
-                1, "첫 세트 - 워밍업",
-                0.0, 1.0, 6.0, pacemaker1
-        );
-        PacemakerSet pacemaker1Set2 = PacemakerSet.of(
-                2, "두 번째 세트 - 본훈련",
-                2.0, 4.0, 5.5, pacemaker1
-        );
-        PacemakerSet pacemaker3Set1 = PacemakerSet.of(
-                1, "첫 세트 - 워밍업",
-                0.0, 1.0, 6.0, pacemaker3
-        );
-        PacemakerSet pacemaker3Set2 = PacemakerSet.of(
-                2, "두 번째 세트 - 본훈련",
-                2.0, 4.0, 5.5, pacemaker3
-        );
-        pacemakerSetRepository.saveAll(List.of(pacemaker1Set1, pacemaker1Set2, pacemaker3Set1, pacemaker3Set2));
-
-        // when
-        pacemakerSetRepository.deletePacemakerSetsInRunningIds(List.of(running1.getId(), running3.getId()));
-        pacemakerRepository.deletePacemakersInRunningIds(List.of(running1.getId(), running3.getId()));
-
-        // then
-        List<Pacemaker> deletedPacemakers = pacemakerRepository.findAllById(List.of(pacemaker1.getId(), pacemaker3.getId()));
-        assertThat(deletedPacemakers).hasSize(0);
-
-        List<PacemakerSet> deletedPacemakerSets = pacemakerSetRepository.findAllById(
-                List.of(pacemaker1Set1.getId(), pacemaker1Set2.getId(), pacemaker3Set1.getId(), pacemaker3Set2.getId()));
-        assertThat(deletedPacemakerSets).hasSize(0);
-    }
-
     private Running createRunning(Member testMember, Course testCourse, String runningName) {
         RunningRecord testRunningRecord = RunningRecord.of(5.2, 30.0, 40.0, -20.0,
                 6.1, 4.9, 6.9, 3423L, 302, 120, 56);
