@@ -46,45 +46,62 @@ public class NotificationService {
 
     public CompletableFuture<NotificationBatchResult> sendPushNotificationAsync(List<Long> userIds, String title, String body, Map<String, Object> data) {
         List<PushToken> pushTokens = pushTokenRepository.findByMemberIdIn(userIds);
+        if (pushTokens.isEmpty()) return CompletableFuture.completedFuture(NotificationBatchResult.ofEmpty());
 
         // 알림 전송 전에 Notification 엔티티 먼저 생성 및 저장
         List<Notification> notifications = pushTokens.stream()
-                .map(token -> Notification.of(token, title, body, data)) // 정적 팩토리 가정
+                .map(token -> Notification.of(token, title, body, data))
                 .toList();
         notificationRepository.saveAll(notifications);
 
-        // Q. 트랜잭션 분리: ExpoAClient 호출이 오래 걸릴 수도 있어서 이 메소드에 @Transactional을 뺌.
-        // - 그럼 ExpoPushClient에 호출을 날린 건 성공했는데 갑자기 서버가 꺼지면 Notification은 SENT가 아닌 CREATED로 남지 않나?
-        // - 해결방법은 메시지큐?
+        // Expo Push API 비동기 호출
         NotificationRequest request = NotificationRequest.from(notifications);
         CompletableFuture<List<NotificationSendResult>> clientFuture = expoPushClient.pushAsync(request);
-        return clientFuture.thenApplyAsync(results -> {
+        return clientFuture.thenApply(results -> {
                     // 전송 결과 DB에 반영 (Notification status 변경)
-                    // - todo 고도화: DB 접근 최적화 (성공한 애들 모아서 한 번에 SENT / 실패한 애들 모아서 한 번에 RETRYING)
-                    for (NotificationSendResult result : results) {
-                        notificationRepository.findById(result.notificationId())
-                                .ifPresent(noti -> {
-                                    if (result.isSuccess()) {
-                                        noti.markAsSent(result.ticketId());
-                                    } else {
-                                        noti.markAsFailed();
-                                    }
-                                    notificationRepository.save(noti);
-                            });
-                    }
-
-                    long success = results.stream().filter(NotificationSendResult::isSuccess).count();
-                    int total = results.size();
-                    int failure = total - (int) success;
-                    return new NotificationBatchResult(total, (int) success, failure);
+                    updateNotificationStatus(results);
+                    return createNotificationBatchResult(results);
                 })
                 .exceptionally(ex -> {
                     // 푸쉬 실패 (네트워크 장애 등)
                     log.warn("NotificationService: exception while sending push notification: {}", ex.getMessage());
                     notifications.forEach(Notification::markAsFailed);
                     notificationRepository.saveAll(notifications);
-                    return new NotificationBatchResult(notifications.size(), 0, notifications.size());
+                    List<Long> failureIds = notifications.stream().map(Notification::getId).toList();
+                    return new NotificationBatchResult(notifications.size(), 0, notifications.size(), List.of(), failureIds);
                 });
+    }
+
+    private void updateNotificationStatus(List<NotificationSendResult> results) {
+        // todo 고도화: DB 접근 최적화 (성공한 애들 모아서 한 번에 SENT / 실패한 애들 모아서 한 번에 RETRYING)
+        // - findById 최적화: Map<Id, Notification>으로 캐싱해서 메모리에 있는 엔티티 컬렉션 재활용
+        // - N+1 save 최적화: 성공 & 실패결과 모아서 bulk update
+        for (NotificationSendResult result : results) {
+            log.info(result.toString());
+            notificationRepository.findById(result.notificationId())
+                    .ifPresent(noti -> {
+                        if (result.isSuccess()) {
+                            noti.markAsSent(result.ticketId());
+                        } else {
+                            // 존재하지 않는 토큰인 경우 DB에서 삭제
+                            if(result.errorMessage().contains("is not a valid Expo push token")) {
+                                log.info("- 이거는 존재하지 않으니까 DB에서 삭제해야 됨");
+                                return;
+                            }
+                            noti.markAsFailed(); // todo FAILED 대신 RETRYING 으로 변경 후 재시도 로직 구현
+                        }
+                        notificationRepository.save(noti);
+                });
+        }
+    }
+
+    private static NotificationBatchResult createNotificationBatchResult(List<NotificationSendResult> results) {
+        long success = results.stream().filter(NotificationSendResult::isSuccess).count();
+        int total = results.size();
+        int failure = total - (int) success;
+        List<Long> successIds = results.stream().filter(NotificationSendResult::isSuccess).map(NotificationSendResult::notificationId).toList();
+        List<Long> failureIds = results.stream().filter(NotificationSendResult::isFailure).map(NotificationSendResult::notificationId).toList();
+        return new NotificationBatchResult(total, (int) success, failure, successIds, failureIds);
     }
 
     @Transactional

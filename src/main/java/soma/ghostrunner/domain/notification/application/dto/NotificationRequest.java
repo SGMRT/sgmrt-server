@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.notification.application.dto;
 
+import io.jsonwebtoken.lang.Assert;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,6 +26,11 @@ public class NotificationRequest {
     }
 
     public static NotificationRequest from(List<Notification> notifications) {
+        Assert.notNull(notifications, "Notifications must not be null");
+        if (notifications.isEmpty()) {
+            return NotificationRequest.builder().build();
+        }
+
         NotificationRequest request = NotificationRequest.builder().build();
         request.title = notifications.get(0).getTitle();
         request.body = notifications.get(0).getBody();
