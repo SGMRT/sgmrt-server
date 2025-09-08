@@ -7,7 +7,7 @@ import java.util.List;
 
 @Getter
 @AllArgsConstructor
-public class NotificationCreationRequest {
+public class NotificationSendRequest {
     private List<Long> userIds;
     private String title;
     private String body;
