@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.common.converter.JsonToMapConverter;
 
 import java.util.Map;
@@ -11,7 +12,7 @@ import java.util.Map;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Notification {
+public class Notification extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
