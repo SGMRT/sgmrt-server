@@ -3,12 +3,14 @@ package soma.ghostrunner.domain.notification.client;
 import com.niamedtech.expo.exposerversdk.ExpoPushNotificationClient;
 import com.niamedtech.expo.exposerversdk.response.Status;
 import com.niamedtech.expo.exposerversdk.response.TicketResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
 
@@ -17,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,6 +35,15 @@ class ExpoPushClientTest {
 
     @Mock
     private ExpoPushNotificationClient expoPushNotificationClient;
+
+    private final Executor pushTaskExecutor = Executors.newSingleThreadExecutor();
+
+    @BeforeEach
+    void setUp() {
+        // Executor 주입
+        ReflectionTestUtils.setField(expoPushClient, "pushTaskExecutor", pushTaskExecutor);
+    }
+
 
     @DisplayName("Expo 서버로부터 성공 응답을 받으면 성공 결과를 반환한다.")
     @Test
