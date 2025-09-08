@@ -67,4 +67,4 @@ management:
 
 openai:
   api:
-    key: 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
+    key: ${OPENAI_API_KEY}
