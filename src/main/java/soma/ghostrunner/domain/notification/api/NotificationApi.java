@@ -23,7 +23,7 @@ public class NotificationApi {
         // todo 관리자 API
         try {
             CompletableFuture<NotificationBatchResult> notificationFuture = notificationService
-                    .sendPushNotificationAsync(request.getUserIds(), request.getTitle(), request.getBody(), null);
+                    .sendPushNotificationAsync(request.getUserIds(), request.getTitle(), request.getBody(), request.getData());
             return notificationFuture.get(30, TimeUnit.SECONDS);
         } catch (Exception e) {
             throw new RuntimeException(e);
