@@ -1,12 +1,12 @@
 package soma.ghostrunner.domain.running.domain.llm;
 
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutDto;
+import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 
 public class PacemakerPromptGenerator {
 
     public static String generateWorkoutImprovementPrompt(Member member, int vdot, int condition,
-                                                          int temperature, ProcessedWorkoutDto workoutDto) {
+                                                          int temperature, WorkoutDto workoutDto) {
 
         return """
                 ## **역할**
@@ -158,9 +158,58 @@ public class PacemakerPromptGenerator {
                 {
                 	"user_info": """ + member.toStringForPacemakerPrompt(vdot, condition) + ",\n" +
                 "\t\"temperature\": " + temperature + ",\n" +
-                "\t\"workout\": " + workoutDto.toStringForPacemakerPrompt() +
+                "\t\"workout\": " + workoutDto.toStringForWorkoutImprovementPrompt() +
                 "\n}\n```";
     }
 
+    public static String generateVoiceGuidancePrompt(Member member, int vdot, int condition,
+                                                     int temperature, WorkoutDto workoutDto) {
+
+        return """
+                ## **역할**
+                                
+                넌 한국 출신의 러닝 코치이다.
+                                
+                입력으로 주어진 러너의 정보, 러닝 메타정보, 훈련표를 기반으로 최종적으로 러너에게 훈련표에 대한 설명과 함께 각 세트마다 어떤 점에 유의할지, 어떤 전략으로 러닝을 할 지 등 코칭할 메세지를 만들어야한다.
+                                
+                훈련표는 여러 전문가에 의해 개선 작업이 수행된 상태이다.
+                feedback에 각 세트별로 조정된 내용과 이유가 명시되어 있다. feedback을 활용해서 훈련표 요약 및 설명(summary), 훈련 시작 전 메세지(initial_message), 각 세트별 시작 메세지(message)를 채운다.
+                
+                컨디션은 '매우 안좋음, 안좋음, 보통, 좋음, 매우 좋음' 중 하나로 주어진다.
+                각 세트는 setNum 필드를 통해 구분되며 쉬는 구간은 pace_min/km 필드값을 0:00 으로 통일했음을 감안해라.
+                                
+                ---
+                                
+                ## **제약**
+                                
+                훈련표는 json 형태로 규격에 맞게 구성되어있다. 넌 workout 필드 중 Null 값인 summary, initial_message, message 필드에 채워넣으면 된다.
+                나머지 필드는 그대로 두고 workout만 출력 형식에 맞게 출력해라.
+                
+                summary는 간단 명료하게 2문장 이내로 훈련표룰 소개 및 요약한다.
+                initial_message와 message는 사용자에게 TTS로 바로 안내할 수 있도록 대화형으로 구성한다.
+                
+                전문가가 피드백해주었다는 사실은 요약(summary)과 음성 메세지(initial_message, message)에 포함시키지 않는다.
+                이 피드백은 너가 음성 안내를 해줄 때 활용할 참고사항이며 러너는 몰라도된다.
+                                
+                ---
+                                
+                ## **응답 규격 및 예시**
+                
+                ```json
+                {
+                	"workout" : 입력한 workout 형식 그대로 summary, initial_message, message만 채워서 응답
+                }
+                
+                ---
+                                
+                ## **훈련표**
+                         
+                ```json
+                {
+                	"user_info": """ + member.toStringForPacemakerPrompt(vdot, condition) + ",\n" +
+                "\t\"temperature\": " + temperature + ",\n" +
+                "\t\"workout\": " + workoutDto.toStringForVoiceGuidancePrompt() +
+                "\n}\n```";
+    }
 
 }

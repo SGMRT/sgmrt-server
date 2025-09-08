@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 @Entity
@@ -20,7 +21,7 @@ public class Pacemaker extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private Norm norm;
 
-    @Column(name = "summary")
+    @Column(name = "summary", columnDefinition = "LONGTEXT")
     private String summary;
 
     @Column(name = "goal_km", nullable = false)
@@ -29,7 +30,7 @@ public class Pacemaker extends BaseTimeEntity {
     @Column(name = "expected_time_min")
     private Integer expectedTime;
 
-    @Column(name = "initial_message")
+    @Column(name = "initial_message", columnDefinition = "LONGTEXT")
     private String initialMessage;
 
     @Column(name = "status")
@@ -66,12 +67,25 @@ public class Pacemaker extends BaseTimeEntity {
                 .build();
     }
 
+    public void updateSucceedPacemaker(WorkoutDto workoutDto) {
+        this.summary = workoutDto.getSummary();
+        this.goalDistance = workoutDto.getGoalKm();
+        this.expectedTime = workoutDto.getExpectedMinutes();
+        this.initialMessage = workoutDto.getInitialMessage();
+        this.status = Status.COMPLETED;
+    }
+
     public enum Norm {
         DISTANCE, TIME
     }
 
     public enum Status {
         PROCEEDING, COMPLETED, FAILED
+    }
+
+    public Status updateStatus(Status status) {
+        this.status = status;
+        return this.status;
     }
 
 }

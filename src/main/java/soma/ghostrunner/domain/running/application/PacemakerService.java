@@ -7,21 +7,17 @@ import org.springframework.stereotype.Service;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
-import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutDto;
-import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutSetDto;
+import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.application.support.RunningServiceMapper;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
 import soma.ghostrunner.domain.running.domain.RunningType;
-import soma.ghostrunner.domain.running.domain.llm.PacemakerLlmClient;
-import soma.ghostrunner.domain.running.domain.llm.PacemakerPromptGenerator;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -38,8 +34,8 @@ public class PacemakerService {
     private final MemberService memberService;
     private final RunningVdotService runningVdotService;
     private final WorkoutService workoutService;
+    private final PacemakerLlmService llmService;
 
-    private final PacemakerLlmClient llmClient;
     private final RunningServiceMapper mapper;
 
     private final String PACEMAKER_LOCK_KEY_PREFIX = "pacemaker_api_lock:";
@@ -52,7 +48,7 @@ public class PacemakerService {
     private static final long DAILY_LIMIT = 3;
     private static final int KEY_EXPIRATION_TIME_SECONDS = 86400;
 
-    public void createPaceMaker(String memberUuid, CreatePacemakerCommand command) throws InterruptedException {
+    public Long createPaceMaker(String memberUuid, CreatePacemakerCommand command) throws InterruptedException {
         verifyTargetDistanceAtLeast3K(command);
 
         Member member = memberService.findMemberByUuid(memberUuid);
@@ -60,15 +56,18 @@ public class PacemakerService {
 
         Map<RunningType, Double> expectedPaces = runningVdotService.getExpectedPacesByVdot(vdot);
         RunningType runningType = RunningType.toRunningType(command.getPurpose());
-        ProcessedWorkoutDto workouts = workoutService.generateWorkouts(command.getTargetDistance(), runningType, expectedPaces);
+        WorkoutDto workoutDto = workoutService.generateWorkouts(command.getTargetDistance(), runningType, expectedPaces);
 
         RLock lock = redisRunningRepository.getLock(PACEMAKER_LOCK_KEY_PREFIX + memberUuid);
         try {
             boolean isLocked = lock.tryLock(LOCK_WAIT_TIME_SECONDS, LOCK_LEASE_TIME_SECONDS, TimeUnit.SECONDS);
+
             verifyLockAlreadyGotten(memberUuid, isLocked);
-            handleApiRateLimit(memberUuid, command.getLocalDate());
-            savePacemaker(command);
-            requestLlmToCreatePacemaker(command, member, vdot, workouts);
+            String rateLimitKey = handleApiRateLimit(memberUuid, command.getLocalDate());
+
+            Pacemaker pacemaker = savePacemaker(command);
+            requestLlmToCreatePacemaker(command, member, workoutDto, vdot, pacemaker, rateLimitKey);
+            return pacemaker.getId();
         } finally {
             lock.unlock();
         }
@@ -99,10 +98,10 @@ public class PacemakerService {
         }
     }
 
-    private void handleApiRateLimit(String memberUuid, LocalDate localDate) {
+    private String handleApiRateLimit(String memberUuid, LocalDate localDate) {
         String rateLimitKey = PACEMAKER_API_RATE_LIMIT_KEY_PREFIX + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        Long currentCount = redisRunningRepository.incrementAndGet(
+        Long currentCount = redisRunningRepository.incrementRateLimitCounter(
                 rateLimitKey,
                 DAILY_LIMIT,
                 KEY_EXPIRATION_TIME_SECONDS
@@ -117,18 +116,25 @@ public class PacemakerService {
             log.warn("사용자 ID '{}'가 일일 사용량({})을 초과했습니다.", memberUuid, DAILY_LIMIT);
             throw new InvalidRunningException(TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다.");
         }
+
+        return rateLimitKey;
     }
 
-    private void savePacemaker(CreatePacemakerCommand command) {
+    private Pacemaker savePacemaker(CreatePacemakerCommand command) {
         Pacemaker pacemaker = pacemakerRepository.save(mapper.toPacemaker(Pacemaker.Norm.DISTANCE, command));
         String key = PACEMAKER_PROCESSING_STATE_KEY_PREFIX + pacemaker.getId();
         redisRunningRepository.save(key, PACEMAKER_PROCESSING_STATE, TimeUnit.DAYS, 1);
+        return pacemaker;
     }
 
     private void requestLlmToCreatePacemaker(CreatePacemakerCommand command, Member member,
-                                             int vdot, ProcessedWorkoutDto workouts) {
-        llmClient.requestLlmToCreatePacemaker(PacemakerPromptGenerator.generateWorkoutImprovementPrompt(
-                member, vdot, command.getCondition(), command.getTemperature(), workouts));
+                                             WorkoutDto workoutDto, int vdot, Pacemaker pacemaker,
+                                             String rateLimitKey) {
+        llmService.requestLlmToCreatePacemaker(
+                member, workoutDto, vdot,
+                command.getCondition(), command.getTemperature(), pacemaker.getId(),
+                rateLimitKey
+        );
     }
 
 }

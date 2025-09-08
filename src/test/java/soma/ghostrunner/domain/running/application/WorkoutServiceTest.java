@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutDto;
-import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutSetDto;
+import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
+import soma.ghostrunner.domain.running.application.dto.WorkoutSetDto;
 import soma.ghostrunner.domain.running.domain.RunningType;
 
 import java.util.HashMap;
@@ -32,12 +32,12 @@ class WorkoutServiceTest extends IntegrationTestSupport {
         expectedPaces.put(RunningType.R, 6.2);
 
         // when
-        ProcessedWorkoutDto processedWorkouts = workoutService.generateWorkouts(12, RunningType.M, expectedPaces);
+        WorkoutDto processedWorkouts = workoutService.generateWorkouts(12, RunningType.M, expectedPaces);
 
         // then
-        List<ProcessedWorkoutSetDto> processedWorkoutSetDtos = processedWorkouts.getWorkoutSetDtos();
-        Assertions.assertThat(processedWorkoutSetDtos.get(processedWorkoutSetDtos.size()-1).getEndPoint()).isEqualTo(12.00);
-        for (ProcessedWorkoutSetDto processedWorkout : processedWorkoutSetDtos) {
+        List<WorkoutSetDto> workoutSetDtos = processedWorkouts.getSets();
+        Assertions.assertThat(workoutSetDtos.get(workoutSetDtos.size()-1).getEndPoint()).isEqualTo(12.00);
+        for (WorkoutSetDto processedWorkout : workoutSetDtos) {
             System.out.println(processedWorkout);
         }
     }

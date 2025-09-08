@@ -27,17 +27,29 @@ public class RedisRunningRepository {
         return redissonClient.getLock(lockKey);
     }
 
-    public Long incrementAndGet(String rateLimitKey, long dailyLimit, int expirationSeconds) {
+    public Long incrementRateLimitCounter(String rateLimitKey, long dailyLimit, int expirationSeconds) {
 
-        DefaultRedisScript<Long> rateLimiterScript = new DefaultRedisScript<>();
-        rateLimiterScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("rate-limiter.lua")));
-        rateLimiterScript.setResultType(Long.class);
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setScriptSource(new ResourceScriptSource(new ClassPathResource("lua/rate-limiter.lua")));
+        script.setResultType(Long.class);
 
         return redisTemplate.execute(
-                rateLimiterScript,
+                script,
                 Collections.singletonList(rateLimitKey),
                 String.valueOf(dailyLimit),
                 String.valueOf(expirationSeconds)
+        );
+    }
+
+    public Long decrementRateLimitCounter(String rateLimitKey) {
+
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setScriptSource(new ResourceScriptSource(new ClassPathResource("lua/rate-limiter-compensation.lua")));
+        script.setResultType(Long.class);
+
+        return redisTemplate.execute(
+                script,
+                Collections.singletonList(rateLimitKey)
         );
     }
 

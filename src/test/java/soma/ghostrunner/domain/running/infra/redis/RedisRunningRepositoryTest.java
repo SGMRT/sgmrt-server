@@ -75,7 +75,7 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("일일 제한 횟수를 카운팅한다.")
-    void createRateLimitExceededPacemakerRequest() {
+    void incrementRateLimitCounter() {
         // given
         Member member = createMember();
         String memberUuid = member.getUuid();
@@ -88,12 +88,12 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
         String rateLimitKey = "ratelimit:" + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
         // when
-        repository.incrementAndGet(rateLimitKey, 3, 86400);
-        repository.incrementAndGet(rateLimitKey, 3, 86400);
-        repository.incrementAndGet(rateLimitKey, 3, 86400);
+        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
+        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
+        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
 
         // then
-        Assertions.assertThat(repository.incrementAndGet(rateLimitKey, 3, 86400))
+        Assertions.assertThat(repository.incrementRateLimitCounter(rateLimitKey, 3, 86400))
                 .isEqualTo(4);
     }
 
@@ -127,14 +127,14 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
         // when
         for (int i = 0; i < threadCount; i++) {
             executorService.submit(() -> {
-                repository.incrementAndGet(rateLimitKey, 3, 86400);
+                repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
                 latch.countDown();
             });
         }
         latch.await();
 
         // then
-        Assertions.assertThat(repository.incrementAndGet(rateLimitKey, 3, 86400))
+        Assertions.assertThat(repository.incrementRateLimitCounter(rateLimitKey, 3, 86400))
                 .isEqualTo(11);
         deleteData();
     }
@@ -144,6 +144,51 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
         memberRepository.deleteAllInBatch();
         redisTemplate.keys("ratelimit:*").forEach(redisTemplate::delete);
         redisTemplate.keys("pacemaker_api_lock:*").forEach(redisTemplate::delete);
+    }
+
+    @Test
+    @DisplayName("일일 제한 횟수를 감소시킨다.")
+    void decrementRateLimitCounter() {
+        // given
+        Member member = createMember();
+        String memberUuid = member.getUuid();
+        memberRepository.save(member);
+
+        MemberVdot memberVdot = createMemberVdot(member, 30);
+        memberVdotRepository.save(memberVdot);
+
+        LocalDate localDate = LocalDate.of(2024, 8, 26);
+        String rateLimitKey = "ratelimit:" + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
+        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
+
+        // when // then
+        Assertions.assertThat(repository.decrementRateLimitCounter(rateLimitKey))
+                .isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("일일 제한 횟수를 감소시킬 때, 0이라면 값을 없앤다.")
+    void decrementAndRemoveRateLimitCounter() {
+        // given
+        Member member = createMember();
+        String memberUuid = member.getUuid();
+        memberRepository.save(member);
+
+        MemberVdot memberVdot = createMemberVdot(member, 30);
+        memberVdotRepository.save(memberVdot);
+
+        LocalDate localDate = LocalDate.of(2024, 8, 26);
+        String rateLimitKey = "ratelimit:" + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
+
+        // when
+        repository.decrementRateLimitCounter(rateLimitKey);
+
+        // then
+        Assertions.assertThat(redisTemplate.opsForValue().get(rateLimitKey)).isNull();
     }
 
 }

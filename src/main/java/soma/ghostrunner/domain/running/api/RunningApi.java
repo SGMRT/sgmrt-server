@@ -151,11 +151,11 @@ public class RunningApi {
     }
 
     @PostMapping("/v1/runs/pacemaker")
-    public void createPacemaker(
+    public Long createPacemaker(
             @AuthenticationPrincipal JwtUserDetails userDetails,
             @RequestBody @Valid CreatePacemakerRequest request) throws InterruptedException {
         String memberUuid = userDetails.getUserId();
-        paceMakerService.createPaceMaker(memberUuid, mapper.toCommand(request));
+        return paceMakerService.createPaceMaker(memberUuid, mapper.toCommand(request));
     }
 
 }

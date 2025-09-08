@@ -19,12 +19,6 @@ public class TestApi {
     private final RestTemplate restTemplate;
     private final String MOCK_API_URL = "http://0.0.0.0:3000/llm-test";
     private final WebClient webClient;
-    private final OpenAiClient openAiWebClient;
-
-    @GetMapping("/test/openai")
-    public void testOpenAi() throws Exception {
-        openAiWebClient.requestLlmToCreatePacemaker("HELLO !!");
-    }
 
     @GetMapping("/test/sync")
     public String syncTest() {
