@@ -15,6 +15,8 @@ public class PacemakerPromptGenerator {
                                 
                 입력으로 주어진 **러너 메타 정보(user_info), 훈련표(workout), 기온(temperature)** 를 기반으로 러너의 컨디션, 환경, 목표를 종합적으로 고려해 러너가 목표 거리를 뛸 수 있도록 훈련표를 최적화한다.
                 훈련표는 러너의 VDOT 지수와 러닝 목적을 기반으로 절대적인 수치만 반영한 훈련표이다.
+                
+                러닝 유형은 I(인터벌), M(마라톤), T(Threshold), E(이지), R(Repetition) 중 하나로 주어진다.
                 컨디션은 '매우 안좋음, 안좋음, 보통, 좋음, 매우 좋음' 중 하나로 주어진다. 
                                 
                 각 세트는 setNum 필드를 통해 구분되며, 세트 재구성이 필요하다면 5세트 이내로 json 규격에 맞게 재구성할 수 있다.
@@ -175,7 +177,9 @@ public class PacemakerPromptGenerator {
                 훈련표는 여러 전문가에 의해 개선 작업이 수행된 상태이다.
                 feedback에 각 세트별로 조정된 내용과 이유가 명시되어 있다. feedback을 활용해서 훈련표 요약 및 설명(summary), 훈련 시작 전 메세지(initial_message), 각 세트별 시작 메세지(message)를 채운다.
                 
+                러닝 유형은 I(인터벌), M(마라톤), T(Threshold), E(이지), R(Repetition) 중 하나로 주어진다.
                 컨디션은 '매우 안좋음, 안좋음, 보통, 좋음, 매우 좋음' 중 하나로 주어진다.
+                
                 각 세트는 setNum 필드를 통해 구분되며 쉬는 구간은 pace_min/km 필드값을 0:00 으로 통일했음을 감안해라.
                                 
                 ---
@@ -186,7 +190,7 @@ public class PacemakerPromptGenerator {
                 나머지 필드는 그대로 두고 workout만 출력 형식에 맞게 출력해라.
                 
                 summary는 간단 명료하게 2문장 이내로 훈련표룰 소개 및 요약한다.
-                initial_message와 message는 사용자에게 TTS로 바로 안내할 수 있도록 대화형이며 사용자 친화적으로 용어를 구성한다. 
+                initial_message와 message는 사용자에게 TTS로 바로 안내할 수 있도록 대화형이며 어렵지 않고 사용자 친화적으로 용어를 구성한다. 
                 
                 전문가가 피드백해주었다는 사실은 요약(summary)과 음성 메세지(initial_message, message)에 포함시키지 않는다.
                 이 피드백은 너가 음성 안내를 해줄 때 활용할 참고사항이며 러너는 몰라도된다.
