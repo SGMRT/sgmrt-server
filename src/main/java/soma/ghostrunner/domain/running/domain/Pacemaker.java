@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.error.exception.BusinessException;
 
+import static soma.ghostrunner.domain.running.domain.Pacemaker.Status.COMPLETED;
 import static soma.ghostrunner.global.error.ErrorCode.FAILED_PACEMAKER;
 import static soma.ghostrunner.global.error.ErrorCode.PROCESSING_PACEMAKER;
 
@@ -63,13 +64,6 @@ public class Pacemaker extends BaseTimeEntity {
         this.memberUuid = memberUuid;
     }
 
-    public static Pacemaker of(Norm norm, Double goalDistance) {
-        return Pacemaker.builder()
-                .norm(norm)
-                .goalDistance(goalDistance)
-                .build();
-    }
-
     public static Pacemaker of(Norm norm, Double goalDistance, String memberUuid) {
         return Pacemaker.builder()
                 .norm(norm)
@@ -78,12 +72,12 @@ public class Pacemaker extends BaseTimeEntity {
                 .build();
     }
 
-    public void updateSucceedPacemaker(WorkoutDto workoutDto) {
-        this.summary = workoutDto.getSummary();
-        this.goalDistance = workoutDto.getGoalKm();
-        this.expectedTime = workoutDto.getExpectedMinutes();
-        this.initialMessage = workoutDto.getInitialMessage();
-        this.status = Status.COMPLETED;
+    public void updateSucceedPacemaker(String summary, Double goalKm, Integer expectedMinutes, String initialMessage) {
+        this.summary = summary;
+        this.goalDistance = goalKm;
+        this.expectedTime = expectedMinutes;
+        this.initialMessage = initialMessage;
+        this.status = COMPLETED;
     }
 
     public enum Norm {
@@ -104,13 +98,8 @@ public class Pacemaker extends BaseTimeEntity {
         }
     }
 
-    public void verifyStatusProceedingOrFailed() {
-        switch (status) {
-            case PROCEEDING:
-                throw new InvalidRunningException(PROCESSING_PACEMAKER, "페이스메이커가 아직 생성되고 있습니다.");
-            case FAILED:
-                throw new BusinessException(FAILED_PACEMAKER, "페이스메이커를 생성하는데 실패했습니다.");
-        }
+    public boolean isNotCompleted() {
+        return !status.equals(COMPLETED);
     }
 
 }

@@ -6,8 +6,9 @@ import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.api.dto.response.PacemakerResponse;
-import soma.ghostrunner.domain.running.api.dto.response.PacemakerSetResponse;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerResponse;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerSetResponse;
 import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
@@ -102,7 +103,13 @@ public interface RunningApplicationMapper {
         return Pacemaker.of(norm, command.getTargetDistance(), member.getUuid());
     }
 
-    default PacemakerResponse toResponse(Pacemaker p, List<PacemakerSet> sets) {
+    default PacemakerPollingResponse toResponse(Pacemaker.Status status) {
+        return PacemakerPollingResponse.builder()
+                .processingStatus(status.name())
+                .build();
+    }
+
+    default PacemakerPollingResponse toResponse(Pacemaker p, List<PacemakerSet> sets) {
         List<PacemakerSetResponse> setResponses = sets.stream()
                 .map(s -> PacemakerSetResponse.builder()
                         .setNum(s.getSetNum())
@@ -113,7 +120,7 @@ public interface RunningApplicationMapper {
                         .build())
                 .toList();
 
-        return PacemakerResponse.builder()
+        PacemakerResponse pacemakerResponse = PacemakerResponse.builder()
                 .id(p.getId())
                 .norm(p.getNorm())
                 .summary(p.getSummary())
@@ -122,6 +129,11 @@ public interface RunningApplicationMapper {
                 .initialMessage(p.getInitialMessage())
                 .runningId(p.getRunningId())
                 .sets(setResponses)
+                .build();
+
+        return PacemakerPollingResponse.builder()
+                .processingStatus(p.getStatus().name())
+                .pacemaker(pacemakerResponse)
                 .build();
     }
   

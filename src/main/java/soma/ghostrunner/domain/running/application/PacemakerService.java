@@ -6,15 +6,15 @@ import org.redisson.api.RLock;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.async.DeferredResult;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
-import soma.ghostrunner.domain.running.api.dto.response.PacemakerResponse;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
+import soma.ghostrunner.domain.running.domain.Pacemaker.Status;
 import soma.ghostrunner.domain.running.domain.PacemakerSet;
 import soma.ghostrunner.domain.running.domain.RunningType;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
@@ -51,11 +51,9 @@ public class PacemakerService {
 
     private final String PACEMAKER_LOCK_KEY_PREFIX = "pacemaker_api_lock:";
     private final String PACEMAKER_API_RATE_LIMIT_KEY_PREFIX = "pacemaker_api_rate_limit:";
-    private final String PACEMAKER_PROCESSING_STATE_KEY_PREFIX = "pacemaker_processing_state:";
-    private final String PACEMAKER_PROCESSING_STATE = "PROCESSING";
 
     private static final long LOCK_WAIT_TIME_SECONDS = 0;
-    private static final long LOCK_LEASE_TIME_SECONDS = 60;
+    private static final long LOCK_LEASE_TIME_SECONDS = 180;
     private static final long DAILY_LIMIT = 3;
     private static final int KEY_EXPIRATION_TIME_SECONDS = 86400;
 
@@ -133,13 +131,7 @@ public class PacemakerService {
     }
 
     private Pacemaker savePacemaker(CreatePacemakerCommand command, Member member) {
-        Pacemaker pacemaker = pacemakerRepository.save(mapper.toPacemaker(Pacemaker.Norm.DISTANCE, command, member));
-
-        String key = PACEMAKER_PROCESSING_STATE_KEY_PREFIX + pacemaker.getId();
-        String value = member.getUuid() + ":" + PACEMAKER_PROCESSING_STATE;
-        redisRunningRepository.save(key, value, TimeUnit.DAYS, 1);
-
-        return pacemaker;
+        return pacemakerRepository.save(mapper.toPacemaker(Pacemaker.Norm.DISTANCE, command, member));
     }
 
     private void requestLlmToCreatePacemaker(CreatePacemakerCommand command, Member member,
@@ -153,41 +145,16 @@ public class PacemakerService {
     }
 
     @Transactional(readOnly = true)
-    public PacemakerResponse getPacemaker(Long pacemakerId, String memberUuid) {
-
-        String value = readProcessStatusFromRedis(pacemakerId);
-        verifyStatusIfNotNull(memberUuid, value);
-
+    public PacemakerPollingResponse getPacemaker(Long pacemakerId, String memberUuid) {
         Pacemaker pacemaker = findPacemaker(pacemakerId);
         pacemaker.verifyMember(memberUuid);
-        pacemaker.verifyStatusProceedingOrFailed();
+
+        if (pacemaker.isNotCompleted()) {
+            return mapper.toResponse(pacemaker.getStatus());
+        }
 
         List<PacemakerSet> pacemakerSets = pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId);
-
         return mapper.toResponse(pacemaker, pacemakerSets);
-    }
-
-    private String readProcessStatusFromRedis(Long pacemakerId) {
-        String key = PACEMAKER_PROCESSING_STATE_KEY_PREFIX + pacemakerId;
-        return redisRunningRepository.get(key);
-    }
-
-    private void verifyStatusIfNotNull(String memberUuid, String value) {
-        if (value != null) {
-            String savedMemberUuid = value.split(":")[0];
-            String status = value.split(":")[1];
-
-            if (!savedMemberUuid.equals(memberUuid)) {
-                throw new AccessDeniedException("접근할 수 없는 러닝 데이터입니다.");
-            }
-
-            switch(status) {
-                case "PROCESSING":
-                    throw new InvalidRunningException(PROCESSING_PACEMAKER, "페이스메이커가 아직 생성되고 있습니다.");
-                case "FAILED":
-                    throw new BusinessException(FAILED_PACEMAKER, "페이스메이커를 생성하는데 실패했습니다.");
-            }
-        }
     }
 
     private Pacemaker findPacemaker(Long pacemakerId) {

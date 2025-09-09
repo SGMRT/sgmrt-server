@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.running.api.dto.response.PacemakerResponse;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.*;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
@@ -160,7 +160,7 @@ public class RunningApi {
     }
 
     @GetMapping("/v1/runs/pacemaker/{pacemakerId}")
-    public PacemakerResponse getPacemaker(
+    public PacemakerPollingResponse getPacemaker(
             @AuthenticationPrincipal JwtUserDetails userDetails,
             @PathVariable Long pacemakerId) {
         String memberUuid = userDetails.getUserId();

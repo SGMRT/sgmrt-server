@@ -186,7 +186,7 @@ public class PacemakerPromptGenerator {
                 나머지 필드는 그대로 두고 workout만 출력 형식에 맞게 출력해라.
                 
                 summary는 간단 명료하게 2문장 이내로 훈련표룰 소개 및 요약한다.
-                initial_message와 message는 사용자에게 TTS로 바로 안내할 수 있도록 대화형으로 구성한다.
+                initial_message와 message는 사용자에게 TTS로 바로 안내할 수 있도록 대화형이며 사용자 친화적으로 용어를 구성한다. 
                 
                 전문가가 피드백해주었다는 사실은 요약(summary)과 음성 메세지(initial_message, message)에 포함시키지 않는다.
                 이 피드백은 너가 음성 안내를 해줄 때 활용할 참고사항이며 러너는 몰라도된다.
