@@ -3,7 +3,14 @@ package soma.ghostrunner.domain.running.domain;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutType;
 
 public enum RunningType {
-    E, M, T, I, R;
+
+    E("이지"), M("마라톤"), T("Threshold"), I("인터벌"), R("Repetition");
+
+    private final String type;
+
+    RunningType(String type) {
+        this.type = type;
+    }
 
     public static RunningType toRunningType(String runningPurpose) {
         return switch (runningPurpose) {
