@@ -8,6 +8,7 @@ import jakarta.persistence.Converter;
 import java.io.IOException;
 import java.util.Map;
 
+/** Map과 JSON (문자열) 간 상호변환기 (@Converter 어노테이션으로 사용, Map 타입의 엔티티 필드를 DB에 저장할 때 JSON으로 매핑함) */
 @Converter
 public class JsonToMapConverter implements AttributeConverter<Map<String, Object>, String> {
 
