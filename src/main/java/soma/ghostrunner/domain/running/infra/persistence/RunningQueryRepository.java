@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.infra.dao;
+package soma.ghostrunner.domain.running.infra.persistence;
 
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
@@ -11,7 +11,7 @@ import soma.ghostrunner.domain.running.domain.RunningMode;
 import java.util.List;
 import java.util.Optional;
 
-public interface CustomRunningRepository {
+public interface RunningQueryRepository {
 
     Optional<SoloRunDetailInfo> findSoloRunInfoById(long id, String memberUuid);
 

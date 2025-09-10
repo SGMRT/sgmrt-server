@@ -9,9 +9,10 @@ import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.domain.*;
+import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.*;
 import soma.ghostrunner.domain.member.exception.InvalidMemberException;
-import soma.ghostrunner.domain.running.infra.dao.RunningRepository;
+import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
@@ -274,6 +275,19 @@ class MemberServiceTest extends IntegrationTestSupport {
 
         // then
         Assertions.assertThat(savedMemberVdot.getVdot()).isEqualTo(memberVdot.getVdot());
+    }
+
+    @DisplayName("멤버의 VDOT가 없다면 예외를 발생한다.")
+    @Test
+    void findNoneMemberVdot() {
+        // given
+        Member member = createMember("카리나");
+        memberRepository.save(member);
+
+        // when // then
+        Assertions.assertThatThrownBy(() -> memberService.findMemberVdot(member))
+                .isInstanceOf(MemberNotFoundException.class)
+                .hasMessage("cannot find vdot, memberUuid: " + member.getUuid());
     }
 
 }

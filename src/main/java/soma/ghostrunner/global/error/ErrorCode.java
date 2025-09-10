@@ -11,15 +11,15 @@ import static org.springframework.http.HttpStatus.*;
 public enum ErrorCode {
 
     // Ghost-Runner Common Errors
-    INVALID_REQUEST_VALUE("G-001",  BAD_REQUEST, "잘못된 요청 데이터"),
-    INVALID_REQUEST_PARAMETER("G-002",  BAD_REQUEST, "잘못된 파라미터"),
-    NONE_REQUEST_URI("G-003",  BAD_REQUEST, "잘못된 요청 URI"),
-    METHOD_NOT_ALLOWED("G-004",  HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드"),
-    SERVICE_UNAVAILABLE("G-005",  HttpStatus.SERVICE_UNAVAILABLE, "서비스 문제 발생"),
-    TOO_MANY_REQUESTS("G-006",  HttpStatus.TOO_MANY_REQUESTS, "요청 횟수 초과"),
+    INVALID_REQUEST_VALUE("G-001", BAD_REQUEST, "잘못된 요청 데이터"),
+    INVALID_REQUEST_PARAMETER("G-002", BAD_REQUEST, "잘못된 파라미터"),
+    NONE_REQUEST_URI("G-003", BAD_REQUEST, "잘못된 요청 URI"),
+    METHOD_NOT_ALLOWED("G-004", HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드"),
+    SERVICE_UNAVAILABLE("G-005", HttpStatus.SERVICE_UNAVAILABLE, "서비스 문제 발생"),
+    TOO_MANY_REQUESTS("G-006", HttpStatus.TOO_MANY_REQUESTS, "요청 횟수 초과"),
     INVALID_JSON_TYPE("G-007", BAD_REQUEST, "Json 파싱 실패 혹은 올바르지 않은 시간 형식"),
     ENTITY_NOT_FOUND("G-008", NOT_FOUND, "존재하지 않는 엔티티"),
-    INVALID_REQUEST_HEADER("G-009",  BAD_REQUEST, "잘못되거나 비어있는 헤더"),
+    INVALID_REQUEST_HEADER("G-009", BAD_REQUEST, "잘못되거나 비어있는 헤더"),
 
     // Auth
     AUTHENTICATION_FAILED("A-001", UNAUTHORIZED, "인증 실패"),
@@ -38,12 +38,14 @@ public enum ErrorCode {
     COURSE_NOT_FOUND("C-001", NOT_FOUND, "존재하지 않는 코스"),
     COURSE_NAME_NOT_VALID("C-002", BAD_REQUEST, "올바르지 않은 코스명"),
     COURSE_ALREADY_PUBLIC("C-003", BAD_REQUEST, "코스가 이미 public이므로 수정 불가"),
-    COURSE_RUN_NOT_FOUND("C-004", BAD_REQUEST, "해당 코스를 달린 기록이 없음");
+    COURSE_RUN_NOT_FOUND("C-004", BAD_REQUEST, "해당 코스를 달린 기록이 없음"),
 
     // Running
+    INVALID_PACEMAKER_DISTANCE("R-001", BAD_REQUEST, "3K 이하의 거리는 페이스메이커를 생성할 수 없습니다."),
+    VDOT_NOT_FOUND("R-002", NOT_FOUND, "VDOT가 기록되어 있지 않아, 평균 페이스가 필요합니다.");
 
     private final String code;
     private final HttpStatus status;
     private final String message;
 
-}
+    }

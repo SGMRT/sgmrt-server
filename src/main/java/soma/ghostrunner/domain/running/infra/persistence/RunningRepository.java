@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.infra.dao;
+package soma.ghostrunner.domain.running.infra.persistence;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface RunningRepository extends JpaRepository<Running, Long>, CustomRunningRepository {
+public interface RunningRepository extends JpaRepository<Running, Long>, RunningQueryRepository {
 
     @Query("SELECT r.id FROM Running r WHERE r.course.id = :courseId")
     List<Long> findIdsByCourseId(@Param("courseId") Long courseId);
@@ -54,7 +54,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, CustomR
 
     @Modifying(clearAutomatically = true)
     @Query("delete from Running r where r.id in :runningIds")
-    void deleteAllByIdIn(@Param("runningIds") List<Long> runningIds);
+    void deleteInRunningIds(@Param("runningIds") List<Long> runningIds);
 
     @Query("select count(r.id) from Running r where r.course.id = :courseId")
     long countTotalRunningsCount(Long courseId);

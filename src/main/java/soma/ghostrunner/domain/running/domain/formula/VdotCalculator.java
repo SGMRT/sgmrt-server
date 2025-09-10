@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.member.domain;
+package soma.ghostrunner.domain.running.domain.formula;
 
 public interface VdotCalculator {
     int calculateFromPace(double pace);

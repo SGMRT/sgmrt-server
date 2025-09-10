@@ -8,36 +8,25 @@ import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
-import soma.ghostrunner.domain.member.domain.VdotCalculator;
-import soma.ghostrunner.domain.running.domain.Running;
+import soma.ghostrunner.domain.running.application.RunningVdotService;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class RunFinishedEventHandler {
+public class RunFinishedEventListener {
 
     private final MemberMapper mapper;
     private final MemberVdotRepository memberVdotRepository;
     private final MemberService memberService;
-
-    private final VdotCalculator vdotCalculator;
+    private final RunningVdotService runningVdotService;
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     public void handleRunFinished(RunFinishedEvent event) {
-        Member member = findMember(event);
-        int vdot = calculateVdot(event.averagePace());
+        Member member = memberService.findMemberByUuid(event.memberUuid());
+        int vdot = runningVdotService.calculateVdot(event.averagePace());
         upsertMemberVdot(member, vdot);
-    }
-
-    private Member findMember(RunFinishedEvent event) {
-        return memberService.findMemberByUuid(event.memberUuid());
-    }
-
-    private int calculateVdot(Double averagePace) {
-        double oneMilePace = Running.calculateOneMilePace(averagePace);
-        return vdotCalculator.calculateFromPace(oneMilePace);
     }
 
     private void upsertMemberVdot(Member member, int vdot) {

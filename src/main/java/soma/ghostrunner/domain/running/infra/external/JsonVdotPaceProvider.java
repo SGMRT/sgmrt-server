@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.infra;
+package soma.ghostrunner.domain.running.infra.external;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,8 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.running.domain.RunningType;
-import soma.ghostrunner.domain.running.domain.VdotPace;
-import soma.ghostrunner.domain.running.domain.VdotPaceProvider;
+import soma.ghostrunner.domain.running.domain.formula.VdotPace;
+import soma.ghostrunner.domain.running.domain.formula.VdotPaceProvider;
 
 import javax.annotation.PostConstruct;
 import java.io.InputStream;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class TableBasedVdotPaceProvider implements VdotPaceProvider {
+public class JsonVdotPaceProvider implements VdotPaceProvider {
 
     private final ObjectMapper objectMapper;
     private Map<Integer, List<VdotPace>> cache;
@@ -40,7 +40,6 @@ public class TableBasedVdotPaceProvider implements VdotPaceProvider {
                             Collectors.mapping(this::toVdotPace, Collectors.toList())
                     ));
 
-            // 읽기 전용 맵으로 만들어 불변성 보장
             this.cache = Collections.unmodifiableMap(this.cache);
         } catch (Exception ex) {
             throw new IllegalStateException("VDOT 페이스 테이블 로딩에 실패했습니다.", ex);
@@ -58,6 +57,11 @@ public class TableBasedVdotPaceProvider implements VdotPaceProvider {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "VDOT " + vdot + " 또는 러닝 타입 " + runningType + "에 대한 페이스 정보를 찾을 수 없습니다."
                 ));
+    }
+
+    @Override
+    public List<VdotPace> getVdotPaceByVdot(int vdot) {
+        return cache.getOrDefault(vdot, Collections.emptyList());
     }
 
     @Getter

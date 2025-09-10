@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.infra.dao;
+package soma.ghostrunner.domain.running.infra.persistence;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.Projections;
@@ -20,7 +20,7 @@ import static soma.ghostrunner.domain.running.domain.QRunning.running;
 
 @Repository
 @RequiredArgsConstructor
-public class CustomRunningRepositoryImpl implements CustomRunningRepository {
+public class RunningQueryRepositoryImpl implements RunningQueryRepository {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
 

@@ -1,9 +1,8 @@
-package soma.ghostrunner.domain.running.domain;
+package soma.ghostrunner.domain.running.domain.path;
 
 import soma.ghostrunner.domain.running.application.dto.CoordinateDtoWithTs;
 import soma.ghostrunner.domain.running.application.dto.CheckpointDto;
 import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 
 import java.util.ArrayList;
 import java.util.Comparator;

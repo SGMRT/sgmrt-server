@@ -215,7 +215,7 @@ public class MemberService {
     @Transactional(readOnly = true)
     public MemberVdot findMemberVdot(Member member) {
         return memberVdotRepository.findByMemberId(member.getId())
-                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find memberId: " + member.getId()));
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find vdot, memberUuid: " + member.getUuid()));
     }
 
 }

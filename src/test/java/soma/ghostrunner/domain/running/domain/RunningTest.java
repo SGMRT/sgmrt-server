@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.running.domain;
 
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.course.domain.Coordinate;
