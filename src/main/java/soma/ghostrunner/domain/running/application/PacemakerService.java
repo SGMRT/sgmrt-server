@@ -66,7 +66,6 @@ public class PacemakerService {
         Map<RunningType, Double> expectedPaces = runningVdotService.getExpectedPacesByVdot(vdot);
         RunningType runningType = RunningType.toRunningType(command.getPurpose());
         WorkoutDto workoutDto = workoutService.generateWorkouts(command.getTargetDistance(), runningType, expectedPaces);
-        log.info(workoutDto.toString());
 
         RLock lock = redisRunningRepository.getLock(PACEMAKER_LOCK_KEY_PREFIX + memberUuid);
         try {

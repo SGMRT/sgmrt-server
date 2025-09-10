@@ -14,9 +14,9 @@ public class AsyncConfig {
     @Bean(name = "llmTestExecutor")
     public Executor llmTestExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(15);      // 기본 스레드 수
-        executor.setMaxPoolSize(25);       // 최대 스레드 수
-        executor.setQueueCapacity(10);     // 큐 용량
+        executor.setCorePoolSize(10);      // 기본 스레드 수
+        executor.setMaxPoolSize(20);       // 최대 스레드 수
+        executor.setQueueCapacity(5);     // 큐 용량
         executor.setThreadNamePrefix("llm-async-test-");
         executor.initialize();
         return executor;

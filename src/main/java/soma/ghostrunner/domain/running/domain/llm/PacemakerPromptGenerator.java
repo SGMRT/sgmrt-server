@@ -19,7 +19,7 @@ public class PacemakerPromptGenerator {
                 러닝 유형은 I(인터벌), M(마라톤), T(Threshold), E(이지), R(Repetition) 중 하나로 주어진다.
                 컨디션은 '매우 안좋음, 안좋음, 보통, 좋음, 매우 좋음' 중 하나로 주어진다. 
                                 
-                각 세트는 setNum 필드를 통해 구분되며, 세트 재구성이 필요하다면 5세트 이내로 json 규격에 맞게 재구성할 수 있다.
+                각 구간은 setNum 필드를 통해 구분되며, 세트 재구성이 필요하다면 json 규격에 맞게 재구성할 수 있다.
                 쉬는 구간은 pace_min/km 필드값을 0:00 으로 통일한다.
                                 
                 ---
@@ -91,14 +91,14 @@ public class PacemakerPromptGenerator {
                 	            "feedback": null
                 	        },
                 	        {
-                	            "setNum": 2,
+                	            "setNum": 3,
                 	            "pace_min/km": "7:30",
                 	            "start_km": 7.5,
                 	            "end_km": 8.5,
                 	            "feedback": null
                 	        },
                 	        {
-                	            "setNum": 3,
+                	            "setNum": 4,
                 	            "pace_min/km": "4:40",
                 	            "start_km": 8.5,
                 	            "end_km": 10.0,
@@ -135,14 +135,14 @@ public class PacemakerPromptGenerator {
                         },
                         {
                         {
-                            "setNum": 2,
+                            "setNum": 3,
                             "pace_min/km": "8:30",
                             "start_km": 7.5,
                             "end_km": 8.0,
                             "feedback": "String으로, 토론으로 조정된 이유를 반영"
                         },
                         {
-                            "setNum": 3,
+                            "setNum": 4,
                             "pace_min/km": "4:55",
                             "start_km": 8.0,
                             "end_km": 10.0,
@@ -180,7 +180,8 @@ public class PacemakerPromptGenerator {
                 러닝 유형은 I(인터벌), M(마라톤), T(Threshold), E(이지), R(Repetition) 중 하나로 주어진다.
                 컨디션은 '매우 안좋음, 안좋음, 보통, 좋음, 매우 좋음' 중 하나로 주어진다.
                 
-                각 세트는 setNum 필드를 통해 구분되며 쉬는 구간은 pace_min/km 필드값을 0:00 으로 통일했음을 감안해라.
+                각 구간은 setNum 필드를 통해 구분되며, 세트 재구성이 필요하다면 json 규격에 맞게 재구성할 수 있다.
+                쉬는 구간은 pace_min/km 필드값을 0:00 으로 통일한다.
                                 
                 ---
                                 
@@ -190,7 +191,9 @@ public class PacemakerPromptGenerator {
                 나머지 필드는 그대로 두고 workout만 출력 형식에 맞게 출력해라.
                 
                 summary는 간단 명료하게 2문장 이내로 훈련표룰 소개 및 요약한다.
-                initial_message와 message는 사용자에게 TTS로 바로 안내할 수 있도록 대화형이며 어렵지 않고 사용자 친화적으로 용어를 구성한다. 
+                initial_message와 message는 사용자에게 TTS로 바로 안내할 수 있도록 대화형이며 사용자 친화적으로 용어를 구성한다.
+                
+                summary, initial_message, message는 입문자도 바로 알 수 있도록 러닝 전문용어는 지양한다.
                 
                 전문가가 피드백해주었다는 사실은 요약(summary)과 음성 메세지(initial_message, message)에 포함시키지 않는다.
                 이 피드백은 너가 음성 안내를 해줄 때 활용할 참고사항이며 러너는 몰라도된다.

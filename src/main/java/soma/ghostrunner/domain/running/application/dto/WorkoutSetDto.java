@@ -4,12 +4,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutType;
 
 @Getter
 public class WorkoutSetDto {
 
+    @Setter
     private Integer setNum;
+
     private WorkoutType type;
 
     @JsonProperty("pace_min/km")

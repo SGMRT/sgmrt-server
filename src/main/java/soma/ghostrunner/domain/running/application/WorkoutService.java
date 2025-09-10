@@ -60,6 +60,11 @@ public class WorkoutService {
             currentDistance += scaledDistance;
         }
 
+        for (int i = 1; i < dtos.size()+1; i++) {
+            WorkoutSetDto dto = dtos.get(i-1);
+            dto.setSetNum(i);
+        }
+
         return dtos;
     }
 
