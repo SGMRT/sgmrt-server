@@ -14,8 +14,6 @@ import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
-import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.ArrayList;
@@ -26,7 +24,6 @@ import java.util.List;
 public class CourseFacade {
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
-    private final RunningTelemetryQueryService runningTelemetryQueryService;
 
     private final CourseMapper courseMapper;
 
@@ -82,15 +79,6 @@ public class CourseFacade {
     public List<CourseGhostResponse> findTopPercentageGhosts(Long courseId, double percentage) {
         Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findTopPercentageGhostsByCourseId(courseId, percentage);
         return rankedGhostsPage.getContent();
-    }
-
-    @Transactional(readOnly = true)
-    public CourseCoordinatesResponse findCourseFirstRunCoordinatesWithDetails(Long courseId) {
-        Course course = courseService.findCourseById(courseId);
-        Running firstRun = runningQueryService.findFirstRunning(courseId);
-        List<CoordinateDto> coordinates = runningTelemetryQueryService.findCoordinateTelemetries(firstRun.getId(),
-                firstRun.getRunningDataUrls().getInterpolatedTelemetryUrl());
-        return courseMapper.toCoordinatesResponse(course, coordinates);
     }
 
     @Transactional(readOnly = true)

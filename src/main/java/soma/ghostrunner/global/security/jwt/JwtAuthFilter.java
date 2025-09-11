@@ -35,7 +35,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     );
 
     private static final List<String> PERMITTED_ENDPOINTS = List.of(
-            "/swagger-ui", "/v3/api-docs", "/v1/common/presign-url", "/actuator/prometheus"
+            "/swagger-ui", "/v3/api-docs", "/v1/common/presign-url", "/actuator/prometheus", "/test"
     );
 
     private final JwtProvider jwtProvider;

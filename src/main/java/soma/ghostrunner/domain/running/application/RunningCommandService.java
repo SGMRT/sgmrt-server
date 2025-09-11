@@ -12,8 +12,9 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.support.RunningDataUploader;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
-import soma.ghostrunner.domain.running.infra.dao.RunningRepository;
+import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
@@ -22,7 +23,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RunningCommandService {
 
-    private final RunningServiceMapper mapper;
+    private final RunningApplicationMapper mapper;
+
     private final RunningRepository runningRepository;
 
     private final TelemetryProcessor telemetryProcessor;
@@ -116,7 +118,7 @@ public class RunningCommandService {
     public void deleteRunnings(List<Long> runningIds, String memberUuid) {
         List<Running> runnings = runningRepository.findByIds(runningIds);
         runnings.forEach(running -> running.verifyMember(memberUuid));
-        runningRepository.deleteAllByIdIn(runningIds);
+        runningRepository.deleteInRunningIds(runningIds);
     }
 
 }

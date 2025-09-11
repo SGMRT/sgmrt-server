@@ -104,6 +104,13 @@ dependencies {
 	// Prometheus
 	runtimeOnly "io.micrometer:micrometer-registry-prometheus"
 
+	// WebFlux
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	runtimeOnly 'io.netty:netty-resolver-dns-native-macos:4.1.104.Final:osx-aarch_64'
+
+	// OpenAi
+	implementation "com.openai:openai-java:3.4.1"
+
 	// Expo Push SDK
 	implementation 'com.github.hlspablo:expo-server-sdk-java:v3.1.4'
 

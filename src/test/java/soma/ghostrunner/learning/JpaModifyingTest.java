@@ -11,7 +11,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.running.infra.dao.RunningRepository;
+import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
@@ -88,7 +88,7 @@ public class JpaModifyingTest extends IntegrationTestSupport {
         runningRepository.save(running);
 
         // when
-        runningRepository.deleteAllByIdIn(List.of(running.getId()));
+        runningRepository.deleteInRunningIds(List.of(running.getId()));
 
         // then
         Assertions.assertThatThrownBy(() -> runningRepository.findById(running.getId()).get())

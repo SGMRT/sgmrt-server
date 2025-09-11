@@ -2,7 +2,7 @@ package soma.ghostrunner.domain.running.application;
 
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.running.application.dto.*;
-import soma.ghostrunner.domain.running.domain.PathSimplifier;
+import soma.ghostrunner.domain.running.domain.path.PathSimplifier;
 
 import java.util.List;
 
@@ -11,7 +11,7 @@ import java.util.List;
 public class PathSimplificationService {
 
     public SimplifiedPathDto simplify(ProcessedTelemetriesDto processedTelemetries) {
-        List<CoordinateDtoWithTs> telemetryCoordinates = CoordinateDtoWithTs.toCoordinateDtosWithTsList(processedTelemetries.relativeTelemetries());
+        List<CoordinateWithTsDto> telemetryCoordinates = CoordinateWithTsDto.toCoordinateDtosWithTsList(processedTelemetries.relativeTelemetries());
 
         List<CoordinateDto> simplifiedCoordinates = PathSimplifier.simplifyToRenderingTelemetries(telemetryCoordinates);
         List<CoordinateDto> edgePoints = PathSimplifier.extractEdgePoints(telemetryCoordinates);

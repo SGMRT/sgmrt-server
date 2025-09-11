@@ -15,7 +15,7 @@ import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
-import soma.ghostrunner.domain.running.infra.dao.RunningRepository;
+import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
@@ -40,9 +40,6 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
 
     @Autowired
     RunningRepository runningRepository;
-
-    @MockitoBean
-    RunningTelemetryQueryService runningTelemetryQueryService;
 
     @DisplayName("혼자 뛴 러닝에 대한 상세 정보를 조회한다.")
     @Test
