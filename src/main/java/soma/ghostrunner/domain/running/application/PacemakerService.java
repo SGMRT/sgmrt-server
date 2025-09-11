@@ -33,7 +33,7 @@ import static soma.ghostrunner.global.error.ErrorCode.*;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaceMakerService {
+public class PacemakerService {
 
     private final PacemakerRepository pacemakerRepository;
     private final PacemakerSetRepository pacemakerSetRepository;

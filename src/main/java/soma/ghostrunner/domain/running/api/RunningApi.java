@@ -9,7 +9,7 @@ import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.*;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.application.PaceMakerService;
+import soma.ghostrunner.domain.running.application.PacemakerService;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
@@ -31,7 +31,7 @@ public class RunningApi {
     private final RunningQueryService runningQueryService;
     private final RunningCommandService runningCommandService;
     private final RunningApiMapper mapper;
-    private final PaceMakerService paceMakerService;
+    private final PacemakerService paceMakerService;
 
     @GetMapping("/")
     public String hello() {
