@@ -30,3 +30,7 @@ jwt:
   expiration_time:
     access_token: 1200000
     refresh_token: 604800000
+
+openai:
+  api:
+    key: dummy_api_key
