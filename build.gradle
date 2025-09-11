@@ -30,6 +30,7 @@ configurations {
 
 repositories {
 	mavenCentral()
+	maven { url 'https://jitpack.io' }
 }
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -109,6 +110,10 @@ dependencies {
 
 	// OpenAi
 	implementation "com.openai:openai-java:3.4.1"
+
+	// Expo Push SDK
+	implementation 'com.github.hlspablo:expo-server-sdk-java:v3.1.4'
+
 }
 
 

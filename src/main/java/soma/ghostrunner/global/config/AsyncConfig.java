@@ -11,13 +11,13 @@ import java.util.concurrent.Executor;
 @EnableAsync
 public class AsyncConfig {
 
-    @Bean(name = "llmTestExecutor")
-    public Executor llmTestExecutor() {
+    @Bean(name = "pushTaskExecutor")
+    public Executor pushTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(15);      // 기본 스레드 수
-        executor.setMaxPoolSize(25);       // 최대 스레드 수
-        executor.setQueueCapacity(10);     // 큐 용량
-        executor.setThreadNamePrefix("llm-async-test-");
+        executor.setCorePoolSize(6);
+        executor.setMaxPoolSize(6);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("PushThread-");
         executor.initialize();
         return executor;
     }
