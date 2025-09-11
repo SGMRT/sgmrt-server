@@ -14,13 +14,13 @@ import static org.assertj.core.api.Assertions.*;
 class WorkoutProviderTest extends IntegrationTestSupport {
 
     @Autowired
-    private WorkoutTemplateProvider workoutTemplateProvider;
+    private WorkoutProvider workoutProvider;
 
     @DisplayName("M 러닝 유형의 훈련표를 조회한다.")
     @Test
     void findMWorkoutTemplate() {
         // when
-        List<Workout> mWorkouts = workoutTemplateProvider.findWorkoutTemplates(WorkoutType.M);
+        List<Workout> mWorkouts = workoutProvider.findWorkoutTemplates(WorkoutType.M);
 
         // then
         Workout mWorkout = mWorkouts.get(0);

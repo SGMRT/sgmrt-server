@@ -7,7 +7,7 @@ import soma.ghostrunner.domain.running.application.dto.WorkoutSetDto;
 import soma.ghostrunner.domain.running.domain.RunningType;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutSet;
 import soma.ghostrunner.domain.running.domain.formula.Workout;
-import soma.ghostrunner.domain.running.domain.formula.WorkoutTemplateProvider;
+import soma.ghostrunner.domain.running.domain.formula.WorkoutProvider;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutType;
 
 import java.util.ArrayList;
@@ -19,10 +19,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WorkoutService {
 
-    private final WorkoutTemplateProvider workoutTemplateProvider;
+    private final WorkoutProvider workoutProvider;
 
     public WorkoutDto generateWorkouts(double targetDistance, RunningType type, Map<RunningType, Double> paces) {
-        List<Workout> workouts = workoutTemplateProvider.findWorkoutTemplates(WorkoutType.valueOf(type.name()));
+        List<Workout> workouts = workoutProvider.findWorkoutTemplates(WorkoutType.valueOf(type.name()));
 
         Workout bestWorkout = workouts.stream()
                 .min(Comparator.comparingDouble(t -> Math.abs(t.calculateTotalDistance(paces) - targetDistance)))

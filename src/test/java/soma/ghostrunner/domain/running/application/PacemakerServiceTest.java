@@ -3,7 +3,6 @@ package soma.ghostrunner.domain.running.application;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -20,13 +19,10 @@ import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
-import soma.ghostrunner.domain.running.domain.RunningType;
-import soma.ghostrunner.domain.running.domain.formula.Workout;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -50,7 +46,7 @@ class PacemakerServiceTest extends IntegrationTestSupport {
     private PacemakerRepository pacemakerRepository;
 
     @Autowired
-    private PacemakerService pacemakerService;
+    private PaceMakerService pacemakerService;
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;

@@ -14,8 +14,6 @@ import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunRespon
 import soma.ghostrunner.domain.running.application.support.RunningDataUploader;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
-import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
-import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 
@@ -28,8 +26,6 @@ public class RunningCommandService {
     private final RunningApplicationMapper mapper;
 
     private final RunningRepository runningRepository;
-    private final PacemakerRepository pacemakerRepository;
-    private final PacemakerSetRepository pacemakerSetRepository;
 
     private final TelemetryProcessor telemetryProcessor;
     private final RunningDataUploader runningDataUploader;

@@ -47,6 +47,7 @@ s3:
   course-directory: ${COURSE_DIRECTORY}
   course-checkpoint-directory: ${COURSE_CHECKPOINT_DIRECTORY}
   member-directory: ${MEMBER_DIRECTORY}
+  notice-directory: ${NOTICE_DIRECTORY}
 
 jwt:
   secret: ${JWT_SECRET_KEY}

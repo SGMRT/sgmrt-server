@@ -2,7 +2,7 @@ package soma.ghostrunner.domain.running.domain.formula;
 
 import java.util.List;
 
-public interface WorkoutTemplateProvider {
+public interface WorkoutProvider {
 
     List<Workout> findWorkoutTemplates(WorkoutType type);
 

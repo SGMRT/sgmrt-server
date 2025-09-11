@@ -9,7 +9,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutSet;
 import soma.ghostrunner.domain.running.domain.formula.Workout;
-import soma.ghostrunner.domain.running.domain.formula.WorkoutTemplateProvider;
+import soma.ghostrunner.domain.running.domain.formula.WorkoutProvider;
 import soma.ghostrunner.domain.running.domain.formula.WorkoutType;
 
 import javax.annotation.PostConstruct;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Repository
-public class JsonWorkoutTemplateProvider implements WorkoutTemplateProvider {
+public class JsonWorkoutProvider implements WorkoutProvider {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private Map<WorkoutType, List<Workout>> workoutTemplatesMap;

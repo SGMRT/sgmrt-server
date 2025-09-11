@@ -6,14 +6,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
-import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
-import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
-import soma.ghostrunner.global.error.exception.BusinessException;
 
 import static soma.ghostrunner.domain.running.domain.Pacemaker.Status.COMPLETED;
-import static soma.ghostrunner.global.error.ErrorCode.FAILED_PACEMAKER;
-import static soma.ghostrunner.global.error.ErrorCode.PROCESSING_PACEMAKER;
 
 @Entity
 @Getter

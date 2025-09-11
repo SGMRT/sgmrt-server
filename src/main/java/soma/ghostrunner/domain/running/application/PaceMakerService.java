@@ -3,7 +3,6 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.member.application.MemberService;
@@ -14,7 +13,6 @@ import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
-import soma.ghostrunner.domain.running.domain.Pacemaker.Status;
 import soma.ghostrunner.domain.running.domain.PacemakerSet;
 import soma.ghostrunner.domain.running.domain.RunningType;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
@@ -23,7 +21,6 @@ import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;
 import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
 import soma.ghostrunner.global.error.ErrorCode;
-import soma.ghostrunner.global.error.exception.BusinessException;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -36,7 +33,7 @@ import static soma.ghostrunner.global.error.ErrorCode.*;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PacemakerService {
+public class PaceMakerService {
 
     private final PacemakerRepository pacemakerRepository;
     private final PacemakerSetRepository pacemakerSetRepository;
