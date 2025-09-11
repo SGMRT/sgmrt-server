@@ -12,8 +12,4 @@ import java.util.List;
 @Repository
 public interface PacemakerRepository extends JpaRepository<Pacemaker, Long> {
 
-    @Modifying(clearAutomatically = true)
-    @Query("delete from Pacemaker p where p.runningId in :runningIds")
-    void deletePacemakersInRunningIds(@Param("runningIds") List<Long> runningIds);
-
 }

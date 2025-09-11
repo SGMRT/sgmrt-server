@@ -20,7 +20,7 @@ class RunningVdotServiceTest extends IntegrationTestSupport {
     @Test
     void getVdotPaceByVdot() {
         // when
-        Map<RunningType, Double> vdotPaces = runningVdotService.getExpectedPaces(41);
+        Map<RunningType, Double> vdotPaces = runningVdotService.getExpectedPacesByVdot(41);
 
         // then
         Assertions.assertThat(vdotPaces.get(RunningType.E)).isEqualTo(6.1);

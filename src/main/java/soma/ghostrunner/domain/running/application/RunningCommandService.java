@@ -12,9 +12,8 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.support.RunningDataUploader;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
-import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
-import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 
@@ -24,11 +23,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RunningCommandService {
 
-    private final RunningServiceMapper mapper;
+    private final RunningApplicationMapper mapper;
 
     private final RunningRepository runningRepository;
-    private final PacemakerRepository pacemakerRepository;
-    private final PacemakerSetRepository pacemakerSetRepository;
 
     private final TelemetryProcessor telemetryProcessor;
     private final RunningDataUploader runningDataUploader;
@@ -121,8 +118,6 @@ public class RunningCommandService {
     public void deleteRunnings(List<Long> runningIds, String memberUuid) {
         List<Running> runnings = runningRepository.findByIds(runningIds);
         runnings.forEach(running -> running.verifyMember(memberUuid));
-        pacemakerSetRepository.deletePacemakerSetsInRunningIds(runningIds);
-        pacemakerRepository.deletePacemakersInRunningIds(runningIds);
         runningRepository.deleteInRunningIds(runningIds);
     }
 

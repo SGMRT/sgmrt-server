@@ -3,9 +3,12 @@ package soma.ghostrunner.domain.running.application;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.IntegrationTestSupport;
@@ -13,19 +16,29 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
+import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
+import soma.ghostrunner.domain.running.domain.Pacemaker;
+import soma.ghostrunner.domain.running.domain.RunningType;
+import soma.ghostrunner.domain.running.domain.formula.Workout;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
 
 @SpringBootTest
-class PaceMakerServiceTest extends IntegrationTestSupport {
+class PacemakerServiceTest extends IntegrationTestSupport {
 
     @Autowired
     MemberRepository memberRepository;
@@ -34,10 +47,16 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
     MemberVdotRepository memberVdotRepository;
 
     @Autowired
-    private PaceMakerService paceMakerService;
+    private PacemakerRepository pacemakerRepository;
+
+    @Autowired
+    private PacemakerService pacemakerService;
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
+
+    @MockitoBean
+    PacemakerLlmService pacemakerLlmService;
 
     @DisplayName("AI 페이스메이커를 생성한다.")
     @Test
@@ -49,8 +68,22 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         MemberVdot memberVdot = createMemberVdot(member, 30);
         memberVdotRepository.save(memberVdot);
 
-        // when // then
-        paceMakerService.createPaceMaker(member.getUuid(), createCommand());
+        // when
+        Long id = pacemakerService.createPaceMaker(member.getUuid(), createCommand());
+
+        // then
+        Pacemaker pacemaker = pacemakerRepository.findById(id).get();
+        Assertions.assertThat(pacemaker).isNotNull();
+
+        verify(pacemakerLlmService, times(1)).requestLlmToCreatePacemaker(
+                any(Member.class),
+                any(WorkoutDto.class),
+                anyInt(),
+                anyInt(),
+                anyInt(),
+                anyLong(),
+                anyString()
+        );
     }
 
     private Member createMember() {
@@ -78,12 +111,12 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         memberVdotRepository.save(memberVdot);
 
         // when
-        paceMakerService.createPaceMaker(memberUuid, createCommand());
-        paceMakerService.createPaceMaker(memberUuid, createCommand());
-        paceMakerService.createPaceMaker(memberUuid, createCommand());
+        pacemakerService.createPaceMaker(memberUuid, createCommand());
+        pacemakerService.createPaceMaker(memberUuid, createCommand());
+        pacemakerService.createPaceMaker(memberUuid, createCommand());
 
         // then
-        assertThatThrownBy(() -> paceMakerService.createPaceMaker(memberUuid, createCommand()))
+        assertThatThrownBy(() -> pacemakerService.createPaceMaker(memberUuid, createCommand()))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("일일 사용량을 초과했습니다.");
     }
@@ -103,15 +136,15 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         LocalDate nextDay = today.plusDays(1);
 
         // when
-        paceMakerService.createPaceMaker(memberUuid, createCommand(today));
-        paceMakerService.createPaceMaker(memberUuid, createCommand(today));
-        paceMakerService.createPaceMaker(memberUuid, createCommand(today));
+        pacemakerService.createPaceMaker(memberUuid, createCommand(today));
+        pacemakerService.createPaceMaker(memberUuid, createCommand(today));
+        pacemakerService.createPaceMaker(memberUuid, createCommand(today));
 
         // then
-        assertThatThrownBy(() -> paceMakerService.createPaceMaker(memberUuid, createCommand(today)))
+        assertThatThrownBy(() -> pacemakerService.createPaceMaker(memberUuid, createCommand(today)))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("일일 사용량을 초과했습니다.");
-        paceMakerService.createPaceMaker(memberUuid, createCommand(nextDay));
+        pacemakerService.createPaceMaker(memberUuid, createCommand(nextDay));
     }
 
     private CreatePacemakerCommand createCommand(LocalDate localDate) {
@@ -130,7 +163,7 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         memberVdotRepository.save(memberVdot);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> paceMakerService.createPaceMaker(member.getUuid(), createCommand(2.0)))
+        Assertions.assertThatThrownBy(() -> pacemakerService.createPaceMaker(member.getUuid(), createCommand(2.0)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("3km 미만의 거리는 페이스메이커를 생성할 수 없습니다.");
     }
@@ -148,7 +181,7 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
          memberRepository.save(member);
 
          // when // then
-         Assertions.assertThatThrownBy(() -> paceMakerService.createPaceMaker(member.getUuid(), createNonePacePerKmCommand()))
+         Assertions.assertThatThrownBy(() -> pacemakerService.createPaceMaker(member.getUuid(), createNonePacePerKmCommand()))
                  .isInstanceOf(InvalidRunningException.class)
                  .hasMessage("기존 VDOT 기록이 없어 페이스메이커를 생성할 수 없습니다.");
      }
@@ -184,7 +217,7 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         for (int i = 0; i < threadCount; i++) {
             executorService.submit(() -> {
                 try {
-                    paceMakerService.createPaceMaker(member.getUuid(), createCommand());
+                    pacemakerService.createPaceMaker(member.getUuid(), createCommand());
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failureCount.incrementAndGet();
@@ -208,5 +241,49 @@ class PaceMakerServiceTest extends IntegrationTestSupport {
         redisTemplate.keys("pacemaker_api_lock:*").forEach(redisTemplate::delete);
         redisTemplate.keys("pacemaker_api_rate_limit:*").forEach(redisTemplate::delete);
     }
+
+    @DisplayName("페이스메이커를 조회한다.")
+    @Test
+    void getPacemaker() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, "멤버 UUID");
+        pacemaker.updateSucceedPacemaker("요약", 10.0, 50, "메세지");
+        pacemakerRepository.save(pacemaker);
+
+        // when
+        PacemakerPollingResponse response = pacemakerService.getPacemaker(pacemaker.getId(), "멤버 UUID");
+
+        // then
+        Assertions.assertThat(response.getProcessingStatus()).isEqualTo("COMPLETED");
+        Assertions.assertThat(response.getPacemaker().getGoalKm()).isEqualTo(10.0);
+    }
+
+     @DisplayName("페이스메이커를 조회할 때 실패하거나 가공되고 있는 페이스메이커를 조회해도 200이 응답한다. 대신, Status에 반영한다.")
+     @Test
+     void getProcessingOrFailedPacemaker() {
+         // given
+         Pacemaker processingPacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, "멤버 UUID");
+         pacemakerRepository.save(processingPacemaker);
+
+         // when
+         PacemakerPollingResponse response = pacemakerService.getPacemaker(processingPacemaker.getId(), "멤버 UUID");
+
+         // then
+         Assertions.assertThat(response.getPacemaker()).isNull();
+         Assertions.assertThat(response.getProcessingStatus()).isEqualTo("PROCEEDING");
+     }
+
+     @DisplayName("페이스메이커를 조회할 때 자신의 페이스메이커가 아니라면 4xx 에러를 발생한다.")
+     @Test
+     void getPacemakerNotMine() {
+         // given
+         Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, "멤버 UUID");
+         pacemakerRepository.save(pacemaker);
+
+         // when // then
+         Assertions.assertThatThrownBy(() -> pacemakerService.getPacemaker(pacemaker.getId(), "INVALID 멤버 UUID"))
+                 .isInstanceOf(AccessDeniedException.class)
+                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
+     }
 
 }

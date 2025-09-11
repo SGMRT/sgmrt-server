@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.application.dto;
+package soma.ghostrunner.domain.running.application.support;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -6,16 +6,22 @@ import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerResponse;
+import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerSetResponse;
+import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
+import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
+import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
-import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.RunningMode;
-import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.domain.running.domain.*;
+
+import java.util.List;
 
 @Mapper(componentModel = "spring")
-public interface RunningServiceMapper {
+public interface RunningApplicationMapper {
 
-    RunningServiceMapper INSTANCE = Mappers.getMapper(RunningServiceMapper.class);
+    RunningApplicationMapper INSTANCE = Mappers.getMapper(RunningApplicationMapper.class);
 
     default Running toRunning(CreateRunCommand command,
                               ProcessedTelemetriesDto processedTelemetry,
@@ -92,5 +98,43 @@ public interface RunningServiceMapper {
     @Mapping(source = "running.id", target = "runningId")
     @Mapping(source = "course.id", target = "courseId")
     CreateCourseAndRunResponse toResponse(Running running, Course course);
+
+    default Pacemaker toPacemaker(Pacemaker.Norm norm, CreatePacemakerCommand command, Member member) {
+        return Pacemaker.of(norm, command.getTargetDistance(), member.getUuid());
+    }
+
+    default PacemakerPollingResponse toResponse(Pacemaker.Status status) {
+        return PacemakerPollingResponse.builder()
+                .processingStatus(status.name())
+                .build();
+    }
+
+    default PacemakerPollingResponse toResponse(Pacemaker p, List<PacemakerSet> sets) {
+        List<PacemakerSetResponse> setResponses = sets.stream()
+                .map(s -> PacemakerSetResponse.builder()
+                        .setNum(s.getSetNum())
+                        .message(s.getMessage())
+                        .startPoint(s.getStartPoint())
+                        .endPoint(s.getEndPoint())
+                        .pace(s.getPace())
+                        .build())
+                .toList();
+
+        PacemakerResponse pacemakerResponse = PacemakerResponse.builder()
+                .id(p.getId())
+                .norm(p.getNorm())
+                .summary(p.getSummary())
+                .goalKm(p.getGoalDistance())
+                .expectedMinutes(p.getExpectedTime())
+                .initialMessage(p.getInitialMessage())
+                .runningId(p.getRunningId())
+                .sets(setResponses)
+                .build();
+
+        return PacemakerPollingResponse.builder()
+                .processingStatus(p.getStatus().name())
+                .pacemaker(pacemakerResponse)
+                .build();
+    }
   
 }

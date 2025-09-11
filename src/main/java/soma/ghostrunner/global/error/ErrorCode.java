@@ -42,10 +42,13 @@ public enum ErrorCode {
 
     // Running
     INVALID_PACEMAKER_DISTANCE("R-001", BAD_REQUEST, "3K 이하의 거리는 페이스메이커를 생성할 수 없습니다."),
-    VDOT_NOT_FOUND("R-002", NOT_FOUND, "VDOT가 기록되어 있지 않아, 평균 페이스가 필요합니다.");
+    VDOT_NOT_FOUND("R-002", NOT_FOUND, "VDOT가 기록되어 있지 않아, 평균 페이스가 필요합니다."),
+    PROCESSING_PACEMAKER("R-003", BAD_REQUEST, "페이스메이커가 아직 생성되지 않았습니다."),
+    FAILED_PACEMAKER("R-004", HttpStatus.SERVICE_UNAVAILABLE, "페이스메이커를 생성하는데 실패했습니다."),
+    ;
 
     private final String code;
     private final HttpStatus status;
     private final String message;
 
-    }
+}

@@ -8,6 +8,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 
@@ -15,9 +16,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
-class RunningServiceMapperTest {
+class RunningApplicationMapperTest {
 
-    private final RunningServiceMapper mapper = Mappers.getMapper(RunningServiceMapper.class);
+    private final RunningApplicationMapper mapper = Mappers.getMapper(RunningApplicationMapper.class);
 
     @DisplayName("Runnging 엔티티로 변환한다.")
     @Test

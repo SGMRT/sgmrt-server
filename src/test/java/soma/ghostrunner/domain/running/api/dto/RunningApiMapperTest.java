@@ -7,11 +7,8 @@ import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.running.api.dto.request.CreateCourseAndRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.CreateRunRequest;
 import soma.ghostrunner.domain.running.api.dto.request.RunRecordRequest;
-import soma.ghostrunner.domain.running.api.dto.request.TelemetryRequest;
+import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
-
-import java.util.ArrayList;
-import java.util.List;
 
 class RunningApiMapperTest {
 

@@ -88,4 +88,28 @@ public class Member extends BaseTimeEntity {
         this.uuid = uuid;
     }
 
+    public String toStringForPacemakerPrompt(int vdot, int condition) {
+
+        String conditionStr = switch (condition) {
+            case 1 -> "매우 안좋음";
+            case 2 -> "안좋음";
+            case 3 -> "보통";
+            case 4 -> "좋음";
+            case 5 -> "매우 좋음";
+            default -> throw new IllegalArgumentException("유효하지 않은 컨디션 값입니다.");
+        };
+
+        return String.format(
+                "{\n" +
+                    "\t    \"age\": %d,\n" +
+                    "\t    \"gender\": \"%s\",\n" +
+                    "\t    \"weight\": %d,\n" +
+                    "\t    \"height\": %d,\n" +
+                    "\t    \"vdot\": %d,\n" +
+                    "\t    \"condition\": \"%s\"\n" +
+                "\t}",
+                bioInfo.getAge(), bioInfo.getGender(), bioInfo.getWeight(), bioInfo.getHeight(), vdot, conditionStr
+        );
+    }
+
 }

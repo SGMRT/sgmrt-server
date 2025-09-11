@@ -17,7 +17,7 @@ public class RedisRateLimiterRepository {
     public RedisRateLimiterRepository(RedisTemplate<String, String> redisTemplate) {
         this.redisTemplate = redisTemplate;
         this.rateLimiterScript = new DefaultRedisScript<>();
-        this.rateLimiterScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("rate-limiter.lua")));
+        this.rateLimiterScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("lua/rate-limiter.lua")));
         this.rateLimiterScript.setResultType(Long.class);
     }
 

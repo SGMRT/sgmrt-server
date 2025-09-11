@@ -30,7 +30,7 @@ public class GlobalExceptionAdvice {
     // BusinessException
     @ExceptionHandler(BusinessException.class)
     protected ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
-        log.error("handleEntityNotFoundException", e);
+        log.error("handleBusinessException", e);
         return createErrorResponse(e.getErrorCode());
     }
 

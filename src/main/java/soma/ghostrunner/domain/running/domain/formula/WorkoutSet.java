@@ -24,6 +24,9 @@ public class WorkoutSet {
             return value;
         }
         // 미터(m) 반환
+        if (type.name().equals("X")) {
+            return 0.0;
+        }
         double pace = paces.get(RunningType.valueOf(type.name()));
         return (value / pace) * 1000;
     }

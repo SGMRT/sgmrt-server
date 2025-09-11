@@ -9,7 +9,7 @@ import java.util.Map;
 
 @Getter
 @AllArgsConstructor
-public class WorkoutTemplate {
+public class Workout {
 
     private final String id;
     private final WorkoutType workoutType;

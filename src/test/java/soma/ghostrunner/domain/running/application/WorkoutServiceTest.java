@@ -6,7 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.domain.running.application.dto.ProcessedWorkoutDto;
+import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
+import soma.ghostrunner.domain.running.application.dto.WorkoutSetDto;
 import soma.ghostrunner.domain.running.domain.RunningType;
 
 import java.util.HashMap;
@@ -21,7 +22,7 @@ class WorkoutServiceTest extends IntegrationTestSupport {
 
     @DisplayName("VDOT : 35, 목표거리 : 12K, 마라톤(M)을 목적으로 뛰고싶은 사람의 훈련표를 생성한다.")
     @Test
-    void generatePlan_Vdot35_TargetDistance12_Marathon() {
+    void generateWorkouts_Vdot35_TargetDistance12_Marathon() {
         // given
         Map<RunningType, Double> expectedPaces = new HashMap<>();
         expectedPaces.put(RunningType.E, 7.0);
@@ -31,10 +32,14 @@ class WorkoutServiceTest extends IntegrationTestSupport {
         expectedPaces.put(RunningType.R, 6.2);
 
         // when
-        List<ProcessedWorkoutDto> processedWorkouts = workoutService.generatePlan(12, RunningType.M, expectedPaces);
+        WorkoutDto processedWorkouts = workoutService.generateWorkouts(12, RunningType.M, expectedPaces);
 
         // then
-        Assertions.assertThat(processedWorkouts.get(processedWorkouts.size()-1).getEndPoint()).isEqualTo(12.00);
+        List<WorkoutSetDto> workoutSetDtos = processedWorkouts.getSets();
+        Assertions.assertThat(workoutSetDtos.get(workoutSetDtos.size()-1).getEndPoint()).isEqualTo(12.00);
+        for (WorkoutSetDto processedWorkout : workoutSetDtos) {
+            System.out.println(processedWorkout);
+        }
     }
 
 }

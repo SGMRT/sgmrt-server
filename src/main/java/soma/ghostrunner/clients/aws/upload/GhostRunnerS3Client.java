@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+// TODO: GhostRunnerS3Client 는 제네릭을 활용해 파일을 순수하게 업로드하는 역할만 부여하고 각 도메인 인프라에서 호출하도록 수정
 @Slf4j
 @Component
 @RequiredArgsConstructor

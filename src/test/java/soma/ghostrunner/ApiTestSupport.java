@@ -13,12 +13,11 @@ import soma.ghostrunner.domain.auth.application.AuthService;
 import soma.ghostrunner.domain.notice.api.NoticeApi;
 import soma.ghostrunner.domain.notice.application.NoticeService;
 import soma.ghostrunner.domain.running.api.RunningApi;
-import soma.ghostrunner.domain.running.api.dto.RunningApiMapper;
-import soma.ghostrunner.domain.running.api.dto.RunningApiMapperImpl;
-import soma.ghostrunner.domain.running.application.PaceMakerService;
+import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
+import soma.ghostrunner.domain.running.api.support.RunningApiMapperImpl;
+import soma.ghostrunner.domain.running.application.PacemakerService;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
-import soma.ghostrunner.domain.running.application.RunningTelemetryQueryService;
 import soma.ghostrunner.global.common.CommonApi;
 import soma.ghostrunner.global.common.log.HttpLogger;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
@@ -44,14 +43,11 @@ public abstract class ApiTestSupport {
     protected RunningQueryService runningQueryService;
 
     @MockitoBean
-    protected RunningTelemetryQueryService runningTelemetryQueryService;
-
-    @MockitoBean
     protected AuthService authService;
 
     @MockitoBean
-    protected PaceMakerService paceMakerService;
-  
+    protected PacemakerService paceMakerService;
+
     @MockitoBean
     protected NoticeService noticeService;
 
