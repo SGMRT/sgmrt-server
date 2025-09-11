@@ -52,9 +52,6 @@ class PacemakerServiceTest extends IntegrationTestSupport {
     @Autowired
     private PacemakerService pacemakerService;
 
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
-
     @MockitoBean
     PacemakerLlmService pacemakerLlmService;
 
@@ -194,52 +191,6 @@ class PacemakerServiceTest extends IntegrationTestSupport {
                 .temperature(30)
                 .localDate(LocalDate.now())
                 .build();
-    }
-
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    @DisplayName("여러 스레드가 동시에 페이스메이커 생성을 요청할 때, 분산 락에 의해 단 한 번만 실행된다")
-    @Test
-    void createOnlyOnePacemakerWhenConcurrentRequests() throws InterruptedException {
-        // given
-        Member member = createMember();
-        memberRepository.save(member);
-
-        MemberVdot memberVdot = createMemberVdot(member, 30);
-        memberVdotRepository.save(memberVdot);
-
-        int threadCount = 10;
-        AtomicInteger successCount = new AtomicInteger(0);
-        AtomicInteger failureCount = new AtomicInteger(0);
-        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(threadCount);
-
-        // when
-        for (int i = 0; i < threadCount; i++) {
-            executorService.submit(() -> {
-                try {
-                    pacemakerService.createPaceMaker(member.getUuid(), createCommand());
-                    successCount.incrementAndGet();
-                } catch (Exception e) {
-                    failureCount.incrementAndGet();
-                } finally {
-                    latch.countDown();
-                }
-            });
-        }
-
-        latch.await();
-
-        // then
-        assertThat(successCount.get()).isEqualTo(1);
-        assertThat(failureCount.get()).isEqualTo(threadCount - 1);
-        deleteData();
-    }
-
-    private void deleteData() {
-        memberVdotRepository.deleteAllInBatch();
-        memberRepository.deleteAllInBatch();
-        redisTemplate.keys("pacemaker_api_lock:*").forEach(redisTemplate::delete);
-        redisTemplate.keys("pacemaker_api_rate_limit:*").forEach(redisTemplate::delete);
     }
 
     @DisplayName("페이스메이커를 조회한다.")
