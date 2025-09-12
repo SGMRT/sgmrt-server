@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import soma.ghostrunner.global.clients.aws.presign.S3PresignUrlClient;
+import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 import soma.ghostrunner.domain.auth.api.AuthApi;
 import soma.ghostrunner.domain.auth.application.AuthService;
 import soma.ghostrunner.domain.notice.api.NoticeApi;
@@ -58,6 +58,6 @@ public abstract class ApiTestSupport {
     protected JwtProvider jwtProvider;
 
     @MockitoBean
-    protected S3PresignUrlClient s3PresignUrlClient;
+    protected GhostRunnerS3PresignUrlClient ghostRunnerS3PresignUrlClient;
 
 }
