@@ -10,9 +10,9 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
-import soma.ghostrunner.domain.running.application.dto.CheckpointDto;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.domain.path.Checkpoint;
+import soma.ghostrunner.domain.running.domain.path.Coordinates;
+import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.error.exception.ExternalIOException;
 
@@ -48,16 +48,16 @@ public class GhostRunnerS3Client {
     @Value("${s3.member-directory}")
     private String memberDirectory;
 
-    public String uploadInterpolatedTelemetry(List<TelemetryDto> telemetryDtos, String memberUuid) {
-        return uploadObjectList(telemetryDtos, runningDirectory, memberUuid);
+    public String uploadInterpolatedTelemetry(List<Telemetry> telemetries, String memberUuid) {
+        return uploadObjectList(telemetries, runningDirectory, memberUuid);
     }
 
-    public String uploadSimplifiedTelemetry(List<CoordinateDto> coordinateDtos, String memberUuid) {
-        return uploadObjectList(coordinateDtos, courseDirectory, memberUuid);
+    public String uploadSimplifiedTelemetry(List<Coordinates> coordinates, String memberUuid) {
+        return uploadObjectList(coordinates, courseDirectory, memberUuid);
     }
 
-    public String uploadCourseCheckpoint(List<CheckpointDto> checkpointDtos, String memberUuid) {
-        return uploadObjectList(checkpointDtos, courseCheckpointDirectory, memberUuid);
+    public String uploadCourseCheckpoint(List<Checkpoint> checkpoints, String memberUuid) {
+        return uploadObjectList(checkpoints, courseCheckpointDirectory, memberUuid);
     }
 
     private String uploadObjectList(List<?> objectList, String directory, String memberUuid) {

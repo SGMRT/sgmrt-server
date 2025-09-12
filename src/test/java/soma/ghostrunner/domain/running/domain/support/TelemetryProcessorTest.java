@@ -12,8 +12,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
+import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.TelemetryCalculationException;
@@ -34,11 +34,11 @@ class TelemetryProcessorTest extends IntegrationTestSupport {
     void processTelemetryTest() throws Exception {
         // given
         Long startedAt = 1750729987181L;
-        List<TelemetryDto> telemetryList = getTelemetryDtos(startedAt);
+        List<Telemetry> telemetryList = getTelemetryDtos(startedAt);
         MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
 
         // when
-        ProcessedTelemetriesDto processedTelemetry = telemetryProcessor.process(multipartTelemetryList, startedAt);
+        TelemetryStatistics processedTelemetry = telemetryProcessor.process(multipartTelemetryList, startedAt);
 
         // then
         for (int i = 0; i < telemetryList.size(); i++) {
@@ -60,7 +60,7 @@ class TelemetryProcessorTest extends IntegrationTestSupport {
     void processEmptyTelemetryTest() throws Exception {
         // given
         Long startedAt = 1750729987181L;
-        List<TelemetryDto> telemetryList = new ArrayList<>();
+        List<Telemetry> telemetryList = new ArrayList<>();
         MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
 
         // when // then
@@ -69,11 +69,11 @@ class TelemetryProcessorTest extends IntegrationTestSupport {
                 .hasMessage("Telemetry data is empty.");
     }
 
-    private List<TelemetryDto> getTelemetryDtos(Long startedAt) {
-        List<TelemetryDto> telemetryList = new ArrayList<>();
+    private List<Telemetry> getTelemetryDtos(Long startedAt) {
+        List<Telemetry> telemetryList = new ArrayList<>();
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
-            TelemetryDto telemetry = new TelemetryDto(
+            Telemetry telemetry = new Telemetry(
                     startedAt + (i*5),     // 5초 간격
                     37.5665 + i * 0.0001,         // 위도
                     126.9780 + i * 0.0001,        // 경도
@@ -89,12 +89,12 @@ class TelemetryProcessorTest extends IntegrationTestSupport {
         return telemetryList;
     }
 
-    private MultipartFile createTelemetryJsonlFile(List<TelemetryDto> telemetryList) throws Exception {
+    private MultipartFile createTelemetryJsonlFile(List<Telemetry> telemetryList) throws Exception {
 
         ObjectMapper objectMapper = new ObjectMapper();
 
         StringBuilder sb = new StringBuilder();
-        for (TelemetryDto dto : telemetryList) {
+        for (Telemetry dto : telemetryList) {
             sb.append(objectMapper.writeValueAsString(dto)).append("\n");
         }
 
@@ -111,7 +111,7 @@ class TelemetryProcessorTest extends IntegrationTestSupport {
     void processMinusTelemetryTest() throws Exception {
         // given
         Long startedAt = 1750729987181L;
-        List<TelemetryDto> telemetryList = createMinusTelemetryDtos(startedAt);
+        List<Telemetry> telemetryList = createMinusTelemetryDtos(startedAt);
         MultipartFile multipartTelemetryList = createTelemetryJsonlFile(telemetryList);
 
         // when // then
@@ -120,11 +120,11 @@ class TelemetryProcessorTest extends IntegrationTestSupport {
                 .hasMessage("마이너스 값이 포함되어 있습니다.");
     }
 
-    private List<TelemetryDto> createMinusTelemetryDtos(Long startedAt) {
-        List<TelemetryDto> telemetryList = new ArrayList<>();
+    private List<Telemetry> createMinusTelemetryDtos(Long startedAt) {
+        List<Telemetry> telemetryList = new ArrayList<>();
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
-            TelemetryDto telemetry = new TelemetryDto(
+            Telemetry telemetry = new Telemetry(
                     startedAt + (i*5),     // 5초 간격
                     37.5665 + i * 0.0001,         // 위도
                     126.9780 + i * 0.0001,        // 경도

@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
-import soma.ghostrunner.domain.running.application.dto.CoordinateWithTsDto;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.domain.path.CoordinateWithTs;
+import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.path.PathSimplifier;
 
 import java.io.BufferedReader;
@@ -28,15 +28,15 @@ class PathSimplifierTest {
     @Test
     void returnOriginalWhenSizeLe2() {
         // given
-        List<CoordinateWithTsDto> pts1 = List.of(new CoordinateWithTsDto(10, 37.0, 127.0));
-        List<CoordinateWithTsDto> pts2 = List.of(
-                new CoordinateWithTsDto(20, 37.0, 127.0),
-                new CoordinateWithTsDto(30, 37.0001, 127.0001)
+        List<CoordinateWithTs> pts1 = List.of(new CoordinateWithTs(10, 37.0, 127.0));
+        List<CoordinateWithTs> pts2 = List.of(
+                new CoordinateWithTs(20, 37.0, 127.0),
+                new CoordinateWithTs(30, 37.0001, 127.0001)
         );
 
         // when
-        List<CoordinateDto> coordinateDtos1 = PathSimplifier.extractEdgePoints(pts1);
-        List<CoordinateDto> coordinateDtos2 = PathSimplifier.extractEdgePoints(pts2);
+        List<Coordinates> coordinateDtos1 = PathSimplifier.extractEdgePoints(pts1);
+        List<Coordinates> coordinateDtos2 = PathSimplifier.extractEdgePoints(pts2);
 
         // then
         assertThat(coordinateDtos1.get(0).lat()).isEqualTo(pts1.get(0).getLat());
@@ -52,10 +52,10 @@ class PathSimplifierTest {
     @Test
     void extractEdgePointsFromData7Jsonl() throws Exception {
         // given
-        List<CoordinateWithTsDto> original = readCoordinatesFromJsonl("data7.jsonl");
+        List<CoordinateWithTs> original = readCoordinatesFromJsonl("data7.jsonl");
 
         // when
-        List<CoordinateDto> simplified = PathSimplifier.extractEdgePoints(original);
+        List<Coordinates> simplified = PathSimplifier.extractEdgePoints(original);
 
         // then
         // 포인트 수가 줄었는지(줄지 않을 수도 있으니 안전하게 체크)
@@ -84,9 +84,9 @@ class PathSimplifierTest {
         writeJsonlToTestResources(simplified, "simplified_result_data.jsonl");
     }
 
-    private List<CoordinateWithTsDto> readCoordinatesFromJsonl(String classpathFilename) throws Exception {
+    private List<CoordinateWithTs> readCoordinatesFromJsonl(String classpathFilename) throws Exception {
         ClassPathResource resource = new ClassPathResource(classpathFilename);
-        List<CoordinateWithTsDto> list = new ArrayList<>();
+        List<CoordinateWithTs> list = new ArrayList<>();
 
         try (var is = resource.getInputStream();
              var reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
@@ -112,20 +112,20 @@ class PathSimplifierTest {
                 long ts = tsNode.asLong();
                 double lat = latNode.asDouble();
                 double lng = lngNode.asDouble();
-                list.add(new CoordinateWithTsDto(ts, lat, lng));
+                list.add(new CoordinateWithTs(ts, lat, lng));
             }
         }
         return List.copyOf(list);
     }
 
-    private void writeJsonlToTestResources(List<CoordinateDto> coords, String filename) throws Exception {
+    private void writeJsonlToTestResources(List<Coordinates> coords, String filename) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
 
         // 실제 소스 디렉토리 경로를 명시
         File outputFile = new File("src/test/resources/" + filename);
 
         try (FileOutputStream fos = new FileOutputStream(outputFile)) {
-            for (CoordinateDto c : coords) {
+            for (Coordinates c : coords) {
                 String json = mapper.writeValueAsString(c);
                 fos.write(json.getBytes(StandardCharsets.UTF_8));
                 fos.write('\n');
@@ -137,8 +137,8 @@ class PathSimplifierTest {
     @Test
     @DisplayName("빈 입력이면 빈 리스트를 반환한다")
     void resample_emptyInput_returnsEmpty() {
-        List<CoordinateWithTsDto> in = List.of();
-        List<CoordinateDto> out = PathSimplifier.simplifyToRenderingTelemetries(in);
+        List<CoordinateWithTs> in = List.of();
+        List<Coordinates> out = PathSimplifier.simplifyToRenderingTelemetries(in);
         assertThat(out).isEmpty();
     }
 
@@ -146,7 +146,7 @@ class PathSimplifierTest {
     @DisplayName("3개씩 묶어 평균 후 반환한다 (불완전 꼬리(2개 이하는) 버림)")
     void resample_averageByTriplets_dropsTail() {
         // (lat, lng) = (0,0), (3,3), (6,6) → 평균 (2,2)
-        List<CoordinateWithTsDto> in = new ArrayList<>();
+        List<CoordinateWithTs> in = new ArrayList<>();
         in.add(pt(0.0, 0.0, 1000));
         in.add(pt(3.0, 3.0, 2000));
         in.add(pt(6.0, 6.0, 3000));
@@ -154,7 +154,7 @@ class PathSimplifierTest {
         in.add(pt(9.0, 9.0, 4000));
         in.add(pt(12.0, 12.0, 5000));
 
-        List<CoordinateDto> out = PathSimplifier.simplifyToRenderingTelemetries(in);
+        List<Coordinates> out = PathSimplifier.simplifyToRenderingTelemetries(in);
 
         assertEquals(1, out.size(), "3개 묶음 1개만 평균되어야 함");
         assertLatLngAlmostEquals(3.0, 3.0, out.get(0), 1e-9);
@@ -165,7 +165,7 @@ class PathSimplifierTest {
     void resample_filtersBelow3m() {
         // 위도 1도 ≈ 111,132 m → 0.00002도 ≈ 2.22 m (3m 미만)
         // 3개 평균 후 나온 점들 간 거리가 3m 미만이면 제외되어 결과는 1개만 남아야 한다.
-        List<CoordinateWithTsDto> in = new ArrayList<>();
+        List<CoordinateWithTs> in = new ArrayList<>();
         // 첫 묶음 평균 ~ (37.000010, 127.000010)
         in.add(pt(37.000000, 127.000000, 1000));
         in.add(pt(37.000015, 127.000015, 2000));
@@ -175,7 +175,7 @@ class PathSimplifierTest {
         in.add(pt(37.000030, 127.000030, 5000));
         in.add(pt(37.000030, 127.000030, 6000));
 
-        List<CoordinateDto> out = PathSimplifier.simplifyToRenderingTelemetries(in);
+        List<Coordinates> out = PathSimplifier.simplifyToRenderingTelemetries(in);
 
         // 3m 미만이라면 두 번째 평균점은 필터됨 → 1개만 남음
         assertEquals(1, out.size(), "3m 미만 이동은 필터링되어야 함");
@@ -185,7 +185,7 @@ class PathSimplifierTest {
     @DisplayName("3m 이상 이동은 보존된다")
     void resample_keepsPointsWhenAtLeast3m() {
         // 위도 차이 0.000030도 ≈ 3.33 m → 3m 이상
-        List<CoordinateWithTsDto> in = new ArrayList<>();
+        List<CoordinateWithTs> in = new ArrayList<>();
         // 첫 평균 ~ (37.000000, 127.000000)
         in.add(pt(37.000000, 127.000000, 1000));
         in.add(pt(37.000000, 127.000000, 2000));
@@ -195,7 +195,7 @@ class PathSimplifierTest {
         in.add(pt(37.000030, 127.000000, 5000));
         in.add(pt(37.000030, 127.000000, 6000));
 
-        List<CoordinateDto> out = PathSimplifier.simplifyToRenderingTelemetries(in);
+        List<Coordinates> out = PathSimplifier.simplifyToRenderingTelemetries(in);
 
         assertEquals(2, out.size(), "3m 이상 이동한 평균점은 남아야 함");
         assertLatLngAlmostEquals(37.000000, 127.000000, out.get(0), 1e-9);
@@ -203,11 +203,11 @@ class PathSimplifierTest {
     }
 
     // ---- helpers ----
-    private static CoordinateWithTsDto pt(double lat, double lng, long ts) {
-        return new CoordinateWithTsDto(ts, lat, lng);
+    private static CoordinateWithTs pt(double lat, double lng, long ts) {
+        return new CoordinateWithTs(ts, lat, lng);
     }
 
-    private static void assertLatLngAlmostEquals(double expLat, double expLng, CoordinateDto actual, double eps) {
+    private static void assertLatLngAlmostEquals(double expLat, double expLng, Coordinates actual, double eps) {
         assertEquals(expLat, actual.lat(), eps, "lat mismatch");
         assertEquals(expLng, actual.lng(), eps, "lng mismatch");
     }

@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.running.application.dto;
+package soma.ghostrunner.domain.running.domain.path;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TelemetryDto {
+public class Telemetry {
 
     private Long timeStamp;
     private Double lat;

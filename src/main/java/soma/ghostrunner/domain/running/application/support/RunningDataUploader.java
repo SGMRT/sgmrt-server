@@ -4,9 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
-import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
+import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
-import soma.ghostrunner.domain.running.application.dto.SimplifiedPathDto;
+import soma.ghostrunner.domain.running.domain.path.SimplifiedPath;
 
 @Component
 @RequiredArgsConstructor
@@ -15,8 +15,8 @@ public class RunningDataUploader {
     private final GhostRunnerS3Client ghostRunnerS3Client;
 
     public RunningDataUrlsDto uploadAll(
-            MultipartFile rawTelemetry, ProcessedTelemetriesDto processedTelemetries,
-            SimplifiedPathDto simplifiedPath, MultipartFile screenShotImage, String memberUuid) {
+            MultipartFile rawTelemetry, TelemetryStatistics processedTelemetries,
+            SimplifiedPath simplifiedPath, MultipartFile screenShotImage, String memberUuid) {
 
         String rawUrl = uploadRawTelemetry(rawTelemetry, memberUuid);
         String interpolatedUrl = uploadInterpolatedTelemetry(processedTelemetries, memberUuid);
@@ -32,7 +32,7 @@ public class RunningDataUploader {
         return ghostRunnerS3Client.uploadRawTelemetry(rawTelemetry, memberUuid);
     }
 
-    private String uploadInterpolatedTelemetry(ProcessedTelemetriesDto processedTelemetries, String memberUuid) {
+    private String uploadInterpolatedTelemetry(TelemetryStatistics processedTelemetries, String memberUuid) {
         return ghostRunnerS3Client.uploadInterpolatedTelemetry(processedTelemetries.relativeTelemetries(), memberUuid);
     }
 
@@ -47,7 +47,7 @@ public class RunningDataUploader {
     }
 
     public RunningDataUrlsDto uploadAll(
-            MultipartFile rawTelemetry, ProcessedTelemetriesDto processedTelemetries,
+            MultipartFile rawTelemetry, TelemetryStatistics processedTelemetries,
             MultipartFile screenShotImage, String memberUuid) {
 
         String rawUrl = uploadRawTelemetry(rawTelemetry, memberUuid);

@@ -9,7 +9,7 @@ import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunRespon
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerSetResponse;
-import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
+import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
@@ -24,7 +24,7 @@ public interface RunningApplicationMapper {
     RunningApplicationMapper INSTANCE = Mappers.getMapper(RunningApplicationMapper.class);
 
     default Running toRunning(CreateRunCommand command,
-                              ProcessedTelemetriesDto processedTelemetry,
+                              TelemetryStatistics processedTelemetry,
                               RunningDataUrlsDto runningDataUrlsDto,
                               Member member,
                               Course course) {
@@ -48,7 +48,7 @@ public interface RunningApplicationMapper {
         );
     }
 
-    default RunningRecord toRunningRecord(RunRecordCommand record, ProcessedTelemetriesDto processedTelemetry) {
+    default RunningRecord toRunningRecord(RunRecordCommand record, TelemetryStatistics processedTelemetry) {
 
         return RunningRecord.of(
                 record.getDistance(),
@@ -67,7 +67,7 @@ public interface RunningApplicationMapper {
 
     default Course toCourse(Member member,
                             CreateRunCommand createRunCommand,
-                            ProcessedTelemetriesDto processedTelemetry,
+                            TelemetryStatistics processedTelemetry,
                             RunningDataUrlsDto runningDataUrlsDto) {
 
         Double distance = createRunCommand.getRecord().getDistance();

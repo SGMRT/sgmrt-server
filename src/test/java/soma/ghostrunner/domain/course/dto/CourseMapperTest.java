@@ -11,7 +11,7 @@ import soma.ghostrunner.domain.course.domain.CourseDataUrls;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
@@ -121,7 +121,7 @@ class CourseMapperTest {
         // given
         Member member = createMember();
         Course course = createCourse(member);
-        List<CoordinateDto> coordinates = List.of(new CoordinateDto(37.5, 127.5));
+        List<Coordinates> coordinates = List.of(new Coordinates(37.5, 127.5));
 
         // when
         CourseCoordinatesResponse response = courseMapper.toCoordinatesResponse(course, coordinates);

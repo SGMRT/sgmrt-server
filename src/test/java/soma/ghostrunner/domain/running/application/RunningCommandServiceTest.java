@@ -13,7 +13,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
@@ -134,13 +134,13 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
                 startedAt, runRecordCommand, false, true);
     }
 
-    private List<TelemetryDto> createTelemetryDtos() {
-        List<TelemetryDto> telemetryDtos = new ArrayList<>();
+    private List<Telemetry> createTelemetryDtos() {
+        List<Telemetry> telemetries = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            telemetryDtos.add(new TelemetryDto(100L + i, 36.2 + i, 37.3 + i, 10.1 + i,
+            telemetries.add(new Telemetry(100L + i, 36.2 + i, 37.3 + i, 10.1 + i,
                     6.4 + i, 110.0 + i, 120 + i, 110 + i, true));
         }
-        return telemetryDtos;
+        return telemetries;
      }
 
     private RunRecordCommand createRunRecordDto(double distance, double elevationGain, double elevationLoss, long duration) {
@@ -159,7 +159,7 @@ class RunningCommandServiceTest extends IntegrationTestSupport {
         Long savedCourseId = courseRepository.save(course).getId();
 
         RunRecordCommand runRecordCommand = createRunRecordDto(5.1, 130, -120, 3600L);
-        List<TelemetryDto> telemetryDtos = createTelemetryDtos();
+        List<Telemetry> telemetries = createTelemetryDtos();
         CreateRunCommand request = createGhostRunCommandRequest(
                 "러닝 이름", "SOLO", null,
                 100L, runRecordCommand);

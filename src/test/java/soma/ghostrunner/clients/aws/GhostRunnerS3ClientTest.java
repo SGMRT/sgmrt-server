@@ -17,8 +17,8 @@ import software.amazon.awssdk.services.s3.S3Utilities;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.domain.path.Coordinates;
+import soma.ghostrunner.domain.running.domain.path.Telemetry;
 
 
 import java.net.URL;
@@ -65,13 +65,13 @@ class GhostRunnerS3ClientTest {
     @DisplayName("프론트엔드 단에서 보간한 러닝 시계열 데이터를 S3에 업로드한다.")
     void uploadInterpolatedTelemetry() {
         // given
-        List<TelemetryDto> telemetryDtos = List.of(
-                new TelemetryDto(0L, 37.1, 36.3, 5.0, 5.5, 110.0, 120, 130, true),
-                new TelemetryDto(0L, 37.2, 36.4, 5.1, 5.6, 111.0, 121, 131, true),
-                new TelemetryDto(0L, 37.3, 36.5, 5.2, 5.7, 112.0, 122, 132, true),
-                new TelemetryDto(0L, 37.4, 36.6, 5.3, 5.8, 113.0, 123, 133, true),
-                new TelemetryDto(0L, 37.5, 36.7, 5.4, 5.6, 114.0, 124, 134, true),
-                new TelemetryDto(0L, 37.6, 36.8, 5.5, 6.0, 115.0, 125, 135, false)
+        List<Telemetry> telemetries = List.of(
+                new Telemetry(0L, 37.1, 36.3, 5.0, 5.5, 110.0, 120, 130, true),
+                new Telemetry(0L, 37.2, 36.4, 5.1, 5.6, 111.0, 121, 131, true),
+                new Telemetry(0L, 37.3, 36.5, 5.2, 5.7, 112.0, 122, 132, true),
+                new Telemetry(0L, 37.4, 36.6, 5.3, 5.8, 113.0, 123, 133, true),
+                new Telemetry(0L, 37.5, 36.7, 5.4, 5.6, 114.0, 124, 134, true),
+                new Telemetry(0L, 37.6, 36.8, 5.5, 6.0, 115.0, 125, 135, false)
         );
 
         // putObject stubbing (리턴 타입 반영)
@@ -79,7 +79,7 @@ class GhostRunnerS3ClientTest {
                 .willReturn(software.amazon.awssdk.services.s3.model.PutObjectResponse.builder().build());
 
         // when
-        String url = sut.uploadInterpolatedTelemetry(telemetryDtos, "member-uuid-123");
+        String url = sut.uploadInterpolatedTelemetry(telemetries, "member-uuid-123");
 
         // then: 호출 검증 + 캡처
         ArgumentCaptor<PutObjectRequest> reqCap = ArgumentCaptor.forClass(PutObjectRequest.class);
@@ -96,12 +96,12 @@ class GhostRunnerS3ClientTest {
     @DisplayName("해상도를 줄인 코스 시계열 데이터를 S3에 업로드한다.")
     void uploadSimplifiedTelemetry() {
         // given
-        List<CoordinateDto> coordinateDtos = List.of(
-                new CoordinateDto(37.1, 36.3),
-                new CoordinateDto(37.2, 36.4),
-                new CoordinateDto(37.3, 36.5),
-                new CoordinateDto(37.4, 36.6),
-                new CoordinateDto(37.5, 36.7)
+        List<Coordinates> coordinates = List.of(
+                new Coordinates(37.1, 36.3),
+                new Coordinates(37.2, 36.4),
+                new Coordinates(37.3, 36.5),
+                new Coordinates(37.4, 36.6),
+                new Coordinates(37.5, 36.7)
         );
 
         // putObject stubbing (리턴 타입 반영)
@@ -109,7 +109,7 @@ class GhostRunnerS3ClientTest {
                 .willReturn(software.amazon.awssdk.services.s3.model.PutObjectResponse.builder().build());
 
         // when
-        String url = sut.uploadSimplifiedTelemetry(coordinateDtos, "member-uuid-123");
+        String url = sut.uploadSimplifiedTelemetry(coordinates, "member-uuid-123");
 
         // then: 호출 검증 + 캡처
         ArgumentCaptor<PutObjectRequest> reqCap = ArgumentCaptor.forClass(PutObjectRequest.class);

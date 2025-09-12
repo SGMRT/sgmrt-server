@@ -3,7 +3,7 @@ package soma.ghostrunner.domain.course;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
+import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.application.support.CoordinateConverter;
 
 import java.util.List;
@@ -25,10 +25,10 @@ class CoordinateConverterTest {
         );
 
         // when
-        List<CoordinateDto> coordinateDtos = CoordinateConverter.convertToCoordinateList(stringTelemetries);
+        List<Coordinates> coordinates = CoordinateConverter.convertToCoordinateList(stringTelemetries);
 
         // then
-        Assertions.assertThat(coordinateDtos)
+        Assertions.assertThat(coordinates)
                 .hasSize(5)
                 .extracting("lat", "lng")
                 .containsExactly(

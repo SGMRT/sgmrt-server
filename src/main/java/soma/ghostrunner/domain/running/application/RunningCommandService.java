@@ -14,6 +14,8 @@ import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunRespon
 import soma.ghostrunner.domain.running.application.support.RunningDataUploader;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
+import soma.ghostrunner.domain.running.domain.path.SimplifiedPath;
+import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 
@@ -42,8 +44,8 @@ public class RunningCommandService {
 
         Member member = findMember(memberUuid);
 
-        ProcessedTelemetriesDto processedTelemetries = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
-        SimplifiedPathDto simplifiedPath = pathSimplificationService.simplify(processedTelemetries);
+        TelemetryStatistics processedTelemetries = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
+        SimplifiedPath simplifiedPath = pathSimplificationService.simplify(processedTelemetries);
 
         RunningDataUrlsDto runningDataUrlsDto = runningDataUploader.uploadAll(
                 rawTelemetry, processedTelemetries, simplifiedPath, screenShotImage, memberUuid);
@@ -58,14 +60,14 @@ public class RunningCommandService {
     }
 
     private Course createAndSaveCourse(Member member, CreateRunCommand command,
-                                       ProcessedTelemetriesDto processedTelemetriesDto,
+                                       TelemetryStatistics telemetryStatistics,
                                        RunningDataUrlsDto runningDataUrlsDto) {
-        Course course = mapper.toCourse(member, command, processedTelemetriesDto, runningDataUrlsDto);
+        Course course = mapper.toCourse(member, command, telemetryStatistics, runningDataUrlsDto);
         courseService.save(course);
         return course;
     }
 
-    private Running createAndSaveRunning(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry,
+    private Running createAndSaveRunning(CreateRunCommand command, TelemetryStatistics processedTelemetry,
                                          RunningDataUrlsDto runningDataUrlsDto, Member member, Course course) {
         return runningRepository.save(mapper.toRunning(command, processedTelemetry, runningDataUrlsDto, member, course));
     }
@@ -78,7 +80,7 @@ public class RunningCommandService {
         Course course = findCourse(courseId);
 
         validateBelongsToCourseIfGhostMode(command, courseId);
-        ProcessedTelemetriesDto processedTelemetries = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
+        TelemetryStatistics processedTelemetries = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
 
         RunningDataUrlsDto runningDataUrlsDto = runningDataUploader.uploadAll(rawTelemetry, processedTelemetries, screenShotImage, memberUuid);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
