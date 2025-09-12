@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.notice.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 
 import java.time.LocalDateTime;
 
@@ -37,15 +38,17 @@ class NoticeTest {
         String content = "전체 내용";
         String imageUrl = "http://example.com/image.png";
         Integer priority = 10;
+        NoticeType type = NoticeType.EVENT;
         LocalDateTime startAt = LocalDateTime.now().plusDays(1);
         LocalDateTime endAt = LocalDateTime.now().plusDays(10);
 
         // when
-        Notice notice = Notice.of(title, content, imageUrl, priority, startAt, endAt);
+        Notice notice = Notice.of(title, content, type, imageUrl, priority, startAt, endAt);
 
         // then
         assertThat(notice.getTitle()).isEqualTo(title);
         assertThat(notice.getContent()).isEqualTo(content);
+        assertThat(notice.getType()).isEqualTo(type);
         assertThat(notice.getImageUrl()).isEqualTo(imageUrl);
         assertThat(notice.getPriority()).isEqualTo(priority);
         assertThat(notice.getStartAt()).isEqualTo(startAt);
@@ -68,7 +71,7 @@ class NoticeTest {
         LocalDateTime endAt = LocalDateTime.now().plusDays(1);
 
         // when & then
-        assertThatThrownBy(() -> Notice.of("제목", "내용", null, 1, startAt, endAt))
+        assertThatThrownBy(() -> Notice.of("제목", "내용", NoticeType.GENERAL, null, 1, startAt, endAt))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("startAt cannot be after endAt");
     }
@@ -81,7 +84,7 @@ class NoticeTest {
         LocalDateTime endAt = LocalDateTime.now().plusDays(5);
 
         // when
-        Notice notice = Notice.of(title, "내용", "url", null, null, endAt);
+        Notice notice = Notice.of(title, "내용", NoticeType.GENERAL, "url", null, null, endAt);
 
         // then
         assertThat(notice.getPriority()).isZero(); // priority 기본값 0
@@ -96,7 +99,7 @@ class NoticeTest {
         LocalDateTime sameTime = LocalDateTime.now().plusHours(1);
 
         // when
-        Notice notice = Notice.of("제목", "내용", null, 1, sameTime, sameTime);
+        Notice notice = Notice.of("제목", "내용", NoticeType.GENERAL, null, 1, sameTime, sameTime);
 
         // then
         assertThat(notice.getStartAt()).isEqualTo(sameTime);

@@ -6,17 +6,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.notice.application.NoticeService;
 import soma.ghostrunner.domain.notice.api.dto.request.NoticeCreationRequest;
 import soma.ghostrunner.domain.notice.api.dto.response.NoticeDetailedResponse;
 import soma.ghostrunner.domain.notice.api.dto.request.NoticeDismissRequest;
 import soma.ghostrunner.domain.notice.api.dto.request.NoticeUpdateRequest;
-import soma.ghostrunner.domain.notice.domain.Notice;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -28,15 +26,20 @@ public class NoticeApi {
     private final NoticeService noticeService;
 
     @GetMapping
-    public PagedModel<NoticeDetailedResponse> getAllNotices(@RequestParam(value = "page", defaultValue = "0") Integer page,
-                                            @RequestParam(value = "size", defaultValue = "10") Integer size) {
-        return new PagedModel<>(noticeService.findAllNotices(page, size));
+    public PagedModel<NoticeDetailedResponse> getAllNotices(
+            @RequestParam(value = "page", defaultValue = "0") Integer page,
+            @RequestParam(value = "size", defaultValue = "10") Integer size,
+            @RequestParam(value = "type", required = false) String type) {
+        NoticeType noticeType = validateAndConvertToNoticeType(type);
+        return new PagedModel<>(noticeService.findAllNotices(page, size, noticeType));
     }
 
     @GetMapping("/active")
-    public List<NoticeDetailedResponse> getActiveNotices(@AuthenticationPrincipal JwtUserDetails userDetails) {
-        log.info("Getting active notices (now() = {})", LocalDateTime.now());
-        return noticeService.findActiveNotices(userDetails.getUserId());
+    public List<NoticeDetailedResponse> getActiveNotices(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @RequestParam(value = "type", required = false) String type) {
+        NoticeType noticeType = validateAndConvertToNoticeType(type);
+        return noticeService.findActiveNotices(userDetails.getUserId(), noticeType);
     }
 
     @GetMapping("/{noticeId}")
@@ -68,6 +71,15 @@ public class NoticeApi {
     public void deleteNotice(@PathVariable("noticeId") Long id) {
         // todo admin만 사용 가능
         noticeService.deleteById(id);
+    }
+
+    private NoticeType validateAndConvertToNoticeType(String noticeType) {
+        if (noticeType == null) return null;
+        try {
+            return NoticeType.valueOf(noticeType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid notice type: " + noticeType);
+        }
     }
 
 }

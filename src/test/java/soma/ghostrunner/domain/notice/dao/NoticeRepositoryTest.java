@@ -9,11 +9,10 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 
 class NoticeRepositoryTest extends IntegrationTestSupport {
@@ -42,7 +41,7 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
         noticeDismissalRepository.save(dismissal);
 
         // when
-        List<Notice> activeNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), member.getUuid());
+        List<Notice> activeNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), member.getUuid(), null);
 
         // then
         Assertions.assertThat(activeNotices).hasSize(1);
@@ -64,7 +63,7 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
         noticeRepository.saveAll(List.of(notice1, notice2));
 
         // when
-        List<Notice> activeNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), member.getUuid());
+        List<Notice> activeNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), member.getUuid(), null);
 
         // then
         Assertions.assertThat(activeNotices).hasSize(1);
@@ -86,7 +85,7 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
         noticeRepository.saveAll(List.of(notice1, notice2, notice3));
 
         // when
-        List<Notice> activeNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), member.getUuid());
+        List<Notice> activeNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), member.getUuid(), null);
 
         // then
         Assertions.assertThat(activeNotices).hasSize(3);
@@ -100,11 +99,11 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
     }
 
     private Notice createNotice(String name, LocalDateTime startAt, LocalDateTime endAt) {
-        return Notice.of(name , "dummy content", "dummy-url", 0, startAt, endAt);
+        return Notice.of(name , "dummy content", NoticeType.GENERAL, "dummy-url", 0, startAt, endAt);
     }
 
     private Notice createNotice(String name, Integer priority) {
-        return Notice.of(name , "dummy content", "dummy-url", priority, null, null);
+        return Notice.of(name , "dummy content", NoticeType.GENERAL, "dummy-url", priority, null, null);
     }
 
     private Member createMember(String name) {

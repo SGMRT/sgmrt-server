@@ -5,11 +5,11 @@ import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.notice.api.dto.response.NoticeDetailedResponse;
 import soma.ghostrunner.domain.notice.domain.Notice;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 class NoticeMapperTest {
 
@@ -21,8 +21,7 @@ class NoticeMapperTest {
         // given
         LocalDateTime start = LocalDateTime.of(2025, 1, 1, 0, 0);
         LocalDateTime end = LocalDateTime.of(2025, 1, 31, 23, 59);
-        Notice notice = Notice.of("테스트 제목", "테스트 내용", "http://example.com/image.png", 5, start, end);
-        // ID는 보통 DB에서 생성되므로, 테스트에서는 직접 설정해줍니다.
+        Notice notice = Notice.of("테스트 제목", "테스트 내용", NoticeType.GENERAL, "http://example.com/image.png", 5, start, end);
         setField(notice, "id", 1L);
 
         // when
@@ -32,6 +31,7 @@ class NoticeMapperTest {
         assertThat(response.id()).isEqualTo(notice.getId());
         assertThat(response.title()).isEqualTo(notice.getTitle());
         assertThat(response.content()).isEqualTo(notice.getContent());
+        assertThat(response.type()).isEqualTo(notice.getType());
         assertThat(response.imageUrl()).isEqualTo(notice.getImageUrl());
         assertThat(response.priority()).isEqualTo(notice.getPriority());
         assertThat(response.startAt()).isEqualTo(notice.getStartAt());
@@ -43,9 +43,8 @@ class NoticeMapperTest {
     void toDetailedResponse_withNullFields_edge() {
         // given
         // content, imageUrl, endAt이 null인 경우
-        Notice notice = Notice.of("제목만 있는 공지", null, null, 1, LocalDateTime.now(), null);
+        Notice notice = Notice.of("제목만 있는 공지", null, NoticeType.EVENT, null, 1, LocalDateTime.now(), null);
         setField(notice, "id", 2L);
-
 
         // when
         NoticeDetailedResponse response = noticeMapper.toDetailedResponse(notice);
@@ -53,11 +52,15 @@ class NoticeMapperTest {
         // then
         assertThat(response.id()).isEqualTo(notice.getId());
         assertThat(response.title()).isEqualTo(notice.getTitle());
+        assertThat(response.type()).isEqualTo(notice.getType());
+        assertThat(response.priority()).isEqualTo(notice.getPriority());
+        assertThat(response.startAt()).isEqualTo(notice.getStartAt());
         assertThat(response.content()).isNull();
         assertThat(response.imageUrl()).isNull();
+        assertThat(response.endAt()).isNull();
     }
 
-    // 테스트를 위해 리플렉션을 사용하여 ID 필드 설정
+    // 리플렉션으로 ID 설정
     private void setField(Object target, String fieldName, Object value) {
         try {
             java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);

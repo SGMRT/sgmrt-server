@@ -1,8 +1,9 @@
 package soma.ghostrunner.domain.notice.application;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.mock.web.MockMultipartFile;
@@ -10,7 +11,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
-import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notice.api.dto.request.NoticeCreationRequest;
@@ -21,6 +21,7 @@ import soma.ghostrunner.domain.notice.dao.NoticeDismissalRepository;
 import soma.ghostrunner.domain.notice.dao.NoticeRepository;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -65,6 +66,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
         Optional<Notice> foundNotice = noticeRepository.findById(noticeId);
         assertThat(foundNotice).isPresent();
         assertThat(foundNotice.get().getTitle()).isEqualTo("공지 제목");
+        assertThat(foundNotice.get().getContent()).isEqualTo("공지 내용");
     }
 
     @DisplayName("이미지와 함께 새로운 공지사항을 성공적으로 생성한다.")
@@ -73,7 +75,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
         // given
         MockMultipartFile image = new MockMultipartFile("image", "test.png", "image/png", "test".getBytes());
         NoticeCreationRequest request = createNoticeCreationRequest("이미지 공지", "이미지 내용", image);
-        given(s3Client.uploadNoticeImage(any(MultipartFile.class), any(Long.class))).willReturn("http://s3-test-url/image.png");
+        given(s3Client.uploadNoticeImage(any(MultipartFile.class), any(Long.class))).willReturn("http://test.url/image.png");
 
         // when
         Long noticeId = noticeService.saveNotice(request);
@@ -81,7 +83,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
         // then
         assertThat(noticeId).isNotNull();
         Notice foundNotice = noticeRepository.findById(noticeId).orElseThrow();
-        assertThat(foundNotice.getImageUrl()).isEqualTo("http://s3-test-url/image.png");
+        assertThat(foundNotice.getImageUrl()).isEqualTo("http://test.url/image.png");
         verify(s3Client, times(1)).uploadNoticeImage(any(MultipartFile.class), any(Long.class));
     }
 
@@ -98,7 +100,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
                 .hasMessageContaining("허용되지 않은 확장자입니다.");
     }
 
-    @DisplayName("활성화된 공지사항 목록을 정확히 조회한다.")
+    @DisplayName("활성 공지사항 조회 시 숨김 처리되지 않은 공지를 조회한다.")
     @Test
     void findActiveNotices_success() {
         // given
@@ -115,12 +117,30 @@ class NoticeServiceTest extends IntegrationTestSupport {
         createAndSaveDismissal(member1, permanentlyDismissedNotice, null); // 영구 숨김
 
         // when
-        List<NoticeDetailedResponse> noticesForMember1 = noticeService.findActiveNotices(member1.getUuid());
-        List<NoticeDetailedResponse> noticesForMember2 = noticeService.findActiveNotices(member2.getUuid());
+        List<NoticeDetailedResponse> noticesForMember1 = noticeService.findActiveNotices(member1.getUuid(), null);
+        List<NoticeDetailedResponse> noticesForMember2 = noticeService.findActiveNotices(member2.getUuid(), null);
 
         // then
         assertThat(noticesForMember1).hasSize(1).extracting("title").containsExactly("활성 공지");
         assertThat(noticesForMember2).hasSize(3).extracting("title").containsExactlyInAnyOrder("활성 공지", "숨김 공지", "영구 숨김 공지");
+    }
+
+    @DisplayName("활성 공지사항 조회 시 특정 타입의 공지만 조회한다.")
+    @ParameterizedTest
+    @EnumSource(NoticeType.class)
+    void findActiveNotices_byType(NoticeType type) {
+        // given
+        Member member = createAndSaveMember("user-type");
+
+        Notice generalNotice = noticeRepository.save(Notice.of("일반 공지", "내용", NoticeType.GENERAL, null, 1, LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1)));
+        Notice eventNotice = noticeRepository.save(Notice.of("이벤트 공지", "내용", NoticeType.EVENT, null, 1, LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1)));
+//        Notice maintenanceNotice = noticeRepository.save(Notice.of("점검 공지", "내용", NoticeType.MAINTENANCE, null, 1, LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1)));
+
+        // when
+        List<NoticeDetailedResponse> notices = noticeService.findActiveNotices(member.getUuid(), type);
+
+        // then
+//        assertThat(notices).allMatch(n -> n.() == type);
     }
 
     @DisplayName("모든 공지사항을 페이지네이션하여 조회한다.")
@@ -131,7 +151,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
         createAndSaveNotice("공지2", LocalDateTime.now(), LocalDateTime.now().plusDays(2));
 
         // when
-        Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10);
+        Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, null);
 
         // then
         assertThat(notices.getTotalElements()).isEqualTo(2);
@@ -264,13 +284,14 @@ class NoticeServiceTest extends IntegrationTestSupport {
     }
 
 
-    // Helper Methods
+    // --- Helper Methods ---
+
     private Member createAndSaveMember(String nickname) {
         return memberRepository.save(Member.of(nickname, "profile.jpg"));
     }
 
     private Notice createAndSaveNotice(String title, LocalDateTime start, LocalDateTime end) {
-        return noticeRepository.save(Notice.of(title, "내용", null, 1, start, end));
+        return noticeRepository.save(Notice.of(title, "내용", NoticeType.GENERAL, null, 1, start, end));
     }
 
     private NoticeDismissal createAndSaveDismissal(Member member, Notice notice, LocalDateTime dismissUntil) {

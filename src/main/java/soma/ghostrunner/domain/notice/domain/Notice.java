@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.notice.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.util.Assert;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 import java.net.URL;
@@ -28,6 +29,9 @@ public class Notice extends BaseTimeEntity {
     @Column(length = 2048)
     private String content;
 
+    @Enumerated(EnumType.STRING)
+    private NoticeType type;
+
     @Column(length = 2048)
     private String imageUrl;
 
@@ -40,20 +44,21 @@ public class Notice extends BaseTimeEntity {
 
     public static Notice of(String title, String content, String imageUrl) {
         if(title == null && content == null && imageUrl == null) throw new IllegalArgumentException();
-        return new Notice(null, title, content, imageUrl, 0, LocalDateTime.now(), null);
+        return new Notice(null, title, content, NoticeType.GENERAL, imageUrl, 0, LocalDateTime.now(), null);
     }
 
 
-    public static Notice of(String title, String content, String imageUrl, Integer priority,
+    public static Notice of(String title, String content, NoticeType noticeType, String imageUrl, Integer priority,
                             LocalDateTime startAt, LocalDateTime endAt) {
         if(title == null && content == null && imageUrl == null) throw new IllegalArgumentException();
+        if(noticeType == null) noticeType = NoticeType.GENERAL;
         if(priority == null) priority = 0;
         if(startAt == null) startAt = LocalDateTime.now();
         if(endAt != null) { // startAt도 null이 아닌 경우에만 비교
             Assert.isTrue(!startAt.isAfter(endAt), "startAt cannot be after endAt");
         }
 
-        return new Notice(null, title, content, imageUrl, priority, startAt, endAt);
+        return new Notice(null, title, content, noticeType, imageUrl, priority, startAt, endAt);
     }
 
     public void updateTitle(String title) {
