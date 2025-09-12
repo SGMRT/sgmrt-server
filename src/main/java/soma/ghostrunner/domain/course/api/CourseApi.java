@@ -44,8 +44,8 @@ public class CourseApi {
 
     @GetMapping("/courses/{courseId}")
     public CourseDetailedResponse getCourse(
-        @PathVariable("courseId") Long courseId,
-        @AuthenticationPrincipal JwtUserDetails userDetails) {
+            @PathVariable("courseId") Long courseId,
+            @AuthenticationPrincipal JwtUserDetails userDetails) {
         return courseFacade.findCourse(courseId, userDetails.getUserId());
     }
 

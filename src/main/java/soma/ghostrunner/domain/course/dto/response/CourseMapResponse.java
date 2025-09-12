@@ -1,7 +1,6 @@
 package soma.ghostrunner.domain.course.dto.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import soma.ghostrunner.domain.course.enums.CourseSource;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,6 +8,7 @@ import java.util.List;
 public record CourseMapResponse(
         Long id,
         String name,
+        CourseSource source,
         Double startLat,
         Double startLng,
         String routeUrl,

@@ -1,5 +1,7 @@
 package soma.ghostrunner.domain.course.dto;
 
+import soma.ghostrunner.domain.course.enums.CourseSource;
+
 import java.time.LocalDateTime;
 
 public record CoursePreviewDto(
@@ -7,6 +9,7 @@ public record CoursePreviewDto(
     String name,
     Double startLat,
     Double startLng,
+    CourseSource source,
     String routeUrl,
     String checkpointsUrl,
     String thumbnailUrl,

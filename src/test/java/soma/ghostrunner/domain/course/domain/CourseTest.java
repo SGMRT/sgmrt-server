@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.course.domain;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.member.domain.Member;
 
 import static org.assertj.core.api.Assertions.*;
@@ -46,7 +47,7 @@ class CourseTest {
         CourseDataUrls urls = CourseDataUrls.of("route.url", "checkpoint.url", "thumb.url");
 
         // when
-        Course course = Course.of(member, "Test Course", profile, coord, true, urls);
+        Course course = Course.of(member, "Test Course", profile, coord, CourseSource.USER, true, urls);
 
         // then
         // then

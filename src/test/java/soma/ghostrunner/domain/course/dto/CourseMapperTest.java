@@ -49,6 +49,7 @@ class CourseMapperTest {
         // then
         assertThat(dto.id()).isEqualTo(course.getId());
         assertThat(dto.name()).isEqualTo(course.getName());
+        assertThat(dto.source()).isEqualTo(course.getSource());
         assertThat(dto.startLat()).isEqualTo(course.getStartCoordinate().getLatitude());
         assertThat(dto.startLng()).isEqualTo(course.getStartCoordinate().getLongitude());
         assertThat(dto.routeUrl()).isEqualTo(course.getCourseDataUrls().getRouteUrl());
@@ -77,6 +78,7 @@ class CourseMapperTest {
         // CoursePreviewDto 필드 검증
         assertThat(response.id()).isEqualTo(courseDto.id());
         assertThat(response.name()).isEqualTo(courseDto.name());
+        assertThat(response.source()).isEqualTo(courseDto.source());
         assertThat(response.startLat()).isEqualTo(courseDto.startLat());
         assertThat(response.startLng()).isEqualTo(courseDto.startLng());
         assertThat(response.routeUrl()).isEqualTo(courseDto.routeUrl());
@@ -113,6 +115,7 @@ class CourseMapperTest {
         // Course 필드 검증
         assertThat(response.id()).isEqualTo(course.getId());
         assertThat(response.name()).isEqualTo(course.getName());
+        assertThat(response.source()).isEqualTo(course.getSource());
         assertThat(response.telemetryUrl()).isEqualTo(telemetryUrl);
         assertThat(response.checkpointsUrl()).isEqualTo(course.getCourseDataUrls().getCheckpointsUrl());
         assertThat(response.distance()).isEqualTo(course.getCourseProfile().getDistance().intValue() * 1000);
@@ -283,7 +286,7 @@ class CourseMapperTest {
     }
 
     private CoursePreviewDto createCoursePreviewDto() {
-        return new CoursePreviewDto(1L, "Test Course", 37.0, 127.0, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
+        return new CoursePreviewDto(1L, "Test Course", 37.0, 127.0, CourseSource.USER, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
     }
 
     private CourseGhostResponse createCourseGhostResponse() {
