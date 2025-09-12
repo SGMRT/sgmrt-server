@@ -1,4 +1,4 @@
-package soma.ghostrunner.clients.aws.presign;
+package soma.ghostrunner.global.clients.aws.s3;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Slf4j
 @Component
-public class S3PresignUrlClient {
+public class GhostRunnerS3PresignUrlClient {
 
     private static final Integer PRESIGNED_URL_VALID_MINUTES = 10;
     public static final Set<String> PROFILE_IMAGE_ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg");
@@ -24,9 +24,9 @@ public class S3PresignUrlClient {
 
     private S3Presigner s3Presigner;
 
-    public S3PresignUrlClient(@Value("${s3.bucket}") String s3Bucket,
-                              @Value("${s3.member-directory}") String memberProfileDirectory,
-                              S3Presigner s3Presigner) {
+    public GhostRunnerS3PresignUrlClient(@Value("${s3.bucket}") String s3Bucket,
+                                         @Value("${s3.member-directory}") String memberProfileDirectory,
+                                         S3Presigner s3Presigner) {
         this.s3Bucket = s3Bucket;
         this.memberProfileDirectory = memberProfileDirectory;
         this.s3Presigner = s3Presigner;

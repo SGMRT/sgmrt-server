@@ -501,7 +501,6 @@ class RunningApiTest extends ApiTestSupport {
     void getRunInfos() throws Exception {
         // when // then
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
-                        .queryParam("runningMode", "SOLO")
                         .queryParam("filteredBy", "DATE")
                         .queryParam("cursorStartedAt", "1")
                         .queryParam("cursorRunningId", "2")
@@ -544,19 +543,6 @@ class RunningApiTest extends ApiTestSupport {
                         .queryParam("filteredBy", "DATE")
                         .queryParam("cursorStartedAt", "1")
                         .queryParam("cursorRunningId", "2"))
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("G-002"))
-                .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
-    }
-
-    @DisplayName("러닝 기록을 조회할 떄 러닝 모드는 GHOST 또는 SOLO이어야 한다.")
-    @Test
-    void runningModeMustBeInRunningModeWhenGetRunInfos() throws Exception {
-        // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
-                        .queryParam("runningMode", "FAKE_SOLO")
-                        .queryParam("filteredBy", "DATE"))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("G-002"))

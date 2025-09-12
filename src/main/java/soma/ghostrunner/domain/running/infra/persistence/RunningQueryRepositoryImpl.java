@@ -122,7 +122,6 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
 
     @Override
     public List<RunInfo> findRunInfosFilteredByDate(
-            RunningMode runningMode,
             Long cursorStartedAt, Long cursorRunningId,
             Long startEpoch, Long endEpoch,
             Long memberId
@@ -147,10 +146,9 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
                         running.runningDataUrls.screenShotUrl
                 ))
                 .from(running)
-                .leftJoin(running.course, course).on(course.isPublic.isTrue())
+                .leftJoin(running.course, course)
                 .where(
                         running.member.id.eq(memberId),
-                        running.runningMode.eq(runningMode),
                         startedAtRange(startEpoch, endEpoch),
                         seekAfterAsc(cursorStartedAt, cursorRunningId)
                 )
@@ -171,7 +169,6 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
 
     @Override
     public List<RunInfo> findRunInfosFilteredByCourses(
-            RunningMode runningMode,
             String cursorCourseName, Long cursorRunningId,
             Long startEpoch, Long endEpoch,
             Long memberId
@@ -196,10 +193,9 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
                         running.runningDataUrls.screenShotUrl
                 ))
                 .from(running)
-                .leftJoin(running.course, course).on(course.isPublic.isTrue())
+                .leftJoin(running.course, course)
                 .where(
                         running.member.id.eq(memberId),
-                        running.runningMode.eq(runningMode),
                         startedAtRange(startEpoch, endEpoch),
                         seekAfterAsc(cursorCourseName, cursorRunningId)
                 )

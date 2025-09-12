@@ -20,14 +20,12 @@ public interface RunningQueryRepository {
     Optional<MemberAndRunRecordInfo> findMemberAndRunRecordInfoById(long id);
 
     List<RunInfo> findRunInfosFilteredByDate(
-            RunningMode runningMode,
             Long cursorStartedAt, Long cursorRunningId,
             Long startEpoch, Long endEpoch,
             Long memberId
     );
 
     List<RunInfo> findRunInfosFilteredByCourses(
-            RunningMode runningMode,
             String cursorCourseName, Long cursorRunningId,
             Long startEpoch, Long endEpoch,
             Long memberId

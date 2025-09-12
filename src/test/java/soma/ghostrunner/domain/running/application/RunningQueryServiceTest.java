@@ -4,7 +4,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Coordinate;
@@ -12,7 +11,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.running.application.dto.TelemetryDto;
+import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
@@ -98,12 +97,12 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
                 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
     }
 
-    private List<TelemetryDto> createTelemetryDtos() {
+    private List<Telemetry> createTelemetryDtos() {
         return List.of(
-                new TelemetryDto(0L, 37.2, 37.5, 110.0, 6.0, 100.0, 120, 110, true),
-                new TelemetryDto(1L, 37.3, 37.6, 110.1, 6.1, 101.0, 121, 111, true),
-                new TelemetryDto(2L, 37.4, 37.7, 110.2, 6.2, 102.0, 122, 112, true),
-                new TelemetryDto(3L, 37.5, 37.8, 110.3, 6.3, 103.0, 123, 113, false)
+                new Telemetry(0L, 37.2, 37.5, 110.0, 6.0, 100.0, 120, 110, true),
+                new Telemetry(1L, 37.3, 37.6, 110.1, 6.1, 101.0, 121, 111, true),
+                new Telemetry(2L, 37.4, 37.7, 110.2, 6.2, 102.0, 122, 112, true),
+                new Telemetry(3L, 37.5, 37.8, 110.3, 6.3, 103.0, 123, 113, false)
         );
     }
 

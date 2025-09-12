@@ -1,4 +1,4 @@
-package soma.ghostrunner.clients.aws.presign;
+package soma.ghostrunner.global.clients.aws.s3;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

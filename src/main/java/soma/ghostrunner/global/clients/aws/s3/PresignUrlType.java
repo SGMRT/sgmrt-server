@@ -1,4 +1,4 @@
-package soma.ghostrunner.clients.aws.presign;
+package soma.ghostrunner.global.clients.aws.s3;
 
 public enum PresignUrlType {
     MEMBER_PROFILE,
