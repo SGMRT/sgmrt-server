@@ -71,9 +71,9 @@ public class NoticeService {
     }
 
     @Transactional(readOnly = true)
-    public List<NoticeDetailedResponse> findActiveNotices(String memberUuid, NoticeType noticeType) {
+    public List<NoticeDetailedResponse> findActiveNotices(String memberUuid, LocalDateTime queryTime, NoticeType noticeType) {
         // 노출 기간 내의 공지사항을 숨김 처리 여부와 공지 타입으로 필터링하여 조회
-        List<Notice> filteredNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), memberUuid, noticeType);
+        List<Notice> filteredNotices = noticeRepository.findActiveNoticesForMember(queryTime, memberUuid, noticeType);
         return filteredNotices.stream().map(noticeMapper::toDetailedResponse).toList();
     }
 

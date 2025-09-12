@@ -15,6 +15,7 @@ import soma.ghostrunner.domain.notice.api.dto.request.NoticeUpdateRequest;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -39,7 +40,7 @@ public class NoticeApi {
             @AuthenticationPrincipal JwtUserDetails userDetails,
             @RequestParam(value = "type", required = false) String type) {
         NoticeType noticeType = validateAndConvertToNoticeType(type);
-        return noticeService.findActiveNotices(userDetails.getUserId(), noticeType);
+        return noticeService.findActiveNotices(userDetails.getUserId(), LocalDateTime.now(), noticeType);
     }
 
     @GetMapping("/{noticeId}")

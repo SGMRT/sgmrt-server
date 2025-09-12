@@ -31,6 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class NoticeApiTest extends ApiTestSupport {
 
+    private final LocalDateTime NOW = LocalDateTime.of(2025, 8, 8, 12, 0);
+
     @DisplayName("전체 공지사항 목록을 페이지네이션하여 조회한다.")
     @Test
     void getAllNotices_success() throws Exception {
@@ -53,7 +55,7 @@ class NoticeApiTest extends ApiTestSupport {
         // given
         String userId = UUID.randomUUID().toString();
         given(authService.isOwner(any(), any())).willReturn(true);
-        given(noticeService.findActiveNotices(userId, NoticeType.GENERAL)).willReturn(List.of());
+        given(noticeService.findActiveNotices(userId, NOW, NoticeType.GENERAL)).willReturn(List.of());
 
         JwtUserDetails userDetails = new JwtUserDetails(userId);
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -76,7 +78,7 @@ class NoticeApiTest extends ApiTestSupport {
         // given
         Long noticeId = 1L;
         NoticeDetailedResponse response = new NoticeDetailedResponse(noticeId, "제목", NoticeType.GENERAL, "내용", null,
-                null, LocalDateTime.now(), null);
+                null, NOW, null);
         given(noticeService.findNotice(noticeId)).willReturn(response);
 
         // when & then
@@ -126,7 +128,7 @@ class NoticeApiTest extends ApiTestSupport {
                         .param("title", "새 공지")
                         .param("content", "공지 내용입니다.")
                         .param("priority", "1")
-                        .param("startAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                        .param("startAt", NOW.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andDo(print())
