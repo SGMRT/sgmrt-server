@@ -5,9 +5,7 @@ import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.application.dto.CoordinateDto;
 import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.application.support.CoordinateConverter;
 
 import java.util.List;
 
@@ -88,9 +86,11 @@ public interface CourseMapper {
     @Mapping(source = "courseDto.distance", target = "distance")
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")
+    @Mapping(source = "ghostStats", target = "myGhostInfo")
     CourseSummaryResponse toCourseSummaryResponse(CourseWithMemberDetailsDto courseDto, Integer uniqueRunnersCount,
                                                   Integer totalRunsCount, Double averageCompletionTime,
-                                                  Double averageFinisherPace, Double averageFinisherCadence);
+                                                  Double averageFinisherPace, Double averageFinisherCadence,
+                                                  CourseGhostResponse ghostStats);
 
     @Mapping(source = "avgCompletionTime", target = "averageCompletionTime")
     @Mapping(source = "avgFinisherPace", target = "averageFinisherPace")

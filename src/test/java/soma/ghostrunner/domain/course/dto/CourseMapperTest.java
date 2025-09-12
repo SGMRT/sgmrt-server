@@ -201,11 +201,11 @@ class CourseMapperTest {
         Double avgCompletionTime = 3600.0;
         Double avgFinisherPace = 5.5;
         Double avgFinisherCadence = 180.0;
-
+        CourseGhostResponse ghostStat = createCourseGhostResponse();
 
         // when
         CourseSummaryResponse response = courseMapper.toCourseSummaryResponse(courseDto, uniqueRunnersCount,
-                totalRunsCount, avgCompletionTime, avgFinisherPace, avgFinisherCadence);
+                totalRunsCount, avgCompletionTime, avgFinisherPace, avgFinisherCadence, ghostStat);
 
         // then
         // CourseWithMemberDetailsDto 필드 검증
@@ -222,6 +222,9 @@ class CourseMapperTest {
         assertThat(response.averageCompletionTime()).isEqualTo(avgCompletionTime.intValue());
         assertThat(response.averageFinisherPace()).isEqualTo(avgFinisherPace);
         assertThat(response.averageFinisherCadence()).isEqualTo(avgFinisherCadence.intValue());
+
+        // ghostStat 필드 검증
+        assertThat(response.myGhostInfo()).isEqualTo(ghostStat);
     }
 
     @DisplayName("CourseRunStatisticsDto를 CourseStatisticsResponse로 변환한다.")

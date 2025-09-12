@@ -56,24 +56,6 @@ public class CourseFacade {
         return courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStatistics, userPaceStats, ghostForUser);
     }
 
-    private CourseGhostResponse getGhostResponse(Long courseId, String viewerUuid) {
-        try {
-            return runningApiMapper.toGhostResponse(
-                    runningQueryService.findBestPublicRunForCourse(courseId, viewerUuid));
-        } catch (RunningNotFoundException e) {
-            return null;
-        }
-    }
-
-    private String getTelemetryUrlFromCourse(Course course) {
-        try {
-            return runningQueryService.findFirstRunning(course.getId()).getRunningDataUrls()
-                    .getInterpolatedTelemetryUrl();
-        } catch (RunningNotFoundException e) {
-            return null;
-        }
-    }
-
     public void updateCourse(Long courseId, CoursePatchRequest request) {
         courseService.updateCourse(courseId, request);
     }
@@ -112,9 +94,10 @@ public class CourseFacade {
         for(CourseWithMemberDetailsDto courseDto : courseDetails.getContent()) {
             CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseDto.getCourseId())
                     .orElse(new CourseRunStatisticsDto());
+            CourseGhostResponse ghostForUser = getGhostResponse(courseDto.getCourseId(), memberUuid);
             results.add(courseMapper.toCourseSummaryResponse(courseDto, courseStatistics.getUniqueRunnersCount(),
                     courseStatistics.getTotalRunsCount(), courseStatistics.getAvgCompletionTime(),
-                    courseStatistics.getAvgFinisherPace(), courseStatistics.getAvgFinisherCadence()));
+                    courseStatistics.getAvgFinisherPace(), courseStatistics.getAvgFinisherCadence(), ghostForUser));
         }
 
         return new PageImpl<>(results, pageable, courseDetails.getTotalElements());
@@ -124,6 +107,24 @@ public class CourseFacade {
         CourseRunStatisticsDto stats = runningQueryService.findCourseRunStatistics(courseId)
                 .orElseThrow(() -> new CourseNotFoundException(courseId));
         return courseMapper.toCourseStatisticsResponse(stats);
+    }
+
+    private CourseGhostResponse getGhostResponse(Long courseId, String viewerUuid) {
+        try {
+            return runningApiMapper.toGhostResponse(
+                    runningQueryService.findBestPublicRunForCourse(courseId, viewerUuid));
+        } catch (RunningNotFoundException e) {
+            return null;
+        }
+    }
+
+    private String getTelemetryUrlFromCourse(Course course) {
+        try {
+            return runningQueryService.findFirstRunning(course.getId()).getRunningDataUrls()
+                    .getInterpolatedTelemetryUrl();
+        } catch (RunningNotFoundException e) {
+            return null;
+        }
     }
 
 }
