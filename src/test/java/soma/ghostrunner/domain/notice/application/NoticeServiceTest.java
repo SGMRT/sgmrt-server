@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.notice.application;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,8 +8,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
-import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.global.clients.aws.upload.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notice.api.dto.request.NoticeCreationRequest;

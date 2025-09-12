@@ -8,7 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import soma.ghostrunner.clients.aws.presign.S3PresignUrlClient;
+import soma.ghostrunner.global.clients.aws.presign.S3PresignUrlClient;
 
 @ExtendWith(MockitoExtension.class)
 class S3PresignUrlClientTest {

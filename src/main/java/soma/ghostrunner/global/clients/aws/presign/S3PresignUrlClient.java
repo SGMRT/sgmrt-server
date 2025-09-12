@@ -1,4 +1,4 @@
-package soma.ghostrunner.clients.aws.presign;
+package soma.ghostrunner.global.clients.aws.presign;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

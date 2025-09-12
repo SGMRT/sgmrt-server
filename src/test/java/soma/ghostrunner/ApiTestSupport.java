@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import soma.ghostrunner.clients.aws.presign.S3PresignUrlClient;
+import soma.ghostrunner.global.clients.aws.presign.S3PresignUrlClient;
 import soma.ghostrunner.domain.auth.api.AuthApi;
 import soma.ghostrunner.domain.auth.application.AuthService;
 import soma.ghostrunner.domain.notice.api.NoticeApi;

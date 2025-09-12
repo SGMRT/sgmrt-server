@@ -1,4 +1,4 @@
-package soma.ghostrunner.clients.aws.upload;
+package soma.ghostrunner.global.clients.aws.upload;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
