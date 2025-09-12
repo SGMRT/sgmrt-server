@@ -135,16 +135,12 @@ public class RunningApi {
             @RequestParam
             @EnumValid(enumClass = RunningInfoFilter.class, message = "유효하지 않은 필터입니다.", ignoreCase = true)
             String filteredBy,
-            @RequestParam
-            @EnumValid(enumClass = RunningMode.class, message = "유효하지 않은 러닝모드입니다.", ignoreCase = true)
-            String runningMode,
             @RequestParam Long startEpoch, @RequestParam Long endEpoch,
             @RequestParam(required = false) Long cursorRunningId,
             @RequestParam(required = false) Long cursorStartedAt,
             @RequestParam(required = false) String cursorCourseName) {
         String memberUuid = userDetails.getUserId();
-        return runningQueryService.findRunnings(
-                runningMode, filteredBy,
+        return runningQueryService.findRunnings(filteredBy,
                 startEpoch, endEpoch,
                 cursorStartedAt,
                 cursorCourseName,

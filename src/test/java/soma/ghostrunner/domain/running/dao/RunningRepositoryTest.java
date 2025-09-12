@@ -115,8 +115,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
     @Test
     void findByIdAndFakeMemberId() {
         // given
-        Member member = createMember("이복둥", UUID.randomUUID().toString());
-        Member fakeMember = createMember("페이크 이복둥", UUID.randomUUID().toString());
+        Member member = createMember("이복둥");
+        Member fakeMember = createMember("페이크 이복둥");
         memberRepository.saveAll(List.of(member, fakeMember));
 
         Course course = createCourse(member);
@@ -130,10 +130,6 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // then
         assertThat(savedRunning).isEmpty();
-    }
-
-    private Member createMember(String name, String externalAuthUuid) {
-        return Member.of(name, "프로필 URL");
     }
 
     @DisplayName("러닝 ID로 시계열 URL을 조회한다.")
@@ -442,7 +438,6 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(c1, c2, c3));
         List<Course> courses = List.of(c1, c2, c3);
 
-        // 재현성을 위한 고정 시드 + 양수 epoch (0~999_999)
         Random rnd = new Random(42);
         List<Running> runnings = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
@@ -460,69 +455,54 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         // 기대값: DESC 정렬(동률 시 id DESC)
         Comparator<Running> desc = Comparator.comparing(Running::getStartedAt, Comparator.reverseOrder())
                 .thenComparing(Running::getId, Comparator.reverseOrder());
-
-        List<Running> expectedSolo = runnings.stream()
-                .filter(r -> r.getRunningMode() == RunningMode.SOLO)
+        List<Running> expected = runnings.stream()
                 .sorted(desc)
                 .toList();
 
-        List<Running> expectedGhost = runnings.stream()
-                .filter(r -> r.getRunningMode() == RunningMode.GHOST)
-                .sorted(desc)
-                .toList();
-
-        // 기간: 우리가 생성한 범위를 정확히 커버
         long startEpoch = 0L;
         long endEpoch   = 1_000_000L;
 
-        // when: 첫 페이지(커서 없음)
-        List<RunInfo> page1Solo = runningRepository.findRunInfosFilteredByDate(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId());
+        // when
+        List<RunInfo> page1 = runningRepository.findRunInfosFilteredByDate(
+                null, null, startEpoch, endEpoch, member.getId());
 
-        // 페이지 크기(= 구현의 limit 결과)를 관측값으로 사용
-        int page1Size = page1Solo.size();
-        assertThat(page1Size).isEqualTo(20);
-
-        // 커서: 첫 페이지의 마지막 요소
-        RunInfo cursor = page1Solo.get(page1Size - 1);
-
-        // when: 둘째 페이지(커서 before; DESC)
-        List<RunInfo> page2Solo = runningRepository.findRunInfosFilteredByDate(
-                RunningMode.SOLO, cursor.getStartedAt(), cursor.getRunningId(),
+        RunInfo cursor = page1.get(page1.size() - 1);
+        List<RunInfo> page2 = runningRepository.findRunInfosFilteredByDate(
+                cursor.getStartedAt(), cursor.getRunningId(),
                 startEpoch, endEpoch, member.getId());
 
-        // when: GHOST 첫 페이지
-        List<RunInfo> page1Ghost = runningRepository.findRunInfosFilteredByDate(
-                RunningMode.GHOST, null, null, startEpoch, endEpoch, member.getId());
+        // then
+        // 페이지 크기
+        int page1Size = page1.size();
+        assertThat(page1Size).isEqualTo(20);
 
-        // then 1) SOLO 1페이지 값 검증 (정확히 기대 리스트의 앞부분)
-        for (int i = 0; i < page1Solo.size(); i++) {
-            RunInfo a = page1Solo.get(i);
-            Running e = expectedSolo.get(i);
+        // 데이터 검증
+        for (int i = 0; i < page1.size(); i++) {
+            RunInfo a = page1.get(i);
+            Running e = expected.get(i);
+            assertThat(a.getRunningId()).isEqualTo(e.getId());
+            assertThat(a.getName()).isEqualTo(e.getRunningName());
+            assertThat(a.getStartedAt()).isEqualTo(e.getStartedAt());
+            assertThat(a.getGhostRunningId()).isEqualTo(e.getGhostRunningId());
+        }
+
+        for (int i = page1.size(); i < page2.size(); i++) {
+            RunInfo a = page2.get(i - page1.size());
+            Running e = expected.get(page1Size + i);
             assertThat(a.getRunningId()).isEqualTo(e.getId());
             assertThat(a.getName()).isEqualTo(e.getRunningName());
             assertThat(a.getStartedAt()).isEqualTo(e.getStartedAt());
             assertThat(a.getGhostRunningId()).isNull();
         }
 
-        // then 2) SOLO 2페이지: 바로 이어지는 인덱스부터(중복/누락 없음)
-        for (int i = 0; i < page2Solo.size(); i++) {
-            RunInfo a = page2Solo.get(i);
-            Running e = expectedSolo.get(page1Size + i);
-            assertThat(a.getRunningId()).isEqualTo(e.getId());
-            assertThat(a.getName()).isEqualTo(e.getRunningName());
-            assertThat(a.getStartedAt()).isEqualTo(e.getStartedAt());
-            assertThat(a.getGhostRunningId()).isNull();
-        }
-
-        // then 3) 페이지 간 중복 없음
-        var ids1 = page1Solo.stream().map(RunInfo::getRunningId).toList();
-        var ids2 = page2Solo.stream().map(RunInfo::getRunningId).toList();
+        // 중복 체크
+        var ids1 = page1.stream().map(RunInfo::getRunningId).toList();
+        var ids2 = page2.stream().map(RunInfo::getRunningId).toList();
         assertThat(Collections.disjoint(ids1, ids2)).isTrue();
 
-        // then 4) 커서 경계(DESC: 엄격히 이전) 확인
-        if (!page2Solo.isEmpty()) {
-            RunInfo firstOfPage2 = page2Solo.get(0);
+        // 경계값 확인
+        if (!page2.isEmpty()) {
+            RunInfo firstOfPage2 = page2.get(0);
             boolean strictlyBefore =
                     (firstOfPage2.getStartedAt() < cursor.getStartedAt()) ||
                             (Objects.equals(firstOfPage2.getStartedAt(), cursor.getStartedAt()) &&
@@ -530,20 +510,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
             assertThat(strictlyBefore).isTrue();
         }
 
-        // then 5) 각 결과 자체가 startedAt DESC, id DESC로 정렬되어 있는지
-        assertSortedByStartedAtThenIdDesc(page1Solo);
-        assertSortedByStartedAtThenIdDesc(page2Solo);
-        assertSortedByStartedAtThenIdDesc(page1Ghost);
-
-        // then 6) GHOST 1페이지 값 검증
-        for (int i = 0; i < page1Ghost.size(); i++) {
-            RunInfo a = page1Ghost.get(i);
-            Running e = expectedGhost.get(i);
-            assertThat(a.getRunningId()).isEqualTo(e.getId());
-            assertThat(a.getName()).isEqualTo(e.getRunningName());
-            assertThat(a.getStartedAt()).isEqualTo(e.getStartedAt());
-            assertThat(a.getGhostRunningId()).isEqualTo(e.getGhostRunningId());
-        }
+        //startedAt DESC, id DESC 로 정렬되어 있는지
+        assertSortedByStartedAtThenIdDesc(page1);
+        assertSortedByStartedAtThenIdDesc(page2);
     }
 
     private static void assertSortedByStartedAtThenIdDesc(List<RunInfo> list) {
@@ -569,7 +538,6 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Course course = createCourse(member);
         courseRepository.save(course);
 
-        // startedAt: 1000, 2000, 2000, 2000, 3000 (동일 startedAt(2000) 3건)
         Running r1 = createRunning("A", course, member, 1000L, RunningMode.SOLO);
         Running r2 = createRunning("B", course, member, 2000L, RunningMode.SOLO);
         Running r3 = createRunning("C", course, member, 2000L, RunningMode.SOLO);
@@ -581,15 +549,14 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         long startEpoch = 0L;
         long endEpoch   = 10_000L;
 
-        // when: 커서 없음(첫 페이지)
+        // when
         List<RunInfo> result = runningRepository.findRunInfosFilteredByDate(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId()
+                null, null, startEpoch, endEpoch, member.getId()
         );
 
-        // then: 전체가 startedAt DESC, id DESC
+        // then
         assertSortedByStartedAtThenIdDesc(result);
 
-        // 동률(2000) 집합만 골라서 id가 내림차순인지 확인
         List<RunInfo> at2000 = result.stream()
                 .filter(r -> Objects.equals(r.getStartedAt(), 2000L))
                 .toList();
@@ -598,7 +565,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         for (int i = 1; i < at2000.size(); i++) {
             Long prev = at2000.get(i - 1).getRunningId();
             Long curr = at2000.get(i).getRunningId();
-            assertThat(curr).isLessThan(prev); // ID DESC 보장
+            assertThat(curr).isLessThan(prev);
         }
     }
 
@@ -624,7 +591,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> result = runningRepository.findRunInfosFilteredByDate(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId()
+                null, null, startEpoch, endEpoch, member.getId()
         );
 
         // then
@@ -656,7 +623,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> result = runningRepository.findRunInfosFilteredByDate(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId()
+                null, null, startEpoch, endEpoch, member.getId()
         );
 
         // then: startedAt == 2000 인 것들만 전부 포함(동률 여러 건도 포함)
@@ -704,11 +671,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> runInfos = runningRepository.findRunInfosFilteredByDate(
-                RunningMode.SOLO, null, null, startEpoch, endEpoch, member.getId());
+                null, null, startEpoch, endEpoch, member.getId());
         for (int i = 0; i < 4; i++) {
             RunInfo cursor = runInfos.get(runInfos.size() - 1);
             List<RunInfo> nextRunInfos = runningRepository.findRunInfosFilteredByDate(
-                    RunningMode.SOLO, cursor.getStartedAt(), cursor.getRunningId(),
+                    cursor.getStartedAt(), cursor.getRunningId(),
                     startEpoch, endEpoch, member.getId());
             runInfos.addAll(nextRunInfos);
         }
@@ -739,7 +706,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
     }
 
-    @DisplayName("코스명, 러닝ID(DESC) 커서로 기간 내 SOLO 러닝을 페이지네이션한다 — 정렬·연속성·중복없음")
+    @DisplayName("코스명, 러닝ID(DESC) 커서로 기간 내 러닝 리스트를 조회한다 — 정렬·연속성·중복없음")
     @Test
     void findRunInfosFilteredByCoursesByCursorIds_basicPaging() {
         // given
@@ -755,17 +722,13 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 .toList();
         courseRepository.saveAll(courses);
 
-        // 재현성 있는 데이터: startedAt은 [0, END_MS) 범위, 코스는 랜덤 배정
         Random rnd = new Random(42);
         List<Running> all = new ArrayList<>();
-
-        // SOLO 100건
         for (int i = 0; i < 100; i++) {
             long ts = Math.abs(rnd.nextLong() % END_MS);
             all.add(createRunning("러닝" + i, courses.get(rnd.nextInt(courses.size())),
                     member, ts, RunningMode.SOLO));
         }
-        // GHOST 100건(필터 검증용)
         for (int i = 100; i < 200; i++) {
             long ts = Math.abs(rnd.nextLong() % END_MS);
             all.add(createRunning("러닝" + i, courses.get(rnd.nextInt(courses.size())),
@@ -773,21 +736,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         }
         runningRepository.saveAll(all);
 
-        // 기대 목록(필터: SOLO) — 코스명 ASC, id DESC
-        Comparator<Running> courseAscIdDesc = Comparator
-                .comparing((Running r) -> r.getCourse().getName())
-                .thenComparing(Running::getId, Comparator.reverseOrder());
-
-        List<Running> expectedSolo = all.stream()
-                .filter(r -> r.getRunningMode() == RunningMode.SOLO)
-                .sorted(courseAscIdDesc)
-                .toList();
-
-        // when: 커서 없이 1페이지
+        // when
         List<RunInfo> page = runningRepository.findRunInfosFilteredByCourses(
-                RunningMode.SOLO, null, null, START_MS, END_MS, member.getId());
-
-        // 페이지 크기는 관측값 사용(구현의 LIMIT에 의존하지 않도록)
+                null, null, START_MS, END_MS, member.getId());
         int pageSize = page.size();
         assertThat(pageSize).isGreaterThan(0);
 
@@ -796,7 +747,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         while (true) {
             RunInfo cursor = collected.get(collected.size() - 1);
             List<RunInfo> next = runningRepository.findRunInfosFilteredByCourses(
-                    RunningMode.SOLO, cursor.getCourseInfo().getName(), cursor.getRunningId(),
+                    cursor.getCourseInfo().getName(), cursor.getRunningId(),
                     START_MS, END_MS, member.getId());
             if (next.isEmpty()) break;
 
@@ -814,25 +765,27 @@ class RunningRepositoryTest extends IntegrationTestSupport {
             assertThat(Collections.disjoint(prevIds, nextIds)).isTrue();
 
             collected.addAll(next);
-
-            // 방어: 과도 루프 방지
-            if (collected.size() > expectedSolo.size()) {
-                throw new AssertionError("Collected more than expected; check cursor logic");
-            }
         }
 
-        // then: 전체 SOLO 수와 동일, 정렬/내용 일치
-        assertThat(collected).hasSize(expectedSolo.size());
+        // then
+        Comparator<Running> courseAscIdDesc = Comparator
+                .comparing((Running r) -> r.getCourse().getName())
+                .thenComparing(Running::getId, Comparator.reverseOrder());
+        List<Running> expected = all.stream()
+                .sorted(courseAscIdDesc)
+                .toList();
+
+        assertThat(collected).hasSize(expected.size());
         assertSortedByCourseAscThenIdDesc(collected);
 
         for (int i = 0; i < collected.size(); i++) {
             RunInfo a = collected.get(i);
-            Running e = expectedSolo.get(i);
+            Running e = expected.get(i);
             assertThat(a.getCourseInfo().getName()).isEqualTo(e.getCourse().getName());
             assertThat(a.getRunningId()).isEqualTo(e.getId());
             assertThat(a.getName()).isEqualTo(e.getRunningName());
             assertThat(a.getStartedAt()).isEqualTo(e.getStartedAt());
-            assertThat(a.getGhostRunningId()).isNull(); // SOLO
+            assertThat(a.getGhostRunningId()).isEqualTo(e.getGhostRunningId());
         }
     }
 
@@ -860,13 +813,13 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when: 첫 페이지
         List<RunInfo> p1 = runningRepository.findRunInfosFilteredByCourses(
-                RunningMode.SOLO, null, null, START_MS, END_MS, member.getId());
+                null, null, START_MS, END_MS, member.getId());
         assertThat(p1).isNotEmpty();
 
         // 커서로 다음 페이지 조회
         RunInfo cursor = p1.get(p1.size() - 1);
         List<RunInfo> p2 = runningRepository.findRunInfosFilteredByCourses(
-                RunningMode.SOLO, cursor.getCourseInfo().getName(), cursor.getRunningId(),
+                cursor.getCourseInfo().getName(), cursor.getRunningId(),
                 START_MS, END_MS, member.getId());
 
         // then
@@ -909,7 +862,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> result = runningRepository.findRunInfosFilteredByCourses(
-                RunningMode.SOLO, null, null, target, target, member.getId());
+                null, null, target, target, member.getId());
 
         // then: target 시각만 포함, 정렬은 (코스명 ASC, id DESC)
         assertThat(result).isNotEmpty();
@@ -954,38 +907,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<RunInfo> r = runningRepository.findRunInfosFilteredByCourses(
-                RunningMode.SOLO, null, null, 2000L, 3000L, member.getId());
+                null, null, 2000L, 3000L, member.getId());
 
         // then
         assertThat(r).isEmpty();
-    }
-
-    @DisplayName("다른 멤버/다른 모드 데이터는 포함되지 않는다")
-    @Test
-    void filters_by_member_and_mode() {
-        // given
-        long START_MS = 0L;
-        long END_MS   = 1_000_000L;
-
-        Member me = createMember("me");
-        Member other = createMember("other");
-        memberRepository.saveAll(List.of(me, other));
-
-        Course c1 = createCourse(me, "A");  c1.setIsPublic(true);
-        Course c2 = createCourse(other, "A"); c2.setIsPublic(true);
-        courseRepository.saveAll(List.of(c1, c2));
-
-        Running s1 = createRunning("ME_SOLO", c1, me, 1000L, RunningMode.SOLO);
-        Running g1 = createRunning("ME_GHOST", c1, me, 2000L, RunningMode.GHOST);
-        Running s2 = createRunning("OTHER_SOLO", c2, other, 1500L, RunningMode.SOLO);
-        runningRepository.saveAll(List.of(s1, g1, s2));
-
-        // when
-        List<RunInfo> result = runningRepository.findRunInfosFilteredByCourses(
-                RunningMode.SOLO, null, null, START_MS, END_MS, me.getId());
-
-        // then
-        assertThat(result).extracting(RunInfo::getRunningId).containsExactly(s1.getId());
     }
 
     @DisplayName("코스에 대한 전체 러닝 갯수를 출력한다. 같은 사용자라도 중복 허용된다.")

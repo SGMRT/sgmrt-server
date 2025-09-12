@@ -28,7 +28,6 @@ import soma.ghostrunner.global.error.ErrorCode;
 import java.util.List;
 import java.util.Optional;
 
-// TODO : 서비스 단 쪼개기
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -38,6 +37,7 @@ public class RunningQueryService {
     private final RunningRepository runningRepository;
 
     private final RunningApiMapper runningApiMapper;
+
     private final MemberService memberService;
 
     public SoloRunDetailInfo findSoloRunInfo(Long runningId, String memberUuid) {
@@ -145,7 +145,7 @@ public class RunningQueryService {
             });
     }
 
-    public List<RunInfo> findRunnings(String runningMode, String filteredBy,
+    public List<RunInfo> findRunnings(String filteredBy,
                                       Long startEpoch, Long endEpoch,
                                       Long cursorStartedAt,
                                       String cursorCourseName,
@@ -153,12 +153,10 @@ public class RunningQueryService {
         Member member = findMember(memberUuid);
         if (filteredBy.equals(RunningInfoFilter.DATE.name())) {
             return runningRepository.findRunInfosFilteredByDate(
-                    RunningMode.valueOf(runningMode),
                     cursorStartedAt, cursorRunningId,
                     startEpoch, endEpoch, member.getId());
         } else if (filteredBy.equals(RunningInfoFilter.COURSE.name())) {
             return runningRepository.findRunInfosFilteredByCourses(
-                    RunningMode.valueOf(runningMode),
                     cursorCourseName, cursorRunningId,
                     startEpoch, endEpoch, member.getId());
         }
