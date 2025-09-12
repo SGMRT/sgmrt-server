@@ -62,8 +62,8 @@ class PathSimplifierTest {
         assertThat(simplified.size()).isLessThanOrEqualTo(original.size());
 
         // 첫/끝점 보존
-        assertThat(simplified.get(0)).isEqualTo(original.get(0).toCoordinateDto());
-        assertThat(simplified.get(simplified.size() - 1)).isEqualTo(original.get(original.size() - 1).toCoordinateDto());
+        assertThat(simplified.get(0)).isEqualTo(original.get(0).toCoordinates());
+        assertThat(simplified.get(simplified.size() - 1)).isEqualTo(original.get(original.size() - 1).toCoordinates());
 
         // 순서 검증
         List<Integer> simplifiedOrders = new ArrayList<>();

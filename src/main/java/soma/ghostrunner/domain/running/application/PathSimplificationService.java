@@ -9,14 +9,15 @@ import java.util.List;
 @Component
 public class PathSimplificationService {
 
-    public SimplifiedPath simplify(TelemetryStatistics processedTelemetries) {
-        List<CoordinateWithTs> telemetryCoordinates = CoordinateWithTs.toCoordinateDtosWithTsList(processedTelemetries.relativeTelemetries());
+    public SimplifiedPaths simplify(TelemetryStatistics processedTelemetries) {
+
+        List<CoordinateWithTs> telemetryCoordinates = CoordinateWithTs.toCoordinatesWithTsList(processedTelemetries.relativeTelemetries());
 
         List<Coordinates> simplifiedCoordinates = PathSimplifier.simplifyToRenderingTelemetries(telemetryCoordinates);
         List<Coordinates> edgePoints = PathSimplifier.extractEdgePoints(telemetryCoordinates);
         List<Checkpoint> checkpoints = PathSimplifier.calculateAngles(edgePoints);
 
-        return new SimplifiedPath(simplifiedCoordinates, checkpoints);
+        return new SimplifiedPaths(simplifiedCoordinates, checkpoints);
     }
 
 }

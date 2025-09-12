@@ -1,11 +1,8 @@
-package soma.ghostrunner.domain.running.application.support;
+package soma.ghostrunner.domain.running.domain.path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.running.domain.path.Coordinates;
-import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
-import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.TelemetryCalculationException;
 import soma.ghostrunner.global.error.ErrorCode;

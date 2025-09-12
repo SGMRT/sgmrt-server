@@ -16,7 +16,7 @@ import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
-import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
+import soma.ghostrunner.domain.running.domain.path.TelemetryProcessor;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;

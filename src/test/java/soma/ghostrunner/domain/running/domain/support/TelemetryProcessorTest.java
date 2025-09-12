@@ -14,7 +14,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.domain.path.Telemetry;
-import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
+import soma.ghostrunner.domain.running.domain.path.TelemetryProcessor;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.TelemetryCalculationException;
 

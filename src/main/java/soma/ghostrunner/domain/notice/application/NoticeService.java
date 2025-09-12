@@ -1,6 +1,7 @@
 package soma.ghostrunner.domain.notice.application;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class NoticeService {
 
+    @Value("${s3.notice-directory}")
+    private String noticeDirectory;
+
     private final MemberService memberService;
     private final GhostRunnerS3Client s3Client;
     private final NoticeRepository noticeRepository;
@@ -61,7 +65,8 @@ public class NoticeService {
         // 파일이 존재하는 경우 공지사항 id에 맞게 S3에 업로드
         if(request.getImage() != null) {
             validateFile(request.getImage());
-            String imageUrl = s3Client.uploadNoticeImage(request.getImage(), noticeId);
+            String imageUrl = s3Client.uploadMultipartFile(request.getImage(),
+                    String.format("%s/%s", noticeDirectory, request.getImage().getOriginalFilename()));
             savedNotice.updateImageUrl(imageUrl); // dirty checking 으로 DB에 반영
         }
 
@@ -114,7 +119,8 @@ public class NoticeService {
                 case END_AT -> notice.updateEndAt(request.getEndAt());
                 case IMAGE -> {
                     validateFile(request.getImage());
-                    String imageUrl = s3Client.uploadNoticeImage(request.getImage(), noticeId);
+                    String imageUrl = s3Client.uploadMultipartFile(request.getImage(),
+                            String.format("%s/%s", noticeDirectory, request.getImage().getOriginalFilename()));
                     notice.updateImageUrl(imageUrl);
                 }
             }

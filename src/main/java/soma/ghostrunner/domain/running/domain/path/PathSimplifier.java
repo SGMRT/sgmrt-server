@@ -25,7 +25,7 @@ public class PathSimplifier {
 
     private static List<Coordinates> toCoordinateDtos(List<CoordinateWithTs> points) {
         return points.stream()
-                .map(CoordinateWithTs::toCoordinateDto)
+                .map(CoordinateWithTs::toCoordinates)
                 .toList();
     }
 

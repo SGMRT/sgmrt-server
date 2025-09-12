@@ -14,14 +14,14 @@ public class CoordinateWithTs implements Comparable<CoordinateWithTs> {
     private double lat;
     private double lng;
 
-    public static List<CoordinateWithTs> toCoordinateDtosWithTsList(List<Telemetry> telemetries) {
+    public static List<CoordinateWithTs> toCoordinatesWithTsList(List<Telemetry> telemetries) {
         return telemetries.stream()
-                .map(telemetryDto ->
-                        new CoordinateWithTs(telemetryDto.getTimeStamp(), telemetryDto.getLat(), telemetryDto.getLng()))
+                .map(telemetry ->
+                        new CoordinateWithTs(telemetry.getTimeStamp(), telemetry.getLat(), telemetry.getLng()))
                 .collect(Collectors.toList());
     }
 
-    public Coordinates toCoordinateDto() {
+    public Coordinates toCoordinates() {
         return new Coordinates(lat, lng);
     }
 
