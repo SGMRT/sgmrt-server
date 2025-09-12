@@ -65,8 +65,6 @@ public interface CourseMapper {
     @Mapping(source = "running.createdAt", target = "startedAt")
     CourseRankingResponse toRankingResponse(Running running, Integer rank);
 
-    CourseCoordinatesResponse toCoordinatesResponse(Course course, List<CoordinateDto> coordinates);
-
     @Mapping(source = "course.id", target = "courseId")
     @Mapping(source = "course.name", target = "courseName")
     @Mapping(source = "course.courseDataUrls.thumbnailUrl", target = "courseThumbnailUrl")
