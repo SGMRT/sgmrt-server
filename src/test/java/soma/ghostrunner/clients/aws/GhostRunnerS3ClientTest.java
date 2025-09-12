@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.s3.S3Utilities;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
-import soma.ghostrunner.global.clients.aws.upload.GhostRunnerS3Client;
+import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.global.error.exception.ExternalIOException;
 
 import java.io.IOException;

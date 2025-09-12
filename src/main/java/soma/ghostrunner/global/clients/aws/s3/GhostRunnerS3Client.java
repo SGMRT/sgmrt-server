@@ -1,4 +1,4 @@
-package soma.ghostrunner.global.clients.aws.upload;
+package soma.ghostrunner.global.clients.aws.s3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,15 +10,11 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
-import soma.ghostrunner.domain.running.domain.path.Checkpoint;
-import soma.ghostrunner.domain.running.domain.path.Coordinates;
-import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.error.exception.ExternalIOException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
