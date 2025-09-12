@@ -33,7 +33,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     Page<Running> findByCourse_IdAndIsPublicTrue(Long courseId, Pageable pageable);
 
     @Query("SELECT r FROM Running r JOIN FETCH r.member m WHERE r.course.id = :courseId AND r.isPublic = true "
-        + "AND m.uuid = :memberUuid ORDER BY r.runningRecord.averagePace LIMIT 1")
+        + "AND m.uuid = :memberUuid ORDER BY r.runningRecord.duration LIMIT 1")
     Optional<Running> findBestPublicRunByCourseIdAndMemberId(Long courseId, String memberUuid);
 
     @Query("SELECT COUNT(r) FROM Running r "
