@@ -65,7 +65,6 @@ public class GhostRunnerS3Client {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(s3Bucket)
                     .key(fileName)
-                    .contentType("application/jsonl")
                     .contentLength(multipartFile.getSize())
                     .build();
 

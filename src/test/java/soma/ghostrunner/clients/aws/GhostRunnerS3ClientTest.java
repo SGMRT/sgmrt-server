@@ -153,7 +153,6 @@ class GhostRunnerS3ClientTest {
 
         assertThat(putReq.bucket()).isEqualTo(bucket);
         assertThat(putReq.key()).isEqualTo(key);
-        assertThat(putReq.contentType()).isEqualTo("application/jsonl");
         assertThat(putReq.contentLength()).isEqualTo(mf.getSize());
 
         byte[] uploaded = body.contentStreamProvider().newStream().readAllBytes();
