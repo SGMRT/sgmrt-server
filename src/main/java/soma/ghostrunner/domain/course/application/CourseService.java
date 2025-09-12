@@ -38,8 +38,7 @@ public class CourseService {
         return courseRepository.save(course).getId();
     }
 
-    public Course findCourseById(
-            Long id) {
+    public Course findCourseById(Long id) {
         return courseRepository.findById(id)
                 .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
     }

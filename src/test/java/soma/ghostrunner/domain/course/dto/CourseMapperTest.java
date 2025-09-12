@@ -34,7 +34,7 @@ class CourseMapperTest {
         ReflectionTestUtils.setField(courseMapper, "courseSubMapper", courseSubMapper);
     }
 
-    @DisplayName("Course 엔티티를 CourseWithCoordinatesDto로 변환한다.")
+    @DisplayName("Course 엔티티를 CoursePreviewDto로 변환한다.")
     @Test
     void toCoursePreviewDto() {
         // given
@@ -54,23 +54,26 @@ class CourseMapperTest {
         assertThat(dto.thumbnailUrl()).isEqualTo(course.getCourseDataUrls().getThumbnailUrl());
     }
 
-    @DisplayName("CourseWithCoordinatesDto와 CourseGhostResponse 리스트를 CourseMapResponse로 변환한다.")
+    @DisplayName("CoursePreviewDto와 CourseGhostResponse 리스트를 CourseMapResponse로 변환한다.")
     @Test
     void toCourseMapResponse() {
         // given
-        CoursePreviewDto courseDto = createCourseWithCoordinatesDto();
+        CoursePreviewDto courseDto = createCoursePreviewDto();
         List<CourseGhostResponse> ghosts = List.of(createCourseGhostResponse());
+        CourseGhostResponse myGhostInfo = createCourseGhostResponse();
         long runnersCount = 1L;
 
         // when
-        CourseMapResponse response = courseMapper.toCourseMapResponse(courseDto, ghosts, runnersCount);
+        CourseMapResponse response = courseMapper.toCourseMapResponse(courseDto, ghosts, runnersCount, myGhostInfo);
 
         // then
         assertThat(response.id()).isEqualTo(courseDto.id());
         assertThat(response.name()).isEqualTo(courseDto.name());
         assertThat(response.runnersCount()).isEqualTo(runnersCount);
         assertThat(response.runners()).hasSize(1);
-        assertThat(response.runners().get(0).getUuid()).isEqualTo(ghosts.get(0).runnerUuid());
+        assertThat(response.runners().get(0).uuid()).isEqualTo(ghosts.get(0).runnerUuid());
+        assertThat(response.runners().get(0).profileUrl()).isEqualTo(ghosts.get(0).runnerProfileUrl());
+        assertThat(response.myGhostInfo()).isEqualTo(myGhostInfo);
     }
 
     @DisplayName("Course와 통계 데이터를 CourseDetailedResponse로 변환한다.")
@@ -82,16 +85,34 @@ class CourseMapperTest {
         String telemetryUrl = "http://example.com/telemetry";
         CourseRunStatisticsDto courseStats = createCourseRunStatisticsDto();
         UserPaceStatsDto userStats = createUserPaceStatsDto();
+        CourseGhostResponse ghostStats = createCourseGhostResponse();
 
         // when
-        CourseDetailedResponse response = courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStats, userStats);
+        CourseDetailedResponse response = courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStats, userStats, ghostStats);
 
         // then
         assertThat(response.id()).isEqualTo(course.getId());
         assertThat(response.name()).isEqualTo(course.getName());
         assertThat(response.telemetryUrl()).isEqualTo(telemetryUrl);
+        assertThat(response.checkpointsUrl()).isEqualTo(course.getCourseDataUrls().getCheckpointsUrl());
+        assertThat(response.distance()).isEqualTo(course.getCourseProfile().getDistance().intValue() * 1000);
+        assertThat(response.elevationAverage()).isEqualTo(course.getCourseProfile().getElevationAverage().intValue());
+        assertThat(response.elevationGain()).isEqualTo(course.getCourseProfile().getElevationGain().intValue());
+        assertThat(response.elevationLoss()).isEqualTo(course.getCourseProfile().getElevationLoss().intValue());
+        assertThat(response.createdAt()).isEqualTo(course.getCreatedAt());
+
         assertThat(response.averageCompletionTime()).isEqualTo(courseStats.getAvgCompletionTime().intValue());
+        assertThat(response.averageFinisherPace()).isEqualTo(courseStats.getAvgFinisherPace().intValue());
+        assertThat(response.averageFinisherCadence()).isEqualTo(courseStats.getAvgFinisherCadence().intValue());
+        assertThat(response.lowestFinisherPace()).isEqualTo(courseStats.getLowestFinisherPace().intValue());
+        assertThat(response.uniqueRunnersCount()).isEqualTo(courseStats.getUniqueRunnersCount().intValue());
+        assertThat(response.totalRunsCount()).isEqualTo(courseStats.getTotalRunsCount().intValue());
+
+        assertThat(response.myLowestPace()).isEqualTo(userStats.getLowestPace());
         assertThat(response.myAveragePace()).isEqualTo(userStats.getAvgPace());
+        assertThat(response.myHighestPace()).isEqualTo(userStats.getHighestPace());
+
+        assertThat(response.myGhostInfo()).isEqualTo(ghostStats);
     }
 
     @DisplayName("Running 엔티티와 순위를 CourseRankingResponse로 변환한다.")
@@ -198,8 +219,8 @@ class CourseMapperTest {
         CourseMapResponse.MemberRecord memberRecord = courseSubMapper.toMemberRecordDto(ghost);
 
         // then
-        assertThat(memberRecord.getUuid()).isEqualTo(ghost.runnerUuid());
-        assertThat(memberRecord.getProfileUrl()).isEqualTo(ghost.runnerProfileUrl());
+        assertThat(memberRecord.uuid()).isEqualTo(ghost.runnerUuid());
+        assertThat(memberRecord.profileUrl()).isEqualTo(ghost.runnerProfileUrl());
     }
 
 
@@ -229,7 +250,7 @@ class CourseMapperTest {
                 "interpolated-data.url", "screenshot.url", member, course);
     }
 
-    private CoursePreviewDto createCourseWithCoordinatesDto() {
+    private CoursePreviewDto createCoursePreviewDto() {
         return new CoursePreviewDto(1L, "Test Course", 37.0, 127.0, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
     }
 

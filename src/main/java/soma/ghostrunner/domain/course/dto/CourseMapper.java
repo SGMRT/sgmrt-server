@@ -11,7 +11,8 @@ import soma.ghostrunner.domain.running.application.support.CoordinateConverter;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {CoordinateConverter.class, CourseSubMapper.class})
+//@Mapper(componentModel = "spring", uses = {CoordinateConverter.class, CourseSubMapper.class})
+@Mapper(componentModel = "spring", uses = {CourseSubMapper.class})
 public interface CourseMapper {
 
     @Mapping(source = "startCoordinate.latitude", target = "startLat")
@@ -30,7 +31,7 @@ public interface CourseMapper {
 
     @Mapping(source = "ghosts", target = "runners")
     CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts,
-                                          long runnersCount);
+                                          long runnersCount, CourseGhostResponse myGhostInfo);
 
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
@@ -49,8 +50,9 @@ public interface CourseMapper {
     @Mapping(source = "userStats.lowestPace", target = "myLowestPace")
     @Mapping(source = "userStats.avgPace", target = "myAveragePace")
     @Mapping(source = "userStats.highestPace", target = "myHighestPace")
-    CourseDetailedResponse toCourseDetailedResponse(Course course, String telemetryUrl,
-                                                    CourseRunStatisticsDto courseStats, UserPaceStatsDto userStats);
+    @Mapping(source = "ghostStats", target = "myGhostInfo")
+    CourseDetailedResponse toCourseDetailedResponse(Course course, String telemetryUrl, CourseRunStatisticsDto courseStats,
+                                                    UserPaceStatsDto userStats, CourseGhostResponse ghostStats);
 
     @Mapping(source = "running.member.uuid", target = "runnerUuid")
     @Mapping(source = "running.member.profilePictureUrl", target = "runnerProfileUrl")

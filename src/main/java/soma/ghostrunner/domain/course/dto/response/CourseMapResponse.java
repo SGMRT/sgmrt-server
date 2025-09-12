@@ -20,13 +20,13 @@ public record CourseMapResponse(
         Integer elevationLoss,
         LocalDateTime createdAt,
 
+        CourseGhostResponse myGhostInfo,
         List<MemberRecord> runners,
         long runnersCount
 ) {
-    @Getter @AllArgsConstructor
-    public static class MemberRecord {
-        private String uuid;
-        private String profileUrl;
-    }
+    public record MemberRecord(
+            String uuid,
+            String profileUrl
+    ) {}
 }
 

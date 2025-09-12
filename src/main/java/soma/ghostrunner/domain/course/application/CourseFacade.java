@@ -13,8 +13,10 @@ import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
+import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.domain.Running;
+import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,17 +28,19 @@ public class CourseFacade {
     private final RunningQueryService runningQueryService;
 
     private final CourseMapper courseMapper;
+    private final RunningApiMapper runningApiMapper;
 
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
-                                                         CourseSearchFilterDto filters) {
+                                                         CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
         List<CoursePreviewDto> courses = courseService.searchCourses(lat, lng, radiusM, sort, filters);
         // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
         return courses.stream().map(course -> {
             Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
+            CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
             long runnersCount = rankers.getTotalElements();
-            return courseMapper.toCourseMapResponse(course, rankers.getContent(), runnersCount);
+            return courseMapper.toCourseMapResponse(course, rankers.getContent(), runnersCount, ghostForUser);
         }).toList();
     }
 
@@ -47,9 +51,27 @@ public class CourseFacade {
                 .orElse(new CourseRunStatisticsDto());
         UserPaceStatsDto userPaceStats = runningQueryService.findUserPaceStatistics(courseId, viewerUuid)
                 .orElse(new UserPaceStatsDto());
-        String telemetryUrl = runningQueryService.findFirstRunning(course.getId()).getRunningDataUrls()
-                .getInterpolatedTelemetryUrl();
-        return courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStatistics, userPaceStats);
+        String telemetryUrl = getTelemetryUrlFromCourse(course);
+        CourseGhostResponse ghostForUser = getGhostResponse(courseId, viewerUuid);
+        return courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStatistics, userPaceStats, ghostForUser);
+    }
+
+    private CourseGhostResponse getGhostResponse(Long courseId, String viewerUuid) {
+        try {
+            return runningApiMapper.toGhostResponse(
+                    runningQueryService.findBestPublicRunForCourse(courseId, viewerUuid));
+        } catch (RunningNotFoundException e) {
+            return null;
+        }
+    }
+
+    private String getTelemetryUrlFromCourse(Course course) {
+        try {
+            return runningQueryService.findFirstRunning(course.getId()).getRunningDataUrls()
+                    .getInterpolatedTelemetryUrl();
+        } catch (RunningNotFoundException e) {
+            return null;
+        }
     }
 
     public void updateCourse(Long courseId, CoursePatchRequest request) {
