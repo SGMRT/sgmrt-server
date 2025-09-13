@@ -34,7 +34,7 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
 
     @BeforeEach
     void setUp() {
-        defaultMember = memberRepository.save(Member.of("카리나", "test-url"));
+        defaultMember = memberRepository.save(Member.of("기본 멤버", "test-url"));
     }
 
 
