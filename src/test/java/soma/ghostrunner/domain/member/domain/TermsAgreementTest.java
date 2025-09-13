@@ -16,7 +16,7 @@ class TermsAgreementTest {
 
         // when
         TermsAgreement termsAgreement = TermsAgreement.createIfAllMandatoryTermsAgreed(true,
-                true, true, true, true, now);
+                true, true, now);
 
         // when // then
         Assertions.assertThat(termsAgreement.getAgreedAt()).isEqualTo(now);
@@ -29,7 +29,7 @@ class TermsAgreementTest {
     void allMandatoryTermsMustBeAgreed() {
         // when // then
         Assertions.assertThatThrownBy(() -> TermsAgreement.createIfAllMandatoryTermsAgreed(true,
-                        true, false, true, true, LocalDateTime.now()))
+                        true, false, LocalDateTime.now()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("모든 필수 약관이 동의되어야 함");
     }

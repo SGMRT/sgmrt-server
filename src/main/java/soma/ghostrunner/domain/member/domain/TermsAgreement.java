@@ -20,35 +20,28 @@ public class TermsAgreement {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    private boolean isServiceTermsAgreed;
-    private boolean isPrivacyPolicyAgreed;
-    private boolean isDataConsignmentAgreed;
-    private boolean isThirdPartyDataSharingAgreed;
-    private boolean isMarketingAgreed;
+    private boolean isServiceTermsAgreed;                     // 서비스 이용 약관 (필수)
+    private boolean isPrivacyPolicyAgreed;                    // 개인정보 처리 방침 (필수)
+    private boolean isPersonalInformationUsageConsentAgreed;  // 개인정보 수집 및 이용 동의 (필수)
 
     @CreationTimestamp
     private LocalDateTime agreedAt;
 
     @Builder(access = AccessLevel.PRIVATE)
-    public TermsAgreement(boolean isServiceTermsAgreed, boolean isPrivacyPolicyAgreed, boolean isDataConsignmentAgreed,
-                          boolean isThirdPartyDataSharingAgreed, boolean isMarketingAgreed, LocalDateTime agreedAt) {
+    public TermsAgreement(boolean isServiceTermsAgreed, boolean isPrivacyPolicyAgreed,
+                          boolean isPersonalInformationUsageConsentAgreed, LocalDateTime agreedAt) {
         this.isServiceTermsAgreed = isServiceTermsAgreed;
         this.isPrivacyPolicyAgreed = isPrivacyPolicyAgreed;
-        this.isDataConsignmentAgreed = isDataConsignmentAgreed;
-        this.isThirdPartyDataSharingAgreed = isThirdPartyDataSharingAgreed;
-        this.isMarketingAgreed = isMarketingAgreed;
+        this.isPersonalInformationUsageConsentAgreed = isPersonalInformationUsageConsentAgreed;
         this.agreedAt = agreedAt;
     }
 
     public static TermsAgreement createIfAllMandatoryTermsAgreed(boolean isServiceTermsAgreed, boolean isPrivacyPolicyAgreed,
-                                                                 boolean isDataConsignmentAgreed, boolean isThirdPartyDataSharingAgreed,
-                                                                 boolean isMarketingAgreed, LocalDateTime agreedAt) {
+                                                                 boolean isPersonalInformationUsageConsentAgreed, LocalDateTime agreedAt) {
         TermsAgreement termsAgreement = TermsAgreement.builder()
                 .isServiceTermsAgreed(isServiceTermsAgreed)
                 .isPrivacyPolicyAgreed(isPrivacyPolicyAgreed)
-                .isDataConsignmentAgreed(isDataConsignmentAgreed)
-                .isThirdPartyDataSharingAgreed(isThirdPartyDataSharingAgreed)
-                .isMarketingAgreed(isMarketingAgreed)
+                .isPersonalInformationUsageConsentAgreed(isPersonalInformationUsageConsentAgreed)
                 .agreedAt(agreedAt)
                 .build();
         if (termsAgreement.allMandatoryTermsAgreed()) {
@@ -59,17 +52,15 @@ public class TermsAgreement {
     }
 
     private boolean allMandatoryTermsAgreed() {
-        return isServiceTermsAgreed && isPrivacyPolicyAgreed && isDataConsignmentAgreed && isThirdPartyDataSharingAgreed;
+        return isServiceTermsAgreed && isPrivacyPolicyAgreed && isPersonalInformationUsageConsentAgreed;
     }
 
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof TermsAgreement other)) return false;
         return this.isServiceTermsAgreed ==  other.isServiceTermsAgreed
-            && this.isDataConsignmentAgreed == other.isDataConsignmentAgreed
             && this.isPrivacyPolicyAgreed ==  other.isPrivacyPolicyAgreed
-            && this.isThirdPartyDataSharingAgreed == other.isThirdPartyDataSharingAgreed
-            && this.isMarketingAgreed == other.isMarketingAgreed;
+            && this.isPersonalInformationUsageConsentAgreed ==  other.isPersonalInformationUsageConsentAgreed;
     }
 
 }

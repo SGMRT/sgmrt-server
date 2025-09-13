@@ -69,13 +69,13 @@ public class AuthService {
     }
 
     private TermsAgreement createTermsAgreement(TermsAgreementDto agreementDto) {
-        return TermsAgreement.createIfAllMandatoryTermsAgreed(agreementDto.isServiceTermsAgreed(), agreementDto.isPrivacyPolicyAgreed(),
-                agreementDto.isDataConsignmentAgreed(), agreementDto.isThirdPartyDataSharingAgreed(),
-                agreementDto.isMarketingAgreed(), LocalDateTime.now());
+        return TermsAgreement.createIfAllMandatoryTermsAgreed(
+                agreementDto.isServiceTermsAgreed(), agreementDto.isPrivacyPolicyAgreed(),
+                agreementDto.isPersonalInformationUsageConsentAgreed(), LocalDateTime.now());
     }
 
     private Member createMember(SignUpRequest signUpRequest, String externalAuthId, TermsAgreement termsAgreement) {
-        return memberService.createMember(
+        return memberService.createAndSaveMember(
                 memberMapper.toMemberCreationRequest(externalAuthId, signUpRequest, termsAgreement));
     }
 

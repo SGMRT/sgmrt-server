@@ -133,7 +133,7 @@ public class MemberService {
     }
 
     @Transactional
-    public Member createMember(MemberCreationRequest creationRequest) {
+    public Member createAndSaveMember(MemberCreationRequest creationRequest) {
         Member member = Member.builder()
                 .nickname(creationRequest.getNickname())
                 .bioInfo(new MemberBioInfo(creationRequest.getGender(),
@@ -184,10 +184,7 @@ public class MemberService {
         if(termsAgreementDto == null) throw new IllegalArgumentException("termsAgreement cannot be null");
         TermsAgreement agreement = TermsAgreement.createIfAllMandatoryTermsAgreed(
                 termsAgreementDto.isServiceTermsAgreed(),
-                termsAgreementDto.isPrivacyPolicyAgreed(),
-                termsAgreementDto.isDataConsignmentAgreed(),
-                termsAgreementDto.isThirdPartyDataSharingAgreed(),
-                termsAgreementDto.isMarketingAgreed(),
+                termsAgreementDto.isPrivacyPolicyAgreed(), termsAgreementDto.isPersonalInformationUsageConsentAgreed(),
                 null
         );
         saveTermsAgreement(member, agreement);

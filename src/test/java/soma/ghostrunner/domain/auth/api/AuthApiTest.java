@@ -80,8 +80,7 @@ class AuthApiTest extends ApiTestSupport {
     }
 
     private TermsAgreementDto createTermsAgreementDto() {
-        return new TermsAgreementDto(true, true, true,
-                true, false, LocalDateTime.now());
+        return new TermsAgreementDto(true, true, true, LocalDateTime.now());
     }
 
     @DisplayName("Authorization 헤더에서 리프레쉬 토큰을 추출하고 토큰 재발급을 진행한다.")

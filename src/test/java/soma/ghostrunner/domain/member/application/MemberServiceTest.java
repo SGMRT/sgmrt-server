@@ -51,7 +51,7 @@ class MemberServiceTest extends IntegrationTestSupport {
                 .build();
 
         // when
-        Member member = memberService.createMember(request);
+        Member member = memberService.createAndSaveMember(request);
 
         // then
         assertNotNull(member);
@@ -81,7 +81,7 @@ class MemberServiceTest extends IntegrationTestSupport {
                 .build();
 
         // when
-        Member member = memberService.createMember(request);
+        Member member = memberService.createAndSaveMember(request);
 
         // then
         assertNotNull(member);
@@ -122,10 +122,10 @@ class MemberServiceTest extends IntegrationTestSupport {
                 .build();
 
         // when
-        memberService.createMember(request1);
+        memberService.createAndSaveMember(request1);
 
         // then
-        assertThatThrownBy(() -> memberService.createMember(request2))
+        assertThatThrownBy(() -> memberService.createAndSaveMember(request2))
                 .isInstanceOf(InvalidMemberException.class)
                 .hasMessageContaining("존재하는 닉네임");
     }
@@ -134,7 +134,7 @@ class MemberServiceTest extends IntegrationTestSupport {
     @Test
     void updateMember_success() {
         // given
-        Member member = createMember("윈터");
+        Member member = createAndSaveMember("윈터");
         String uuid = member.getUuid();
         memberRepository.save(member);
         MemberUpdateRequest request = new MemberUpdateRequest(
@@ -159,7 +159,7 @@ class MemberServiceTest extends IntegrationTestSupport {
     @Test
     void updateMember_specifiedAttrOnly() {
         // given
-        Member member = createMember("아이유");
+        Member member = createAndSaveMember("아이유");
         String uuid = member.getUuid();
         memberRepository.save(member);
         // 변경할 필드에 nickname만 명시한다
@@ -186,10 +186,10 @@ class MemberServiceTest extends IntegrationTestSupport {
     @Test
     void updateMember_duplicateNickname() {
         // given
-        Member member1 = createMember("유나");
+        Member member1 = createAndSaveMember("유나");
         memberRepository.save(member1);
 
-        Member member2 = createMember("유나아님");
+        Member member2 = createAndSaveMember("유나아님");
         memberRepository.save(member2);
         String uuid = member2.getUuid();
         MemberUpdateRequest request = MemberUpdateRequest.builder()
@@ -208,7 +208,7 @@ class MemberServiceTest extends IntegrationTestSupport {
     @Test
     void removeAccount_success() {
         // given
-        Member member = createMember("카리나");
+        Member member = createAndSaveMember("카리나");
         String uuid = member.getUuid();
         memberRepository.save(member);
 
@@ -224,7 +224,7 @@ class MemberServiceTest extends IntegrationTestSupport {
     @Test
     void removeAccount_cascade() {
         // given
-        Member member = createMember("카리나");
+        Member member = createAndSaveMember("카리나");
         String uuid = member.getUuid();
         memberRepository.save(member);
 
@@ -239,7 +239,7 @@ class MemberServiceTest extends IntegrationTestSupport {
         assertThat(runningRepository.findAll().size()).isEqualTo(0);
     }
 
-    private Member createMember(String name) {
+    private Member createAndSaveMember(String name) {
         return Member.of(name, "test-url");
     }
 
@@ -257,14 +257,14 @@ class MemberServiceTest extends IntegrationTestSupport {
     }
 
     private TermsAgreement createTermsAgreement() {
-        return TermsAgreement.createIfAllMandatoryTermsAgreed(true, true, true, true, true, null);
+        return TermsAgreement.createIfAllMandatoryTermsAgreed(true, true, true, null);
     }
 
     @DisplayName("멤버의 VDOT를 조회한다.")
     @Test
     void findMemberVdot() {
         // given
-        Member member = createMember("카리나");
+        Member member = createAndSaveMember("카리나");
         memberRepository.save(member);
 
         MemberVdot memberVdot = new MemberVdot(25, member);
@@ -281,7 +281,7 @@ class MemberServiceTest extends IntegrationTestSupport {
     @Test
     void findNoneMemberVdot() {
         // given
-        Member member = createMember("카리나");
+        Member member = createAndSaveMember("카리나");
         memberRepository.save(member);
 
         // when // then
