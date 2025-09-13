@@ -16,10 +16,6 @@ import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
-import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.application.dto.ProcessedTelemetriesDto;
-import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
-import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.List;

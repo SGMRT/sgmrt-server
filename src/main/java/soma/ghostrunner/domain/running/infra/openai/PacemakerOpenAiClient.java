@@ -10,7 +10,7 @@ import soma.ghostrunner.domain.running.domain.llm.PacemakerLlmClient;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OpenAiClient implements PacemakerLlmClient {
+public class PacemakerOpenAiClient implements PacemakerLlmClient {
 
     private final WebClient openAiWebClient;
 

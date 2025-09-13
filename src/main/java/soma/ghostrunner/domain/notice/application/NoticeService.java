@@ -1,6 +1,7 @@
 package soma.ghostrunner.domain.notice.application;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -10,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
+import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notice.api.dto.*;
@@ -33,6 +34,9 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class NoticeService {
+
+    @Value("${s3.notice-directory}")
+    private String noticeDirectory;
 
     private final MemberService memberService;
     private final GhostRunnerS3Client s3Client;
@@ -63,7 +67,8 @@ public class NoticeService {
         // 파일이 존재하는 경우 공지사항 id에 맞게 S3에 업로드
         if(request.getImage() != null) {
             validateFile(request.getImage());
-            String imageUrl = s3Client.uploadNoticeImage(request.getImage(), noticeId);
+            String imageUrl = s3Client.uploadMultipartFile(request.getImage(),
+                    String.format("%s/%s", noticeDirectory, request.getImage().getOriginalFilename()));
             savedNotice.updateImageUrl(imageUrl); // dirty checking 으로 DB에 반영
         }
 
@@ -116,7 +121,8 @@ public class NoticeService {
                 case END_AT -> notice.updateEndAt(request.getEndAt());
                 case IMAGE -> {
                     validateFile(request.getImage());
-                    String imageUrl = s3Client.uploadNoticeImage(request.getImage(), noticeId);
+                    String imageUrl = s3Client.uploadMultipartFile(request.getImage(),
+                            String.format("%s/%s", noticeDirectory, request.getImage().getOriginalFilename()));
                     notice.updateImageUrl(imageUrl);
                 }
             }

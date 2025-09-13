@@ -5,12 +5,12 @@ import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
 
-//@Mapper(componentModel = "spring", uses = {CoordinateConverter.class, CourseSubMapper.class})
-@Mapper(componentModel = "spring", uses = {CourseSubMapper.class})
+@Mapper(componentModel = "spring", uses = { CourseSubMapper.class})
 public interface CourseMapper {
 
     @Mapping(source = "startCoordinate.latitude", target = "startLat")

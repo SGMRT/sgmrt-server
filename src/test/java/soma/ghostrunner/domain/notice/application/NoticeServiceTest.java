@@ -10,7 +10,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.clients.aws.upload.GhostRunnerS3Client;
+import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notice.api.dto.request.NoticeCreationRequest;
@@ -77,7 +77,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
         // given
         MockMultipartFile image = new MockMultipartFile("image", "test.png", "image/png", "test".getBytes());
         NoticeCreationRequest request = createNoticeCreationRequest("이미지 공지", "이미지 내용", image);
-        given(s3Client.uploadNoticeImage(any(MultipartFile.class), any(Long.class))).willReturn("http://test.url/image.png");
+        given(s3Client.uploadMultipartFile(any(MultipartFile.class), any(String.class))).willReturn("http://s3-test-url/image.png");
 
         // when
         Long noticeId = noticeService.saveNotice(request);
@@ -85,8 +85,8 @@ class NoticeServiceTest extends IntegrationTestSupport {
         // then
         assertThat(noticeId).isNotNull();
         Notice foundNotice = noticeRepository.findById(noticeId).orElseThrow();
-        assertThat(foundNotice.getImageUrl()).isEqualTo("http://test.url/image.png");
-        verify(s3Client, times(1)).uploadNoticeImage(any(MultipartFile.class), any(Long.class));
+        assertThat(foundNotice.getImageUrl()).isEqualTo("http://s3-test-url/image.png");
+        verify(s3Client, times(1)).uploadMultipartFile(any(MultipartFile.class), any(String.class));
     }
 
     @DisplayName("유효하지 않은 파일 확장자로 공지사항 생성을 시도하면 예외가 발생한다.")
@@ -331,4 +331,5 @@ class NoticeServiceTest extends IntegrationTestSupport {
                 .endAt(NOW.plusDays(7))
                 .build();
     }
+
 }

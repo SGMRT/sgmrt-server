@@ -12,6 +12,7 @@ import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 

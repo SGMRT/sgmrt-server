@@ -11,9 +11,11 @@ import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.application.support.RunningDataUploader;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
-import soma.ghostrunner.domain.running.application.support.TelemetryProcessor;
+import soma.ghostrunner.domain.running.domain.path.TelemetryProcessor;
+import soma.ghostrunner.domain.running.domain.path.RunningFileUploader;
+import soma.ghostrunner.domain.running.domain.path.SimplifiedPaths;
+import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 
@@ -28,7 +30,7 @@ public class RunningCommandService {
     private final RunningRepository runningRepository;
 
     private final TelemetryProcessor telemetryProcessor;
-    private final RunningDataUploader runningDataUploader;
+    private final RunningFileUploader runningFileUploader;
 
     private final PathSimplificationService pathSimplificationService;
     private final RunningQueryService runningQueryService;
@@ -42,14 +44,13 @@ public class RunningCommandService {
 
         Member member = findMember(memberUuid);
 
-        ProcessedTelemetriesDto processedTelemetries = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
-        SimplifiedPathDto simplifiedPath = pathSimplificationService.simplify(processedTelemetries);
+        TelemetryStatistics telemetryStatistics = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
+        SimplifiedPaths simplifiedPaths = pathSimplificationService.simplify(telemetryStatistics);
 
-        RunningDataUrlsDto runningDataUrlsDto = runningDataUploader.uploadAll(
-                rawTelemetry, processedTelemetries, simplifiedPath, screenShotImage, memberUuid);
+        RunningDataUrlsDto dataUrlsDto = upload(rawTelemetry, telemetryStatistics, simplifiedPaths, screenShotImage, member);
 
-        Course course = createAndSaveCourse(member, command, processedTelemetries, runningDataUrlsDto);
-        Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
+        Course course = createAndSaveCourse(member, command, telemetryStatistics, dataUrlsDto);
+        Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
         return mapper.toResponse(running, course);
     }
 
@@ -57,17 +58,29 @@ public class RunningCommandService {
         return memberService.findMemberByUuid(memberUuid);
     }
 
+    private RunningDataUrlsDto upload(MultipartFile rawTelemetry, TelemetryStatistics telemetryStatistics,
+                                      SimplifiedPaths simplifiedPaths, MultipartFile screenShotImage, Member member) {
+
+        String rawUrl = runningFileUploader.uploadRawTelemetry(rawTelemetry, member.getUuid());
+        String interpolatedUrl = runningFileUploader.uploadInterpolatedTelemetry(telemetryStatistics.relativeTelemetries(), member.getUuid());
+        String simplifiedUrl = runningFileUploader.uploadSimplifiedCoordinates(simplifiedPaths.simplifiedCoordinates(), member.getUuid());
+        String checkpointUrl = runningFileUploader.uploadCheckpoints(simplifiedPaths.checkpoints(), member.getUuid());
+        String screenShotUrl = runningFileUploader.uploadRunningCaptureImage(screenShotImage, member.getUuid());
+
+        return new RunningDataUrlsDto(rawUrl, interpolatedUrl, simplifiedUrl, checkpointUrl, screenShotUrl);
+    }
+
     private Course createAndSaveCourse(Member member, CreateRunCommand command,
-                                       ProcessedTelemetriesDto processedTelemetriesDto,
+                                       TelemetryStatistics telemetryStatistics,
                                        RunningDataUrlsDto runningDataUrlsDto) {
-        Course course = mapper.toCourse(member, command, processedTelemetriesDto, runningDataUrlsDto);
+        Course course = mapper.toCourse(member, command, telemetryStatistics, runningDataUrlsDto);
         courseService.save(course);
         return course;
     }
 
-    private Running createAndSaveRunning(CreateRunCommand command, ProcessedTelemetriesDto processedTelemetry,
+    private Running createAndSaveRunning(CreateRunCommand command, TelemetryStatistics telemetryStatistics,
                                          RunningDataUrlsDto runningDataUrlsDto, Member member, Course course) {
-        return runningRepository.save(mapper.toRunning(command, processedTelemetry, runningDataUrlsDto, member, course));
+        return runningRepository.save(mapper.toRunning(command, telemetryStatistics, runningDataUrlsDto, member, course));
     }
 
     @Transactional
@@ -78,11 +91,21 @@ public class RunningCommandService {
         Course course = findCourse(courseId);
 
         validateBelongsToCourseIfGhostMode(command, courseId);
-        ProcessedTelemetriesDto processedTelemetries = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
+        TelemetryStatistics processedTelemetries = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
 
-        RunningDataUrlsDto runningDataUrlsDto = runningDataUploader.uploadAll(rawTelemetry, processedTelemetries, screenShotImage, memberUuid);
+        RunningDataUrlsDto runningDataUrlsDto = upload(rawTelemetry, processedTelemetries, screenShotImage, member);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
         return running.getId();
+    }
+
+    private RunningDataUrlsDto upload(MultipartFile rawTelemetry, TelemetryStatistics telemetryStatistics,
+                                      MultipartFile screenShotImage, Member member) {
+
+        String rawUrl = runningFileUploader.uploadRawTelemetry(rawTelemetry, member.getUuid());
+        String interpolatedUrl = runningFileUploader.uploadInterpolatedTelemetry(telemetryStatistics.relativeTelemetries(), member.getUuid());
+        String screenShotUrl = runningFileUploader.uploadRunningCaptureImage(screenShotImage, member.getUuid());
+
+        return new RunningDataUrlsDto(rawUrl, interpolatedUrl, screenShotUrl);
     }
 
     private Course findCourse(Long courseId) {
