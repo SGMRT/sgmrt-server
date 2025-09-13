@@ -58,10 +58,10 @@ public class AuthService {
     @Transactional
     public AuthenticationResponse signUp(String firebaseToken, SignUpRequest signUpRequest) {
         String externalAuthId = authIdResolver.resolveAuthId(firebaseToken);
-        memberService.verifyMemberExistsByAuthUid(externalAuthId);
+        memberService.verifyAuthUidUnique(externalAuthId);
 
         TermsAgreement termsAgreement = createTermsAgreement(signUpRequest.getAgreement());
-        Member member = createMember(signUpRequest, externalAuthId, termsAgreement);
+        Member member = saveMember(signUpRequest, externalAuthId, termsAgreement);
 
         String memberUuid = member.getUuid();
         JwtTokens jwtTokens = createAndSaveTokens(memberUuid);
@@ -74,7 +74,7 @@ public class AuthService {
                 agreementDto.isPersonalInformationUsageConsentAgreed(), LocalDateTime.now());
     }
 
-    private Member createMember(SignUpRequest signUpRequest, String externalAuthId, TermsAgreement termsAgreement) {
+    private Member saveMember(SignUpRequest signUpRequest, String externalAuthId, TermsAgreement termsAgreement) {
         return memberService.createAndSaveMember(
                 memberMapper.toMemberCreationRequest(externalAuthId, signUpRequest, termsAgreement));
     }

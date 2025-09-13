@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.member.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.util.Assert;
 
 import java.time.LocalDateTime;
 
@@ -53,6 +54,11 @@ public class TermsAgreement {
 
     private boolean allMandatoryTermsAgreed() {
         return isServiceTermsAgreed && isPrivacyPolicyAgreed && isPersonalInformationUsageConsentAgreed;
+    }
+
+    public void renewAgreedAt(LocalDateTime newAgreedAt) {
+        Assert.notNull(newAgreedAt, "약관 동의 시점은 null일 수 없음");
+        this.agreedAt = newAgreedAt;
     }
 
     @Override

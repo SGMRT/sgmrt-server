@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.domain.*;
@@ -17,6 +18,7 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -37,7 +39,7 @@ class MemberServiceTest extends IntegrationTestSupport {
 
     @DisplayName("회원가입 성공 시 입력한 정보대로 회원을 저장한다.")
     @Test
-    void signUp_success() {
+    void signUp() {
         // given
         MemberCreationRequest request = MemberCreationRequest.builder()
                 .nickname("장원영")
@@ -66,7 +68,7 @@ class MemberServiceTest extends IntegrationTestSupport {
 
     @DisplayName("회원가입 시 인증정보, 설정, 약관동의 엔티티가 함께 저장된다.")
     @Test
-    void signUp_success_withAssociatedEntities() {
+    void signUp_withAssociatedEntities() {
         // given
         TermsAgreement termsAgreement = createTermsAgreement();
         MemberCreationRequest request = MemberCreationRequest.builder()
@@ -103,7 +105,7 @@ class MemberServiceTest extends IntegrationTestSupport {
 
     @DisplayName("중복 닉네임으로 회원가입 시 예외가 발생한다.")
     @Test
-    void signUpWithDuplicateNickname_fail() {
+    void signUp_withDuplicateNickname() {
         // given
         MemberCreationRequest request1 = MemberCreationRequest.builder()
                 .nickname("duplicate")
@@ -132,7 +134,7 @@ class MemberServiceTest extends IntegrationTestSupport {
 
     @DisplayName("회원 정보 수정에 성공하면 변경한 내용이 반영된다.")
     @Test
-    void updateMember_success() {
+    void updateMember() {
         // given
         Member member = createAndSaveMember("윈터");
         String uuid = member.getUuid();
@@ -203,10 +205,59 @@ class MemberServiceTest extends IntegrationTestSupport {
                 .hasMessageContaining("존재하는 닉네임");
     }
 
+    @DisplayName("약관 동의 시 약관 동의 정보가 저장된다.")
+    @Test
+    void recordTermsAgreement() {
+        // given
+        Member member = createAndSaveMember("윈터");
+        String uuid = member.getUuid();
+        memberRepository.save(member);
+
+        TermsAgreementDto newAgreementDto = new TermsAgreementDto(
+                true, true, true, null
+        );
+
+        // when
+        memberService.recordTermsAgreement(uuid, newAgreementDto, null);
+
+        // then
+        TermsAgreement savedAgreement = termsAgreementRepository.findByMemberId(member.getId()).orElseThrow();
+        assertThat(savedAgreement.isServiceTermsAgreed()).isTrue();
+        assertThat(savedAgreement.isPrivacyPolicyAgreed()).isTrue();
+        assertThat(savedAgreement.isPersonalInformationUsageConsentAgreed()).isTrue();
+        assertThat(savedAgreement.getAgreedAt()).isNotNull();
+    }
+
+    @DisplayName("약관 동의 항목이 기존 동의 항목과 동일한 경우 agreedAt만 갱신된다.")
+    @Test
+    void recordTermsAgreement_identical() {
+        // given
+        Member member = createAndSaveMember("윈터");
+        String uuid = member.getUuid();
+        memberRepository.save(member);
+
+        TermsAgreement existingAgreement = createTermsAgreement();
+        existingAgreement.setMember(member);
+        termsAgreementRepository.save(existingAgreement);
+
+        TermsAgreementDto newAgreementDto = new TermsAgreementDto(true, true, true, null);
+
+        // when
+        LocalDateTime agreedAtBefore = existingAgreement.getAgreedAt();
+        memberService.recordTermsAgreement(uuid, newAgreementDto, agreedAtBefore.plusDays(1));
+
+        // then
+        TermsAgreement savedAgreement = termsAgreementRepository.findByMemberId(member.getId()).orElseThrow();
+        assertThat(savedAgreement.getAgreedAt()).isEqualTo(agreedAtBefore.plusDays(1));
+        assertThat(savedAgreement.isServiceTermsAgreed()).isEqualTo(existingAgreement.isServiceTermsAgreed());
+        assertThat(savedAgreement.isPrivacyPolicyAgreed()).isEqualTo(existingAgreement.isPrivacyPolicyAgreed());
+        assertThat(savedAgreement.isPersonalInformationUsageConsentAgreed()).isEqualTo(existingAgreement.isPersonalInformationUsageConsentAgreed());
+    }
+
 
     @DisplayName("회원 탈퇴 성공 시 엔티티가 삭제되어 조회할 수 없다.")
     @Test
-    void removeAccount_success() {
+    void removeAccount() {
         // given
         Member member = createAndSaveMember("카리나");
         String uuid = member.getUuid();
@@ -218,7 +269,6 @@ class MemberServiceTest extends IntegrationTestSupport {
         // then
         assertThat(memberRepository.findByUuid(uuid)).isNotPresent();
     }
-
 
     @DisplayName("회원 탈퇴 성공 시 연관된 Running 엔티티가 함께 삭제된다.")
     @Test
@@ -237,27 +287,6 @@ class MemberServiceTest extends IntegrationTestSupport {
 
         // then
         assertThat(runningRepository.findAll().size()).isEqualTo(0);
-    }
-
-    private Member createAndSaveMember(String name) {
-        return Member.of(name, "test-url");
-    }
-
-    private Running createRunning(String name, Member member) {
-        return Running.of("name", RunningMode.SOLO, null, createRunningRecord(),
-                System.currentTimeMillis(), true, false,
-                "telemetry-url", "telemetry-url", "telemetry-url",
-                member, null);
-    }
-
-    private RunningRecord createRunningRecord() {
-        return RunningRecord.of(
-                5.2, 40.0, 30.0, -20.0,
-                6.1, 3423.2, 302.2, 120L, 56, 100, 120);
-    }
-
-    private TermsAgreement createTermsAgreement() {
-        return TermsAgreement.createIfAllMandatoryTermsAgreed(true, true, true, null);
     }
 
     @DisplayName("멤버의 VDOT를 조회한다.")
@@ -288,6 +317,29 @@ class MemberServiceTest extends IntegrationTestSupport {
         Assertions.assertThatThrownBy(() -> memberService.findMemberVdot(member))
                 .isInstanceOf(MemberNotFoundException.class)
                 .hasMessage("cannot find vdot, memberUuid: " + member.getUuid());
+    }
+
+    // --- Helper methods ---
+
+    private Member createAndSaveMember(String name) {
+        return Member.of(name, "test-url");
+    }
+
+    private Running createRunning(String name, Member member) {
+        return Running.of("name", RunningMode.SOLO, null, createRunningRecord(),
+                System.currentTimeMillis(), true, false,
+                "telemetry-url", "telemetry-url", "telemetry-url",
+                member, null);
+    }
+
+    private RunningRecord createRunningRecord() {
+        return RunningRecord.of(
+                5.2, 40.0, 30.0, -20.0,
+                6.1, 3423.2, 302.2, 120L, 56, 100, 120);
+    }
+
+    private TermsAgreement createTermsAgreement() {
+        return TermsAgreement.createIfAllMandatoryTermsAgreed(true, true, true, null);
     }
 
 }

@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface TermsAgreementRepository extends JpaRepository<TermsAgreement, Long> {
 
-    TermsAgreement findTopByMemberIdOrderByAgreedAtDesc(Long id);
+    Optional<TermsAgreement> findTopByMemberIdOrderByAgreedAtDesc(Long id);
 
     Optional<TermsAgreement> findByMemberId(Long id);
 

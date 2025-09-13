@@ -12,6 +12,8 @@ import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
+import java.time.LocalDateTime;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/v1/members")
@@ -42,7 +44,7 @@ public class MemberApi {
             @PathVariable("memberUuid") String memberUuid,
             @Valid @RequestBody TermsAgreementDto termsAgreementDto,
             @AuthenticationPrincipal JwtUserDetails userDetails) {
-        memberService.saveTermsAgreement(memberUuid, termsAgreementDto);
+        memberService.recordTermsAgreement(memberUuid, termsAgreementDto, LocalDateTime.now());
     }
 
     @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
