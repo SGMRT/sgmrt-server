@@ -29,7 +29,7 @@ public interface CourseMapper {
 
     @Mapping(source = "ghosts", target = "runners")
     CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts,
-                                          long runnersCount);
+                                          long runnersCount, CourseGhostResponse myGhostInfo);
 
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
@@ -48,8 +48,9 @@ public interface CourseMapper {
     @Mapping(source = "userStats.lowestPace", target = "myLowestPace")
     @Mapping(source = "userStats.avgPace", target = "myAveragePace")
     @Mapping(source = "userStats.highestPace", target = "myHighestPace")
-    CourseDetailedResponse toCourseDetailedResponse(Course course, String telemetryUrl,
-                                                    CourseRunStatisticsDto courseStats, UserPaceStatsDto userStats);
+    @Mapping(source = "ghostStats", target = "myGhostInfo")
+    CourseDetailedResponse toCourseDetailedResponse(Course course, String telemetryUrl, CourseRunStatisticsDto courseStats,
+                                                    UserPaceStatsDto userStats, CourseGhostResponse ghostStats);
 
     @Mapping(source = "running.member.uuid", target = "runnerUuid")
     @Mapping(source = "running.member.profilePictureUrl", target = "runnerProfileUrl")
@@ -61,8 +62,6 @@ public interface CourseMapper {
     @Mapping(source = "running.runningRecord.averagePace", target = "averagePace")
     @Mapping(source = "running.createdAt", target = "startedAt")
     CourseRankingResponse toRankingResponse(Running running, Integer rank);
-
-    CourseCoordinatesResponse toCoordinatesResponse(Course course, List<Coordinates> coordinates);
 
     @Mapping(source = "course.id", target = "courseId")
     @Mapping(source = "course.name", target = "courseName")
@@ -87,9 +86,11 @@ public interface CourseMapper {
     @Mapping(source = "courseDto.distance", target = "distance")
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")
+    @Mapping(source = "ghostStats", target = "myGhostInfo")
     CourseSummaryResponse toCourseSummaryResponse(CourseWithMemberDetailsDto courseDto, Integer uniqueRunnersCount,
                                                   Integer totalRunsCount, Double averageCompletionTime,
-                                                  Double averageFinisherPace, Double averageFinisherCadence);
+                                                  Double averageFinisherPace, Double averageFinisherCadence,
+                                                  CourseGhostResponse ghostStats);
 
     @Mapping(source = "avgCompletionTime", target = "averageCompletionTime")
     @Mapping(source = "avgFinisherPace", target = "averageFinisherPace")

@@ -14,5 +14,6 @@ public record CourseSummaryResponse (
         Integer averageCompletionTime,
         Double averageFinisherPace,
         Integer averageFinisherCadence,
+        CourseGhostResponse myGhostInfo,
         Boolean isPublic
 ) {}

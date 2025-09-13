@@ -139,8 +139,7 @@ class AuthServiceTest extends IntegrationTestSupport {
     }
 
     private TermsAgreementDto createTermsAgreementDto() {
-        return new TermsAgreementDto(true, true, true,
-                true, false, LocalDateTime.now());
+        return new TermsAgreementDto(true, true, true, LocalDateTime.now());
     }
 
     @DisplayName("필수 약관에 모두 동의하지 않으면 회원가입을 실패한다.")
@@ -161,8 +160,7 @@ class AuthServiceTest extends IntegrationTestSupport {
     }
 
     private TermsAgreementDto createInvalidTermsAgreementDto() {
-        return new TermsAgreementDto(true, false, false,
-                true, false, LocalDateTime.now());
+        return new TermsAgreementDto(true, false, false, LocalDateTime.now());
     }
 
     @DisplayName("이미 존재하는 닉네임을 가진 사용자가 있다면 회원가입에 실패한다.")

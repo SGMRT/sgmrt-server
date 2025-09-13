@@ -10,6 +10,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseDataUrls;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.dto.response.*;
+import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -26,6 +27,8 @@ class CourseMapperTest {
     private CourseMapper courseMapper;
     private CourseSubMapper courseSubMapper;
 
+    private final LocalDateTime FAKE_NOW = LocalDateTime.of(2025, 9, 1, 10, 0, 0);
+
     @BeforeEach
     void setUp() {
         courseMapper = new CourseMapperImpl();
@@ -34,7 +37,7 @@ class CourseMapperTest {
         ReflectionTestUtils.setField(courseMapper, "courseSubMapper", courseSubMapper);
     }
 
-    @DisplayName("Course 엔티티를 CourseWithCoordinatesDto로 변환한다.")
+    @DisplayName("Course 엔티티를 CoursePreviewDto로 변환한다.")
     @Test
     void toCoursePreviewDto() {
         // given
@@ -47,30 +50,52 @@ class CourseMapperTest {
         // then
         assertThat(dto.id()).isEqualTo(course.getId());
         assertThat(dto.name()).isEqualTo(course.getName());
+        assertThat(dto.source()).isEqualTo(course.getSource());
         assertThat(dto.startLat()).isEqualTo(course.getStartCoordinate().getLatitude());
         assertThat(dto.startLng()).isEqualTo(course.getStartCoordinate().getLongitude());
-        assertThat(dto.distance()).isEqualTo((int)(course.getCourseProfile().getDistance() * 1000));
         assertThat(dto.routeUrl()).isEqualTo(course.getCourseDataUrls().getRouteUrl());
+        assertThat(dto.checkpointsUrl()).isEqualTo(course.getCourseDataUrls().getCheckpointsUrl());
         assertThat(dto.thumbnailUrl()).isEqualTo(course.getCourseDataUrls().getThumbnailUrl());
+        assertThat(dto.distance()).isEqualTo((int) (course.getCourseProfile().getDistance() * 1000));
+        assertThat(dto.elevationAverage()).isEqualTo(course.getCourseProfile().getElevationAverage().intValue());
+        assertThat(dto.elevationGain()).isEqualTo(course.getCourseProfile().getElevationGain().intValue());
+        assertThat(dto.elevationLoss()).isEqualTo(course.getCourseProfile().getElevationLoss().intValue());
+        assertThat(dto.createdAt()).isEqualTo(course.getCreatedAt());
     }
 
-    @DisplayName("CourseWithCoordinatesDto와 CourseGhostResponse 리스트를 CourseMapResponse로 변환한다.")
+    @DisplayName("CoursePreviewDto와 CourseGhostResponse 리스트를 CourseMapResponse로 변환한다.")
     @Test
     void toCourseMapResponse() {
         // given
-        CoursePreviewDto courseDto = createCourseWithCoordinatesDto();
+        CoursePreviewDto courseDto = createCoursePreviewDto();
         List<CourseGhostResponse> ghosts = List.of(createCourseGhostResponse());
+        CourseGhostResponse myGhostInfo = createCourseGhostResponse();
         long runnersCount = 1L;
 
         // when
-        CourseMapResponse response = courseMapper.toCourseMapResponse(courseDto, ghosts, runnersCount);
+        CourseMapResponse response = courseMapper.toCourseMapResponse(courseDto, ghosts, runnersCount, myGhostInfo);
 
         // then
+        // CoursePreviewDto 필드 검증
         assertThat(response.id()).isEqualTo(courseDto.id());
         assertThat(response.name()).isEqualTo(courseDto.name());
+        assertThat(response.source()).isEqualTo(courseDto.source());
+        assertThat(response.startLat()).isEqualTo(courseDto.startLat());
+        assertThat(response.startLng()).isEqualTo(courseDto.startLng());
+        assertThat(response.routeUrl()).isEqualTo(courseDto.routeUrl());
+        assertThat(response.checkpointsUrl()).isEqualTo(courseDto.checkpointsUrl());
+        assertThat(response.thumbnailUrl()).isEqualTo(courseDto.thumbnailUrl());
+        assertThat(response.distance()).isEqualTo(courseDto.distance());
+        assertThat(response.elevationAverage()).isEqualTo(courseDto.elevationAverage());
+        assertThat(response.elevationGain()).isEqualTo(courseDto.elevationGain());
+        assertThat(response.elevationLoss()).isEqualTo(courseDto.elevationLoss());
+        assertThat(response.createdAt()).isEqualTo(courseDto.createdAt());
+        // CourseMapResponse 필드 검증
         assertThat(response.runnersCount()).isEqualTo(runnersCount);
         assertThat(response.runners()).hasSize(1);
-        assertThat(response.runners().get(0).getUuid()).isEqualTo(ghosts.get(0).runnerUuid());
+        assertThat(response.runners().get(0).uuid()).isEqualTo(ghosts.get(0).runnerUuid());
+        assertThat(response.runners().get(0).profileUrl()).isEqualTo(ghosts.get(0).runnerProfileUrl());
+        assertThat(response.myGhostInfo()).isEqualTo(myGhostInfo);
     }
 
     @DisplayName("Course와 통계 데이터를 CourseDetailedResponse로 변환한다.")
@@ -82,16 +107,36 @@ class CourseMapperTest {
         String telemetryUrl = "http://example.com/telemetry";
         CourseRunStatisticsDto courseStats = createCourseRunStatisticsDto();
         UserPaceStatsDto userStats = createUserPaceStatsDto();
+        CourseGhostResponse ghostStats = createCourseGhostResponse();
 
         // when
-        CourseDetailedResponse response = courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStats, userStats);
+        CourseDetailedResponse response = courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStats, userStats, ghostStats);
 
         // then
+        // Course 필드 검증
         assertThat(response.id()).isEqualTo(course.getId());
         assertThat(response.name()).isEqualTo(course.getName());
+        assertThat(response.source()).isEqualTo(course.getSource());
         assertThat(response.telemetryUrl()).isEqualTo(telemetryUrl);
+        assertThat(response.checkpointsUrl()).isEqualTo(course.getCourseDataUrls().getCheckpointsUrl());
+        assertThat(response.distance()).isEqualTo(course.getCourseProfile().getDistance().intValue() * 1000);
+        assertThat(response.elevationAverage()).isEqualTo(course.getCourseProfile().getElevationAverage().intValue());
+        assertThat(response.elevationGain()).isEqualTo(course.getCourseProfile().getElevationGain().intValue());
+        assertThat(response.elevationLoss()).isEqualTo(course.getCourseProfile().getElevationLoss().intValue());
+        assertThat(response.createdAt()).isEqualTo(course.getCreatedAt());
+        // CourseRunStatisticsDto 필드 검증
         assertThat(response.averageCompletionTime()).isEqualTo(courseStats.getAvgCompletionTime().intValue());
+        assertThat(response.averageFinisherPace()).isEqualTo(courseStats.getAvgFinisherPace().intValue());
+        assertThat(response.averageFinisherCadence()).isEqualTo(courseStats.getAvgFinisherCadence().intValue());
+        assertThat(response.lowestFinisherPace()).isEqualTo(courseStats.getLowestFinisherPace().intValue());
+        assertThat(response.uniqueRunnersCount()).isEqualTo(courseStats.getUniqueRunnersCount().intValue());
+        assertThat(response.totalRunsCount()).isEqualTo(courseStats.getTotalRunsCount().intValue());
+        // UserPaceStatsDto 필드 검증
+        assertThat(response.myLowestPace()).isEqualTo(userStats.getLowestPace());
         assertThat(response.myAveragePace()).isEqualTo(userStats.getAvgPace());
+        assertThat(response.myHighestPace()).isEqualTo(userStats.getHighestPace());
+        // CourseGhostResponse 필드 검증
+        assertThat(response.myGhostInfo()).isEqualTo(ghostStats);
     }
 
     @DisplayName("Running 엔티티와 순위를 CourseRankingResponse로 변환한다.")
@@ -108,27 +153,15 @@ class CourseMapperTest {
 
         // then
         assertThat(response.getRank()).isEqualTo(rank);
+        assertThat(response.getRunnerUuid()).isEqualTo(running.getMember().getUuid());
+        assertThat(response.getRunnerProfileUrl()).isEqualTo(running.getMember().getProfilePictureUrl());
+        assertThat(response.getRunnerNickname()).isEqualTo(running.getMember().getNickname());
         assertThat(response.getRunningId()).isEqualTo(running.getId());
-        assertThat(response.getRunnerUuid()).isEqualTo(member.getUuid());
-        assertThat(response.getRunnerNickname()).isEqualTo(member.getNickname());
+        assertThat(response.getDuration()).isEqualTo(running.getRunningRecord().getDuration());
+        assertThat(response.getBpm()).isEqualTo(running.getRunningRecord().getBpm());
+        assertThat(response.getCadence()).isEqualTo(running.getRunningRecord().getCadence());
         assertThat(response.getAveragePace()).isEqualTo(running.getRunningRecord().getAveragePace());
-    }
-
-
-    @DisplayName("Course와 좌표 DTO 리스트를 CourseCoordinatesResponse로 변환한다.")
-    @Test
-    void toCoordinatesResponse() {
-        // given
-        Member member = createMember();
-        Course course = createCourse(member);
-        List<Coordinates> coordinates = List.of(new Coordinates(37.5, 127.5));
-
-        // when
-        CourseCoordinatesResponse response = courseMapper.toCoordinatesResponse(course, coordinates);
-
-        // then
-        assertThat(response.name()).isEqualTo(course.getName());
-        assertThat(response.coordinates()).isEqualTo(coordinates);
+        assertThat(response.getStartedAt()).isEqualTo(running.getCreatedAt());
     }
 
     @DisplayName("Course와 Member 엔티티를 CourseWithMemberDetailsDto로 변환한다.")
@@ -142,10 +175,21 @@ class CourseMapperTest {
         CourseWithMemberDetailsDto dto = courseMapper.toCourseWithMemberDetailsDto(course, member);
 
         // then
+        // Course 필드 검증
         assertThat(dto.getCourseId()).isEqualTo(course.getId());
-        assertThat(dto.getMemberId()).isEqualTo(member.getId());
         assertThat(dto.getCourseName()).isEqualTo(course.getName());
+        assertThat(dto.getCourseThumbnailUrl()).isEqualTo(course.getCourseDataUrls().getThumbnailUrl());
+        assertThat(dto.getStartLat()).isEqualTo(course.getStartCoordinate().getLatitude());
+        assertThat(dto.getStartLng()).isEqualTo(course.getStartCoordinate().getLongitude());
+        assertThat(dto.getDistance()).isEqualTo(course.getCourseProfile().getDistance().intValue() * 1000);
+        assertThat(dto.getCourseIsPublic()).isEqualTo(course.getIsPublic());
+        assertThat(dto.getCourseCreatedAt()).isEqualTo(course.getCreatedAt());
+
+        // Member 필드 검증
+        assertThat(dto.getMemberId()).isEqualTo(member.getId());
+        assertThat(dto.getMemberUuid()).isEqualTo(member.getUuid());
         assertThat(dto.getMemberNickname()).isEqualTo(member.getNickname());
+        assertThat(dto.getMemberProfileImageUrl()).isEqualTo(member.getProfilePictureUrl());
     }
 
     @DisplayName("CourseWithMemberDetailsDto와 통계정보를 CourseSummaryResponse로 변환한다.")
@@ -158,18 +202,30 @@ class CourseMapperTest {
         Double avgCompletionTime = 3600.0;
         Double avgFinisherPace = 5.5;
         Double avgFinisherCadence = 180.0;
-
+        CourseGhostResponse ghostStat = createCourseGhostResponse();
 
         // when
         CourseSummaryResponse response = courseMapper.toCourseSummaryResponse(courseDto, uniqueRunnersCount,
-                totalRunsCount, avgCompletionTime, avgFinisherPace, avgFinisherCadence);
+                totalRunsCount, avgCompletionTime, avgFinisherPace, avgFinisherCadence, ghostStat);
 
         // then
+        // CourseWithMemberDetailsDto 필드 검증
         assertThat(response.id()).isEqualTo(courseDto.getCourseId());
         assertThat(response.name()).isEqualTo(courseDto.getCourseName());
+        assertThat(response.thumbnailUrl()).isEqualTo(courseDto.getCourseThumbnailUrl());
+        assertThat(response.createdAt()).isEqualTo(courseDto.getCourseCreatedAt());
+        assertThat(response.distance()).isEqualTo(courseDto.getDistance());
+        assertThat(response.isPublic()).isEqualTo(courseDto.getCourseIsPublic());
+
+        // 파라미터 매핑 검증
         assertThat(response.uniqueRunnersCount()).isEqualTo(uniqueRunnersCount);
         assertThat(response.totalRunsCount()).isEqualTo(totalRunsCount);
         assertThat(response.averageCompletionTime()).isEqualTo(avgCompletionTime.intValue());
+        assertThat(response.averageFinisherPace()).isEqualTo(avgFinisherPace);
+        assertThat(response.averageFinisherCadence()).isEqualTo(avgFinisherCadence.intValue());
+
+        // ghostStat 필드 검증
+        assertThat(response.myGhostInfo()).isEqualTo(ghostStat);
     }
 
     @DisplayName("CourseRunStatisticsDto를 CourseStatisticsResponse로 변환한다.")
@@ -184,7 +240,11 @@ class CourseMapperTest {
         // then
         assertThat(response.averageCompletionTime()).isEqualTo(stats.getAvgCompletionTime());
         assertThat(response.averageFinisherPace()).isEqualTo(stats.getAvgFinisherPace());
+        assertThat(response.averageFinisherCadence()).isEqualTo(stats.getAvgFinisherCadence());
+        assertThat(response.averageCaloriesBurned()).isEqualTo(stats.getAvgCaloriesBurned());
+        assertThat(response.lowestFinisherPace()).isEqualTo(stats.getLowestFinisherPace());
         assertThat(response.uniqueRunnersCount()).isEqualTo(stats.getUniqueRunnersCount());
+        assertThat(response.totalRunsCount()).isEqualTo(stats.getTotalRunsCount());
     }
 
 
@@ -198,12 +258,12 @@ class CourseMapperTest {
         CourseMapResponse.MemberRecord memberRecord = courseSubMapper.toMemberRecordDto(ghost);
 
         // then
-        assertThat(memberRecord.getUuid()).isEqualTo(ghost.runnerUuid());
-        assertThat(memberRecord.getProfileUrl()).isEqualTo(ghost.runnerProfileUrl());
+        assertThat(memberRecord.uuid()).isEqualTo(ghost.runnerUuid());
+        assertThat(memberRecord.profileUrl()).isEqualTo(ghost.runnerProfileUrl());
     }
 
 
-    // 헬퍼 메소드
+    // --- 헬퍼 메소드 ---
 
     private Member createMember() {
         Member member = Member.of("testUser", "http://profile.url");
@@ -216,7 +276,7 @@ class CourseMapperTest {
         Coordinate coordinate = Coordinate.of(37d, 129d);
         CourseDataUrls urls = CourseDataUrls.of("route.url", "checkpoint.url", "thumbnail.url");
 
-        return Course.of(member, "Test Course", profile, coordinate, true, urls);
+        return Course.of(member, "Test Course", profile, coordinate, CourseSource.USER, true, urls);
     }
 
     private Running createRunning(Member member, Course course) {
@@ -229,8 +289,8 @@ class CourseMapperTest {
                 "interpolated-data.url", "screenshot.url", member, course);
     }
 
-    private CoursePreviewDto createCourseWithCoordinatesDto() {
-        return new CoursePreviewDto(1L, "Test Course", 37.0, 127.0, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
+    private CoursePreviewDto createCoursePreviewDto() {
+        return new CoursePreviewDto(1L, "Test Course", 37.0, 127.0, CourseSource.USER, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
     }
 
     private CourseGhostResponse createCourseGhostResponse() {

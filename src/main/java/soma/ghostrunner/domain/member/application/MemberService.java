@@ -17,10 +17,11 @@ import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
 import soma.ghostrunner.domain.member.domain.MemberAuthInfo;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
 import soma.ghostrunner.global.error.ErrorCode;
-import soma.ghostrunner.global.error.exception.BusinessException;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 
 import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
@@ -46,7 +47,7 @@ public class MemberService {
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND));
     }
 
-    public void verifyMemberExistsByAuthUid(String authUid) {
+    public void verifyAuthUidUnique(String authUid) {
         boolean isExist = memberAuthInfoRepository.existsByExternalAuthUid(authUid);
         if (isExist) {
             throw new InvalidMemberException(MEMBER_ALREADY_EXISTED, "이미 존재하는 회원인 경우");
@@ -133,7 +134,7 @@ public class MemberService {
     }
 
     @Transactional
-    public Member createMember(MemberCreationRequest creationRequest) {
+    public Member createAndSaveMember(MemberCreationRequest creationRequest) {
         Member member = Member.builder()
                 .nickname(creationRequest.getNickname())
                 .bioInfo(new MemberBioInfo(creationRequest.getGender(),
@@ -149,12 +150,13 @@ public class MemberService {
     }
 
     private void saveInitialMemberDetails(Member member, String externalAuthId, TermsAgreement termsAgreement) {
+        // MemberAuthInfo, TermsAgreement, MemberSettings 저장
         if (member == null || externalAuthId == null || termsAgreement == null) throw new IllegalArgumentException();
 
         MemberAuthInfo memberAuthInfo = MemberAuthInfo.of(member, externalAuthId);
         memberAuthInfoRepository.save(memberAuthInfo);
 
-        saveTermsAgreement(member,  termsAgreement);
+        recordTermsAgreement(member, termsAgreement, LocalDateTime.now());
 
         MemberSettings memberSettings = MemberSettings.of(member);
         memberSettingsRepository.save(memberSettings);
@@ -179,31 +181,29 @@ public class MemberService {
     }
 
     @Transactional
-    public void saveTermsAgreement(String memberUuid, TermsAgreementDto termsAgreementDto) {
+    public void recordTermsAgreement(String memberUuid, TermsAgreementDto termsAgreementDto, LocalDateTime agreedAt) {
         Member member = findMemberByUuid(memberUuid);
         if(termsAgreementDto == null) throw new IllegalArgumentException("termsAgreement cannot be null");
         TermsAgreement agreement = TermsAgreement.createIfAllMandatoryTermsAgreed(
                 termsAgreementDto.isServiceTermsAgreed(),
-                termsAgreementDto.isPrivacyPolicyAgreed(),
-                termsAgreementDto.isDataConsignmentAgreed(),
-                termsAgreementDto.isThirdPartyDataSharingAgreed(),
-                termsAgreementDto.isMarketingAgreed(),
+                termsAgreementDto.isPrivacyPolicyAgreed(), termsAgreementDto.isPersonalInformationUsageConsentAgreed(),
                 null
         );
-        saveTermsAgreement(member, agreement);
+        recordTermsAgreement(member, agreement, agreedAt);
     }
 
-    private void saveTermsAgreement(Member member, TermsAgreement termsAgreement) {
-        if (member == null || termsAgreement == null) throw new IllegalArgumentException("member or termsAgreement cannot be null");
-        // 기존의 약관 동의와 달라진 게 없는 경우는 저장하지 않는다
-        if (isTermsAgreementUnchanged(member, termsAgreement)) throw new BusinessException(ErrorCode.TERMS_AGREEMENT_NOT_CHANGED);
-        termsAgreement.setMember(member);
-        termsAgreementRepository.save(termsAgreement);
-    }
+    private void recordTermsAgreement(Member member, TermsAgreement newAgreement, LocalDateTime agreedAt) {
+        if (member == null || newAgreement == null) throw new IllegalArgumentException("member or termsAgreement cannot be null");
+        Optional<TermsAgreement> lastAgreement = termsAgreementRepository.findTopByMemberIdOrderByAgreedAtDesc(member.getId());
 
-    private boolean isTermsAgreementUnchanged(Member member, TermsAgreement termsAgreement) {
-        TermsAgreement lastAgreement = termsAgreementRepository.findTopByMemberIdOrderByAgreedAtDesc(member.getId());
-        return lastAgreement != null && lastAgreement.equals(termsAgreement);
+        // 기존의 약관 동의와 달라진 게 없는 경우 agreedAt만 갱신한다
+        if (lastAgreement.isPresent() && lastAgreement.get().equals(newAgreement)) {
+            lastAgreement.get().renewAgreedAt(agreedAt); // 더티 체킹
+            return;
+        }
+
+        newAgreement.setMember(member);
+        termsAgreementRepository.save(newAgreement);
     }
 
     @Transactional

@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import soma.ghostrunner.ApiTestSupport;
 import soma.ghostrunner.domain.notice.api.dto.request.NoticeDismissRequest;
 import soma.ghostrunner.domain.notice.api.dto.response.NoticeDetailedResponse;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.nio.charset.StandardCharsets;
@@ -30,12 +31,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class NoticeApiTest extends ApiTestSupport {
 
+    private final LocalDateTime NOW = LocalDateTime.of(2025, 8, 8, 12, 0);
+
     @DisplayName("전체 공지사항 목록을 페이지네이션하여 조회한다.")
     @Test
     void getAllNotices_success() throws Exception {
         // given
         PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("createdAt").descending());
-        given(noticeService.findAllNotices(0, 10))
+        given(noticeService.findAllNotices(0, 10, null))
                 .willReturn(new PageImpl<>(List.of(), pageRequest, 0));
 
         // when & then
@@ -52,7 +55,7 @@ class NoticeApiTest extends ApiTestSupport {
         // given
         String userId = UUID.randomUUID().toString();
         given(authService.isOwner(any(), any())).willReturn(true);
-        given(noticeService.findActiveNotices(userId)).willReturn(List.of());
+        given(noticeService.findActiveNotices(userId, NOW, NoticeType.GENERAL)).willReturn(List.of());
 
         JwtUserDetails userDetails = new JwtUserDetails(userId);
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -74,8 +77,8 @@ class NoticeApiTest extends ApiTestSupport {
     void getNotice_success() throws Exception {
         // given
         Long noticeId = 1L;
-        NoticeDetailedResponse response = new NoticeDetailedResponse(noticeId, "제목", "내용", null,
-                null, LocalDateTime.now(), null);
+        NoticeDetailedResponse response = new NoticeDetailedResponse(noticeId, "제목", NoticeType.GENERAL, "내용", null,
+                null, NOW, null);
         given(noticeService.findNotice(noticeId)).willReturn(response);
 
         // when & then
@@ -125,7 +128,7 @@ class NoticeApiTest extends ApiTestSupport {
                         .param("title", "새 공지")
                         .param("content", "공지 내용입니다.")
                         .param("priority", "1")
-                        .param("startAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                        .param("startAt", NOW.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andDo(print())

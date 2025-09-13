@@ -227,6 +227,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         Assertions.assertThat(courseRepository.findById(id)).isNotPresent();
     }
 
+    // --- Helper Methods ---
     private Course createPublicCourse(String name, double lat, double lng, CourseProfile courseProfile) {
         return createCourse(name, dummyMember, lat, lng, courseProfile, true);
     }

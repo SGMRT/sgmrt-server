@@ -35,15 +35,17 @@ public class CourseApi {
             @RequestParam(required = false) Integer minDistanceM,
             @RequestParam(required = false) Integer maxDistanceM,
             @RequestParam(required = false) Integer minElevationM,
-            @RequestParam(required = false) Integer maxElevationM) {
+            @RequestParam(required = false) Integer maxElevationM,
+            @AuthenticationPrincipal JwtUserDetails userDetails) {
         return courseFacade.findCoursesByPosition(lat, lng, radiusM, sort,
-                CourseSearchFilterDto.of(minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid));
+                CourseSearchFilterDto.of(minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid),
+                userDetails.getUserId());
     }
 
     @GetMapping("/courses/{courseId}")
     public CourseDetailedResponse getCourse(
-        @PathVariable("courseId") Long courseId,
-        @AuthenticationPrincipal JwtUserDetails userDetails) {
+            @PathVariable("courseId") Long courseId,
+            @AuthenticationPrincipal JwtUserDetails userDetails) {
         return courseFacade.findCourse(courseId, userDetails.getUserId());
     }
 

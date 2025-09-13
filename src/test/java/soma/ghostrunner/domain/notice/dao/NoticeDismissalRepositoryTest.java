@@ -8,12 +8,12 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.*;
 
 class NoticeDismissalRepositoryTest extends IntegrationTestSupport {
@@ -96,7 +96,7 @@ class NoticeDismissalRepositoryTest extends IntegrationTestSupport {
     }
 
     private Notice createAndSaveNotice(String title, String content) {
-        Notice notice = Notice.of(title, content, null, 1, LocalDateTime.now(), LocalDateTime.now().plusDays(7));
+        Notice notice = Notice.of(title, content, NoticeType.GENERAL, null, 1, LocalDateTime.now(), LocalDateTime.now().plusDays(7));
         return noticeRepository.save(notice);
     }
 

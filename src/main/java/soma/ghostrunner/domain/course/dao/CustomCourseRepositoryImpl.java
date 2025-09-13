@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
+import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 
 import java.util.List;
@@ -26,12 +27,14 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
   private final JPAQueryFactory queryFactory;
 
   @Override
+  // todo 이거 + CourseService.getCourse() 삭제해버릴지 고민
   public Optional<CourseDetailedResponse> findCourseDetailedById(Long courseId) {
     return Optional.ofNullable(
         queryFactory
             .select(Projections.constructor(CourseDetailedResponse.class,
                 course.id,
                 course.name,
+                course.source,
                 Expressions.nullExpression(String.class), // course join running에서는 group by가 이뤄지므로 telemetry url을 조회할 수 없음 (새로운 쿼리 필요)
                 course.courseDataUrls.checkpointsUrl,
                 course.courseProfile.distance.castToNum(Integer.class),
@@ -48,7 +51,8 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
                 running.id.count().castToNum(Integer.class),
                 Expressions.nullExpression(Double.class),
                 Expressions.nullExpression(Double.class),
-                Expressions.nullExpression(Double.class)
+                Expressions.nullExpression(Double.class),
+                Expressions.nullExpression(CourseGhostResponse.class)
             ))
             .from(course)
             .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))

@@ -23,6 +23,7 @@ import soma.ghostrunner.domain.notice.dao.NoticeDismissalRepository;
 import soma.ghostrunner.domain.notice.dao.NoticeRepository;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.domain.notice.exceptions.NoticeNotFoundException;
 
 import java.time.LocalDate;
@@ -54,6 +55,7 @@ public class NoticeService {
 
         Notice notice = Notice.of(request.getTitle(),
                 request.getContent(),
+                request.getType(),
                 null,
                 request.getPriority(),
                 request.getStartAt(),
@@ -74,16 +76,16 @@ public class NoticeService {
     }
 
     @Transactional(readOnly = true)
-    public List<NoticeDetailedResponse> findActiveNotices(String memberUuid) {
-        // 노출 기간 내의 공지사항을 숨김 처리 여부로 필터링하여 조회
-        List<Notice> filteredNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), memberUuid);
+    public List<NoticeDetailedResponse> findActiveNotices(String memberUuid, LocalDateTime queryTime, NoticeType noticeType) {
+        // 노출 기간 내의 공지사항을 숨김 처리 여부와 공지 타입으로 필터링하여 조회
+        List<Notice> filteredNotices = noticeRepository.findActiveNoticesForMember(queryTime, memberUuid, noticeType);
         return filteredNotices.stream().map(noticeMapper::toDetailedResponse).toList();
     }
 
     @Transactional(readOnly = true)
-    public Page<NoticeDetailedResponse> findAllNotices(int page, int size) {
+    public Page<NoticeDetailedResponse> findAllNotices(int page, int size, NoticeType noticeType) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return noticeRepository.findAll(pageable).map(noticeMapper::toDetailedResponse);
+        return noticeRepository.findAllByType(noticeType, pageable).map(noticeMapper::toDetailedResponse);
     }
 
     @Transactional(readOnly = true)

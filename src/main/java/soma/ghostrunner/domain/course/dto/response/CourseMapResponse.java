@@ -1,7 +1,6 @@
 package soma.ghostrunner.domain.course.dto.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import soma.ghostrunner.domain.course.enums.CourseSource;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,6 +8,7 @@ import java.util.List;
 public record CourseMapResponse(
         Long id,
         String name,
+        CourseSource source,
         Double startLat,
         Double startLng,
         String routeUrl,
@@ -20,13 +20,13 @@ public record CourseMapResponse(
         Integer elevationLoss,
         LocalDateTime createdAt,
 
+        CourseGhostResponse myGhostInfo,
         List<MemberRecord> runners,
         long runnersCount
 ) {
-    @Getter @AllArgsConstructor
-    public static class MemberRecord {
-        private String uuid;
-        private String profileUrl;
-    }
+    public record MemberRecord(
+            String uuid,
+            String profileUrl
+    ) {}
 }
 

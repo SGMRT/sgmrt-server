@@ -2,6 +2,8 @@ package soma.ghostrunner.domain.notice.application;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.mock.web.MockMultipartFile;
@@ -19,6 +21,7 @@ import soma.ghostrunner.domain.notice.dao.NoticeDismissalRepository;
 import soma.ghostrunner.domain.notice.dao.NoticeRepository;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
+import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -49,6 +52,8 @@ class NoticeServiceTest extends IntegrationTestSupport {
     @MockitoBean
     private GhostRunnerS3Client s3Client; // S3 클라이언트는 모킹 처리
 
+    private final LocalDateTime NOW = LocalDateTime.of(2025, 8, 8, 12, 0);
+
     @DisplayName("새로운 공지사항을 성공적으로 생성한다.")
     @Test
     void saveNotice_success() {
@@ -63,6 +68,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
         Optional<Notice> foundNotice = noticeRepository.findById(noticeId);
         assertThat(foundNotice).isPresent();
         assertThat(foundNotice.get().getTitle()).isEqualTo("공지 제목");
+        assertThat(foundNotice.get().getContent()).isEqualTo("공지 내용");
     }
 
     @DisplayName("이미지와 함께 새로운 공지사항을 성공적으로 생성한다.")
@@ -96,44 +102,79 @@ class NoticeServiceTest extends IntegrationTestSupport {
                 .hasMessageContaining("허용되지 않은 확장자입니다.");
     }
 
-    @DisplayName("활성화된 공지사항 목록을 정확히 조회한다.")
+    @DisplayName("활성 공지사항 조회 시 숨김 처리되지 않은 공지를 조회한다.")
     @Test
     void findActiveNotices_success() {
         // given
         Member member1 = createAndSaveMember("user1");
         Member member2 = createAndSaveMember("user2");
 
-        Notice activeNotice = createAndSaveNotice("활성 공지", LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1));
-        Notice futureNotice = createAndSaveNotice("미래 공지", LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(2));
-        Notice expiredNotice = createAndSaveNotice("만료 공지", LocalDateTime.now().minusDays(2), LocalDateTime.now().minusDays(1));
-        Notice dismissedNotice = createAndSaveNotice("숨김 공지", LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1));
-        Notice permanentlyDismissedNotice = createAndSaveNotice("영구 숨김 공지", LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1));
+        Notice activeNotice = createAndSaveNotice("활성 공지", NOW.minusDays(1), NOW.plusDays(1));
+        Notice futureNotice = createAndSaveNotice("미래 공지", NOW.plusDays(1), NOW.plusDays(2));
+        Notice expiredNotice = createAndSaveNotice("만료 공지", NOW.minusDays(2), NOW.minusDays(1));
+        Notice dismissedNotice = createAndSaveNotice("숨김 공지", NOW.minusDays(1), NOW.plusDays(1));
+        Notice permanentlyDismissedNotice = createAndSaveNotice("영구 숨김 공지", NOW.minusDays(1), NOW.plusDays(1));
 
-        createAndSaveDismissal(member1, dismissedNotice, LocalDateTime.now().plusDays(3)); // 아직 숨김 기간임
+        createAndSaveDismissal(member1, dismissedNotice, NOW.plusDays(3)); // 아직 숨김 기간임
         createAndSaveDismissal(member1, permanentlyDismissedNotice, null); // 영구 숨김
 
         // when
-        List<NoticeDetailedResponse> noticesForMember1 = noticeService.findActiveNotices(member1.getUuid());
-        List<NoticeDetailedResponse> noticesForMember2 = noticeService.findActiveNotices(member2.getUuid());
+        List<NoticeDetailedResponse> noticesForMember1 = noticeService.findActiveNotices(member1.getUuid(), NOW, null);
+        List<NoticeDetailedResponse> noticesForMember2 = noticeService.findActiveNotices(member2.getUuid(), NOW, null);
 
         // then
         assertThat(noticesForMember1).hasSize(1).extracting("title").containsExactly("활성 공지");
         assertThat(noticesForMember2).hasSize(3).extracting("title").containsExactlyInAnyOrder("활성 공지", "숨김 공지", "영구 숨김 공지");
     }
 
+    @DisplayName("활성 공지사항 조회 시 특정 타입의 공지만 조회한다.")
+    @ParameterizedTest
+    @EnumSource(NoticeType.class)
+    void findActiveNotices_byType(NoticeType type) {
+        // given
+        Member member = createAndSaveMember("user-type");
+        createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(1));
+        Notice hiddenNotice = createAndSaveNotice("숨긴 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveDismissal(member, hiddenNotice, null);
+
+        // when
+        List<NoticeDetailedResponse> notices = noticeService.findActiveNotices(member.getUuid(), NOW, type);
+
+        // then
+        assertThat(notices).hasSize(1);
+        assertThat(notices).allMatch(n -> n.type() == type);
+    }
+
     @DisplayName("모든 공지사항을 페이지네이션하여 조회한다.")
     @Test
     void findAllNotices_success() {
         // given
-        createAndSaveNotice("공지1", LocalDateTime.now(), LocalDateTime.now().plusDays(1));
-        createAndSaveNotice("공지2", LocalDateTime.now(), LocalDateTime.now().plusDays(2));
+        createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(2));
 
         // when
-        Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10);
+        Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, null);
 
         // then
         assertThat(notices.getTotalElements()).isEqualTo(2);
-        assertThat(notices.getContent()).extracting("title").contains("공지1", "공지2");
+        assertThat(notices.getContent()).extracting("title").contains("일반 공지", "이벤트 공지");
+    }
+
+    @DisplayName("특정 공지사항을 ID로 조회한다.")
+    @ParameterizedTest
+    @EnumSource(NoticeType.class)
+    void findAllNotices_byType(NoticeType type) {
+        // given
+        createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW, NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW, NOW.plusDays(2));
+
+        // when
+        Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, type);
+
+        // then
+        assertThat(notices.getTotalElements()).isEqualTo(1);
+        assertThat(notices.getContent()).allMatch(n -> n.type() == type);
     }
 
     @DisplayName("공지사항을 '오늘 하루 보지 않기'로 설정한다.")
@@ -141,7 +182,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
     void dismiss_forOneDay_success() {
         // given
         Member member = createAndSaveMember("user-dismiss");
-        Notice notice = createAndSaveNotice("숨길 공지", LocalDateTime.now(), LocalDateTime.now().plusDays(1));
+        Notice notice = createAndSaveNotice("숨길 공지", NOW, NOW.plusDays(1));
         NoticeDismissRequest request = new NoticeDismissRequest(1);
 
         // when
@@ -158,7 +199,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
     void dismiss_forever_success() {
         // given
         Member member = createAndSaveMember("user-dismiss");
-        Notice notice = createAndSaveNotice("숨길 공지", LocalDateTime.now(), LocalDateTime.now().plusDays(1));
+        Notice notice = createAndSaveNotice("숨길 공지", NOW, NOW.plusDays(1));
         NoticeDismissRequest request = new NoticeDismissRequest(null);
 
         // when
@@ -175,9 +216,9 @@ class NoticeServiceTest extends IntegrationTestSupport {
     void dismiss_updateExisting_success() {
         // given
         Member member = createAndSaveMember("user-dismiss-update");
-        Notice notice = createAndSaveNotice("숨김 연장할 공지", LocalDateTime.now(), LocalDateTime.now().plusDays(10));
+        Notice notice = createAndSaveNotice("숨김 연장할 공지", NOW, NOW.plusDays(10));
 
-        NoticeDismissal existingDismissal = createAndSaveDismissal(member, notice, LocalDateTime.now().plusDays(1));
+        NoticeDismissal existingDismissal = createAndSaveDismissal(member, notice, NOW.plusDays(1));
         NoticeDismissRequest request = new NoticeDismissRequest(7);
 
         // when
@@ -194,9 +235,9 @@ class NoticeServiceTest extends IntegrationTestSupport {
     void dismiss_updateExisting_forever_success() {
         // given
         Member member = createAndSaveMember("user-dismiss-update");
-        Notice notice = createAndSaveNotice("숨김 연장할 공지", LocalDateTime.now(), LocalDateTime.now().plusDays(10));
+        Notice notice = createAndSaveNotice("숨김 연장할 공지", NOW, NOW.plusDays(10));
 
-        NoticeDismissal existingDismissal = createAndSaveDismissal(member, notice, LocalDateTime.now().plusDays(1));
+        NoticeDismissal existingDismissal = createAndSaveDismissal(member, notice, NOW.plusDays(1));
         NoticeDismissRequest request = new NoticeDismissRequest(null);
 
         // when
@@ -212,7 +253,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
     @Test
     void updateNotice_titleAndContent_success() {
         // given
-        Notice notice = createAndSaveNotice("기존 제목", LocalDateTime.now(), LocalDateTime.now().plusDays(7));
+        Notice notice = createAndSaveNotice("기존 제목", NOW, NOW.plusDays(7));
         NoticeUpdateRequest request = NoticeUpdateRequest.builder()
                 .title("새로운 제목")
                 .content("새로운 내용")
@@ -233,7 +274,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
     void updateNotice_emptyUpdateAttrs_noChange() {
         // given
         String originalTitle = "원본 제목";
-        Notice notice = createAndSaveNotice(originalTitle, LocalDateTime.now(), LocalDateTime.now().plusDays(7));
+        Notice notice = createAndSaveNotice(originalTitle, NOW, NOW.plusDays(7));
         NoticeUpdateRequest request = NoticeUpdateRequest.builder()
                 .title("바꾸려는 제목")
                 .updateAttrs(Set.of()) // 비어있는 Set
@@ -251,7 +292,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
     @Test
     void deleteById_success() {
         // given
-        Notice notice = createAndSaveNotice("삭제될 공지", LocalDateTime.now(), LocalDateTime.now().plusDays(1));
+        Notice notice = createAndSaveNotice("삭제될 공지", NOW, NOW.plusDays(1));
 
         // when
         noticeService.deleteById(notice.getId());
@@ -262,13 +303,18 @@ class NoticeServiceTest extends IntegrationTestSupport {
     }
 
 
-    // Helper Methods
+    // --- Helper Methods ---
+
     private Member createAndSaveMember(String nickname) {
         return memberRepository.save(Member.of(nickname, "profile.jpg"));
     }
 
+    private Notice createAndSaveNotice(String title, NoticeType type, LocalDateTime start, LocalDateTime end) {
+        return noticeRepository.save(Notice.of(title, "내용", type, null, 1, start, end));
+    }
+
     private Notice createAndSaveNotice(String title, LocalDateTime start, LocalDateTime end) {
-        return noticeRepository.save(Notice.of(title, "내용", null, 1, start, end));
+        return noticeRepository.save(Notice.of(title, "내용", NoticeType.GENERAL, null, 1, start, end));
     }
 
     private NoticeDismissal createAndSaveDismissal(Member member, Notice notice, LocalDateTime dismissUntil) {
@@ -281,8 +327,9 @@ class NoticeServiceTest extends IntegrationTestSupport {
                 .content(content)
                 .image(image)
                 .priority(1)
-                .startAt(LocalDateTime.now().minusDays(1))
-                .endAt(LocalDateTime.now().plusDays(7))
+                .startAt(NOW.minusDays(1))
+                .endAt(NOW.plusDays(7))
                 .build();
     }
+
 }
