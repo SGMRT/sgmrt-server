@@ -10,24 +10,24 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class CoordinateWithTs implements Comparable<CoordinateWithTs> {
 
-    private long ts;
-    private double lat;
-    private double lng;
+    private long t;
+    private double y;
+    private double x;
 
     public static List<CoordinateWithTs> toCoordinatesWithTsList(List<Telemetry> telemetries) {
         return telemetries.stream()
                 .map(telemetry ->
-                        new CoordinateWithTs(telemetry.getTimeStamp(), telemetry.getLat(), telemetry.getLng()))
+                        new CoordinateWithTs(telemetry.getT(), telemetry.getY(), telemetry.getX()))
                 .collect(Collectors.toList());
     }
 
     public Coordinates toCoordinates() {
-        return new Coordinates(lat, lng);
+        return new Coordinates(y, x);
     }
 
     @Override
     public int compareTo(CoordinateWithTs c) {
-        return (int) (this.getTs() - c.getTs());
+        return (int) (this.getT() - c.getT());
     }
 
 }

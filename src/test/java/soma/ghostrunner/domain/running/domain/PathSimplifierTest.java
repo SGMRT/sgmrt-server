@@ -39,13 +39,13 @@ class PathSimplifierTest {
         List<Coordinates> coordinateDtos2 = PathSimplifier.extractEdgePoints(pts2);
 
         // then
-        assertThat(coordinateDtos1.get(0).lat()).isEqualTo(pts1.get(0).getLat());
-        assertThat(coordinateDtos1.get(0).lng()).isEqualTo(pts1.get(0).getLng());
+        assertThat(coordinateDtos1.get(0).y()).isEqualTo(pts1.get(0).getY());
+        assertThat(coordinateDtos1.get(0).x()).isEqualTo(pts1.get(0).getX());
 
-        assertThat(coordinateDtos2.get(0).lat()).isEqualTo(pts2.get(0).getLat());
-        assertThat(coordinateDtos2.get(0).lng()).isEqualTo(pts2.get(0).getLng());
-        assertThat(coordinateDtos2.get(1).lat()).isEqualTo(pts2.get(1).getLat());
-        assertThat(coordinateDtos2.get(1).lng()).isEqualTo(pts2.get(1).getLng());
+        assertThat(coordinateDtos2.get(0).y()).isEqualTo(pts2.get(0).getY());
+        assertThat(coordinateDtos2.get(0).x()).isEqualTo(pts2.get(0).getX());
+        assertThat(coordinateDtos2.get(1).y()).isEqualTo(pts2.get(1).getY());
+        assertThat(coordinateDtos2.get(1).x()).isEqualTo(pts2.get(1).getX());
     }
 
     @DisplayName("data7.jsonl을 List<CoordinateDto>로 변환하고 RDP 알고리즘을 적용한다. 적용 후 해상도 줄인 데이터는 뛴 순서대로 정렬된다.")
@@ -69,7 +69,7 @@ class PathSimplifierTest {
         List<Integer> simplifiedOrders = new ArrayList<>();
         for (int i = 0; i < simplified.size(); i++) {
             for (int j = 0; j < original.size(); j++) {
-                if (simplified.get(i).lat() == original.get(j).getLat() && simplified.get(i).lng() == original.get(j).getLng()) {
+                if (simplified.get(i).y() == original.get(j).getY() && simplified.get(i).x() == original.get(j).getX()) {
                     simplifiedOrders.add(j);
                 }
             }
@@ -100,13 +100,13 @@ class PathSimplifierTest {
 
                 JsonNode node = MAPPER.readTree(line);
 
-                // 기본 필드명: lat, lng
-                JsonNode tsNode = node.get("timeStamp");
-                JsonNode latNode = node.get("lat");
-                JsonNode lngNode = node.get("lng");
+                // 기본 필드명: y, x
+                JsonNode tsNode = node.get("t");
+                JsonNode latNode = node.get("y");
+                JsonNode lngNode = node.get("x");
 
                 if (tsNode == null || latNode == null || lngNode == null) {
-                    throw new IllegalArgumentException("JSONL 파싱 실패: line " + lineNo + "에 lat/lng가 없습니다. 내용=" + line);
+                    throw new IllegalArgumentException("JSONL 파싱 실패: line " + lineNo + "에 y/lng가 없습니다. 내용=" + line);
                 }
 
                 long ts = tsNode.asLong();
@@ -145,7 +145,7 @@ class PathSimplifierTest {
     @Test
     @DisplayName("3개씩 묶어 평균 후 반환한다 (불완전 꼬리(2개 이하는) 버림)")
     void resample_averageByTriplets_dropsTail() {
-        // (lat, lng) = (0,0), (3,3), (6,6) → 평균 (2,2)
+        // (y, x) = (0,0), (3,3), (6,6) → 평균 (2,2)
         List<CoordinateWithTs> in = new ArrayList<>();
         in.add(pt(0.0, 0.0, 1000));
         in.add(pt(3.0, 3.0, 2000));
@@ -208,8 +208,8 @@ class PathSimplifierTest {
     }
 
     private static void assertLatLngAlmostEquals(double expLat, double expLng, Coordinates actual, double eps) {
-        assertEquals(expLat, actual.lat(), eps, "lat mismatch");
-        assertEquals(expLng, actual.lng(), eps, "lng mismatch");
+        assertEquals(expLat, actual.y(), eps, "y mismatch");
+        assertEquals(expLng, actual.x(), eps, "x mismatch");
     }
 
 }

@@ -74,8 +74,8 @@ public interface RunningApplicationMapper {
         Double elevationAverage = processedTelemetry.avgElevation();
         Double elevationGain = createRunCommand.getRecord().getElevationGain();
         Double elevationLoss = createRunCommand.getRecord().getElevationLoss();
-        Double startLat = processedTelemetry.startPoint().lat();
-        Double startLng = processedTelemetry.startPoint().lng();
+        Double startLat = processedTelemetry.startPoint().y();
+        Double startLng = processedTelemetry.startPoint().x();
 
         String pathDataSavedUrl = runningDataUrlsDto.getSimplifiedPathSavedUrl();
         String checkpointUrl = runningDataUrlsDto.getCheckpointUrl();

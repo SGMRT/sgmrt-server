@@ -47,10 +47,10 @@ public class TelemetryProcessor {
                 relativeTelemetries.add(telemetry);
 
                 // 최고/최저 속도 계산
-                highestPace = Math.max(highestPace, telemetry.getPace());
-                lowestPace = Math.min(lowestPace, telemetry.getPace());
+                highestPace = Math.max(highestPace, telemetry.getP());
+                lowestPace = Math.min(lowestPace, telemetry.getP());
 
-                totalElevation = totalElevation.add(BigDecimal.valueOf(telemetry.getAlt()));
+                totalElevation = totalElevation.add(BigDecimal.valueOf(telemetry.getE()));
             }
         } catch (IOException exception) {
             throw new TelemetryCalculationException(ErrorCode.SERVICE_UNAVAILABLE, "시계열 좌표를 가공하는 중 에러가 발생했습니다.");
@@ -61,13 +61,13 @@ public class TelemetryProcessor {
         }
 
         // 평균 상대 고도 계산
-        BigDecimal initialElevation = BigDecimal.valueOf(relativeTelemetries.get(0).getAlt());
+        BigDecimal initialElevation = BigDecimal.valueOf(relativeTelemetries.get(0).getE());
         BigDecimal averageElevation = totalElevation.divide(BigDecimal.valueOf(relativeTelemetries.size()), 2, BigDecimal.ROUND_HALF_UP);
         averageElevation = averageElevation.subtract(initialElevation);
 
         return new TelemetryStatistics(
                 relativeTelemetries,
-                new Coordinates(relativeTelemetries.get(0).getLat(), relativeTelemetries.get(0).getLng()),
+                new Coordinates(relativeTelemetries.get(0).getY(), relativeTelemetries.get(0).getX()),
                 highestPace,
                 lowestPace,
                 averageElevation.doubleValue()
@@ -75,8 +75,8 @@ public class TelemetryProcessor {
     }
 
     private void verifyMinusValue(Telemetry telemetry) {
-        if (telemetry.getPace() < 0 || telemetry.getBpm() < 0
-                || telemetry.getCadence() < 0 || telemetry.getDist() < 0) {
+        if (telemetry.getP() < 0 || telemetry.getB() < 0
+                || telemetry.getC() < 0 || telemetry.getD() < 0) {
             throw new InvalidRunningException(ErrorCode.INVALID_REQUEST_VALUE, "마이너스 값이 포함되어 있습니다.");
         }
     }
