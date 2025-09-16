@@ -14,7 +14,6 @@ spring:
       port: 6379
       ssl:
         enabled: true
-
   jpa:
     hibernate:
       ddl-auto: validate
