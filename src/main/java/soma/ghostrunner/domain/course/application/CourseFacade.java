@@ -70,7 +70,7 @@ public class CourseFacade {
 
     @Transactional(readOnly = true)
     public CourseRankingResponse findCourseRankingDetail(Long courseId, String memberUuid) {
-        Running running = runningQueryService.findBestPublicRunForCourse(courseId, memberUuid);
+        Running running = runningQueryService.findBestPublicRunForCourse(courseId, memberUuid).orElseThrow(RunningNotFoundException::new);
         Integer ranking = runningQueryService.findPublicRankForCourse(courseId, running);
         return courseMapper.toRankingResponse(running, ranking);
     }
@@ -110,12 +110,9 @@ public class CourseFacade {
     }
 
     private CourseGhostResponse getGhostResponse(Long courseId, String viewerUuid) {
-        try {
-            return runningApiMapper.toGhostResponse(
-                    runningQueryService.findBestPublicRunForCourse(courseId, viewerUuid));
-        } catch (RunningNotFoundException e) {
-            return null;
-        }
+        return runningQueryService.findBestPublicRunForCourse(courseId, viewerUuid)
+                .map(runningApiMapper::toGhostResponse)
+                .orElse(null);
     }
 
     private String getTelemetryUrlFromCourse(Course course) {

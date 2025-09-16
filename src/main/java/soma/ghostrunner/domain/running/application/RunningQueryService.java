@@ -20,7 +20,6 @@ import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
@@ -120,9 +119,8 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
     }
 
-    public Running findBestPublicRunForCourse(Long courseId, String memberUuid) {
-        return runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberUuid)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.COURSE_RUN_NOT_FOUND, courseId));
+    public Optional<Running> findBestPublicRunForCourse(Long courseId, String memberUuid) {
+        return runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, memberUuid);
     }
 
     public Running findRunningByRunningId(Long id) {
