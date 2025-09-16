@@ -42,13 +42,13 @@ class TelemetryProcessorTest extends IntegrationTestSupport {
 
         // then
         for (int i = 0; i < telemetryList.size(); i++) {
-            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getTimeStamp()).isEqualTo(i*5);
-            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getLat()).isEqualTo(telemetryList.get(i).getLat());
-            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getLng()).isEqualTo(telemetryList.get(i).getLng());
+            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getT()).isEqualTo(i*5);
+            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getY()).isEqualTo(telemetryList.get(i).getY());
+            Assertions.assertThat(processedTelemetry.relativeTelemetries().get(i).getX()).isEqualTo(telemetryList.get(i).getX());
         }
 
-        Assertions.assertThat(processedTelemetry.startPoint().lat()).isEqualTo(37.5665);
-        Assertions.assertThat(processedTelemetry.startPoint().lng()).isEqualTo(126.9780);
+        Assertions.assertThat(processedTelemetry.startPoint().y()).isEqualTo(37.5665);
+        Assertions.assertThat(processedTelemetry.startPoint().x()).isEqualTo(126.9780);
 
         Assertions.assertThat(processedTelemetry.lowestPace()).isEqualTo(5.0);
         Assertions.assertThat(processedTelemetry.highestPace()).isEqualTo(14.0);

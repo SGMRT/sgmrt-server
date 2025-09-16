@@ -9,18 +9,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class Telemetry {
 
-    private Long timeStamp;
-    private Double lat;
-    private Double lng;
-    private Double dist;
-    private Double pace;
-    private Double alt;
-    private Integer cadence;
-    private Integer bpm;
-    private Boolean isRunning;
+    private Long t;     // timestamp
+    private Double y;       // 위도
+    private Double x;       // 경도
+    private Double d;       // 거리
+    private Double p;       // 페이스
+    private Double e;       // 고도
+    private Integer c;      // 케이던스
+    private Integer b;      // BPM
+    private Boolean r;      // 러닝 유무
 
     public void calculateRelativeTimeStamp(Long startedAt) {
-        this.timeStamp = this.timeStamp - startedAt;
+        this.t = this.t - startedAt;
     }
 
 }

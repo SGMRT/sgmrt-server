@@ -62,12 +62,12 @@ public class PathSimplifier {
     // 점 - 선분 거리 계산
     private static double perpendicularDistanceMeters(CoordinateWithTs p, CoordinateWithTs a, CoordinateWithTs b) {
         // 같은 점(선분 길이 0) 처리
-        if (a.getLat() == b.getLat() && a.getLng() == b.getLng()) {
+        if (a.getY() == b.getY() && a.getX() == b.getX()) {
             return haversineMeters(p, a);
         }
 
         // 기준 위도(지역)로 간단한 평면 근사
-        double refLat = Math.toRadians((a.getLat() + b.getLat()) * 0.5);
+        double refLat = Math.toRadians((a.getY() + b.getY()) * 0.5);
 
         // 위도/경도를 (x: 동서, y: 남북) 미터 좌표로 변환
         Vec2 A = toLocalMeters(a, refLat);
@@ -88,8 +88,8 @@ public class PathSimplifier {
         double metersPerDegLat = 111_132.0;
         double metersPerDegLon = 111_320.0 * Math.cos(refLatRad);
 
-        double x = c.getLng() * metersPerDegLon;
-        double y = c.getLat() * metersPerDegLat;
+        double x = c.getX() * metersPerDegLon;
+        double y = c.getY() * metersPerDegLat;
         return new Vec2(x, y);
     }
 
@@ -107,9 +107,9 @@ public class PathSimplifier {
     private static List<CoordinateWithTs> averageByThreeSeconds(List<CoordinateWithTs> points) {
         List<CoordinateWithTs> result = new ArrayList<>();
         for (int i = 2; i < points.size(); i += 3) {
-            double avgLat = (points.get(i - 2).getLat() + points.get(i - 1).getLat() + points.get(i).getLat()) / 3.0;
-            double avgLng = (points.get(i - 2).getLng() + points.get(i - 1).getLng() + points.get(i).getLng()) / 3.0;
-            long ts = points.get(i).getTs(); // 마지막 값 기준
+            double avgLat = (points.get(i - 2).getY() + points.get(i - 1).getY() + points.get(i).getY()) / 3.0;
+            double avgLng = (points.get(i - 2).getX() + points.get(i - 1).getX() + points.get(i).getX()) / 3.0;
+            long ts = points.get(i).getT(); // 마지막 값 기준
             result.add(new CoordinateWithTs(ts, avgLat, avgLng));
         }
         return result;
@@ -137,10 +137,10 @@ public class PathSimplifier {
     // 하버사인 : 두 점 사이 거리 계산
     private static double haversineMeters(CoordinateWithTs p1, CoordinateWithTs p2) {
         double R = 6371_000.0; // meters
-        double lat1 = Math.toRadians(p1.getLat());
-        double lat2 = Math.toRadians(p2.getLat());
+        double lat1 = Math.toRadians(p1.getY());
+        double lat2 = Math.toRadians(p2.getY());
         double dLat = lat2 - lat1;
-        double dLon = Math.toRadians(p2.getLng() - p1.getLng());
+        double dLon = Math.toRadians(p2.getX() - p1.getX());
         double a = Math.sin(dLat/2)*Math.sin(dLat/2)
                 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)*Math.sin(dLon/2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
@@ -156,7 +156,7 @@ public class PathSimplifier {
         List<Checkpoint> result = new ArrayList<>();
 
         // 첫 체크포인트의 angle은 0으로 설정 (전방으로 향함)
-        result.add(new Checkpoint(checkpoints.get(0).lat(), checkpoints.get(0).lng(), 0));
+        result.add(new Checkpoint(checkpoints.get(0).y(), checkpoints.get(0).x(), 0));
 
         // 중간 체크포인트 angle 계산
         for (int i = 1; i < checkpoints.size() - 1; i++) {
@@ -170,22 +170,22 @@ public class PathSimplifier {
 
             double relativeAngle = (bearing2 - bearing1 + 360) % 360;
 
-            result.add(new Checkpoint(current.lat(), current.lng(), (int) relativeAngle));
+            result.add(new Checkpoint(current.y(), current.x(), (int) relativeAngle));
         }
 
         // 마지막 체크포인트 angle은 null로 설정
         int lastIndex = checkpoints.size() - 1;
-        result.add(new Checkpoint(checkpoints.get(lastIndex).lat(), checkpoints.get(lastIndex).lng(), null));
+        result.add(new Checkpoint(checkpoints.get(lastIndex).y(), checkpoints.get(lastIndex).x(), null));
 
         return result;
     }
 
     /** 두 점을 이은 벡터의 방위각을 계산 */
     private static double calculateBearing(Coordinates start, Coordinates end) {
-        double startLat = Math.toRadians(start.lat());
-        double startLng = Math.toRadians(start.lng());
-        double endLat = Math.toRadians(end.lat());
-        double endLng = Math.toRadians(end.lng());
+        double startLat = Math.toRadians(start.y());
+        double startLng = Math.toRadians(start.x());
+        double endLat = Math.toRadians(end.y());
+        double endLng = Math.toRadians(end.x());
 
         double dLng = endLng - startLng;
 
