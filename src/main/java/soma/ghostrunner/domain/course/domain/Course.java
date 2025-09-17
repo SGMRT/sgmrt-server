@@ -18,7 +18,7 @@ public class Course extends BaseTimeEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
+    @JoinColumn(name = "member_id")
     private Member member;
 
     @Setter
@@ -83,4 +83,19 @@ public class Course extends BaseTimeEntity {
                 .build();
     }
 
+    public static Course of(String name, CourseProfile courseProfile, Coordinate startCoordinate,
+                            CourseSource source, Boolean isPublic, CourseDataUrls courseDataUrls) {
+        return Course.builder()
+                .name(name)
+                .courseProfile(courseProfile)
+                .startCoordinate(startCoordinate)
+                .source(source)
+                .isPublic(isPublic)
+                .courseDataUrls(courseDataUrls)
+                .build();
+    }
+
+    public String getOfficialTelemetryUrl() {
+        return courseDataUrls.getRouteUrl();
+    }
 }
