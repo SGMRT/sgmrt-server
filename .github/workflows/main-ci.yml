@@ -1,0 +1,56 @@
+name: main 브랜치 CI 스크립트
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  testing-stage:
+    name: Perform Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '21'
+          cache: gradle
+
+      # github actions cache로부터 의존성 및 빌드 캐시 기져옴
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+        shell: bash
+
+      # 테스트 실행
+      - name: Run tests
+        run: ./gradlew test
+        shell: bash
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: ${{ github.workspace }}/build/test-results/**/*.xml
+
+      - name: JUnit Report Action
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: ${{ github.workspace }}/build/test-results/**/*.xml
