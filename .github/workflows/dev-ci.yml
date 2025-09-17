@@ -26,6 +26,11 @@ jobs:
           java-version: '21'
           cache: gradle
 
+      - name: read secrets
+        run: echo "$FIREBASE_PRIVATE_KEY_JSON" > src/main/resources/firebase-private-key.json
+        env:
+          FIREBASE_PRIVATE_KEY_JSON: ${{ secrets.FIREBASE_PRIVATE_KEY_JSON }}
+
       # github actions cache로부터 의존성 및 빌드 캐시 기져옴
       - name: Cache Gradle packages
         uses: actions/cache@v3
