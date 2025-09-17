@@ -23,4 +23,8 @@ public class Telemetry {
         this.t = this.t - startedAt;
     }
 
+    public void setT(Long t) {
+        this.t = t;
+    }
+
 }

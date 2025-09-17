@@ -1,10 +1,12 @@
 package soma.ghostrunner.domain.running.api;
 
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import jakarta.validation.constraints.*;
+import lombok.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.*;
@@ -28,9 +30,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RunningApi {
 
+    private final RunningApiMapper mapper;
+
     private final RunningQueryService runningQueryService;
     private final RunningCommandService runningCommandService;
-    private final RunningApiMapper mapper;
     private final PacemakerService paceMakerService;
 
     @GetMapping("/")

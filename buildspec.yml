@@ -20,6 +20,8 @@ phases:
 artifacts:
   files:
     - app.jar
+    - .platform/**/*
+  discard-paths: no
 
 cache:
   paths:
