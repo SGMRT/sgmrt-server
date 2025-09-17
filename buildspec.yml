@@ -14,7 +14,7 @@ phases:
       - echo "$FIREBASE_PRIVATE_KEY_JSON" > src/main/resources/firebase-private-key.json
   build:
     commands:
-      - ./gradlew build -Dspring.profiles.active=dev
+      - ./gradlew build
       - mv build/libs/*.jar app.jar
 
 artifacts:
