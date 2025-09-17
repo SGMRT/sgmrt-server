@@ -11,7 +11,7 @@ public class HttpLogger {
 
     public void log(ContentCachingRequestWrapper request, ContentCachingResponseWrapper response, double elapsedTime) {
         HttpLogMessage logMessage = HttpLogMessage.of(request, response, elapsedTime);
-//        log.info(logMessage.toPrettierLog());
+        log.info(logMessage.toPrettierLog());
     }
 
 }
