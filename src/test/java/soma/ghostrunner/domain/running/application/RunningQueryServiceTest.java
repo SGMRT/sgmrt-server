@@ -402,7 +402,7 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.saveAll(List.of(running1, running2, running3));
 
         // when
-        Running firstRunning = runningQueryService.findFirstRunning(course.getId());
+        Running firstRunning = runningQueryService.findFirstRunning(course.getId()).orElseThrow();
 
         // then
         assertThat(firstRunning.getRunningName()).isEqualTo(running1.getRunningName());
