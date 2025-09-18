@@ -54,7 +54,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
     void setUp() {
         member = Member.of("카리나", "profile-url");
         memberRepository.save(member);
-        pushToken = new PushToken(member, "expo-test-token");
+        pushToken = new PushToken(member, "ExponentPushToken[xxxx]");
         pushTokenRepository.save(pushToken);
     }
 
@@ -168,7 +168,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
     @Test
     void saveMemberPushToken_newToken() {
         // given
-        String newPushToken = "expo-push-token-new";
+        String newPushToken = "ExponentPushToken[yyyy]";
 
         // when
         notificationService.saveMemberPushToken(member.getUuid(), newPushToken);
@@ -193,12 +193,24 @@ class NotificationServiceTest extends IntegrationTestSupport {
         assertThat(afterCount).isEqualTo(initialCount);
     }
 
+    @DisplayName("푸쉬 토큰 형식이 Expo Push Token이 아니면 예외를 발생시킨다.")
+    @Test
+    void saveMemberPushToken_invalidFormat() {
+        // given
+        String invalidPushToken = "i-am-invalid";
+
+        // when & then
+        assertThatThrownBy(() -> notificationService.saveMemberPushToken(member.getUuid(), invalidPushToken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("올바른 Push Token 방식이 아닙니다");
+    }
+
     @DisplayName("존재하지 않는 회원에 포쉬 토큰 저장 시 예외를 발생시킨다.")
     @Test
     void saveMemberPushToken_memberNotFound() {
         // given
-        String nonExistentUuid = "i-dont-exist-uuid";
-        String newPushToken = "expo-push-token-new";
+        String nonExistentUuid = "not-found-member-uuid";
+        String newPushToken = "ExponentPushToken[yyyy]";
 
         // when & then
         assertThatThrownBy(() -> notificationService.saveMemberPushToken(nonExistentUuid, newPushToken))
