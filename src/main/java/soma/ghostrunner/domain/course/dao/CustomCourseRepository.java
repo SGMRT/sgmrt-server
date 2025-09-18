@@ -10,8 +10,6 @@ import java.util.Optional;
 
 public interface CustomCourseRepository {
 
-  Optional<CourseDetailedResponse> findCourseDetailedById(Long courseId);
-
   List<Course> findCoursesWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
                                       Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort);
 

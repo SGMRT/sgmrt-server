@@ -64,35 +64,6 @@ class CourseRepositoryTest extends IntegrationTestSupport {
         assertThat(resultPage.getContent()).allMatch(Course::getIsPublic); // 공개 여부 확인
     }
 
-
-    @DisplayName("ID로 코스 상세 정보를 조회하면 공개된 러닝 기록 데이터를 집계한다")
-    @Test
-    void findCourseDetailedById_WithAggregation() {
-        // given
-        Course course = createCourse(member1, "Detailed Course", true);
-        courseRepository.save(course);
-
-        // 공개 러닝 2개, 비공개 러닝 1개 저장
-        runningRepository.save(createRunningForCourse(course, 3600L, 6.0, true)); // Public
-        runningRepository.save(createRunningForCourse(course, 1800L, 4.0, true)); // Public
-        runningRepository.save(createRunningForCourse(course, 1000L, 3.0, false)); // Private (집계 제외 대상)
-
-        // when
-        CourseDetailedResponse response = courseRepository.findCourseDetailedById(course.getId()).orElseThrow();
-
-        // then
-        assertThat(response.id()).isEqualTo(course.getId());
-        assertThat(response.name()).isEqualTo("Detailed Course");
-
-        // 집계 데이터 확인
-        // (3600 + 1800) / 2 = 2700
-        assertThat(response.averageCompletionTime()).isEqualTo(2700);
-        // (6.0 + 4.0) / 2 = 5.0
-        assertThat(response.averageFinisherPace()).isEqualTo(5);
-        // public 러닝 중 최소 페이스
-        assertThat(response.lowestFinisherPace()).isEqualTo(4);
-    }
-
     @DisplayName("거리 순으로 코스를 정렬하여 조회한다")
     @Test
     void findCoursesWithFilters_SortByDistance() {

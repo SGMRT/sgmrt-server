@@ -16,14 +16,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class HttpLogMessage {
 
-    private static final List<String> LOGGABLE_URIS = List.of("/v1/runs", "/v1/courses", "/v1/members", "/v1/auth");
+    private static final List<String> LOGGABLE_URIS = List.of("/v1/runs", "/v1/courses", "/v1/members", "/v1/auth", "/v1/notices");
     private static final List<String> LOGGABLE_HEADERS = List.of("Host", "X-Forwarded-For", "Origin", "Content-Type", "Referer", "User-Agent");
     private static final int MAX_BODY_SIZE = 4096;
 
     private static final String X_FORWARDED_FOR = "X-Forwarded-For";
     private static final String TRUNCATED_MESSAGE = "... (truncated)";
     private static final String EMPTY_BODY_MESSAGE = "EMPTY";
-    private static final String CANNOT_LOGGABLE_URI_MESSAGE = "This uri request cannot log..";
+    private static final String URI_NOT_LOGGABLE_MESSAGE = "... (Not logged for this URI)";
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -60,8 +60,8 @@ public class HttpLogMessage {
         String requestUri = request.getRequestURI();
         boolean isLoggableUri = isLoggableUri(requestUri);
 
-        String reqBody = isLoggableUri ? truncateBody(request.getContentAsByteArray()) : CANNOT_LOGGABLE_URI_MESSAGE;
-        String resBody = isLoggableUri ? truncateBody(response.getContentAsByteArray()) : CANNOT_LOGGABLE_URI_MESSAGE;
+        String reqBody = isLoggableUri ? truncateBody(request.getContentAsByteArray()) : URI_NOT_LOGGABLE_MESSAGE;
+        String resBody = isLoggableUri ? truncateBody(response.getContentAsByteArray()) : URI_NOT_LOGGABLE_MESSAGE;
 
         return HttpLogMessage.builder()
                 .httpMethod(request.getMethod())
@@ -131,7 +131,7 @@ public class HttpLogMessage {
     }
 
     private String toPrettierJson(Object object, String originalText) {
-        if (object instanceof String s && (s.equals(CANNOT_LOGGABLE_URI_MESSAGE) || s.equals(EMPTY_BODY_MESSAGE))) {
+        if (object instanceof String s && (s.equals(URI_NOT_LOGGABLE_MESSAGE) || s.equals(EMPTY_BODY_MESSAGE))) {
             return s;
         }
         try {

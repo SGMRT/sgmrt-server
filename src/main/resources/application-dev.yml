@@ -44,7 +44,6 @@ s3:
   bucket: ${AWS_BUCKET}
   running-directory: ${RUNNING_DIRECTORY}
   course-directory: ${COURSE_DIRECTORY}
-  course-checkpoint-directory: ${COURSE_CHECKPOINT_DIRECTORY}
   member-directory: ${MEMBER_DIRECTORY}
   notice-directory: ${NOTICE_DIRECTORY}
 

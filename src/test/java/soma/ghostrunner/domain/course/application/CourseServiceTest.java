@@ -4,6 +4,9 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
@@ -20,7 +23,9 @@ import soma.ghostrunner.domain.member.domain.Member;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static soma.ghostrunner.domain.course.dto.request.CoursePatchRequest.UpdatedAttr.*;
 
 
@@ -136,6 +141,34 @@ class CourseServiceTest extends IntegrationTestSupport {
 //                .extracting("name")
 //                .containsExactlyInAnyOrder(courseEast.getName(), courseWest.getName());
     }
+
+    @DisplayName("본초자오선 기준으로 위경도가 이루는 4분면 어디에서도 코스를 조회할 수 있다.")
+    @ParameterizedTest(name = "[{index}] {0}에서 코스를 검색하면 올바른 코스가 조회된다.")
+    @MethodSource("locationQuadrants")
+    void searchCourses_quadrants(String name, double lat, double lng) {
+        // given
+        Course courseNearby = createPublicCourse("근처 코스", lat + 0.001, lng + 0.001);
+        Course courseFar = createPublicCourse("먼 코스", lat + 1.0, lng + 1.0);
+        courseRepository.saveAll(List.of(courseNearby, courseFar));
+
+        // when
+        List<CoursePreviewDto> courses = courseService.searchCourses(lat, lng, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+
+        // then
+        assertThat(courses).hasSize(1)
+                .extracting("name")
+                .containsExactly(courseNearby.getName());
+    }
+
+    private static Stream<Arguments> locationQuadrants() {
+        return Stream.of(
+                Arguments.of("북동쪽 (1사분면)", 37.5, 127.5),
+                Arguments.of("북서쪽 (2사분면)", 37.5, -127.5),
+                Arguments.of("남서쪽 (3사분면)", -36.5, 127.5),
+                Arguments.of("남동쪽 (4사분면)", -36.5, -127.5)
+        );
+    }
+
 
     @DisplayName("코스의 id를 기반으로 코스 상세 정보를 조회할 수 있다.")
     @Test

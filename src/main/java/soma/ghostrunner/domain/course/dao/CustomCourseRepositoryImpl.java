@@ -27,42 +27,6 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
   private final JPAQueryFactory queryFactory;
 
   @Override
-  // todo 이거 + CourseService.getCourse() 삭제해버릴지 고민
-  public Optional<CourseDetailedResponse> findCourseDetailedById(Long courseId) {
-    return Optional.ofNullable(
-        queryFactory
-            .select(Projections.constructor(CourseDetailedResponse.class,
-                course.id,
-                course.name,
-                course.source,
-                Expressions.nullExpression(String.class), // course join running에서는 group by가 이뤄지므로 telemetry url을 조회할 수 없음 (새로운 쿼리 필요)
-                course.courseDataUrls.checkpointsUrl,
-                course.courseProfile.distance.castToNum(Integer.class),
-                course.courseProfile.elevationAverage.castToNum(Integer.class),
-                course.courseProfile.elevationGain.castToNum(Integer.class),
-                course.courseProfile.elevationLoss.castToNum(Integer.class),
-                course.createdAt,
-                running.runningRecord.duration.avg().castToNum(Integer.class),
-                running.runningRecord.averagePace.avg().castToNum(Integer.class),
-                running.runningRecord.cadence.avg().castToNum(Integer.class),
-                running.runningRecord.burnedCalories.avg().castToNum(Integer.class),
-                running.runningRecord.lowestPace.min().castToNum(Integer.class),
-                running.member.id.countDistinct().castToNum(Integer.class),
-                running.id.count().castToNum(Integer.class),
-                Expressions.nullExpression(Double.class),
-                Expressions.nullExpression(Double.class),
-                Expressions.nullExpression(Double.class),
-                Expressions.nullExpression(CourseGhostResponse.class)
-            ))
-            .from(course)
-            .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
-            .where(course.id.eq(courseId))
-            .groupBy(course.id, course.name, course.courseProfile.distance, course.courseProfile.elevationGain, course.courseProfile.elevationLoss)
-            .fetchOne()
-    );
-  }
-
-  @Override
   public List<Course> findCoursesWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
                                                             Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort) {
     // todo - 코스에 딸린 러닝기록 수 반정규화해서 따로 저장해두면 굳이 Running 테이블까지 조인할 필요 없음

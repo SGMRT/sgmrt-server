@@ -128,10 +128,8 @@ public class RunningQueryService {
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, id));
     }
 
-    public Running findFirstRunning(Long courseId) {
-        return runningRepository.findFirstRunningByCourseId(courseId)
-                .orElseThrow(() -> new RunningNotFoundException(
-                        ErrorCode.ENTITY_NOT_FOUND, "코스 ID : " + courseId + "에 대한 러닝 데이터가 없습니다."));
+    public Optional<Running> findFirstRunning(Long courseId) {
+        return runningRepository.findFirstRunningByCourseId(courseId);
     }
 
     private void validateSortProperty(Pageable pageable) {

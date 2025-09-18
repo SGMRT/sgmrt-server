@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.course.application;
 
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,7 @@ import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
+import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
@@ -21,6 +23,7 @@ import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CourseFacade {
@@ -116,12 +119,17 @@ public class CourseFacade {
     }
 
     private String getTelemetryUrlFromCourse(Course course) {
-        try {
-            return runningQueryService.findFirstRunning(course.getId()).getRunningDataUrls()
-                    .getInterpolatedTelemetryUrl();
-        } catch (RunningNotFoundException e) {
-            return null;
+        if (course.getSource() == CourseSource.OFFICIAL) {
+            return course.getCourseDataUrls().getRouteUrl();
         }
+
+
+        return runningQueryService.findFirstRunning(course.getId())
+                .map(running -> running.getRunningDataUrls().getInterpolatedTelemetryUrl())
+                .orElseGet(() -> {
+                    log.warn("CourseService: No running data found for course id {}", course.getId());
+                    return null;
+                });
     }
 
 }

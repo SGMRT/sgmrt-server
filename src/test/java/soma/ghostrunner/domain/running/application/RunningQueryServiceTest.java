@@ -402,27 +402,10 @@ class RunningQueryServiceTest extends IntegrationTestSupport {
         runningRepository.saveAll(List.of(running1, running2, running3));
 
         // when
-        Running firstRunning = runningQueryService.findFirstRunning(course.getId());
+        Running firstRunning = runningQueryService.findFirstRunning(course.getId()).orElseThrow();
 
         // then
         assertThat(firstRunning.getRunningName()).isEqualTo(running1.getRunningName());
     }
 
-    @DisplayName("코스 ID를 기반으로 코스에 대한 첫 번째 러닝 데이터를 조회할 때 존재하지 않는다면 NOT_FOUND를 응답한다.")
-    @Test
-    void findFirstRunningOnNoneCourse() {
-        // given
-        Member member1 = createMember("이복둥1");
-        Member member2 = createMember("이복둥2");
-        memberRepository.saveAll(List.of(member1, member2));
-
-        Course course = createPublicCourse(member1);
-        courseRepository.save(course);
-
-        // when // then
-        assertThatThrownBy(() -> runningQueryService.findFirstRunning(course.getId()))
-                .isInstanceOf(RunningNotFoundException.class)
-                .hasMessage("코스 ID : " + course.getId() + "에 대한 러닝 데이터가 없습니다.");
-    }
-  
 }
