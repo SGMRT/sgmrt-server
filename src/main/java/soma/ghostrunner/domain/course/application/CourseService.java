@@ -61,12 +61,6 @@ public class CourseService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
-    public CourseDetailedResponse getCourse(Long courseId) {
-      return courseRepository.findCourseDetailedById(courseId)
-          .orElseThrow(() -> new CourseNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId));
-    }
-
     public Page<CourseWithMemberDetailsDto> findCoursesByMemberUuid(
             String memberUuid, Pageable pageable) {
         Page<Course> courses = courseRepository.findPublicCoursesFetchJoinMembersByMemberUuidOrderByCreatedAtDesc(memberUuid, pageable);
