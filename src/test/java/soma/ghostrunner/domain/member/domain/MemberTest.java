@@ -5,8 +5,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 class MemberTest {
 
     @DisplayName("멤버를 of()로 생성 시 필드가 올바르게 저장된다.")
@@ -20,7 +18,7 @@ class MemberTest {
         Assertions.assertThat(member.getProfilePictureUrl()).isEqualTo("프로필 사진 URL");
         Assertions.assertThat(member.getUuid()).isNotNull();
         Assertions.assertThat(member.getBioInfo()).isEqualTo(new MemberBioInfo(null, null, null, null));
-        Assertions.assertThat(member.getRoleType()).isEqualTo(RoleType.USER);
+        Assertions.assertThat(member.getRole()).isEqualTo(RoleType.USER);
     }
 
 
@@ -38,7 +36,7 @@ class MemberTest {
         Assertions.assertThat(member.getProfilePictureUrl()).isEqualTo("프로필 사진 URL");
         Assertions.assertThat(member.getUuid()).isNotNull();
         Assertions.assertThat(member.getBioInfo()).isEqualTo(new MemberBioInfo(null, null, null, null));
-        Assertions.assertThat(member.getRoleType()).isEqualTo(RoleType.USER);
+        Assertions.assertThat(member.getRole()).isEqualTo(RoleType.USER);
     }
 
     @DisplayName("멤버의 역할이 ADMIN인 경우 관리자로 판단한다.")

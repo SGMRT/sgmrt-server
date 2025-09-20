@@ -42,7 +42,7 @@ public class Member extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
-    private RoleType roleType;
+    private RoleType role;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
@@ -58,7 +58,7 @@ public class Member extends BaseTimeEntity {
         this.uuid = UUID.randomUUID().toString();
         this.bioInfo = bioInfo == null ? new MemberBioInfo(null, null, null, null) : bioInfo;
         this.lastLoginAt = lastLoginAt;
-        this.roleType = RoleType.USER;
+        this.role = RoleType.USER;
     }
 
     public static Member of(String nickname, String profilePictureUrl) {
@@ -118,7 +118,7 @@ public class Member extends BaseTimeEntity {
     }
 
     public boolean isAdmin() {
-        return this.roleType == RoleType.ADMIN;
+        return this.role == RoleType.ADMIN;
     }
 
 }
