@@ -41,7 +41,7 @@ public class Member extends BaseTimeEntity {
     private LocalDateTime lastLoginAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role_type", nullable = false)
+    @Column(name = "role", nullable = false)
     private RoleType roleType;
 
     @Column(name = "deleted_at")
