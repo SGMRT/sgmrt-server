@@ -58,7 +58,8 @@ class PathSimplifierTest {
         List<Coordinates> simplified = PathSimplifier.extractEdgePoints(original);
 
         // then
-        // 포인트 수가 줄었는지(줄지 않을 수도 있으니 안전하게 체크)
+        System.out.println("original: " + original.size());
+        System.out.println("simplified: " + simplified.size());
         assertThat(simplified.size()).isLessThanOrEqualTo(original.size());
 
         // 첫/끝점 보존

@@ -114,6 +114,9 @@ dependencies {
 	// Expo Push SDK
 	implementation 'com.github.hlspablo:expo-server-sdk-java:v3.1.4'
 
+	// UTM
+	implementation 'org.locationtech.proj4j:proj4j:1.4.1'
+	implementation 'org.locationtech.proj4j:proj4j-epsg:1.4.1'
 }
 
 
