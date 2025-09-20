@@ -198,10 +198,7 @@ public class PathSimplifier {
             heap.add(new VWHeapNode(area, i - 1, i, i + 1));
         }
 
-        boolean[] isActive = new boolean[utmPoints.size()];     // 활성화 정보
-        Arrays.fill(isActive, true);
-
-        List<VWLinkedNodeInfo> linkedInfos = VWLinkedNodeInfo.toList(points.size());     // 연결 정보
+        List<VWLNode> vwNodes = VWLNode.toList(points.size());     // 연결 정보
 
         while (!heap.isEmpty()) {
             VWHeapNode point = heap.poll();     // 가장 넓이가 적은 삼각형
@@ -210,31 +207,31 @@ public class PathSimplifier {
             int mid = point.midCoordinatesIdx;
             int end = point.endCoordinatesIdx;
 
-            if (!isActive[mid] || linkedInfos.get(mid).prevIdx != start || linkedInfos.get(mid).nextIdx != end) {       // 비활성화 점, 변경된 점 스킵
+            if (!vwNodes.get(mid).isActive || vwNodes.get(mid).prevIdx != start || vwNodes.get(mid).nextIdx != end) {       // 비활성화 점, 변경된 점 스킵
                 continue;
             }
 
             if (area < VW_EPSILON_AREA) {
-                isActive[mid] = false;      // 가운데 인덱스 비활성화
-                linkedInfos.get(start).setNextIdx(linkedInfos.get(mid).nextIdx);        // 주변 노드 정보 갱신
-                linkedInfos.get(end).setPrevIdx(linkedInfos.get(mid).prevIdx);
+                vwNodes.get(mid).setActive(false);      // 가운데 인덱스 비활성화
+                vwNodes.get(start).setNextIdx(vwNodes.get(mid).nextIdx);        // 주변 노드 정보 갱신
+                vwNodes.get(end).setPrevIdx(vwNodes.get(mid).prevIdx);
 
-                if (linkedInfos.get(start).prevIdx != null) {       // 왼쪽 삼각형
+                if (vwNodes.get(start).prevIdx != null) {       // 왼쪽 삼각형
                     double leftTriangleArea = calculateTriangleArea(
-                            utmPoints.get(linkedInfos.get(start).prevIdx),
+                            utmPoints.get(vwNodes.get(start).prevIdx),
                             utmPoints.get(start),
                             utmPoints.get(end)
                     );
-                    heap.add(new VWHeapNode(leftTriangleArea, linkedInfos.get(start).prevIdx, start, end));
+                    heap.add(new VWHeapNode(leftTriangleArea, vwNodes.get(start).prevIdx, start, end));
                 }
 
-                if (linkedInfos.get(end).nextIdx != null) {       // 오른쪽 삼각형
+                if (vwNodes.get(end).nextIdx != null) {       // 오른쪽 삼각형
                     double rightTriangleArea = calculateTriangleArea(
                             utmPoints.get(start),
                             utmPoints.get(end),
-                            utmPoints.get(linkedInfos.get(end).nextIdx)
+                            utmPoints.get(vwNodes.get(end).nextIdx)
                     );
-                    heap.add(new VWHeapNode(rightTriangleArea, start, end, linkedInfos.get(end).nextIdx));
+                    heap.add(new VWHeapNode(rightTriangleArea, start, end, vwNodes.get(end).nextIdx));
                 }
             } else {
                 break;
@@ -242,8 +239,8 @@ public class PathSimplifier {
         }
 
         List<CoordinatesWithTs> coordinatesWithTsList = new ArrayList<>();
-        for (int i = 0; i < isActive.length; i++) {
-            if (isActive[i]) {
+        for (int i = 0; i < vwNodes.size(); i++) {
+            if (vwNodes.get(i).isActive) {
                 coordinatesWithTsList.add(utmPoints.get(i));
             }
         }
@@ -276,18 +273,19 @@ public class PathSimplifier {
 
     @Getter @Setter
     @AllArgsConstructor
-    private class VWLinkedNodeInfo {
+    private class VWLNode {
 
+        boolean isActive;
         Integer prevIdx;
         Integer nextIdx;
 
-        static List<VWLinkedNodeInfo> toList(int size) {
-            List<VWLinkedNodeInfo> result = new ArrayList<>();
-            result.add(new VWLinkedNodeInfo(null, 1));
+        static List<VWLNode> toList(int size) {
+            List<VWLNode> result = new ArrayList<>();
+            result.add(new VWLNode(true, null, 1));
             for (int i = 1; i < size - 1; i++) {
-                result.add(new VWLinkedNodeInfo(i - 1, i + 1));
+                result.add(new VWLNode(true, i - 1, i + 1));
             }
-            result.add(new VWLinkedNodeInfo(size - 2, null));
+            result.add(new VWLNode(true, size - 2, null));
             return result;
         }
 
