@@ -13,6 +13,7 @@ import soma.ghostrunner.domain.notice.api.dto.response.NoticeDetailedResponse;
 import soma.ghostrunner.domain.notice.api.dto.request.NoticeDismissRequest;
 import soma.ghostrunner.domain.notice.api.dto.request.NoticeUpdateRequest;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
+import soma.ghostrunner.global.common.validator.auth.AdminOnly;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.time.LocalDateTime;
@@ -55,22 +56,22 @@ public class NoticeApi {
         noticeService.dismiss(id, request, userDetails.getUserId());
     }
 
+    @AdminOnly
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Long createNotice(@ModelAttribute @Valid NoticeCreationRequest request) {
-        // todo admin만 사용 가능
         return noticeService.saveNotice(request);
     }
 
+    @AdminOnly
     @PatchMapping(value = "/{noticeId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public void updateNotice(@PathVariable("noticeId") Long id,
                              @ModelAttribute NoticeUpdateRequest request) {
-        // todo admin만 사용 가능
         noticeService.updateNotice(id, request);
     }
 
+    @AdminOnly
     @DeleteMapping("/{noticeId}")
     public void deleteNotice(@PathVariable("noticeId") Long id) {
-        // todo admin만 사용 가능
         noticeService.deleteById(id);
     }
 
