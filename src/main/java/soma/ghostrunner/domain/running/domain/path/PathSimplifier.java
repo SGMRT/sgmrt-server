@@ -2,12 +2,12 @@ package soma.ghostrunner.domain.running.domain.path;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.UtilityClass;
+import org.jetbrains.annotations.NotNull;
 import org.locationtech.proj4j.*;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 @UtilityClass
 public class PathSimplifier {
@@ -17,43 +17,54 @@ public class PathSimplifier {
     private final CoordinateReferenceSystem WGS84 = crsFactory.createFromName("epsg:4326");
 
     private static final double RDP_EPSILON_METER = 8.0;
-    private static final double TARGET_DISTANCE_M = 3.0;
+    private static final double VW_EPSILON_AREA = 4.0;
 
-    // 체크포인트 추출
-    public List<Coordinates> extractEdgePoints(List<CoordinateWithTs> points) {
+    // 체크포인트 추출 : UTM 변환 -> RDP 알고리즘
+    public List<Coordinates> extractEdgePoints(List<CoordinatesWithTs> points) {
         if (points.size() <= 2) {
-            return toCoordinateDtos(points);
+            return toCoordinates(points);
         }
 
-        List<CoordinateWithTsAndIdx> utmPoints = toUtm(points);
-        List<CoordinateWithTsAndIdx> rdpUtmPoints = rdp(utmPoints);
+        List<CoordinatesWithTs> utmPoints = toUtm(points);
+        List<CoordinateWithTsForRdp> rdpUtmPoints = rdp(CoordinateWithTsForRdp.toList(utmPoints));
 
-        List<CoordinateWithTs> out = new ArrayList<>();
-        for (CoordinateWithTsAndIdx utmPoint : rdpUtmPoints) {
+        List<CoordinatesWithTs> out = new ArrayList<>();
+        for (CoordinateWithTsForRdp utmPoint : rdpUtmPoints) {
             out.add(points.get(utmPoint.idx));
         }
 
         out.sort(Comparator.naturalOrder());
-        return toCoordinateDtos(out);
+        return toCoordinates(out);
     }
 
-    private List<Coordinates> toCoordinateDtos(List<CoordinateWithTs> points) {
+    private List<Coordinates> toCoordinates(List<CoordinatesWithTs> points) {
         return points.stream()
-                .map(CoordinateWithTs::toCoordinates)
+                .map(CoordinatesWithTs::toCoordinates)
                 .toList();
     }
 
     @Getter
     @AllArgsConstructor
-    private class CoordinateWithTsAndIdx {
-        private long t;
-        private double y;
-        private double x;
-        private int idx;
+    private class CoordinateWithTsForRdp {
+
+        long t;
+        double y;
+        double x;
+        int idx;
+
+        static List<CoordinateWithTsForRdp> toList(List<CoordinatesWithTs> points) {
+            List<CoordinateWithTsForRdp> out = new ArrayList<>();
+            for (int i = 0; i < points.size(); i++) {
+                CoordinatesWithTs point = points.get(i);
+                out.add(new CoordinateWithTsForRdp(point.getT(), point.getY(), point.getX(), i));
+            }
+            return out;
+        }
+
     }
 
-    private List<CoordinateWithTsAndIdx> toUtm(List<CoordinateWithTs> points) {
-        List<CoordinateWithTsAndIdx> out = new ArrayList<>();
+    private List<CoordinatesWithTs> toUtm(List<CoordinatesWithTs> points) {
+        List<CoordinatesWithTs> out = new ArrayList<>();
         int zone = (int) Math.floor(points.get(0).getX() / 6.0) + 31;
 
         CoordinateReferenceSystem utmCrs = createUtmCrs(zone);
@@ -61,28 +72,28 @@ public class PathSimplifier {
         CoordinateTransform transform = ctFactory.createTransform(WGS84, utmCrs);
 
         for (int i = 0; i < points.size(); i++) {
-            CoordinateWithTs point = points.get(i);
+            CoordinatesWithTs point = points.get(i);
             ProjCoordinate sourceCoordinates = new ProjCoordinate(point.getX(), point.getY());
             ProjCoordinate targetCoordinates = new ProjCoordinate();
             transform.transform(sourceCoordinates, targetCoordinates);
-            out.add(new CoordinateWithTsAndIdx(point.getT(), targetCoordinates.y, targetCoordinates.x, i));
+            out.add(new CoordinatesWithTs(point.getT(), targetCoordinates.y, targetCoordinates.x));
         }
         return out;
     }
 
-    private List<CoordinateWithTsAndIdx> rdp(List<CoordinateWithTsAndIdx> points) {
-        List<CoordinateWithTsAndIdx> out = new ArrayList<>();
+    private List<CoordinateWithTsForRdp> rdp(List<CoordinateWithTsForRdp> points) {
+        List<CoordinateWithTsForRdp> out = new ArrayList<>();
         if (points.size() < 3) {
             return points;
         }
 
-        CoordinateWithTsAndIdx start = points.get(0);
-        CoordinateWithTsAndIdx end = points.get(points.size() - 1);
+        CoordinateWithTsForRdp start = points.get(0);
+        CoordinateWithTsForRdp end = points.get(points.size() - 1);
 
         double maxDistance = 0.0;
         int index = 0;
 
-        for (int i = 1; i < points.size() - 1; i++) {
+        for (int i = 1; i < points.size() - 1; i++) {       // 양 끝점과 가장 먼 수직선분의 꼭지점 추출
             double dist = calculateVerticalDistance(points.get(i), start, end);
             if (dist > maxDistance) {
                 maxDistance = dist;
@@ -90,9 +101,9 @@ public class PathSimplifier {
             }
         }
 
-        if (maxDistance > RDP_EPSILON_METER) {
-            List<CoordinateWithTsAndIdx> leftResults = rdp(points.subList(0, index + 1));
-            List<CoordinateWithTsAndIdx> rightResults = rdp(points.subList(index, points.size()));
+        if (maxDistance > RDP_EPSILON_METER) {          // 수직선분 길이가 임계치 보다 크다면, 그대로 남기고 다시 RDP
+            List<CoordinateWithTsForRdp> leftResults = rdp(points.subList(0, index + 1));
+            List<CoordinateWithTsForRdp> rightResults = rdp(points.subList(index, points.size()));
 
             out.addAll(leftResults.subList(0, leftResults.size() - 1));
             out.addAll(rightResults);
@@ -110,7 +121,7 @@ public class PathSimplifier {
         return crsFactory.createFromParameters("UTM Zone " + zone, proj4Params);
     }
 
-    private double calculateVerticalDistance(CoordinateWithTsAndIdx target, CoordinateWithTsAndIdx start, CoordinateWithTsAndIdx end) {
+    private double calculateVerticalDistance(CoordinateWithTsForRdp target, CoordinateWithTsForRdp start, CoordinateWithTsForRdp end) {
         double dx = end.getX() - start.getX();
         double dy = end.getY() - start.getY();
 
@@ -120,61 +131,7 @@ public class PathSimplifier {
         return numerator / denominator;
     }
 
-    // 평균 보간법
-    public List<Coordinates> simplifyToRenderingTelemetries(List<CoordinateWithTs> points) {
-        if (points == null || points.isEmpty()) return List.of();
-
-        List<CoordinateWithTs> averaged = averageByThreeSeconds(points);
-        List<CoordinateWithTs> filtered = filterByDistanceMeters(averaged, TARGET_DISTANCE_M);
-
-        return toCoordinateDtos(filtered);
-    }
-
-    // 3초 평균
-    private List<CoordinateWithTs> averageByThreeSeconds(List<CoordinateWithTs> points) {
-        List<CoordinateWithTs> result = new ArrayList<>();
-        for (int i = 2; i < points.size(); i += 3) {
-            double avgLat = (points.get(i - 2).getY() + points.get(i - 1).getY() + points.get(i).getY()) / 3.0;
-            double avgLng = (points.get(i - 2).getX() + points.get(i - 1).getX() + points.get(i).getX()) / 3.0;
-            long ts = points.get(i).getT(); // 마지막 값 기준
-            result.add(new CoordinateWithTs(ts, avgLat, avgLng));
-        }
-        return result;
-    }
-
-    // 3m 이상 채택
-    private List<CoordinateWithTs> filterByDistanceMeters(List<CoordinateWithTs> points, double targetDistance) {
-        if (points == null || points.isEmpty()) return List.of();
-
-        List<CoordinateWithTs> filtered = new ArrayList<>();
-        CoordinateWithTs last = points.get(0);
-        filtered.add(last);
-
-        for (int i = 1; i < points.size(); i++) {
-            CoordinateWithTs p = points.get(i);
-            double d = haversineMeters(last, p); 
-            if (d >= targetDistance) {
-                filtered.add(p);
-                last = p;
-            }
-        }
-        return filtered;
-    }
-
-    // 하버사인 : 두 점 사이 거리 계산
-    private static double haversineMeters(CoordinateWithTs p1, CoordinateWithTs p2) {
-        double R = 6371_000.0; // meters
-        double lat1 = Math.toRadians(p1.getY());
-        double lat2 = Math.toRadians(p2.getY());
-        double dLat = lat2 - lat1;
-        double dLon = Math.toRadians(p2.getX() - p1.getX());
-        double a = Math.sin(dLat/2)*Math.sin(dLat/2)
-                + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)*Math.sin(dLon/2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-    }
-
-    /** checkpoint 각 점마다, 다음 점으로 이동할 때의 각도 차이인 angle 필드를 추가하여 반환 */
+    // 체크포인트의 각도 계산
     public List<Checkpoint> calculateAngles(List<Coordinates> checkpoints) {
         if (checkpoints == null || checkpoints.size() < 2) {
             return new ArrayList<>();
@@ -223,12 +180,117 @@ public class PathSimplifier {
         return (Math.toDegrees(Math.atan2(y, x)) + 360) % 360;
     }
 
-    private record Vec2(double x, double y) {
-        Vec2 minus(Vec2 o) { return new Vec2(x - o.x, y - o.y); }
-        Vec2 plus(Vec2 o)  { return new Vec2(x + o.x, y + o.y); }
-        Vec2 scale(double s){ return new Vec2(x * s, y * s); }
-        double dot(Vec2 o) { return x * o.x + y * o.y; }
-        double length()    { return Math.hypot(x, y); }
+    // 렌더링용 가공 : 최소힙 기반 VW 알고리즘 사용
+    public List<Coordinates> simplifyToRenderingTelemetries(List<CoordinatesWithTs> points) {
+        if (points.size() < 3) {
+            return toCoordinates(points);
+        }
+
+        List<CoordinatesWithTs> utmPoints = toUtm(points);
+        List<CoordinatesWithTs> coordinatesWithTsList = visValingamWhyatt(points, utmPoints);
+        return toCoordinates(coordinatesWithTsList);
+    }
+
+    private List<CoordinatesWithTs> visValingamWhyatt(List<CoordinatesWithTs> points, List<CoordinatesWithTs> utmPoints) {
+        PriorityQueue<VWHeapNode> heap = new PriorityQueue<>();
+        for (int i = 1; i < utmPoints.size()-1; i++) {
+            double area = calculateTriangleArea(utmPoints.get(i-1), utmPoints.get(i), utmPoints.get(i+1));
+            heap.add(new VWHeapNode(area, i - 1, i, i + 1));
+        }
+
+        boolean[] isActive = new boolean[utmPoints.size()];     // 활성화 정보
+        Arrays.fill(isActive, true);
+
+        List<VWLinkedNodeInfo> linkedInfos = VWLinkedNodeInfo.toList(points.size());     // 연결 정보
+
+        while (!heap.isEmpty()) {
+            VWHeapNode point = heap.poll();     // 가장 넓이가 적은 삼각형
+            double area = point.getArea();
+            int start = point.startCoordinatesIdx;
+            int mid = point.midCoordinatesIdx;
+            int end = point.endCoordinatesIdx;
+
+            if (!isActive[mid] || linkedInfos.get(mid).prevIdx != start || linkedInfos.get(mid).nextIdx != end) {       // 비활성화 점, 변경된 점 스킵
+                continue;
+            }
+
+            if (area < VW_EPSILON_AREA) {
+                isActive[mid] = false;      // 가운데 인덱스 비활성화
+                linkedInfos.get(start).setNextIdx(linkedInfos.get(mid).nextIdx);        // 주변 노드 정보 갱신
+                linkedInfos.get(end).setPrevIdx(linkedInfos.get(mid).prevIdx);
+
+                if (linkedInfos.get(start).prevIdx != null) {       // 왼쪽 삼각형
+                    double leftTriangleArea = calculateTriangleArea(
+                            utmPoints.get(linkedInfos.get(start).prevIdx),
+                            utmPoints.get(start),
+                            utmPoints.get(end)
+                    );
+                    heap.add(new VWHeapNode(leftTriangleArea, linkedInfos.get(start).prevIdx, start, end));
+                }
+
+                if (linkedInfos.get(end).nextIdx != null) {       // 오른쪽 삼각형
+                    double rightTriangleArea = calculateTriangleArea(
+                            utmPoints.get(start),
+                            utmPoints.get(end),
+                            utmPoints.get(linkedInfos.get(end).nextIdx)
+                    );
+                    heap.add(new VWHeapNode(rightTriangleArea, start, end, linkedInfos.get(end).nextIdx));
+                }
+            } else {
+                break;
+            }
+        }
+
+        List<CoordinatesWithTs> coordinatesWithTsList = new ArrayList<>();
+        for (int i = 0; i < isActive.length; i++) {
+            if (isActive[i]) {
+                coordinatesWithTsList.add(utmPoints.get(i));
+            }
+        }
+        return coordinatesWithTsList;
+    }
+
+    private Double calculateTriangleArea(CoordinatesWithTs p1, CoordinatesWithTs p2, CoordinatesWithTs p3) {
+        return 0.5 * Math.abs(
+                p1.getY() * (p2.getX() - p3.getX()) +
+                        p2.getY() * (p3.getX() - p1.getX()) +
+                        p3.getY() * (p1.getX() - p2.getX())
+        );
+    }
+
+    @Getter @Setter
+    @AllArgsConstructor
+    private class VWHeapNode implements Comparable<VWHeapNode> {
+
+        double area;
+        int startCoordinatesIdx;
+        int midCoordinatesIdx;
+        int endCoordinatesIdx;
+
+        @Override
+        public int compareTo(@NotNull VWHeapNode other) {
+            return Double.compare(this.area, other.area);
+        }
+
+    }
+
+    @Getter @Setter
+    @AllArgsConstructor
+    private class VWLinkedNodeInfo {
+
+        Integer prevIdx;
+        Integer nextIdx;
+
+        static List<VWLinkedNodeInfo> toList(int size) {
+            List<VWLinkedNodeInfo> result = new ArrayList<>();
+            result.add(new VWLinkedNodeInfo(null, 1));
+            for (int i = 1; i < size - 1; i++) {
+                result.add(new VWLinkedNodeInfo(i - 1, i + 1));
+            }
+            result.add(new VWLinkedNodeInfo(size - 2, null));
+            return result;
+        }
+
     }
 
 }
