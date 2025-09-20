@@ -44,7 +44,7 @@ class MemberTest {
     void isAdminTrue() {
         // given
         Member member = Member.of("정상수", "프로필 사진 URL");
-        ReflectionTestUtils.setField(member, "roleType", RoleType.ADMIN);
+        ReflectionTestUtils.setField(member, "role", RoleType.ADMIN);
 
         // when // then
         Assertions.assertThat(member.isAdmin()).isTrue();
