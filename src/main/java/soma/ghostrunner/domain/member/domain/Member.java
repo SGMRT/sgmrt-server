@@ -112,4 +112,9 @@ public class Member extends BaseTimeEntity {
         );
     }
 
+    public boolean isAdmin() {
+        // todo 회원 Role 기반 체크
+        return "admin".equals(this.nickname);
+    }
+
 }
