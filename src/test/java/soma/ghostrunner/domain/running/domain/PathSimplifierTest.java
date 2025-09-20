@@ -80,7 +80,7 @@ class PathSimplifierTest {
         // 결과 저장
         System.out.println("원본 개수: " + original.size());
         System.out.println("단순화 후 개수: " + simplified.size());
-        writeJsonlToTestResources(simplified, "simplified_result_data.jsonl");
+        writeJsonlToTestResources(simplified, "simplified_rdp_data.jsonl");
     }
 
     private List<CoordinatesWithTs> readCoordinatesFromJsonl(String classpathFilename) throws Exception {
@@ -154,7 +154,7 @@ class PathSimplifierTest {
         assertThat(simplified.size()).isLessThanOrEqualTo(original.size());
         System.out.println("원본 개수: " + original.size());
         System.out.println("단순화 후 개수: " + simplified.size());
-        writeJsonlToTestResources(simplified, "simplified_result_data.jsonl");
+        writeJsonlToTestResources(simplified, "simplified_vw_data.jsonl");
     }
 
 }
