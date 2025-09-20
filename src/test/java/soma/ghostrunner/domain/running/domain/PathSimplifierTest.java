@@ -141,7 +141,7 @@ class PathSimplifierTest {
         assertThat(out).isEmpty();
     }
 
-    @DisplayName("data7.jsonl을 List<CoordinateDto>로 변환하고 RDP 알고리즘을 적용한다. 적용 후 해상도 줄인 데이터는 뛴 순서대로 정렬된다.")
+    @DisplayName("data7.jsonl을 List<CoordinateDto>로 변환하고 VW 알고리즘을 적용한다. 적용 후 해상도 줄인 데이터는 뛴 순서대로 정렬된다.")
     @Test
     void simplifyToRenderingTelemetriesFromData7Jsonl() throws Exception {
         // given
