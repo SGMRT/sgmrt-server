@@ -46,6 +46,7 @@ public class GhostRunnerS3Client {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(s3Bucket)
                     .key(fileName)
+                    .cacheControl("max-age=604800, public")
                     .contentType("application/jsonl")
                     .contentLength((long) contentBytes.length)
                     .build();
@@ -65,6 +66,7 @@ public class GhostRunnerS3Client {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(s3Bucket)
                     .key(fileName)
+                    .cacheControl("max-age=604800, public")
                     .contentLength(multipartFile.getSize())
                     .build();
 
