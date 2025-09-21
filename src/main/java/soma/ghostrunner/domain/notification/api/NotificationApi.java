@@ -9,6 +9,7 @@ import soma.ghostrunner.domain.notification.api.dto.NotificationSendRequest;
 import soma.ghostrunner.domain.notification.api.dto.PushTokenSaveRequest;
 import soma.ghostrunner.domain.notification.application.NotificationService;
 import soma.ghostrunner.domain.notification.application.dto.NotificationBatchResult;
+import soma.ghostrunner.global.common.validator.auth.AdminOnly;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -18,9 +19,9 @@ import java.util.concurrent.TimeUnit;
 public class NotificationApi {
     private final NotificationService notificationService;
 
+    @AdminOnly
     @PostMapping("/v1/admin/notifications")
     public NotificationBatchResult sendNotification(@RequestBody NotificationSendRequest request) {
-        // todo 관리자 API
         try {
             CompletableFuture<NotificationBatchResult> notificationFuture = notificationService
                     .sendPushNotificationAsync(request.getUserIds(), request.getTitle(), request.getBody(), request.getData());

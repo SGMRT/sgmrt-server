@@ -15,7 +15,9 @@ import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.domain.TermsAgreement;
+import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.global.error.ErrorCode;
+import soma.ghostrunner.global.error.exception.AuthException;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 import soma.ghostrunner.global.security.jwt.factory.JwtTokenFactory;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
@@ -30,6 +32,8 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final MemberService memberService;
     private final MemberMapper memberMapper;
+
+    private final MemberRepository memberRepository;
 
     private final AuthIdResolver authIdResolver;
     private final AuthMapper authMapper;
@@ -118,6 +122,12 @@ public class AuthService {
     public boolean isOwner(String memberUuid, JwtUserDetails userDetails) {
         if(memberUuid == null || userDetails == null) return false;
         return memberUuid.equals(userDetails.getUserId());
+    }
+
+    public boolean isAdmin(String memberUuid) {
+        Member member = memberRepository.findByUuid(memberUuid)
+                .orElseThrow(() -> new AuthException(ErrorCode.ACCESS_DENIED, "해당 UUID의 회원은 관리자가 아닙니다. UUID=" + memberUuid));
+        return member.isAdmin();
     }
 
 }

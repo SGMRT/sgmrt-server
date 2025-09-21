@@ -40,6 +40,10 @@ public class Member extends BaseTimeEntity {
     @Setter
     private LocalDateTime lastLoginAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private RoleType role;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -47,13 +51,14 @@ public class Member extends BaseTimeEntity {
     private List<Running> runs = new ArrayList<>();
 
     @Builder
-    public Member(String nickname, String profilePictureUrl,
+    private Member(String nickname, String profilePictureUrl,
                   MemberBioInfo bioInfo, LocalDateTime lastLoginAt) {
         this.nickname = nickname;
         this.profilePictureUrl = profilePictureUrl;
         this.uuid = UUID.randomUUID().toString();
-        this.bioInfo = bioInfo;
+        this.bioInfo = bioInfo == null ? new MemberBioInfo(null, null, null, null) : bioInfo;
         this.lastLoginAt = lastLoginAt;
+        this.role = RoleType.USER;
     }
 
     public static Member of(String nickname, String profilePictureUrl) {
@@ -110,6 +115,10 @@ public class Member extends BaseTimeEntity {
                 "\t}",
                 bioInfo.getAge(), bioInfo.getGender(), bioInfo.getWeight(), bioInfo.getHeight(), vdot, conditionStr
         );
+    }
+
+    public boolean isAdmin() {
+        return this.role == RoleType.ADMIN;
     }
 
 }
