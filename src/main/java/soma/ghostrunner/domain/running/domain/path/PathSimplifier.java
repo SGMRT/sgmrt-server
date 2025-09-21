@@ -200,6 +200,9 @@ public class PathSimplifier {
 
         List<VWLNode> vwNodes = VWLNode.toList(points.size());     // 연결 정보
 
+        boolean[] isActive = new boolean[points.size()];           // 활성화 정보
+        Arrays.fill(isActive, true);
+
         while (!heap.isEmpty()) {
             VWHeapNode point = heap.poll();     // 가장 넓이가 적은 삼각형
             double area = point.getArea();
@@ -207,12 +210,12 @@ public class PathSimplifier {
             int mid = point.midCoordinatesIdx;
             int end = point.endCoordinatesIdx;
 
-            if (!vwNodes.get(mid).isActive || vwNodes.get(mid).prevIdx != start || vwNodes.get(mid).nextIdx != end) {       // 비활성화 점, 변경된 점 스킵
+            if (vwNodes.get(mid).prevIdx != start || vwNodes.get(mid).nextIdx != end) {       // 비활성화 점, 변경된 점 스킵
                 continue;
             }
 
             if (area < VW_EPSILON_AREA) {
-                vwNodes.get(mid).setActive(false);      // 가운데 인덱스 비활성화
+                isActive[mid] = false;          // 가운데 인덱스 비활성화
                 vwNodes.get(start).setNextIdx(vwNodes.get(mid).nextIdx);        // 주변 노드 정보 갱신
                 vwNodes.get(end).setPrevIdx(vwNodes.get(mid).prevIdx);
 
@@ -240,7 +243,7 @@ public class PathSimplifier {
 
         List<CoordinatesWithTs> coordinatesWithTsList = new ArrayList<>();
         for (int i = 0; i < vwNodes.size(); i++) {
-            if (vwNodes.get(i).isActive) {
+            if (isActive[i]) {
                 coordinatesWithTsList.add(utmPoints.get(i));
             }
         }
@@ -275,17 +278,16 @@ public class PathSimplifier {
     @AllArgsConstructor
     private class VWLNode {
 
-        boolean isActive;
         Integer prevIdx;
         Integer nextIdx;
 
         static List<VWLNode> toList(int size) {
             List<VWLNode> result = new ArrayList<>();
-            result.add(new VWLNode(true, null, 1));
+            result.add(new VWLNode(null, 1));
             for (int i = 1; i < size - 1; i++) {
-                result.add(new VWLNode(true, i - 1, i + 1));
+                result.add(new VWLNode(i - 1, i + 1));
             }
-            result.add(new VWLNode(true, size - 2, null));
+            result.add(new VWLNode(size - 2, null));
             return result;
         }
 
