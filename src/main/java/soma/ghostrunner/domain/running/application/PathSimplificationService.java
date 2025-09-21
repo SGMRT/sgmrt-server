@@ -11,7 +11,7 @@ public class PathSimplificationService {
 
     public SimplifiedPaths simplify(TelemetryStatistics processedTelemetries) {
 
-        List<CoordinateWithTs> telemetryCoordinates = CoordinateWithTs.toCoordinatesWithTsList(processedTelemetries.relativeTelemetries());
+        List<CoordinatesWithTs> telemetryCoordinates = CoordinatesWithTs.toCoordinatesWithTsList(processedTelemetries.relativeTelemetries());
 
         List<Coordinates> simplifiedCoordinates = PathSimplifier.simplifyToRenderingTelemetries(telemetryCoordinates);
         List<Coordinates> edgePoints = PathSimplifier.extractEdgePoints(telemetryCoordinates);
