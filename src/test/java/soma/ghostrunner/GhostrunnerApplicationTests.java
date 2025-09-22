@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class GhostrunnerApplicationTests {
+class GhostrunnerApplicationTests extends IntegrationTestSupport {
 
 	@Test
 	void contextLoads() {

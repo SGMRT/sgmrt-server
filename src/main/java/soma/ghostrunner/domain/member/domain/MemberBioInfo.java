@@ -1,0 +1,28 @@
+package soma.ghostrunner.domain.member.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import lombok.*;
+
+@Embeddable
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@EqualsAndHashCode
+public class MemberBioInfo {
+
+    @Column(name = "gender")
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
+
+    @Column(name = "age")
+    private Integer age;
+
+    @Column(name = "weight")
+    private Integer weight;
+
+    @Column(name = "height")
+    private Integer height;
+}

@@ -1,0 +1,72 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  data:
+    redis:
+      host: ${REDIS_ENDPOINT}
+      port: 6379
+      ssl:
+        enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+        use_sql_comments: true
+        default_batch_fetch_size: 100
+
+logging:
+  level:
+    org.springframework.core.LocalVariableTableParameterNameDiscoverer: error
+    org.hibernate.SQL: debug
+
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    stack:
+      auto: false
+
+s3:
+  bucket: ${AWS_BUCKET}
+  running-directory: ${RUNNING_DIRECTORY}
+  course-directory: ${COURSE_DIRECTORY}
+  member-directory: ${MEMBER_DIRECTORY}
+  notice-directory: ${NOTICE_DIRECTORY}
+
+jwt:
+  secret: ${JWT_SECRET_KEY}
+  expiration_time:
+    access_token: 600000
+    refresh_token: 1209600000
+
+sentry:
+  dsn: ${SENTRY_DSN}
+  send-default-pii: true
+  environment: dev
+  traces-sample-rate: 1.0
+  max-request-body-size: always
+  exception-resolver-order: -1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus"
+
+openai:
+  api:
+    key: ${OPENAI_API_KEY}

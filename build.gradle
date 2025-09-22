@@ -2,6 +2,15 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.5.0'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id "io.sentry.jvm.gradle" version "5.8.0"
+}
+
+sentry {
+	includeSourceContext = true
+
+	org = "sogogimaratang"
+	projectName = "ghostrunner-dev-backend"
+	authToken = System.getenv("SENTRY_AUTH_TOKEN")
 }
 
 group = 'soma'
@@ -21,11 +30,13 @@ configurations {
 
 repositories {
 	mavenCentral()
+	maven { url 'https://jitpack.io' }
 }
-
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
@@ -35,10 +46,16 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testCompileOnly 'org.junit.jupiter:junit-jupiter-params:5.9.2'
+	testImplementation 'org.springframework.security:spring-security-test'
 
 	// RDB
 	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// H2
+	runtimeOnly 'com.h2database:h2'
 
 	// Validation
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -50,20 +67,63 @@ dependencies {
 
 	// redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.redisson:redisson-spring-boot-starter:3.27.2'
 
 	// AWS CloudWatch appender
 	implementation "ca.pjer:logback-awslogs-appender:1.6.0"
 
 	// AWS S3
-	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
+	implementation platform('software.amazon.awssdk:bom:2.20.45')
+	implementation 'software.amazon.awssdk:s3'
 
 	// JAVA Casting Warn Solution
 	implementation 'javax.xml.bind:jaxb-api:2.3.0'
 
-	// swagger
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+	// Swagger
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+
+	// QueryDsl
+	implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
+	annotationProcessor "com.querydsl:querydsl-apt:5.0.0:jakarta"
+	annotationProcessor "jakarta.annotation:jakarta.annotation-api"
+	annotationProcessor "jakarta.persistence:jakarta.persistence-api"
+
+	// Firebase Admin SDK
+	implementation 'com.google.firebase:firebase-admin:9.5.0'
+
+	// jwt
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+	implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
+	implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+	// Test Container
+	testImplementation "org.testcontainers:testcontainers:1.19.0"
+	testImplementation 'org.testcontainers:mysql:1.16.0'
+	testImplementation "com.redis.testcontainers:testcontainers-redis-junit:1.6.4"
+
+	// Prometheus
+	runtimeOnly "io.micrometer:micrometer-registry-prometheus"
+
+	// WebFlux
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	runtimeOnly 'io.netty:netty-resolver-dns-native-macos:4.1.104.Final:osx-aarch_64'
+
+	// OpenAi
+	implementation "com.openai:openai-java:3.4.1"
+
+	// Expo Push SDK
+	implementation 'com.github.hlspablo:expo-server-sdk-java:v3.1.4'
+
+	// UTM
+	implementation 'org.locationtech.proj4j:proj4j:1.4.1'
+	implementation 'org.locationtech.proj4j:proj4j-epsg:1.4.1'
 }
+
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+jar {
+	enabled = false
 }

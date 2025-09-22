@@ -1,0 +1,182 @@
+[
+  {
+    "id": "M-01",
+    "sets": [
+      {
+        "setNum": 1,
+        "type": "E",
+        "duration": 15
+      },
+      {
+        "setNum": 2,
+        "type": "M",
+        "duration": 50
+      },
+      {
+        "setNum": 3,
+        "type": "E",
+        "duration": 10
+      }
+    ]
+  },
+  {
+    "id": "M-02",
+    "sets": [
+      {
+        "setNum": 1,
+        "type": "E",
+        "duration": 35
+      },
+      {
+        "setNum": 2,
+        "type": "M",
+        "duration": 50
+      },
+      {
+        "setNum": 3,
+        "type": "E",
+        "duration": 10
+      }
+    ]
+  },
+  {
+    "id": "M-03",
+    "sets": [
+      {
+        "setNum": 1,
+        "type": "E",
+        "duration": 60
+      },
+      {
+        "setNum": 2,
+        "type": "M",
+        "duration": 50
+      },
+      {
+        "setNum": 3,
+        "type": "E",
+        "duration": 10
+      }
+    ]
+  },
+  {
+    "id": "M-04",
+    "sets": [
+      {
+        "setNum": 1,
+        "type": "E",
+        "duration": 15
+      },
+      {
+        "setNum": 2,
+        "type": "M",
+        "duration": 60
+      },
+      {
+        "setNum": 3,
+        "type": "E",
+        "duration": 15
+      }
+    ]
+  },
+  {
+    "id": "M-05",
+    "sets": [
+      {
+        "setNum": 1,
+        "type": "E",
+        "duration": 35
+      },
+      {
+        "setNum": 2,
+        "type": "M",
+        "duration": 60
+      },
+      {
+        "setNum": 3,
+        "type": "E",
+        "duration": 15
+      }
+    ]
+  },
+  {
+    "id": "M-06",
+    "sets": [
+      {
+        "setNum": 1,
+        "type": "E",
+        "duration": 55
+      },
+      {
+        "setNum": 2,
+        "type": "M",
+        "duration": 60
+      },
+      {
+        "setNum": 3,
+        "type": "E",
+        "duration": 15
+      }
+    ]
+  },
+  {
+    "id": "M-07",
+    "sets": [
+      {
+        "setNum": 1,
+        "type": "E",
+        "duration": 15
+      },
+      {
+        "setNum": 2,
+        "type": "M",
+        "duration": 50
+      },
+      {
+        "setNum": 3,
+        "type": "E",
+        "duration": 10
+      }
+    ]
+  },
+  {
+    "id": "M-08",
+    "sets": [
+      {
+        "setNum": 1,
+        "type": "E",
+        "duration": 35
+      },
+      {
+        "setNum": 2,
+        "type": "M",
+        "duration": 75
+      },
+      {
+        "setNum": 3,
+        "type": "E",
+        "duration": 15
+      }
+    ]
+  },
+  {
+    "id": "M-09",
+    "sets": [
+      {
+        "setNum": 1,
+        "type": "E",
+        "duration": 45
+      },
+      {
+        "setNum": 2,
+        "type": "M",
+        "duration": 75
+      },
+      {
+        "setNum": 3,
+        "type": "E",
+        "duration": 15
+      }
+    ]
+  }
+]

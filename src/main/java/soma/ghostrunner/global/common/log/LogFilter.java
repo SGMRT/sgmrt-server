@@ -16,11 +16,6 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 import java.io.IOException;
 import java.util.UUID;
 
-/**
- * HTTP 요청/응답 정보 로깅하는 필터
- *
- * @author ijin
- */
 @Component
 @RequiredArgsConstructor
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -28,30 +23,39 @@ public class LogFilter extends OncePerRequestFilter {
 
     private final HttpLogger httpLogger;
 
-    // HTTP 요청, 응답 캐싱
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // MDC RequestID 설정
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
-        MDC.put("requestId", requestId);
+        String requestId = createRequestId();
 
-        // 요청&응답 캐싱
         ContentCachingRequestWrapper cachingRequestWrapper = new ContentCachingRequestWrapper(request);
         ContentCachingResponseWrapper cachingResponseWrapper = new ContentCachingResponseWrapper(response);
 
-        long startTime = System.currentTimeMillis();        // 시작 시간
-        filterChain.doFilter(cachingRequestWrapper, cachingResponseWrapper);
-        long endTime = System.currentTimeMillis();          // 끝난 시간
+        long startTime = System.currentTimeMillis();
+        try {
+            filterChain.doFilter(cachingRequestWrapper, cachingResponseWrapper);
+        } finally {
+            long endTime = System.currentTimeMillis();
+            double elapsedTime = (endTime - startTime) / 1000.0;
 
-        // 로그
-        httpLogger.log(cachingRequestWrapper, cachingResponseWrapper, (endTime-startTime) / 1000.0);
+            httpLogger.log(cachingRequestWrapper, cachingResponseWrapper, elapsedTime);
 
-        // MDC 해제
-        MDC.remove("requestId");
+            response.setHeader("X-Request-ID", requestId);
+            MDC.clear();
 
-        // 캐싱한 응답 표출
-        cachingResponseWrapper.copyBodyToResponse();
+            cachingResponseWrapper.copyBodyToResponse();
+        }
     }
+
+    private String createRequestId() {
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        putValueToMdc("requestId", requestId);
+        return requestId;
+    }
+
+    private void putValueToMdc(String key, String value) {
+        MDC.put(key, value);
+    }
+
 }

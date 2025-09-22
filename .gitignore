@@ -37,5 +37,11 @@ out/
 .vscode/
 
 ### resources ###
-/src/main/resources/
-/src/test/resources/
+/src/main/resources/application-local.yml
+
+### DS STORE ###
+**/.DS_Store
+.DS_Store
+
+### Secrets ###
+firebase-private-key.json
