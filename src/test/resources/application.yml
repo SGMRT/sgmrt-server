@@ -1,11 +1,11 @@
 spring:
   jpa:
     hibernate:
-      ddl-auto: create-drop
-    show-sql: true
+      ddl-auto: create
     properties:
-      hibernate:
-        format_sql: true
+      hibernate.dialect: org.hibernate.dialect.MySQL8Dialect
+  flyway:
+    enabled: false
 
 cloud:
   aws:
@@ -33,3 +33,7 @@ jwt:
 openai:
   api:
     key: dummy_api_key
+
+logging:
+  level:
+    org.hibernate.tool.schema: DEBUG
