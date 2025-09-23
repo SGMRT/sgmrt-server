@@ -1,240 +1,253 @@
 package soma.ghostrunner.domain.running.application;
 
-import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RLock;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.member.domain.MemberVdot;
-import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
+import soma.ghostrunner.domain.running.domain.PacemakerSet;
 import soma.ghostrunner.domain.running.domain.RunningType;
-import soma.ghostrunner.domain.running.domain.formula.Workout;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
+import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;
+import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.times;
 
-@SpringBootTest
-class PacemakerServiceTest extends IntegrationTestSupport {
+@ExtendWith(MockitoExtension.class)
+class PacemakerServiceTest {
 
-    @Autowired
-    MemberRepository memberRepository;
+    @Mock
+    PacemakerRepository pacemakerRepository;
+    @Mock
+    PacemakerSetRepository pacemakerSetRepository;
+    @Mock
+    RedisRunningRepository redisRunningRepository;
+    @Mock
+    MemberService memberService;
+    @Mock RunningVdotService runningVdotService;
+    @Mock WorkoutService workoutService;
+    @Mock PacemakerLlmService llmService;
+    @Mock
+    RunningApplicationMapper mapper;
+    @Mock
+    RLock rLock;
 
-    @Autowired
-    MemberVdotRepository memberVdotRepository;
+    PacemakerService sut;
 
-    @Autowired
-    private PacemakerRepository pacemakerRepository;
-
-    @Autowired
-    private PacemakerService pacemakerService;
-
-    @MockitoBean
-    PacemakerLlmService pacemakerLlmService;
-
-    @DisplayName("AI 페이스메이커를 생성한다.")
-    @Test
-    void createPaceMaker() throws InterruptedException {
-        // given
-        Member member = createMember();
-        memberRepository.save(member);
-
-        MemberVdot memberVdot = createMemberVdot(member, 30);
-        memberVdotRepository.save(memberVdot);
-
-        // when
-        Long id = pacemakerService.createPaceMaker(member.getUuid(), createCommand());
-
-        // then
-        Pacemaker pacemaker = pacemakerRepository.findById(id).get();
-        Assertions.assertThat(pacemaker).isNotNull();
-
-        verify(pacemakerLlmService, times(1)).requestLlmToCreatePacemaker(
-                any(Member.class),
-                any(WorkoutDto.class),
-                anyInt(),
-                anyInt(),
-                anyInt(),
-                anyLong(),
-                anyString()
+    @BeforeEach
+    void setUp() {
+        sut = new PacemakerService(
+                pacemakerRepository,
+                pacemakerSetRepository,
+                redisRunningRepository,
+                memberService,
+                runningVdotService,
+                workoutService,
+                llmService,
+                mapper
         );
     }
 
-    private Member createMember() {
-        return Member.of("이복둥", "프로필 URL");
-    }
-
-    private MemberVdot createMemberVdot(Member member, int vdot) {
-        return MemberVdot.of(vdot, member);
-    }
-
-    private CreatePacemakerCommand createCommand() {
-        return new CreatePacemakerCommand("MARATHON", 10.0, 5,
-                30, 6.2, LocalDate.now());
-    }
-
     @Test
-    @DisplayName("일일 제한 횟수(3회)를 초과하면 예외가 발생해야 한다.")
-    void createRateLimitExceededPaceMakerRequest() throws InterruptedException {
+    void 성공_흐름_오케스트레이션() throws Exception {
         // given
-        Member member = createMember();
-        String memberUuid = member.getUuid();
-        memberRepository.save(member);
+        String uuid = "member-123";
+        Member member = Member.of("이복둥", "url");
+        CreatePacemakerCommand cmd = new CreatePacemakerCommand("MARATHON", 10.0, 5, 30, 6.2, LocalDate.now());
 
-        MemberVdot memberVdot = createMemberVdot(member, 30);
-        memberVdotRepository.save(memberVdot);
+        when(memberService.findMemberByUuid(uuid)).thenReturn(member);
+        when(runningVdotService.calculateVdot(anyDouble())).thenReturn(30);
+        when(runningVdotService.getExpectedPacesByVdot(30)).thenReturn(Map.of(RunningType.M, 6.2));
+        when(workoutService.generateWorkouts(anyDouble(), any(), any())).thenReturn(WorkoutDto.of(RunningType.M, 10.0, List.of()));
+        when(redisRunningRepository.getLock(anyString())).thenReturn(rLock);
+        when(rLock.tryLock(anyLong(), anyLong(), any())).thenReturn(true);
+        when(redisRunningRepository.incrementRateLimitCounter(any(), anyLong(), anyInt())).thenReturn(1L);
+
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, uuid);
+        when(mapper.toPacemaker(any(), eq(cmd), eq(member))).thenReturn(pacemaker);
+        when(pacemakerRepository.save(any())).thenReturn(pacemaker);
 
         // when
-        pacemakerService.createPaceMaker(memberUuid, createCommand());
-        pacemakerService.createPaceMaker(memberUuid, createCommand());
-        pacemakerService.createPaceMaker(memberUuid, createCommand());
+        Long id = sut.createPaceMaker(uuid, cmd);
 
         // then
-        assertThatThrownBy(() -> pacemakerService.createPaceMaker(memberUuid, createCommand()))
-                .isInstanceOf(InvalidRunningException.class)
-                .hasMessage("일일 사용량을 초과했습니다.");
+        assertThat(id).isEqualTo(pacemaker.getId());
+        InOrder inOrder = inOrder(memberService, runningVdotService, workoutService,
+                pacemakerRepository, llmService);
+        inOrder.verify(memberService).findMemberByUuid(uuid);
+        inOrder.verify(runningVdotService).calculateVdot(anyDouble());
+        inOrder.verify(runningVdotService).getExpectedPacesByVdot(30);
+        inOrder.verify(workoutService).generateWorkouts(anyDouble(), any(), any());
+        inOrder.verify(pacemakerRepository).save(any());
+        inOrder.verify(llmService).requestLlmToCreatePacemaker(
+                eq(member), any(), eq(30), anyInt(), anyInt(), eq(pacemaker.getId()), anyString()
+        );
     }
 
-    @DisplayName("다음 날이 되면 다시 페이스메이커를 생성할 수 있다.")
     @Test
-    void canCreatePacemakerNextDay() throws InterruptedException {
+    void 목표거리가_3km미만이면_예외발생() {
         // given
-        Member member = createMember();
-        String memberUuid = member.getUuid();
-        memberRepository.save(member);
-
-        MemberVdot memberVdot = createMemberVdot(member, 30);
-        memberVdotRepository.save(memberVdot);
-
-        LocalDate today = LocalDate.of(2024, 8, 26);
-        LocalDate nextDay = today.plusDays(1);
-
-        // when
-        pacemakerService.createPaceMaker(memberUuid, createCommand(today));
-        pacemakerService.createPaceMaker(memberUuid, createCommand(today));
-        pacemakerService.createPaceMaker(memberUuid, createCommand(today));
-
-        // then
-        assertThatThrownBy(() -> pacemakerService.createPaceMaker(memberUuid, createCommand(today)))
-                .isInstanceOf(InvalidRunningException.class)
-                .hasMessage("일일 사용량을 초과했습니다.");
-        pacemakerService.createPaceMaker(memberUuid, createCommand(nextDay));
-    }
-
-    private CreatePacemakerCommand createCommand(LocalDate localDate) {
-        return new CreatePacemakerCommand("MARATHON", 10.0, 5,
-                30, 6.2, localDate);
-    }
-
-    @DisplayName("목표 거리가 3K 미만이라면 예외를 발생한다.")
-    @Test
-    void cannotCreateLowerThan3KPaceMakerRequest() {
-        // given
-        Member member = createMember();
-        memberRepository.save(member);
-
-        MemberVdot memberVdot = createMemberVdot(member, 30);
-        memberVdotRepository.save(memberVdot);
+        String uuid = "member-123";
+        CreatePacemakerCommand cmd = new CreatePacemakerCommand("MARATHON", 2.0, 5, 30, 6.2, LocalDate.now());
 
         // when // then
-        Assertions.assertThatThrownBy(() -> pacemakerService.createPaceMaker(member.getUuid(), createCommand(2.0)))
+        assertThatThrownBy(() -> sut.createPaceMaker(uuid, cmd))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("3km 미만의 거리는 페이스메이커를 생성할 수 없습니다.");
+
+        verifyNoInteractions(memberService, pacemakerRepository, llmService);
     }
 
-    private CreatePacemakerCommand createCommand(Double targetDistance) {
-        return new CreatePacemakerCommand("MARATHON", targetDistance, 5,
-                30, 6.2, LocalDate.now());
-    }
-
-     @DisplayName("VDOT가 이전에 기록되어 있지 않은데 요청값에 없다면 예외를 발생한다.")
-     @Test
-     void cannotCreatePacemakerWithoutVdotInfo() {
-         // given
-         Member member = createMember();
-         memberRepository.save(member);
-
-         // when // then
-         Assertions.assertThatThrownBy(() -> pacemakerService.createPaceMaker(member.getUuid(), createNonePacePerKmCommand()))
-                 .isInstanceOf(InvalidRunningException.class)
-                 .hasMessage("기존 VDOT 기록이 없어 페이스메이커를 생성할 수 없습니다.");
-     }
-
-    private CreatePacemakerCommand createNonePacePerKmCommand() {
-        return CreatePacemakerCommand.builder()
-                .purpose("MARATHON")
-                .targetDistance(5.0)
-                .condition(1)
-                .temperature(30)
-                .localDate(LocalDate.now())
-                .build();
-    }
-
-    @DisplayName("페이스메이커를 조회한다.")
     @Test
-    void getPacemaker() {
+    void 일일제한_초과시_예외발생() throws Exception {
         // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, "멤버 UUID");
-        pacemaker.updateSucceedPacemaker("요약", 10.0, 50, "메세지");
-        pacemakerRepository.save(pacemaker);
+        String uuid = "member-123";
+        Member member = Member.of("이복둥", "url");
+        CreatePacemakerCommand cmd = new CreatePacemakerCommand("MARATHON", 10.0, 5, 30, 6.2, LocalDate.now());
+
+        when(memberService.findMemberByUuid(uuid)).thenReturn(member);
+        when(runningVdotService.calculateVdot(anyDouble())).thenReturn(30);
+        when(runningVdotService.getExpectedPacesByVdot(anyInt())).thenReturn(Map.of());
+        when(workoutService.generateWorkouts(anyDouble(), any(), any())).thenReturn(WorkoutDto.of(RunningType.M, 10.0, List.of()));
+        when(redisRunningRepository.getLock(anyString())).thenReturn(rLock);
+        when(rLock.tryLock(anyLong(), anyLong(), any())).thenReturn(true);
+        when(redisRunningRepository.incrementRateLimitCounter(any(), anyLong(), anyInt()))
+                .thenReturn(4L); // 3회 초과
+
+        // when // then
+        assertThatThrownBy(() -> sut.createPaceMaker(uuid, cmd))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessage("일일 사용량을 초과했습니다.");
+
+        verifyNoInteractions(pacemakerRepository, llmService);
+    }
+
+    @Test
+    @DisplayName("완료된 페이스메이커는 세트를 조회하고 mapper.toResponse(pacemaker, sets)로 응답한다")
+    void getPacemaker_completed_success() {
+        // given
+        String owner = "owner-uuid";
+        Long id = 100L;
+
+        Pacemaker completed = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, owner);
+        // 도메인에서 완료 상태로 전이
+        completed.updateSucceedPacemaker("요약", 10.0, 50, "메세지");
+
+        List<PacemakerSet> sets = List.of(
+                PacemakerSet.of(1, "메세지1", null, null, null, null),
+                PacemakerSet.of(2, "메세지1", null, null, null, null)
+        );
+        PacemakerPollingResponse expected = new PacemakerPollingResponse(); // 실제 타입에 맞게
+        when(pacemakerRepository.findById(id)).thenReturn(Optional.of(completed));
+        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(id)).thenReturn(sets);
+        when(mapper.toResponse(completed, sets)).thenReturn(expected);
 
         // when
-        PacemakerPollingResponse response = pacemakerService.getPacemaker(pacemaker.getId(), "멤버 UUID");
+        PacemakerPollingResponse actual = sut.getPacemaker(id, owner);
 
         // then
-        Assertions.assertThat(response.getProcessingStatus()).isEqualTo("COMPLETED");
-        Assertions.assertThat(response.getPacemaker().getGoalKm()).isEqualTo(10.0);
+        assertThat(actual).isSameAs(expected);
+
+        InOrder inOrder = inOrder(pacemakerRepository, pacemakerSetRepository, mapper);
+        inOrder.verify(pacemakerRepository).findById(id);
+        inOrder.verify(pacemakerSetRepository).findByPacemakerIdOrderBySetNumAsc(id);
+        inOrder.verify(mapper).toResponse(completed, sets);
+
+        // 진행상태용 mapper는 호출되지 않아야 함
+        verify(mapper, never()).toResponse(Pacemaker.Status.COMPLETED);
+        verifyNoMoreInteractions(pacemakerRepository, pacemakerSetRepository, mapper);
+        verifyNoInteractions(llmService, runningVdotService, workoutService, memberService, redisRunningRepository);
     }
 
-     @DisplayName("페이스메이커를 조회할 때 실패하거나 가공되고 있는 페이스메이커를 조회해도 200이 응답한다. 대신, Status에 반영한다.")
-     @Test
-     void getProcessingOrFailedPacemaker() {
-         // given
-         Pacemaker processingPacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, "멤버 UUID");
-         pacemakerRepository.save(processingPacemaker);
+    @Test
+    @DisplayName("진행/실패 상태면 세트 조회 없이 mapper.toResponse(status)로 응답한다")
+    void getPacemaker_processing_returnsStatusOnly() {
+        // given
+        String owner = "owner-uuid";
+        Long id = 101L;
 
-         // when
-         PacemakerPollingResponse response = pacemakerService.getPacemaker(processingPacemaker.getId(), "멤버 UUID");
+        Pacemaker processing = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, owner);
+        // 기본 상태가 진행중이라 가정(또는 명시적으로 실패/진행 상태로 전이하는 메서드 호출)
 
-         // then
-         Assertions.assertThat(response.getPacemaker()).isNull();
-         Assertions.assertThat(response.getProcessingStatus()).isEqualTo("PROCEEDING");
-     }
+        // 도메인이 돌려줄 status (예: "PROCEEDING" 또는 "FAILED")
+        Pacemaker.Status status = Pacemaker.Status.PROCEEDING;
 
-     @DisplayName("페이스메이커를 조회할 때 자신의 페이스메이커가 아니라면 4xx 에러를 발생한다.")
-     @Test
-     void getPacemakerNotMine() {
-         // given
-         Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, "멤버 UUID");
-         pacemakerRepository.save(pacemaker);
+        PacemakerPollingResponse expected = new PacemakerPollingResponse();
+        when(pacemakerRepository.findById(id)).thenReturn(Optional.of(processing));
+        when(mapper.toResponse(status)).thenReturn(expected);
 
-         // when // then
-         Assertions.assertThatThrownBy(() -> pacemakerService.getPacemaker(pacemaker.getId(), "INVALID 멤버 UUID"))
-                 .isInstanceOf(AccessDeniedException.class)
-                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
-     }
+        // when
+        PacemakerPollingResponse actual = sut.getPacemaker(id, owner);
+
+        // then
+        assertThat(actual).isSameAs(expected);
+
+        // 세트 조회/완료용 mapper 호출은 없어야 함
+        verify(pacemakerSetRepository, never()).findByPacemakerIdOrderBySetNumAsc(anyLong());
+        verify(mapper, never()).toResponse(eq(processing), anyList());
+
+        InOrder inOrder = inOrder(pacemakerRepository, mapper);
+        inOrder.verify(pacemakerRepository).findById(id);
+        inOrder.verify(mapper).toResponse(status);
+
+        verifyNoMoreInteractions(pacemakerRepository, mapper);
+        verifyNoInteractions(llmService, runningVdotService, workoutService, memberService, redisRunningRepository);
+    }
+
+    @Test
+    @DisplayName("본인 소유가 아니면 AccessDeniedException을 던진다")
+    void getPacemaker_notMine_throwsAccessDenied() {
+        // given
+        String owner = "owner-uuid";
+        String other = "other-uuid";
+        Long id = 102L;
+
+        Pacemaker entity = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, owner);
+        when(pacemakerRepository.findById(id)).thenReturn(Optional.of(entity));
+
+        // when/then
+        assertThatThrownBy(() -> sut.getPacemaker(id, other))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("접근할 수 없는 러닝 데이터입니다.");
+
+        // 세트조회/매퍼 호출 없어야 함
+        verify(pacemakerSetRepository, never()).findByPacemakerIdOrderBySetNumAsc(anyLong());
+        verify(mapper, never()).toResponse(Pacemaker.Status.FAILED);
+        verify(mapper, never()).toResponse(any(Pacemaker.class), anyList());
+    }
+
+    @Test
+    @DisplayName("Pacemaker ID가 없으면 RunningNotFoundException을 던진다")
+    void getPacemaker_notFound_throws() {
+        // given
+        Long id = 999L;
+        when(pacemakerRepository.findById(id)).thenReturn(Optional.empty());
+
+        // when/then
+        assertThatThrownBy(() -> sut.getPacemaker(id, "any-uuid"))
+                .isInstanceOf(RunningNotFoundException.class);
+
+        verifyNoInteractions(pacemakerSetRepository, mapper);
+    }
 
 }

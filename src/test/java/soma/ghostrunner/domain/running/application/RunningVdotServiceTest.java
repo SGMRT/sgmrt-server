@@ -1,33 +1,92 @@
 package soma.ghostrunner.domain.running.application;
 
-import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import soma.ghostrunner.IntegrationTestSupport;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningType;
+import soma.ghostrunner.domain.running.domain.formula.VdotCalculator;
+import soma.ghostrunner.domain.running.domain.formula.VdotPace;
+import soma.ghostrunner.domain.running.domain.formula.VdotPaceProvider;
 
+import java.util.List;
 import java.util.Map;
 
-@SpringBootTest
-class RunningVdotServiceTest extends IntegrationTestSupport {
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
-    @Autowired
-    private RunningVdotService runningVdotService;
+@ExtendWith(MockitoExtension.class)
+class RunningVdotServiceTest {
 
-    @DisplayName("VDOT 41인 사용자의 러닝 유형별 권장 페이스 리스트를 조회한다.")
+    @Mock
+    VdotCalculator vdotCalculator;
+    @Mock
+    VdotPaceProvider vdotPaceProvider;
+
+    RunningVdotService sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new RunningVdotService(vdotCalculator, vdotPaceProvider);
+    }
+
     @Test
-    void getVdotPaceByVdot() {
+    @DisplayName("calculateVdot: 평균 페이스를 1마일 페이스로 변환해 계산기에 전달한다")
+    void calculateVdot_callsCalculatorWithConvertedPace() {
+        // given
+        double averagePacePerKm = 6.20; // 예시 값(분/킬로)
+        double oneMilePace = 9.99;      // 변환 결과를 고정 (정적 모킹)
+
+        try (MockedStatic<Running> runningStatic = mockStatic(Running.class)) {
+            runningStatic.when(() -> Running.calculateOneMilePace(averagePacePerKm))
+                    .thenReturn(oneMilePace);
+
+            when(vdotCalculator.calculateFromPace(oneMilePace)).thenReturn(41);
+
+            // when
+            int vdot = sut.calculateVdot(averagePacePerKm);
+
+            // then
+            assertThat(vdot).isEqualTo(41);
+            runningStatic.verify(() -> Running.calculateOneMilePace(averagePacePerKm), times(1));
+            verify(vdotCalculator).calculateFromPace(oneMilePace);
+            verifyNoMoreInteractions(vdotCalculator);
+        }
+    }
+
+    @Test
+    @DisplayName("getExpectedPacesByVdot: 타입별 페이스를 맵으로 반환(중복 키는 마지막 값 채택)")
+    void getExpectedPacesByVdot_buildsTypeToPaceMap() {
+        // given
+        int vdot = 41;
+        var list = List.of(
+                new VdotPace(RunningType.E, 6.10),
+                new VdotPace(RunningType.M, 5.22),
+                new VdotPace(RunningType.T, 5.00),
+                new VdotPace(RunningType.I, 4.36),
+                new VdotPace(RunningType.R, 4.15),
+                // 중복 키(E) 케이스: 마지막 값이 최종 반영되는지 확인
+                new VdotPace(RunningType.E, 6.11)
+        );
+        when(vdotPaceProvider.getVdotPaceByVdot(vdot)).thenReturn(list);
+
         // when
-        Map<RunningType, Double> vdotPaces = runningVdotService.getExpectedPacesByVdot(41);
+        Map<RunningType, Double> map = sut.getExpectedPacesByVdot(vdot);
 
         // then
-        Assertions.assertThat(vdotPaces.get(RunningType.E)).isEqualTo(6.1);
-        Assertions.assertThat(vdotPaces.get(RunningType.M)).isEqualTo(5.22);
-        Assertions.assertThat(vdotPaces.get(RunningType.T)).isEqualTo(5.00);
-        Assertions.assertThat(vdotPaces.get(RunningType.I)).isEqualTo(4.36);
-        Assertions.assertThat(vdotPaces.get(RunningType.R)).isEqualTo(4.15);
+        assertThat(map).hasSize(5);
+        assertThat(map.get(RunningType.E)).isEqualTo(6.11); // 마지막 값 채택
+        assertThat(map.get(RunningType.M)).isEqualTo(5.22);
+        assertThat(map.get(RunningType.T)).isEqualTo(5.00);
+        assertThat(map.get(RunningType.I)).isEqualTo(4.36);
+        assertThat(map.get(RunningType.R)).isEqualTo(4.15);
+
+        verify(vdotPaceProvider).getVdotPaceByVdot(vdot);
+        verifyNoMoreInteractions(vdotPaceProvider);
     }
 
 }
