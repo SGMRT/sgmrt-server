@@ -19,7 +19,7 @@ class VdotCalculatorTest extends IntegrationTestSupport {
     @Test
     void calculateFromPace() {
         // when // then
-        assertThat(vdotCalculator.calculateFromPace(7.49)).isEqualTo(36);
+        assertThat(vdotCalculator.calculateFromPace(4.0)).isEqualTo(76);
      }
 
     @DisplayName("1마일 페이스가 7.40일 때 7.38인 VDOT 37과 7.49인 VDOT 36 중 하위 VDOT인 36을 반환한다.")

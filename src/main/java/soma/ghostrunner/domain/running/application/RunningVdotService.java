@@ -24,10 +24,6 @@ public class RunningVdotService {
         return vdotCalculator.calculateFromPace(oneMilePace);
     }
 
-    public Double calculateExpectedPace(int vdot, String runningPurpose) {
-        return vdotPaceProvider.getPaceByVdotAndRunningType(vdot, RunningType.toRunningType(runningPurpose));
-    }
-
     public Map<RunningType, Double> getExpectedPacesByVdot(int vdot) {
         List<VdotPace> vdotPaces = vdotPaceProvider.getVdotPaceByVdot(vdot);
         return vdotPaces.stream()

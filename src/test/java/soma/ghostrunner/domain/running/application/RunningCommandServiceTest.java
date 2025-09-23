@@ -1,11 +1,24 @@
 package soma.ghostrunner.domain.running.application;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.course.application.CourseService;
+import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
+import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
+import soma.ghostrunner.domain.running.domain.path.*;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Coordinate;
@@ -13,438 +26,298 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
-import soma.ghostrunner.domain.running.domain.path.TelemetryProcessor;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Answers.RETURNS_DEEP_STUBS;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
-class RunningCommandServiceTest extends IntegrationTestSupport {
+@ExtendWith(SpringExtension.class)
+class RunningCommandServiceTest {
 
-    @Autowired
-    private RunningCommandService runningCommandService;
+    @Mock RunningApplicationMapper mapper;
+    @Mock RunningRepository runningRepository;
+    @Mock TelemetryProcessor telemetryProcessor;
+    @Mock RunningFileUploader runningFileUploader;
+    @Mock PathSimplificationService pathSimplificationService;
+    @Mock RunningQueryService runningQueryService;
+    @Mock CourseService courseService;
+    @Mock MemberService memberService;
 
-    @Autowired
-    private RunningRepository runningRepository;
+    RunningCommandService sut;
 
-    @Autowired
-    private MemberRepository memberRepository;
+    // 고정 픽스처
+    private final String memberUuid = "mem-123";
+    private final long startedAt = LocalDateTime.of(2025, 8, 1, 7, 0)
+            .toInstant(ZoneOffset.UTC).toEpochMilli();
 
-    @Autowired
-    private CourseRepository courseRepository;
-
-    @MockitoBean
-    private GhostRunnerS3Client ghostRunnerS3Client;
-
-    @MockitoBean
-    private TelemetryProcessor telemetryProcessor;
-
-//    @DisplayName("새로운 코스에 대한 러닝 기록을 생성한다.")
-//    @Test
-//    void createCourseAndRun() {
-//        // given
-//        Member member = createMember("테스트 유저");
-//        memberRepository.save(member);
-//
-//        RunRecordCommand runRecordDto = createRunRecordDto(5.1, 130.0, -120.0, 3600L);
-//        CreateRunCommand createRunCommand = createRunCommandRequest("러닝 이름", "SOLO", 100L, runRecordDto);
-//
-//        byte[] bytes = "line1\nline2\n".getBytes(StandardCharsets.UTF_8);
-//        MockMultipartFile rawTelemetry = new MockMultipartFile(
-//                "rawTelemetry", "telemetry.jsonl", "application/jsonl", bytes
-//        );
-//        MockMultipartFile interpolatedTelemetry = new MockMultipartFile(
-//                "rawTelemetry", "telemetry.jsonl", "application/jsonl", bytes
-//        );
-//        MockMultipartFile image = new MockMultipartFile(
-//                "img", "capture.png", "image/png", new byte[]{1, 2, 3}
-//        );
-//
-//        given(ghostRunnerS3Client.uploadInterpolatedTelemetry(ArgumentMatchers.any(), anyString()))
-//                .willReturn("Mock Telemetries Url");
-//        given(ghostRunnerS3Client.uploadRawTelemetry(ArgumentMatchers.any(), anyString()))
-//                .willReturn("Mock Telemetries Url");
-//        given(ghostRunnerS3Client.uploadSimplifiedTelemetry(ArgumentMatchers.any(), anyString()))
-//                .willReturn("Mock Telemetries Url");
-//        given(ghostRunnerS3Client.uploadRunningCaptureImage(ArgumentMatchers.any(), anyString()))
-//                .willReturn("Mock Telemetries Url");
-//
-//        // when
-//        CreateCourseAndRunResponse response = runningCommandService.createCourseAndRun(createRunCommand, member.getUuid());
-//        CreateCourseAndRunResponse response = null;
-//
-//        // then
-//        Running savedRunning = runningRepository.findById(response.getRunningId()).get();
-//        Assertions.assertThat(savedRunning)
-//                .isNotNull()
-//                .extracting(Running::getRunningName, Running::getRunningMode, Running::getStartedAt)
-//                .containsExactly("러닝 이름", RunningMode.SOLO, 100L);
-//
-//        RunningRecord savedRunningRecord = savedRunning.getRunningRecord();
-//        Assertions.assertThat(savedRunningRecord)
-//                .isNotNull()
-//                .extracting(RunningRecord::getDistance, RunningRecord::getElevationGain,
-//                        RunningRecord::getElevationLoss, RunningRecord::getDuration)
-//                .containsExactly(5.1, 130, -120, 3600L);
-//
-//        RunningDataUrls runningDataUrls = savedRunning.getRunningDataUrls();
-//        Assertions.assertThat(runningDataUrls)
-//                .isNotNull()
-//                .extracting(RunningDataUrls::getRawTelemetrySavedUrl, RunningDataUrls::getInterpolatedTelemetrySavedUrl,
-//                        RunningDataUrls::getScreenShotSavedUrl)
-//                .containsExactly("Mock Telemetries Url", "Mock Telemetries Url", "Mock Telemetries Url");
-//
-//        Course savedCourse = courseRepository.findById(response.getCourseId()).get();
-//        Assertions.assertThat(savedCourse)
-//                .isNotNull()
-//                .extracting(Course::getName, Course::getIsPublic)
-//                .containsExactly(null, false);
-//
-//        CourseProfile savedCourseProfile = savedCourse.getCourseProfile();
-//        Assertions.assertThat(savedCourseProfile)
-//                .isNotNull()
-//                .extracting(CourseProfile::getDistance, CourseProfile::getElevationGain, CourseProfile::getElevationLoss)
-//                .containsExactly(5.1, 130, -120);
-//
-//        Coordinate savedCoordinate = savedCourse.getStartCoordinate();
-//        Assertions.assertThat(savedCoordinate)
-//                .isNotNull()
-//                .extracting(Coordinate::getLatitude, Coordinate::getLongitude)
-//                .containsExactly(36.2, 37.3);
-//    }
-
-    private Member createMember(String name) {
-        return Member.of(name, "프로필 URL");
+    @BeforeEach
+    void setUp() {
+        sut = new RunningCommandService(
+                mapper, runningRepository,
+                telemetryProcessor, runningFileUploader,
+                pathSimplificationService, runningQueryService, courseService, memberService
+        );
     }
 
-    private CreateRunCommand createRunCommandRequest(String runningName, String runningMode, Long startedAt,
-                                                     RunRecordCommand runRecordCommand) {
-        return new CreateRunCommand(runningName, null, runningMode,
-                startedAt, runRecordCommand, false, true);
+    private MultipartFile raw() {
+        return new MockMultipartFile(
+                "raw.jsonl", "raw.jsonl", "application/json",
+                "[{\"t\":0}]".getBytes(StandardCharsets.UTF_8)
+        );
     }
 
-    private List<Telemetry> createTelemetryDtos() {
-        List<Telemetry> telemetries = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
-            telemetries.add(new Telemetry(100L + i, 36.2 + i, 37.3 + i, 10.1 + i,
-                    6.4 + i, 110.0 + i, 120 + i, 110 + i, true));
-        }
-        return telemetries;
-     }
-
-    private RunRecordCommand createRunRecordDto(double distance, double elevationGain, double elevationLoss, long duration) {
-        return new RunRecordCommand(distance, elevationGain, elevationLoss, duration,
-                6.4, 123, 110, 130);
+    private MultipartFile interp() {
+        return new MockMultipartFile(
+                "interp.jsonl", "interp.jsonl", "application/json",
+                "[{\"t\":0,\"x\":127.0,\"y\":37.0}]".getBytes(StandardCharsets.UTF_8)
+        );
     }
 
-    @DisplayName("기존 코스를 혼자 러닝하여 새로운 러닝 기록을 생성한다.")
+    private MultipartFile shot() {
+        return new MockMultipartFile(
+                "cap.png", "cap.png", "image/png", new byte[]{1, 2, 3}
+        );
+    }
+
+    private TelemetryStatistics statsMock() {
+        return mock(TelemetryStatistics.class, RETURNS_DEEP_STUBS);
+    }
+
+    // ====== createRunAndCourse ======
     @Test
-    void createSoloRun() {
+    @DisplayName("createRunAndCourse: 원시/보간/간소화 업로드 → 코스/러닝 저장 → 응답 매핑까지 오케스트레이션")
+    void createRunAndCourse_success_orchestration() {
         // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
+        Member member = mock(Member.class);
+        when(member.getUuid()).thenReturn(memberUuid); // 서비스는 member.getUuid()를 사용함
+        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
 
-        Course course = createCourse(member);
-        Long savedCourseId = courseRepository.save(course).getId();
+        TelemetryStatistics stats = statsMock();
+        when(telemetryProcessor.process(any(MultipartFile.class), eq(startedAt))).thenReturn(stats);
 
-        RunRecordCommand runRecordCommand = createRunRecordDto(5.1, 130, -120, 3600L);
-        List<Telemetry> telemetries = createTelemetryDtos();
-        CreateRunCommand request = createGhostRunCommandRequest(
-                "러닝 이름", "SOLO", null,
-                100L, runRecordCommand);
+        SimplifiedPaths simplified = new SimplifiedPaths(
+                List.of(new Coordinates(37.0, 127.0), new Coordinates(37.001, 127.001)),
+                List.of(new Checkpoint(37.0, 127.0, 0))
+        );
+        when(pathSimplificationService.simplify(stats)).thenReturn(simplified);
 
-//        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
-//                .willReturn("Mock Telemetries Url");
+        // 업로드 결과 URL
+        when(runningFileUploader.uploadRawTelemetry(any(), eq(memberUuid))).thenReturn("s3://raw");
+        when(runningFileUploader.uploadInterpolatedTelemetry(anyList(), eq(memberUuid))).thenReturn("s3://interp");
+        when(runningFileUploader.uploadSimplifiedCoordinates(anyList(), eq(memberUuid))).thenReturn("s3://simplified");
+        when(runningFileUploader.uploadCheckpoints(anyList(), eq(memberUuid))).thenReturn("s3://checkpoints");
+        when(runningFileUploader.uploadRunningCaptureImage(any(), eq(memberUuid))).thenReturn("s3://shot");
+
+        // 매핑 및 저장
+        CreateRunCommand cmd = mock(CreateRunCommand.class);
+        when(cmd.getStartedAt()).thenReturn(startedAt);
+
+        Course course = mock(Course.class);
+        when(mapper.toCourse(eq(member), eq(cmd), eq(stats), any(RunningDataUrlsDto.class))).thenReturn(course);
+
+        Running running = mock(Running.class);
+        when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
+        when(runningRepository.save(running)).thenReturn(running);
+
+        CreateCourseAndRunResponse response = new CreateCourseAndRunResponse(null, null);
+        when(mapper.toResponse(running, course)).thenReturn(response);
 
         // when
-//        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getUuid());
+        CreateCourseAndRunResponse result =
+                sut.createRunAndCourse(cmd, memberUuid, raw(), interp(), shot());
 
         // then
-//        Running savedRunning = runningRepository.findById(savedRunningId).get();
-//        Assertions.assertThat(savedRunning)
-//                .isNotNull()
-//                .extracting(Running::getRunningName, Running::getRunningMode,
-//                        Running::getGhostRunningId, Running::getStartedAt)
-//                .containsExactly("러닝 이름", RunningMode.SOLO, null, 100L);
-//
-//        Course savedCourse = savedRunning.getCourse();
-//        Assertions.assertThat(savedCourse.getId()).isEqualTo(savedCourseId);
+        assertThat(result).isSameAs(response);
+
+        InOrder inOrder = inOrder(memberService, telemetryProcessor, pathSimplificationService,
+                runningFileUploader, courseService, runningRepository, mapper);
+
+        inOrder.verify(memberService).findMemberByUuid(memberUuid);
+        inOrder.verify(telemetryProcessor).process(any(MultipartFile.class), eq(startedAt));
+        inOrder.verify(pathSimplificationService).simplify(stats);
+
+        verify(runningFileUploader).uploadRawTelemetry(any(), eq(memberUuid));
+        verify(runningFileUploader).uploadInterpolatedTelemetry(anyList(), eq(memberUuid));
+        verify(runningFileUploader).uploadSimplifiedCoordinates(anyList(), eq(memberUuid));
+        verify(runningFileUploader).uploadCheckpoints(anyList(), eq(memberUuid));
+        verify(runningFileUploader).uploadRunningCaptureImage(any(), eq(memberUuid));
+
+        inOrder.verify(mapper).toCourse(eq(member), eq(cmd), eq(stats), any(RunningDataUrlsDto.class));
+        inOrder.verify(courseService).save(course);
+        inOrder.verify(mapper).toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course));
+        inOrder.verify(runningRepository).save(running);
+        inOrder.verify(mapper).toResponse(running, course);
+
+        verifyNoMoreInteractions(memberService, telemetryProcessor, pathSimplificationService,
+                runningFileUploader, courseService, runningRepository, mapper);
     }
 
-    @DisplayName("기존 코스를 고스트와 러닝하여 새로운 러닝 기록을 생성한다.")
+    // ====== createRun (코스에 붙여 저장) ======
+
     @Test
-    void createGhostRun() {
+    @DisplayName("createRun (NORMAL 모드): 코스 조회 → 보간처리 → 업로드(원시/보간/스크린샷) → 러닝 저장 → ID 반환")
+    void createRun_normal_success() {
         // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
+        long courseId = 77L;
+        Course course = mock(Course.class);
+        when(courseService.findCourseById(courseId)).thenReturn(course);
 
-        Course course = createCourse(member);
-        Long savedCourseId = courseRepository.save(course).getId();
+        Member member = Member.of("러너", "profile");
+        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
 
-        Running ghostRunning = createRunning(member, course);
-        Long ghostRunningId = runningRepository.save(ghostRunning).getId();
+        var stats = statsMock();
+        when(telemetryProcessor.process(any(MultipartFile.class), eq(startedAt))).thenReturn(stats);
 
-        RunRecordCommand runRecordCommand = createRunRecordDto(5.1, 130, -120, 3600L);
-        CreateRunCommand request = createGhostRunCommandRequest(
-                "러닝 이름", "GHOST", ghostRunningId,
-                100L, runRecordCommand);
+        when(runningFileUploader.uploadRawTelemetry(any(), eq(memberUuid))).thenReturn("s3://raw");
+        when(runningFileUploader.uploadInterpolatedTelemetry(anyList(), eq(memberUuid))).thenReturn("s3://interp");
+        when(runningFileUploader.uploadRunningCaptureImage(any(), eq(memberUuid))).thenReturn("s3://shot");
 
-//        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
-//                .willReturn("Mock Telemetries Url");
+        CreateRunCommand cmd = mock(CreateRunCommand.class);
+        when(cmd.getStartedAt()).thenReturn(startedAt);
+        when(cmd.getMode()).thenReturn("NORMAL");
+
+        Running running = mock(Running.class);
+        when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
+        when(runningRepository.save(running)).thenReturn(running);
+        when(running.getId()).thenReturn(100L);
 
         // when
-//        Long savedRunningId = runningCommandService.createRun(request, savedCourseId, member.getUuid());
+        Long id = sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
 
         // then
-//        Running savedRunning = runningRepository.findById(savedRunningId).get();
-//        Assertions.assertThat(savedRunning)
-//                .isNotNull()
-//                .extracting(Running::getRunningName, Running::getRunningMode,
-//                        Running::getGhostRunningId, Running::getStartedAt)
-//                .containsExactly("러닝 이름", RunningMode.GHOST, ghostRunningId, 100L);
-//
-//        Course savedCourse = savedRunning.getCourse();
-//        Assertions.assertThat(savedCourse.getId()).isEqualTo(savedCourseId);
+        assertThat(id).isEqualTo(100L);
+        verify(runningQueryService, never()).findRunningByRunningId(anyLong());
     }
 
-    @DisplayName("요청한 코스가 고스트가 실제로 뛴 코스가 아닌 경우 예외가 발생한다.")
     @Test
-    void throwExceptionIfCourseNotRunByGhost() {
+    @DisplayName("createRun (GHOST 모드): 고스트 러닝이 같은 코스에 속하는지 검증한다")
+    void createRun_ghostMode_validatesBelongsToCourse() {
         // given
-        Member member = createMember("테스트 유저");
-        String savedMemberUuid = memberRepository.save(member).getUuid();
+        long courseId = 88L;
+        Course course = mock(Course.class);
+        when(courseService.findCourseById(courseId)).thenReturn(course);
 
-        Course ghostCourse = createCourse(member);
-        Long savedCourseId = courseRepository.save(ghostCourse).getId();
-        Course fakeCourse = createCourse(member);
-        Long savedFakeCourseId = courseRepository.save(fakeCourse).getId();
+        Member member = Member.of("러너", "profile");
+        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
 
-        Running ghostRunning = createRunning(member, ghostCourse);
-        Long ghostRunningId = runningRepository.save(ghostRunning).getId();
+        var stats = statsMock();
+        when(telemetryProcessor.process(any(MultipartFile.class), eq(startedAt))).thenReturn(stats);
 
-        RunRecordCommand runRecordCommand = createRunRecordDto(5.1, 130, -120, 3600L);
-        CreateRunCommand request = createGhostRunCommandRequest(
-                "러닝 이름", "GHOST", ghostRunningId,
-                100L, runRecordCommand);
+        CreateRunCommand cmd = mock(CreateRunCommand.class);
+        when(cmd.getStartedAt()).thenReturn(startedAt);
+        when(cmd.getMode()).thenReturn("GHOST");
+        when(cmd.getGhostRunningId()).thenReturn(999L);
 
-//        given(s3TelemetryClient.uploadTelemetries(anyString(), anyString()))
-//                .willReturn("Mock Telemetries Url");
+        Running ghost = mock(Running.class);
+        when(runningQueryService.findRunningByRunningId(999L)).thenReturn(ghost);
 
-        // when // then
-//        Assertions.assertThatThrownBy(() -> runningCommandService.createRun(request, savedFakeCourseId, savedMemberUuid))
-//                .isInstanceOf(InvalidRunningException.class)
-//                .hasMessage("고스트가 뛴 코스가 아닙니다.");
-    }
-
-    private Course createCourse(Member member) {
-        CourseProfile testCourseProfile = createCourseProfile();
-        Coordinate testCoordinate = createStartPoint();
-        return Course.of(member, testCourseProfile.getDistance(),
-                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
-                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
-                "Mock URL", "Mock URL", "Mock URL");
-    }
-
-    private Coordinate createStartPoint() {
-        return Coordinate.of(37.545354, 34.7878);
-    }
-
-    private CourseProfile createCourseProfile() {
-        return CourseProfile.of(5.2, 40.0, 30.0, -10.0);
-    }
-
-    private CreateRunCommand createGhostRunCommandRequest(String runningName, String runningMode, Long ghostRunningId,
-                                                          Long startedAt, RunRecordCommand runRecordCommand) {
-        return new CreateRunCommand(runningName, ghostRunningId, runningMode,
-                startedAt, runRecordCommand, false, true);
-    }
-
-    private Running createRunning(Member member, Course course) {
-        RunningRecord testRunningRecord = createRunningRecord();
-        return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord,
-                1750729987181L, true, false, "URL", "URL", "URL", member, course);
-    }
-  
-    @DisplayName("러닝 기록을 공개/비공개 상태로 변경한다.")
-    @Test
-    void setRunningPublic() {
-        // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
-
-        Course course = createCourse(member);
-        courseRepository.save(course);
-
-        Running publicRunning = runningRepository.save(createRunning(member, course, true));
-        Running privateRunning = runningRepository.save(createRunning(member, course, false));
+        // 러닝 저장 흐름
+        Running running = mock(Running.class);
+        when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
+        when(runningRepository.save(running)).thenReturn(running);
+        when(running.getId()).thenReturn(200L);
 
         // when
-        runningCommandService.updateRunningPublicStatus(publicRunning.getId(), member.getUuid());
-        runningCommandService.updateRunningPublicStatus(privateRunning.getId(), member.getUuid());
+        Long id = sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
 
         // then
-        Running updatedToPublicRunning = runningRepository.findById(privateRunning.getId()).get();
-        assertThat(updatedToPublicRunning.isPublic()).isTrue();
-
-        Running updatedToPrivateRunning = runningRepository.findById(publicRunning.getId()).get();
-        assertThat(updatedToPrivateRunning.isPublic()).isFalse();
+        assertThat(id).isEqualTo(200L);
+        verify(ghost).validateBelongsToCourse(courseId);
+        verify(runningQueryService).findRunningByRunningId(999L);
     }
 
-    @DisplayName("러닝을 중지한 기록이 있다면 공개 설정이 불가능하다.")
+    // ====== 업데이트 계열 ======
+
     @Test
-    void cannotEnablePublicWhenStoppedRunExists() {
+    @DisplayName("updateRunningName: 본인 검증 후 이름을 변경한다")
+    void updateRunningName_updatesAfterOwnershipCheck() {
         // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
-
-        Course course = createCourse(member);
-        courseRepository.save(course);
-
-        Running hasPausedRunning = runningRepository.save(createHasPausedRunning(member, course));
-        runningRepository.save(hasPausedRunning);
-
-        // when // then
-        assertThatThrownBy(
-                () -> runningCommandService.updateRunningPublicStatus(hasPausedRunning.getId(), member.getUuid()))
-                .isInstanceOf(InvalidRunningException.class)
-                .hasMessage("정지한 기록이 있다면 공개할 수 없습니다.");
-    }
-
-    @DisplayName("자신의 러닝 데이터가 아니라면 공개 설정을 수정할 수 없다.")
-    @Test
-    void cannotUpdateIsPublicIfNotOwner() {
-        // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
-
-        Course course = createCourse(member);
-        courseRepository.save(course);
-
-        Running publicRunning = runningRepository.save(createRunning(member, course, true));
-
-        // when // then
-        assertThatThrownBy(
-                        () -> runningCommandService.updateRunningPublicStatus(publicRunning.getId(), UUID.randomUUID().toString()))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("접근할 수 없는 러닝 데이터입니다.");
-    }
-
-    private Running createRunning(Member member, Course course, Boolean isPublic) {
-        RunningRecord testRunningRecord = createRunningRecord();
-        return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, testRunningRecord, 1750729987181L,
-                isPublic, false, "URL", "URL", "URL", member, course);
-    }
-
-    private Running createHasPausedRunning(Member member, Course course) {
-        return Running.of("테스트 러닝 제목", RunningMode.SOLO, 2L, createRunningRecord(), 1750729987181L,
-                false, true, "URL", "URL", "URL", member, course);
-    }
-
-    private RunningRecord createRunningRecord() {
-        return RunningRecord.of(5.2, 40.0, 30.0, -20.0,
-                6.1, 4.9, 6.9, 3423L, 302, 120, 56);
-    }
-
-    @DisplayName("N개의 러닝 데이터를 삭제한다.")
-    @Test
-    void deleteRunnings() {
-        // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
-
-        Course course1 = createCourse(member);
-        Course course2 = createCourse(member);
-        courseRepository.saveAll(List.of(course1, course2));
-
-        Running running1 = createRunning(member, course1);
-        Running running2 = createRunning(member, course1);
-        Running running3 = createRunning(member, course2);
-        runningRepository.saveAll(List.of(running1, running2, running3));
+        Long runningId = 10L;
+        Running running = mock(Running.class);
+        when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
 
         // when
-        List<Long> runningIds = List.of(running1.getId(), running2.getId(), running3.getId());
-        runningCommandService.deleteRunnings(runningIds, member.getUuid());
+        sut.updateRunningName("새 이름", runningId, memberUuid);
 
         // then
-        List<Running> runnings = runningRepository.findByIds(List.of(running1.getId(), running2.getId(), running3.getId()));
-        assertThat(runnings.size()).isEqualTo(0);
+        InOrder inOrder = inOrder(runningQueryService, running);
+        inOrder.verify(runningQueryService).findRunningByRunningId(runningId);
+        inOrder.verify(running).verifyMember(memberUuid);
+        inOrder.verify(running).updateName("새 이름");
     }
 
-    @DisplayName("자신의 러닝 데이터가 아니라면 삭제할 수 없다.")
     @Test
-    void cannotDeleteRunningsIfNotOwner() {
+    @DisplayName("updateRunningPublicStatus: 본인 검증 후 공개 상태를 토글한다")
+    void updateRunningPublicStatus_togglesAfterOwnershipCheck() {
         // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
-
-        Course course1 = createCourse(member);
-        Course course2 = createCourse(member);
-        courseRepository.saveAll(List.of(course1, course2));
-
-        Running running1 = createRunning(member, course1);
-        Running running2 = createRunning(member, course1);
-        Running running3 = createRunning(member, course2);
-        runningRepository.saveAll(List.of(running1, running2, running3));
-
-        // when // then
-        List<Long> runningIds = List.of(running1.getId(), running2.getId(), running3.getId());
-        assertThatThrownBy(
-                () -> runningCommandService.deleteRunnings(runningIds, UUID.randomUUID().toString()))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("접근할 수 없는 러닝 데이터입니다.");
-    }
-
-    @DisplayName("러닝 이름을 변경한다.")
-    @Test
-    void updateRunningName() {
-        // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
-
-        Course course = createCourse(member);
-        courseRepository.save(course);
-
-        Running running = createRunning(member, course);
-        runningRepository.save(running);
+        Long runningId = 11L;
+        Running running = mock(Running.class);
+        when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
 
         // when
-        runningCommandService.updateRunningName("변경할 러닝명", running.getId(), member.getUuid());
+        sut.updateRunningPublicStatus(runningId, memberUuid);
 
         // then
-        Running updatedRunning = runningRepository.findById(running.getId()).get();
-        assertThat(updatedRunning.getRunningName()).isEqualTo("변경할 러닝명");
+        InOrder inOrder = inOrder(runningQueryService, running);
+        inOrder.verify(runningQueryService).findRunningByRunningId(runningId);
+        inOrder.verify(running).verifyMember(memberUuid);
+        inOrder.verify(running).updatePublicStatus();
     }
 
-    @DisplayName("자신의 러닝이 아니라면 이름을 변경하지 못한다.")
+    // ====== 삭제 ======
+
     @Test
-    void cannotUpdateRunningNameIfNotOwner() {
+    @DisplayName("deleteRunnings: 각 러닝에 대해 소유자 검증 후 일괄 삭제 요청한다")
+    void deleteRunnings_verifiesOwnershipThenDeletes() {
         // given
-        Member member = createMember("테스트 유저");
-        memberRepository.save(member);
+        List<Long> ids = List.of(1L, 2L, 3L);
+        Running r1 = mock(Running.class);
+        Running r2 = mock(Running.class);
+        Running r3 = mock(Running.class);
 
-        Course course = createCourse(member);
-        courseRepository.save(course);
+        when(runningRepository.findByIds(ids)).thenReturn(List.of(r1, r2, r3));
 
-        Running running = createRunning(member, course);
-        runningRepository.save(running);
+        // when
+        sut.deleteRunnings(ids, memberUuid);
 
-        // when // then
-        assertThatThrownBy(
-                () -> runningCommandService.updateRunningName(
-                        "변경할 러닝명", running.getId(), UUID.randomUUID().toString()))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("접근할 수 없는 러닝 데이터입니다.");
+        // then
+        verify(r1).verifyMember(memberUuid);
+        verify(r2).verifyMember(memberUuid);
+        verify(r3).verifyMember(memberUuid);
+        verify(runningRepository).deleteInRunningIds(ids);
     }
 
+    // ====== 예외 가드(한 예시) ======
+
+    @Test
+    @DisplayName("createRun: 멤버 미존재 시 하위 호출 없이 예외 전파")
+    void createRun_memberNotFound_propagatesAndNoSideEffects() {
+        // given
+        when(memberService.findMemberByUuid(memberUuid))
+                .thenThrow(new RuntimeException("member not found"));
+
+        CreateRunCommand cmd = mock(CreateRunCommand.class);
+
+        // when/then
+        assertThatThrownBy(() -> sut.createRun(cmd, memberUuid, 1L, raw(), interp(), shot()))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("member not found");
+
+        verifyNoInteractions(courseService, telemetryProcessor, runningFileUploader, mapper, runningRepository);
+    }
 }
