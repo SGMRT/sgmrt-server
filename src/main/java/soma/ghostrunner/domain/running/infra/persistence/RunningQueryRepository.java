@@ -34,4 +34,5 @@ public interface RunningQueryRepository {
     Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId);
 
     Optional<UserPaceStatsDto> findUserRunStatisticsByCourseId(Long courseId, String memberUuid);
+
 }

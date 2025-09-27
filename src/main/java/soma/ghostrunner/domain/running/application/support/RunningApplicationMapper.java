@@ -4,11 +4,13 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerSetResponse;
+import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
@@ -135,6 +137,23 @@ public interface RunningApplicationMapper {
                 .processingStatus(p.getStatus().name())
                 .pacemaker(pacemakerResponse)
                 .build();
+    }
+
+    @Mapping(source = "member.uuid", target = "runnerUuid")
+    @Mapping(source = "member.profilePictureUrl", target = "runnerProfileUrl")
+    @Mapping(source = "member.nickname", target = "runnerNickname")
+    @Mapping(source = "id", target = "runningId")
+    @Mapping(source = "runningRecord.averagePace", target = "averagePace")
+    @Mapping(source = "runningRecord.cadence", target = "cadence")
+    @Mapping(source = "runningRecord.bpm", target = "bpm")
+    @Mapping(source = "runningRecord.duration", target = "duration")
+    @Mapping(source = "createdAt", target = "startedAt")
+    CourseGhostResponse toGhostResponse(Running running);
+
+    default List<RunInfo> toResponse(List<Running> runnings) {
+        return runnings.stream()
+                .map(RunInfo::new)
+                .toList();
     }
   
 }
