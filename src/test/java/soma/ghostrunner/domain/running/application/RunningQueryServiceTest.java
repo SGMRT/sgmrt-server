@@ -10,12 +10,13 @@ import org.mockito.Mockito;
 import org.springframework.data.domain.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
@@ -35,7 +36,7 @@ class RunningQueryServiceTest {
     @Mock
     RunningRepository runningRepository;
     @Mock
-    RunningApiMapper runningApiMapper;
+    RunningApplicationMapper mapper;
     @Mock
     MemberService memberService;
 
@@ -43,7 +44,7 @@ class RunningQueryServiceTest {
 
     @BeforeEach
     void setUp() {
-        sut = new RunningQueryService(runningRepository, runningApiMapper, memberService);
+        sut = new RunningQueryService(runningRepository, mapper, memberService);
     }
 
     // ===== findSoloRunInfo =====
@@ -148,8 +149,8 @@ class RunningQueryServiceTest {
 
         CourseGhostResponse g1 = mock(CourseGhostResponse.class);
         CourseGhostResponse g2 = mock(CourseGhostResponse.class);
-        when(runningApiMapper.toGhostResponse(r1)).thenReturn(g1);
-        when(runningApiMapper.toGhostResponse(r2)).thenReturn(g2);
+        when(mapper.toGhostResponse(r1)).thenReturn(g1);
+        when(mapper.toGhostResponse(r2)).thenReturn(g2);
 
         Page<CourseGhostResponse> page = sut.findPublicGhostRunsByCourseId(courseId, pageable);
         assertThat(page.getContent()).containsExactly(g1, g2);
@@ -254,4 +255,63 @@ class RunningQueryServiceTest {
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
+
+    @DisplayName("리포지토리가 빈 결과를 반환하면 빈 리스트를 반환한다")
+    @Test
+    void findRunnings_returnsEmptyList_whenRepositoryEmpty() {
+        // given
+        Long courseId = 10L;
+        String memberUuid = "uuid-123";
+
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(1L);
+        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
+
+        when(runningRepository.findRunningsByCourseIdAndMemberId(courseId, 1L))
+                .thenReturn(List.of());
+
+        // mapper도 빈 리스트를 그대로 빈으로 매핑하도록 목 설정
+        when(mapper.toResponse(List.of())).thenReturn(List.of());
+
+        // when
+        List<RunInfo> result = sut.findRunnings(courseId, memberUuid);
+
+        // then
+        assertThat(result).isNotNull().isEmpty();
+
+        verify(memberService).findMemberByUuid(memberUuid);
+        verify(runningRepository).findRunningsByCourseIdAndMemberId(courseId, 1L);
+        verify(mapper).toResponse(List.of());
+        verifyNoMoreInteractions(memberService, runningRepository, mapper);
+    }
+
+    @DisplayName("리포지토리가 결과를 반환하면 RunInfo 리스트로 매핑되어 반환된다")
+    @Test
+    void findRunnings_returnsMappedList_whenRepositoryHasData() {
+        // given
+        Long courseId = 10L;
+        String memberUuid = "uuid-123";
+
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(1L);
+        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
+
+        List<Running> repoResult = List.of(mock(Running.class), mock(Running.class));
+
+        when(runningRepository.findRunningsByCourseIdAndMemberId(courseId, 1L))
+                .thenReturn(repoResult);
+
+        List<RunInfo> mapped = List.of(mock(RunInfo.class), mock(RunInfo.class));
+        when(mapper.toResponse(repoResult)).thenReturn(mapped);
+
+        // when
+        List<RunInfo> result = sut.findRunnings(courseId, memberUuid);
+
+        // then
+        assertThat(result).isEqualTo(mapped);
+        verify(memberService).findMemberByUuid(memberUuid);
+        verify(runningRepository).findRunningsByCourseIdAndMemberId(courseId, 1L);
+        verify(mapper).toResponse(repoResult);
+    }
+
 }

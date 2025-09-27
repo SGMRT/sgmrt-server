@@ -19,7 +19,7 @@ import static org.mockito.Mockito.*;
 
 
 @ExtendWith(MockitoExtension.class)
-class PathSimplificationServiceUnitTest {
+class PathSimplificationServiceTest {
 
     PathSimplificationService sut;
 

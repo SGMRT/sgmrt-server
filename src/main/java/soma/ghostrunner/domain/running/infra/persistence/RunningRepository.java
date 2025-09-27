@@ -59,4 +59,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     @Query("select count(r.id) from Running r where r.course.id = :courseId")
     long countTotalRunningsCount(Long courseId);
 
+    @Query("select r from Running r where r.course.id = :courseId and r.member.id = :memberId order by r.startedAt desc, r.id desc")
+    List<Running> findRunningsByCourseIdAndMemberId(Long courseId, Long memberId);
+
 }
