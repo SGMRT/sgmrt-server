@@ -51,7 +51,7 @@ class CourseServiceTest extends IntegrationTestSupport {
 
     @DisplayName("주어진 위경도 반경 내의 공개된 코스 목록을 정상적으로 조회한다.")
     @Test
-    void searchCourses() {
+    void findNearbyCourses() {
         // given
         Course courseNearby1 = createPublicCourse("코스 1", LAT, LNG);
         Course courseNearby2 = createPublicCourse("코스 2", LAT + 0.001, LNG - 0.001);
@@ -59,7 +59,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseNearby1, courseNearby2, courseFar));
 
         // when
-        List<CoursePreviewDto> courses = courseService.searchCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         // - course1, 2는 조회되고, course3은 조회되지 않는다
@@ -70,14 +70,14 @@ class CourseServiceTest extends IntegrationTestSupport {
 
     @DisplayName("코스 조회 시 검색 반경이 0일 경우 정확히 검색한 지점의 코스만 조회한다.")
     @Test
-    void searchCourses_ZeroRadius() {
+    void findNearbyCourses_ZeroRadius() {
         // given
         Course course1 = createPublicCourse("코스 1", LAT, LNG);
         Course course2 = createPublicCourse("코스 2", LAT + 0.001, LNG - 0.001);
         courseRepository.saveAll(List.of(course1, course2));
 
         // when
-        List<CoursePreviewDto> courses = courseService.searchCourses(LAT, LNG, 0, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, LNG, 0, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         Assertions.assertThat(courses).hasSize(1)
@@ -87,14 +87,14 @@ class CourseServiceTest extends IntegrationTestSupport {
 
     @DisplayName("코스가 비공개 상태인 경우 조회 시 반경 내에 있어도 조회할 수 없다.")
     @Test
-    void searchCourses_IsPublicFalse() {
+    void findNearbyCourses_IsPublicFalse() {
         // given
         Course publicCourse = createPublicCourse("나를 찾아줘", LAT, LNG);
         Course privateCourse = createPrivateCourse("나를 찾지마", LAT, LNG);
         courseRepository.saveAll(List.of(publicCourse, privateCourse));
 
         // when
-        List<CoursePreviewDto> courses = courseService.searchCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         Assertions.assertThat(courses).hasSize(1);
@@ -111,7 +111,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseEast, courseWest, courseFar));
 
         // when
-        List<CoursePreviewDto> courses = courseService.searchCourses(LAT, 0d, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, 0d, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         // 동경, 서경 코스는 모두 조회되고, 멀리 있는 코스는 조회되지 않아야 함
@@ -122,7 +122,7 @@ class CourseServiceTest extends IntegrationTestSupport {
 
     @DisplayName("날짜 변경선 (경도 180도) 근처에서 코스를 검색하더라도 올바르게 조회할 수 있다.")
     @Test
-    void searchCourses_DateLine() {
+    void findNearbyCourses_DateLine() {
         // given
         // 날짜 변경선 근처인 동경(양수) 끝과 서경(음수) 끝에 코스를 생성
         Course courseEast = createPublicCourse("동경 끝 코스", LAT, 179.999);
@@ -132,7 +132,7 @@ class CourseServiceTest extends IntegrationTestSupport {
 
         // when
         // 동경 179.9985도 지점에서 반경 1km 내 코스 검색
-        List<CoursePreviewDto> courses = courseService.searchCourses(LAT, 179.9985, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, 179.9985, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         // 동경 끝, 서경 끝 코스는 모두 조회되고, 멀리 있는 코스는 조회되지 않아야 함
@@ -145,14 +145,14 @@ class CourseServiceTest extends IntegrationTestSupport {
     @DisplayName("본초자오선 기준으로 위경도가 이루는 4분면 어디에서도 코스를 조회할 수 있다.")
     @ParameterizedTest(name = "[{index}] {0}에서 코스를 검색하면 올바른 코스가 조회된다.")
     @MethodSource("locationQuadrants")
-    void searchCourses_quadrants(String name, double lat, double lng) {
+    void findNearbyCourses_quadrants(String name, double lat, double lng) {
         // given
         Course courseNearby = createPublicCourse("근처 코스", lat + 0.001, lng + 0.001);
         Course courseFar = createPublicCourse("먼 코스", lat + 1.0, lng + 1.0);
         courseRepository.saveAll(List.of(courseNearby, courseFar));
 
         // when
-        List<CoursePreviewDto> courses = courseService.searchCourses(lat, lng, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
 
         // then
         assertThat(courses).hasSize(1)

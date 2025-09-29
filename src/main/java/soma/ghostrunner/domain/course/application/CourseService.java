@@ -7,11 +7,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import soma.ghostrunner.domain.course.dao.CourseRedisRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
-import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
@@ -29,8 +29,7 @@ public class CourseService {
     private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
 
-    public Long save(
-            Course course) {
+    public Long save(Course course) {
         return courseRepository.save(course).getId();
     }
 
@@ -39,22 +38,15 @@ public class CourseService {
                 .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
     }
 
-    public List<CoursePreviewDto> searchCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
-                                                CourseSearchFilterDto filters) {
+    public List<CoursePreviewDto> findNearbyCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
+                                                    CourseSearchFilterDto filters) {
         // 코스 검색할 직사각형 반경 계산
         // - 1도 위도 당 111km 가정 (지구 둘레 40,075km / 360도 = 약 111.3km)
         // - 근사치이며, 적도에서 멀어질 수록 경도 거리 오차가 커짐 -> TODO: 추후 Haversine 공식이나 DB 공간 데이터 타입 활용하도록 변경
-        double radiusKm = radiusM / 1000d;
-        double latDelta = radiusKm / 111.0;
-        double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
+        LatLngs result = getBoundingBoxLatLngs(lat, lng, radiusM);
 
-        double minLat = lat - latDelta;
-        double maxLat = lat + latDelta;
-        double minLng = lng - lngDelta;
-        double maxLng = lng + lngDelta;
-
-        List<Course> courses = courseRepository.findCoursesWithFilters(lat, lng, minLat, maxLat, minLng, maxLng, filters, sort);
-        log.info("CourseService::searchCourses() - found {} courses", courses.size());
+        List<Course> courses = courseRepository.findCoursesWithFilters(lat, lng, result.minLat(), result.maxLat(), result.minLng(), result.maxLng(), filters, sort);
+        log.info("CourseService::findNearbyCourses() - found {} courses", courses.size());
 
         return courses.stream()
                 .map(courseMapper::toCoursePreviewDto)
@@ -100,4 +92,22 @@ public class CourseService {
         if(course.getIsPublic() == true) throw new CourseAlreadyPublicException(ErrorCode.COURSE_ALREADY_PUBLIC, course.getId());
         course.setIsPublic(isPublic);
     }
+
+    /** (lat, lng)을 radiusM로 둘러싼 직사각형의 네 꼭지점 좌표를 반환한다 */
+    private static LatLngs getBoundingBoxLatLngs(Double lat, Double lng, double radiusM) {
+        double radiusKm = radiusM / 1000d;
+        double latDelta = radiusKm / 111.0;
+        double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
+
+        double minLat = lat - latDelta;
+        double maxLat = lat + latDelta;
+        double minLng = lng - lngDelta;
+        double maxLng = lng + lngDelta;
+
+        return new LatLngs(minLat, maxLat, minLng, maxLng);
+    }
+
+    private record LatLngs(double minLat, double maxLat, double minLng, double maxLng) {
+    }
+
 }

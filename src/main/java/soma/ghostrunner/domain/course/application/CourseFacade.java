@@ -8,8 +8,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.course.dao.CourseRedisRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.*;
+import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
@@ -22,6 +24,7 @@ import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -29,21 +32,23 @@ import java.util.List;
 public class CourseFacade {
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
+    private final CourseRedisRepository courseRedisRepository;
 
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
+
 
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                          CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
-        List<CoursePreviewDto> courses = courseService.searchCourses(lat, lng, radiusM, sort, filters);
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
         // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
         return courses.stream().map(course -> {
             Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
             CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
             long runnersCount = rankers.getTotalElements();
-            return courseMapper.toCourseMapResponse(course, rankers.getContent(), runnersCount, ghostForUser);
+            return courseMapper.toCourseMapResponse(course, rankers.getContent().stream().map(RunnerProfile::from).toList(), runnersCount, ghostForUser);
         }).toList();
     }
 
@@ -130,6 +135,13 @@ public class CourseFacade {
                     log.warn("CourseService: No running data found for course id {}", course.getId());
                     return null;
                 });
+    }
+
+    private static List<Long> filterCacheMissedIds(Map<Long, CourseQueryModel> cachedCourses) {
+        return cachedCourses.entrySet().stream()
+                .filter(entry -> entry.getValue() == null)
+                .map(Map.Entry::getKey)
+                .toList();
     }
 
 }
