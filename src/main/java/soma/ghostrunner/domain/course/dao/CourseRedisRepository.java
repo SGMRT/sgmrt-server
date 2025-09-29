@@ -19,12 +19,12 @@ public class CourseRedisRepository {
     private static final String KEY_PREFIX = "course:";
     private static final long TTL_IN_MINUTES = 60;
 
-    void save(CourseQueryModel model) {
+    public void save(CourseQueryModel model) {
         String key = buildKey(model.id());
         redisTemplate.opsForValue().set(key, model, TTL_IN_MINUTES, TimeUnit.MINUTES);
     }
 
-    void saveAll(List<CourseQueryModel> models) {
+    public void saveAll(List<CourseQueryModel> models) {
         // MSET으로 데이터 저장
         Map<String, CourseQueryModel> courseMap = models.stream()
                 .collect(Collectors.toMap(
@@ -76,7 +76,12 @@ public class CourseRedisRepository {
     }
 
     private String buildKey(Long id) {
-        return KEY_PREFIX + id;
+        return KEY_PREFIX + buildHashTag(id) + ":" + id;
+    }
+
+    private String buildHashTag(Long id) {
+//        return "{" + id % HASH_TAG_MOD + "}";
+        return "{0}";
     }
 
 }

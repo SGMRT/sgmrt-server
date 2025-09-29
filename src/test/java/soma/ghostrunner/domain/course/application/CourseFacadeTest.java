@@ -10,6 +10,7 @@ import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
+import soma.ghostrunner.domain.course.dto.RunnerProfile;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseMapResponse;
@@ -76,8 +77,8 @@ class CourseFacadeTest extends IntegrationTestSupport {
         // 코스별 상위 러너 정보 검증
         assertThat(courses).extracting("runnersCount")
                 .containsExactlyInAnyOrder(10L, 3L, 0L);
-        List<CourseMapResponse.MemberRecord> memberPoolRecords = memberPool.stream()
-                .map(member -> new CourseMapResponse.MemberRecord(member.getUuid(), member.getProfilePictureUrl()))
+        List<RunnerProfile> memberPoolRecords = memberPool.stream()
+                .map(member -> new RunnerProfile(member.getUuid(), member.getProfilePictureUrl()))
                 .toList();
         assertThat(courses).extracting("runners")
                 .containsExactlyInAnyOrder(

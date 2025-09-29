@@ -37,6 +37,53 @@ public class CourseFacade {
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
 
+    @Transactional(readOnly = true)
+    public List<CourseMapResponse> findCoursesByPositionCached(Double lat, Double lng, Integer radiusM, CourseSortType sort,
+                                                               CourseSearchFilterDto filters, String viewerUuid) {
+        // 1. 코스 리스트 조회
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
+        List<Long> courseIds = courses.stream().map(CoursePreviewDto::id).toList();
+
+        // 2. 캐시에서 코스 조회
+        Map<Long, CourseQueryModel> cachedCourses = courseRedisRepository.findAllById(courseIds);
+        List<CourseMapResponse> responses;
+
+        // 3. 존재하지 않는 코스 ID 추출 및 DB에서 조회 후 캐시 Write
+        List<Long> cacheMissedIds = filterCacheMissedIds(cachedCourses);
+        if(!cacheMissedIds.isEmpty()) {
+            // todo: miss된 id만 조회하도록 변경
+            log.info("CourseFacade::findCoursesByPositionCached() - found cache miss for {} courses", cacheMissedIds.size());
+            List<CourseQueryModel> cacheUpdateCourses = new ArrayList<>();
+            responses = new ArrayList<>();
+            for(var course: courses) {
+                Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
+                CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
+                long runnersCount = rankers.getTotalElements();
+
+                cacheUpdateCourses.add(courseMapper.toCourseQueryModel(course, rankers.getContent(), runnersCount));
+                responses.add(courseMapper.toCourseMapResponse(course, rankers.getContent().stream().map(RunnerProfile::from).toList(), runnersCount, ghostForUser));
+            }
+            courseRedisRepository.saveAll(cacheUpdateCourses);
+        } else {
+            log.info("CourseFacade::findCoursesByPositionCached() - all courses cache hit. querying ghost");
+            // ghostForUser 조회를 위해 running 테이블 조회 (ghostForUser에 러닝기록을 담고 싶은 경우 이 부분 주석 해제)
+//            Map<Long, Running> bestRuns = runningQueryService.findBestRunningRecordsForCourses(courseIds, viewerUuid);
+            Map<Long, Boolean> hasRan = runningQueryService.checkRunningHistoryForCourses(courseIds, viewerUuid);
+            responses = courses.stream().map(course -> {
+//                CourseGhostResponse ghostForUser = null;
+//                if (bestRuns.containsKey(course.id())) {
+//                    ghostForUser = runningApiMapper.toGhostResponse(bestRuns.get(course.id()));
+//                }
+
+//                return courseMapper.toCourseMapResponse(course, cachedCourse.topRunners(), cachedCourse.runnerCount(), ghostForUser);
+                CourseQueryModel cachedCourse = cachedCourses.get(course.id());
+                return courseMapper.toCourseMapResponseTmp(course, cachedCourse.topRunners(), cachedCourse.runnerCount(), hasRan.getOrDefault(course.id(), false));
+            }).toList();
+        }
+
+        // 4. 응답을 만들어서 반환
+        return responses;
+    }
 
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,

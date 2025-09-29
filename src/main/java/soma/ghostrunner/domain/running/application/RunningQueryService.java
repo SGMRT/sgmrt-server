@@ -24,8 +24,9 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -139,6 +140,39 @@ public class RunningQueryService {
                     throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
                 };
             });
+    }
+
+    /** memberId 사용자가 courseIds에 해당하는 코스에서의 최고기록을 반환한다. (기록이 없으면 null) */
+    public Map<Long, Running> findBestRunningRecordsForCourses(List<Long> courseIds, String memberUuid) {
+        // IN 절로 한 번에 조회한 후 courseId 별로 맵핑
+        Map<Long, Running> bestRunsByCourseId = runningRepository.findBestRunningRecordsByMemberIdAndCourseIds(memberUuid, courseIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        run -> run.getCourse().getId(),
+                        Function.identity()
+                ));
+
+        Map<Long, Running> result = new HashMap<>();
+        for (Long courseId : courseIds) {
+            result.put(courseId, bestRunsByCourseId.get(courseId));
+        }
+        return result;
+    }
+
+    public Map<Long, Boolean> checkRunningHistoryForCourses(List<Long> courseIds, String memberUuid) {
+        // 1. DB에서 한 번의 쿼리로 사용자가 뛴 코스 ID 목록을 가져옵니다.
+        List<Long> ranCourseIds = runningRepository.findRanCourseIdsByMemberIdAndCourseIds(memberUuid, courseIds);
+
+        // 2. 결과를 가공하여 반환합니다.
+        // Set으로 변환하여 조회 성능을 높입니다.
+        Set<Long> ranCourseIdSet = new HashSet<>(ranCourseIds);
+
+        // courseIds 목록을 순회하며, 각 코스 ID에 대한 기록 존재 여부를 Map에 담습니다.
+        return courseIds.stream()
+                .collect(Collectors.toMap(
+                        courseId -> courseId, // Key: 코스 ID
+                        ranCourseIdSet::contains // Value: 기록 존재 여부 (true/false)
+                ));
     }
 
     public List<RunInfo> findRunnings(String filteredBy,
