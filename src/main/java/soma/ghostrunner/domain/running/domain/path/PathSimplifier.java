@@ -16,7 +16,7 @@ public class PathSimplifier {
     private final CoordinateTransformFactory ctFactory = new CoordinateTransformFactory();
     private final CoordinateReferenceSystem WGS84 = crsFactory.createFromName("epsg:4326");
 
-    private static final double RDP_EPSILON_METER = 8.0;
+    private static final double RDP_EPSILON_METER = 10.0;
     private static final double VW_EPSILON_AREA = 4.0;
 
     // 체크포인트 추출 : UTM 변환 -> RDP 알고리즘
