@@ -9,10 +9,10 @@ import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseDataUrls;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
+import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
@@ -68,9 +68,9 @@ class CourseMapperTest {
     void toCourseMapResponse() {
         // given
         CoursePreviewDto courseDto = createCoursePreviewDto();
-        List<CourseGhostResponse> ghosts = List.of(createCourseGhostResponse());
+        List<RunnerProfile> ghosts = List.of(createRunnerProfile("uuid-1"), createRunnerProfile("uuid-2"));
         CourseGhostResponse myGhostInfo = createCourseGhostResponse();
-        long runnersCount = 1L;
+        long runnersCount = 2L;
 
         // when
         CourseMapResponse response = courseMapper.toCourseMapResponse(courseDto, ghosts, runnersCount, myGhostInfo);
@@ -92,9 +92,11 @@ class CourseMapperTest {
         assertThat(response.createdAt()).isEqualTo(courseDto.createdAt());
         // CourseMapResponse 필드 검증
         assertThat(response.runnersCount()).isEqualTo(runnersCount);
-        assertThat(response.runners()).hasSize(1);
-        assertThat(response.runners().get(0).uuid()).isEqualTo(ghosts.get(0).runnerUuid());
-        assertThat(response.runners().get(0).profileUrl()).isEqualTo(ghosts.get(0).runnerProfileUrl());
+        assertThat(response.runners()).hasSize(2);
+        for(int i = 0; i < ghosts.size(); i++) {
+            assertThat(response.runners().get(i).uuid()).isEqualTo(ghosts.get(i).uuid());
+            assertThat(response.runners().get(i).profileUrl()).isEqualTo(ghosts.get(i).profileUrl());
+        }
         assertThat(response.myGhostInfo()).isEqualTo(myGhostInfo);
     }
 
@@ -247,7 +249,6 @@ class CourseMapperTest {
         assertThat(response.totalRunsCount()).isEqualTo(stats.getTotalRunsCount());
     }
 
-
     @DisplayName("(SubMapper) CourseGhostResponse를 MemberRecord로 변환한다.")
     @Test
     void toMemberRecordDto() {
@@ -255,11 +256,34 @@ class CourseMapperTest {
         CourseGhostResponse ghost = createCourseGhostResponse();
 
         // when
-        CourseMapResponse.MemberRecord memberRecord = courseSubMapper.toMemberRecordDto(ghost);
+        RunnerProfile memberRecord = courseSubMapper.toMemberRecordDto(ghost);
 
         // then
         assertThat(memberRecord.uuid()).isEqualTo(ghost.runnerUuid());
         assertThat(memberRecord.profileUrl()).isEqualTo(ghost.runnerProfileUrl());
+    }
+
+    @DisplayName("CoursePreviewDto와 CourseGhostResponse 리스트를 CourseQueryModel로 변환한다.")
+    @Test
+    void toCourseQueryModel() {
+        // given
+        CoursePreviewDto courseDto = createCoursePreviewDto();
+        List<CourseGhostResponse> ghosts = List.of(createCourseGhostResponse(), createCourseGhostResponse());
+        long runnerCount = 2L;
+
+        // when
+        CourseQueryModel queryModel = courseMapper.toCourseQueryModel(courseDto, ghosts, runnerCount);
+
+        // then
+        assertThat(queryModel.id()).isEqualTo(courseDto.id());
+        assertThat(queryModel.name()).isEqualTo(courseDto.name());
+        assertThat(queryModel.runnerCount()).isEqualTo((int) runnerCount);
+        assertThat(queryModel.topRunners()).hasSize(ghosts.size());
+        for (int i = 0; i < ghosts.size(); i++) {
+            assertThat(queryModel.topRunners().get(i).uuid()).isEqualTo(ghosts.get(i).runnerUuid());
+            assertThat(queryModel.topRunners().get(i).profileUrl()).isEqualTo(ghosts.get(i).runnerProfileUrl());
+        }
+
     }
 
 
@@ -291,6 +315,10 @@ class CourseMapperTest {
 
     private CoursePreviewDto createCoursePreviewDto() {
         return new CoursePreviewDto(1L, "Test Course", 37.0, 127.0, CourseSource.USER, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
+    }
+
+    private RunnerProfile createRunnerProfile(String uuid) {
+        return new RunnerProfile(uuid, "profile.url");
     }
 
     private CourseGhostResponse createCourseGhostResponse() {
