@@ -21,6 +21,8 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 @Slf4j
@@ -38,13 +40,51 @@ public class CourseFacade {
                                                          CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
         List<CoursePreviewDto> courses = courseService.searchCourses(lat, lng, radiusM, sort, filters);
+        List<CoursePreviewDto> filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
         // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
-        return courses.stream().map(course -> {
+        return filteredCourses.stream().map(course -> {
             Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
             CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
             long runnersCount = rankers.getTotalElements();
             return courseMapper.toCourseMapResponse(course, rankers.getContent(), runnersCount, ghostForUser);
         }).toList();
+    }
+
+    /** 본인 코스, 주변 랜덤 코스를 고려하여 limit개 이하로 제한한다. */
+    private List<CoursePreviewDto> limitCoursesForViewer(List<CoursePreviewDto> courses, String viewerUuid, int limit) {
+        var usersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 본인의 코스 (idx -> dto)
+        var othersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 다른 사람 코스 (idx -> dto)
+        int idx = 0;
+        for (var course : courses) {
+            if (course.ownerUuid() != null && course.ownerUuid().equals(viewerUuid)) {
+                usersCoursesMap.put(idx, course);
+            } else {
+                othersCoursesMap.put(idx, course);
+            }
+            idx++;
+        }
+
+        // 본인의 코스 - 최대 절반까지, 단 otherCourses가 부족한 경우 더 담음
+        var userCourseIndices = usersCoursesMap.keySet().stream()
+                .limit(Math.max(limit / 2, limit - othersCoursesMap.size()))
+                .toList();
+
+        // 주변 랜덤 코스 - 다른 사람 코스를 랜덤하게 선택
+        var otherCourseIndices = new ArrayList<>(othersCoursesMap.keySet());
+        Collections.shuffle(otherCourseIndices);
+        var otherCourseRandomIndices = otherCourseIndices.stream()
+                .limit(limit - userCourseIndices.size())
+                .toList();
+
+        // 인덱스 기존 순서대로 정렬 후 dto로 매핑하여 반환
+        var finalIndices = new ArrayList<Integer>();
+        finalIndices.addAll(userCourseIndices);
+        finalIndices.addAll(otherCourseRandomIndices);
+        Collections.sort(finalIndices);
+
+        return finalIndices.stream()
+                .map(courses::get)
+                .toList();
     }
 
     @Transactional(readOnly = true)

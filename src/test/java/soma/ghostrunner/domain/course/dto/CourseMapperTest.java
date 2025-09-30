@@ -12,7 +12,6 @@ import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
@@ -50,6 +49,7 @@ class CourseMapperTest {
         // then
         assertThat(dto.id()).isEqualTo(course.getId());
         assertThat(dto.name()).isEqualTo(course.getName());
+        assertThat(dto.ownerUuid()).isEqualTo(course.getMember().getUuid());
         assertThat(dto.source()).isEqualTo(course.getSource());
         assertThat(dto.startLat()).isEqualTo(course.getStartCoordinate().getLatitude());
         assertThat(dto.startLng()).isEqualTo(course.getStartCoordinate().getLongitude());
@@ -79,6 +79,7 @@ class CourseMapperTest {
         // CoursePreviewDto 필드 검증
         assertThat(response.id()).isEqualTo(courseDto.id());
         assertThat(response.name()).isEqualTo(courseDto.name());
+        assertThat(response.ownerUuid()).isEqualTo(courseDto.ownerUuid());
         assertThat(response.source()).isEqualTo(courseDto.source());
         assertThat(response.startLat()).isEqualTo(courseDto.startLat());
         assertThat(response.startLng()).isEqualTo(courseDto.startLng());
@@ -290,7 +291,7 @@ class CourseMapperTest {
     }
 
     private CoursePreviewDto createCoursePreviewDto() {
-        return new CoursePreviewDto(1L, "Test Course", 37.0, 127.0, CourseSource.USER, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
+        return new CoursePreviewDto(1L, "Test Course", "dummy-uuid", 37.0, 127.0, CourseSource.USER, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
     }
 
     private CourseGhostResponse createCourseGhostResponse() {

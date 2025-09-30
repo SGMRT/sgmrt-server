@@ -33,7 +33,7 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
     JPAQuery<Course> query = queryFactory
             .selectFrom(course)
             .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
-            .leftJoin(course.member)
+            .leftJoin(course.member).fetchJoin() // 코스 소유자 정보도 함께 조회
             .where(
                     course.isPublic.isTrue(),
                     startPointWithinBoundary(minLat, maxLat, minLng, maxLng),
