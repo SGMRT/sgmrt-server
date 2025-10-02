@@ -3,9 +3,7 @@ package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -35,6 +33,8 @@ public class CourseFacade {
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
 
+    private static final int MAX_RUNNER_PROFILES_PER_COURSE = 4;
+
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                          CourseSearchFilterDto filters, String viewerUuid) {
@@ -43,11 +43,20 @@ public class CourseFacade {
         List<CoursePreviewDto> filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
         // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
         return filteredCourses.stream().map(course -> {
-            Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
+            List<CourseGhostResponse> rankers = runningQueryService.findTopRankingDistinctGhostsByCourseId(course.id(),
+                    MAX_RUNNER_PROFILES_PER_COURSE);
             CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
-            long runnersCount = rankers.getTotalElements();
-            return courseMapper.toCourseMapResponse(course, rankers.getContent(), runnersCount, ghostForUser);
+            long runnersCount = getRunnersCount(course.id(), rankers);
+            return courseMapper.toCourseMapResponse(course, rankers, runnersCount, ghostForUser);
         }).toList();
+    }
+
+    private long getRunnersCount(Long courseId, List<CourseGhostResponse> rankers) {
+        if (rankers.size() < MAX_RUNNER_PROFILES_PER_COURSE) {
+            return rankers.size();
+        } else {
+            return runningQueryService.findPublicRunnersCount(courseId);
+        }
     }
 
     /** 본인 코스, 주변 랜덤 코스를 고려하여 limit개 이하로 제한한다. */
@@ -119,8 +128,10 @@ public class CourseFacade {
     }
 
     public List<CourseGhostResponse> findTopRankingGhosts(Long courseId, int count) {
-        Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findTopRankingGhostsByCourseId(courseId, count);
-        return rankedGhostsPage.getContent();
+        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.duration");
+        Pageable pageable = PageRequest.of(0, count, defaultSort);
+        return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable)
+                .getContent();
     }
 
     public List<CourseGhostResponse> findTopPercentageGhosts(Long courseId, double percentage) {
@@ -162,7 +173,6 @@ public class CourseFacade {
         if (course.getSource() == CourseSource.OFFICIAL) {
             return course.getCourseDataUrls().getRouteUrl();
         }
-
 
         return runningQueryService.findFirstRunning(course.getId())
                 .map(running -> running.getRunningDataUrls().getInterpolatedTelemetryUrl())
