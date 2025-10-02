@@ -5,6 +5,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.CourseRunDto;
+import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
@@ -15,6 +17,8 @@ import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -135,6 +139,34 @@ class RunningApplicationMapperTest {
         assertThat(course.getStartCoordinate().getLatitude()).isEqualTo(37.2);
         assertThat(course.getCourseDataUrls().getRouteUrl()).isEqualTo("PATH_DATA_URL");
         assertThat(course.getCourseDataUrls().getThumbnailUrl()).isEqualTo("SCREEN_SHOT_URL");
+     }
+
+    @DisplayName("CourseRunDto에서 CourseGhostResponse로 변환한다.")
+    @Test
+    void toCourseGhostResponse() {
+        // given
+        LocalDateTime now = LocalDateTime.of(2025, 6, 1, 12, 0, 0);
+        CourseRunDto courseRunDto = new CourseRunDto(
+            "member-uuid", "profile-url",  "호나우지뉴",
+                1L, "러닝 이름", 180.5, 180, 180,
+                3600L, true, now.toEpochSecond(ZoneOffset.UTC)
+        );
+
+        // when
+        CourseGhostResponse response = mapper.toGhostResponse(courseRunDto);
+
+        // then
+        assertThat(response.runnerUuid()).isEqualTo(courseRunDto.runnerUuid());
+        assertThat(response.runnerProfileUrl()).isEqualTo(courseRunDto.runnerProfileUrl());
+        assertThat(response.runnerNickname()).isEqualTo(courseRunDto.runnerNickname());
+        assertThat(response.runningId()).isEqualTo(courseRunDto.runningId());
+        assertThat(response.runningName()).isEqualTo(courseRunDto.runningName());
+        assertThat(response.averagePace()).isEqualTo(courseRunDto.averagePace());
+        assertThat(response.cadence()).isEqualTo(courseRunDto.cadence());
+        assertThat(response.bpm()).isEqualTo(courseRunDto.bpm());
+        assertThat(response.duration()).isEqualTo(courseRunDto.duration());
+        assertThat(response.isPublic()).isEqualTo(courseRunDto.isPublic());
+        assertThat(response.startedAt()).isEqualTo(now);
      }
 
 }
