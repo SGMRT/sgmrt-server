@@ -49,10 +49,9 @@ public class CourseFacade {
     }
 
     private long getRunnersCount(Long courseId, List<CourseGhostResponse> rankers) {
-        if (rankers.size() <= MAX_RUNNER_PROFILES_PER_COURSE) {
+        if (rankers.size() < MAX_RUNNER_PROFILES_PER_COURSE) {
             return rankers.size();
-        }
-        else {
+        } else {
             return runningQueryService.findPublicRunnersCount(courseId);
         }
     }
