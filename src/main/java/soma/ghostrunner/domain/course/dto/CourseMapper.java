@@ -13,6 +13,7 @@ import java.util.List;
 @Mapper(componentModel = "spring", uses = { CourseSubMapper.class})
 public interface CourseMapper {
 
+    @Mapping(source = "member.uuid", target = "ownerUuid")
     @Mapping(source = "startCoordinate.latitude", target = "startLat")
     @Mapping(source = "startCoordinate.longitude", target = "startLng")
     @Mapping(target = "distance",
