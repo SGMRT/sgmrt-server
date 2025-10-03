@@ -15,8 +15,8 @@ import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.course.enums.GhostSortType;
-import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.dto.response.*;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -35,7 +35,7 @@ public class RunningQueryService {
 
     private final RunningRepository runningRepository;
 
-    private final RunningApiMapper runningApiMapper;
+    private final RunningApplicationMapper mapper;
 
     private final MemberService memberService;
 
@@ -79,18 +79,18 @@ public class RunningQueryService {
                 .orElseThrow(() -> new AccessDeniedException("접근할 수 없는 러닝 데이터입니다."));
     }
 
-    public Page<CourseGhostResponse> findTopRankingGhostsByCourseId(
-            Long courseId, Integer count) {
-        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
-        Pageable topNPageable = PageRequest.of(0, count, defaultSort);
-        return findPublicGhostRunsByCourseId(courseId, topNPageable);
+    public List<CourseGhostResponse> findTopRankingDistinctGhostsByCourseId(Long courseId, Integer count) {
+        return runningRepository.findTopRankingRunsByCourseIdWithDistinctMember(courseId, count)
+                .stream()
+                .map(mapper::toGhostResponse)
+                .toList();
     }
 
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
         Long courseId, Pageable pageable) {
         validateSortProperty(pageable);
         Page<Running> ghostRuns = runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
-        return ghostRuns.map(runningApiMapper::toGhostResponse);
+        return ghostRuns.map(mapper::toGhostResponse);
     }
 
     public Page<CourseGhostResponse> findTopPercentageGhostsByCourseId(
@@ -162,5 +162,15 @@ public class RunningQueryService {
     private Member findMember(String memberUuid) {
         return memberService.findMemberByUuid(memberUuid);
     }
-  
+
+    public List<RunInfo> findRunnings(Long courseId, String memberUuid) {
+        Member member = findMember(memberUuid);
+        List<Running> runnings = runningRepository.findRunningsByCourseIdAndMemberId(courseId, member.getId());
+        return mapper.toResponse(runnings);
+    }
+
+    public long findPublicRunnersCount(Long courseId) {
+        return runningRepository.countPublicRunnersInCourse(courseId);
+    }
+
 }

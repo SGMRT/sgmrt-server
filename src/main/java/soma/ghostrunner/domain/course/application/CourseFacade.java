@@ -3,9 +3,7 @@ package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -21,6 +19,8 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 @Slf4j
@@ -33,18 +33,67 @@ public class CourseFacade {
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
 
+    private static final int MAX_RUNNER_PROFILES_PER_COURSE = 4;
+
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                          CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
         List<CoursePreviewDto> courses = courseService.searchCourses(lat, lng, radiusM, sort, filters);
+        List<CoursePreviewDto> filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
         // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
-        return courses.stream().map(course -> {
-            Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
+        return filteredCourses.stream().map(course -> {
+            List<CourseGhostResponse> rankers = runningQueryService.findTopRankingDistinctGhostsByCourseId(course.id(),
+                    MAX_RUNNER_PROFILES_PER_COURSE);
             CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
-            long runnersCount = rankers.getTotalElements();
-            return courseMapper.toCourseMapResponse(course, rankers.getContent(), runnersCount, ghostForUser);
+            long runnersCount = getRunnersCount(course.id(), rankers);
+            return courseMapper.toCourseMapResponse(course, rankers, runnersCount, ghostForUser);
         }).toList();
+    }
+
+    private long getRunnersCount(Long courseId, List<CourseGhostResponse> rankers) {
+        if (rankers.size() < MAX_RUNNER_PROFILES_PER_COURSE) {
+            return rankers.size();
+        } else {
+            return runningQueryService.findPublicRunnersCount(courseId);
+        }
+    }
+
+    /** 본인 코스, 주변 랜덤 코스를 고려하여 limit개 이하로 제한한다. */
+    private List<CoursePreviewDto> limitCoursesForViewer(List<CoursePreviewDto> courses, String viewerUuid, int limit) {
+        var usersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 본인의 코스 (idx -> dto)
+        var othersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 다른 사람 코스 (idx -> dto)
+        int idx = 0;
+        for (var course : courses) {
+            if (course.ownerUuid() != null && course.ownerUuid().equals(viewerUuid)) {
+                usersCoursesMap.put(idx, course);
+            } else {
+                othersCoursesMap.put(idx, course);
+            }
+            idx++;
+        }
+
+        // 본인의 코스 - 최대 절반까지, 단 otherCourses가 부족한 경우 더 담음
+        var userCourseIndices = usersCoursesMap.keySet().stream()
+                .limit(Math.max(limit / 2, limit - othersCoursesMap.size()))
+                .toList();
+
+        // 주변 랜덤 코스 - 다른 사람 코스를 랜덤하게 선택
+        var otherCourseIndices = new ArrayList<>(othersCoursesMap.keySet());
+        Collections.shuffle(otherCourseIndices);
+        var otherCourseRandomIndices = otherCourseIndices.stream()
+                .limit(limit - userCourseIndices.size())
+                .toList();
+
+        // 인덱스 기존 순서대로 정렬 후 dto로 매핑하여 반환
+        var finalIndices = new ArrayList<Integer>();
+        finalIndices.addAll(userCourseIndices);
+        finalIndices.addAll(otherCourseRandomIndices);
+        Collections.sort(finalIndices);
+
+        return finalIndices.stream()
+                .map(courses::get)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -79,8 +128,10 @@ public class CourseFacade {
     }
 
     public List<CourseGhostResponse> findTopRankingGhosts(Long courseId, int count) {
-        Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findTopRankingGhostsByCourseId(courseId, count);
-        return rankedGhostsPage.getContent();
+        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.duration");
+        Pageable pageable = PageRequest.of(0, count, defaultSort);
+        return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable)
+                .getContent();
     }
 
     public List<CourseGhostResponse> findTopPercentageGhosts(Long courseId, double percentage) {
@@ -122,7 +173,6 @@ public class CourseFacade {
         if (course.getSource() == CourseSource.OFFICIAL) {
             return course.getCourseDataUrls().getRouteUrl();
         }
-
 
         return runningQueryService.findFirstRunning(course.getId())
                 .map(running -> running.getRunningDataUrls().getInterpolatedTelemetryUrl())

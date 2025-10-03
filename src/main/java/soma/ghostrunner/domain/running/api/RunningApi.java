@@ -150,6 +150,14 @@ public class RunningApi {
                 cursorRunningId, memberUuid);
     }
 
+    @GetMapping("/v1/runs/courses/{courseId}")
+    public List<RunInfo> getRunInfos(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @PathVariable Long courseId) {
+        String memberUuid = userDetails.getUserId();
+        return runningQueryService.findRunnings(courseId, memberUuid);
+    }
+
     @PostMapping("/v1/runs/pacemaker")
     public Long createPacemaker(
             @AuthenticationPrincipal JwtUserDetails userDetails,
