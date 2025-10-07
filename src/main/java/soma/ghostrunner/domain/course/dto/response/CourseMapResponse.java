@@ -9,6 +9,7 @@ import java.util.List;
 public record CourseMapResponse(
         Long id,
         String name,
+        String ownerUuid,
         CourseSource source,
         Double startLat,
         Double startLng,

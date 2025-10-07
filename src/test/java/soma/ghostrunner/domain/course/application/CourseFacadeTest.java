@@ -4,7 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
@@ -24,6 +26,7 @@ import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.*;
@@ -85,6 +88,64 @@ class CourseFacadeTest extends IntegrationTestSupport {
                         memberPoolRecords.stream().limit(4).toList(),
                         memberPoolRecords.stream().limit(3).toList(),
                         List.of());
+    }
+
+    @DisplayName("주변 코스 검색 결과 본인과 타인의 코스가 섞여있을 때, 소유권에 따른 개수 제한 정책을 올바르게 적용한다.")
+    @ParameterizedTest(name = "[{index}] 내 코스 {0}개, 타인 코스 {1}개일 때 -> 내 코스 {2}개, 타인 코스 {3}개 반환")
+    @MethodSource("provideCourseCountsForLimiting")
+    void findCoursesByPosition_limitCount(int myCourseCount, int otherCourseCount, int expectedMyCourseCount, int expectedOtherCourseCount) {
+        // given
+        Member viewer = createMember("아이유");
+        memberRepository.save(viewer);
+
+        // 본인 소유 코스 생성
+        List<Course> myCourses = IntStream.range(0, myCourseCount)
+                .mapToObj(i -> createCourse("내 코스 " + i, viewer, DEFAULT_LAT + i * 0.0001, DEFAULT_LNG))
+                .toList();
+        courseRepository.saveAll(myCourses);
+
+        // 타인 소유 코스 생성
+        List<Course> otherCourses = IntStream.range(0, otherCourseCount)
+                .mapToObj(i -> {
+                    Member owner = saveMember(createMember("회원 " + i));
+                    return createCourse("타인 코스 " + i, owner, DEFAULT_LAT - i * 0.0001, DEFAULT_LNG);
+                })
+                .toList();
+        courseRepository.saveAll(otherCourses);
+
+        // when
+        List<CourseMapResponse> courses = courseFacade.findCoursesByPosition(DEFAULT_LAT, DEFAULT_LNG,
+                5000, CourseSortType.DISTANCE, null, viewer.getUuid());
+
+        // then
+        long actualMyCourses = courses.stream()
+                .filter(c -> c.ownerUuid().equals(viewer.getUuid()))
+                .count();
+
+        long actualOtherCourses = courses.stream()
+                .filter(c -> !c.ownerUuid().equals(viewer.getUuid()))
+                .count();
+
+        assertThat(actualMyCourses).isEqualTo(expectedMyCourseCount);
+        assertThat(actualOtherCourses).isEqualTo(expectedOtherCourseCount);
+        assertThat(courses.size()).isEqualTo(expectedMyCourseCount + expectedOtherCourseCount);
+    }
+
+    private static Stream<Arguments> provideCourseCountsForLimiting() {
+        return Stream.of(
+                // 내 코스 5개, 타인 코스 5개 이상 -> 내 코스 5개, 타인 코스 5개
+                Arguments.of(8, 12, 5, 5),
+                // 내 코스 5개 미만, 타인 코스 5개 이상 -> 내 코스 모두, 타인 코스 7개
+                Arguments.of(3, 10, 3, 7),
+                // 내 코스 5개 이상, 타인 코스 5개 미만 -> 내 코스 (10 - 타인 코스 개수) 만큼, 타인 코스 모두
+                Arguments.of(15, 3, 7, 3),
+                // 내 코스와 타인 코스 합쳐서 10개 미만 -> 모든 코스 반환
+                Arguments.of(4, 4, 4, 4),
+                // 내 코스만 있는 경우 -> 최대 10개
+                Arguments.of(12, 0, 10, 0),
+                // 타인 코스만 있는 경우 -> 최대 10개
+                Arguments.of(0, 12, 0, 10)
+        );
     }
 
     @DisplayName("주변 코스 검색 시 코스를 달린 기록이 존재하는 경우에만 고스트 정보가 포함된다.")
@@ -152,11 +213,11 @@ class CourseFacadeTest extends IntegrationTestSupport {
         // given
         Course courseNear = createCourse("가까운 코스", DEFAULT_LAT, DEFAULT_LNG);
         Course courseMid = createCourse("중간 코스", DEFAULT_LAT + 0.005, DEFAULT_LNG + 0.005);
-        Course courseFar = createCourse("먼 코스", DEFAULT_LAT + 0.01, DEFAULT_LNG + 0.01);
+        Course courseFar = createCourse("먼 코스", defaultMember, DEFAULT_LAT + 0.01, DEFAULT_LNG + 0.01);
 
         // 인기순: 러너가 많은 코스, 보통 코스, 적은 코스
         Course coursePopular = createCourse("인기 코스", DEFAULT_LAT + 0.015, DEFAULT_LNG + 0.015);
-        Course courseNormal = createCourse("보통 코스", DEFAULT_LAT + 0.02, DEFAULT_LNG + 0.02);
+        Course courseNormal = createCourse("보통 코스", defaultMember,  DEFAULT_LAT + 0.02, DEFAULT_LNG + 0.02);
         Course courseUnpopular = createCourse("비인기 코스", DEFAULT_LAT + 0.025, DEFAULT_LNG + 0.025);
 
         // 최신순: 오래된 코스, 중간 코스, 최신 코스 (ID 오름차순으로 생성)
@@ -205,8 +266,11 @@ class CourseFacadeTest extends IntegrationTestSupport {
         return createCourse(name, defaultMember, lat, lng, CourseProfile.of(100d, 10d, 10d, -10d));
     }
 
-    private Course createCourse(String name, Member member) {
-        return createCourse(name, member, DEFAULT_LAT, DEFAULT_LNG, CourseProfile.of(100d, 10d, 10d, -10d));
+    private Course createCourse(String name, Member member, double lat, double lng) {
+        Course course = Course.of(member, 0d, 0d, 0d, 0d, lat, lng, "url", "url", "url");
+        course.setName(name);
+        course.setIsPublic(true);
+        return course;
     }
 
     private Course createCourse(String name, Member member, double lat, double lng, CourseProfile courseProfile) {
@@ -248,6 +312,10 @@ class CourseFacadeTest extends IntegrationTestSupport {
 
     private Member createMember(String nickname) {
         return Member.of(nickname, "picture-url");
+    }
+
+    private Member saveMember(Member member) {
+        return memberRepository.save(member);
     }
 
     // 코스에 더미 러닝기록을 n개 저장한다 (러닝 성적은 i = 0~n으로 갈수록 낮아진다)

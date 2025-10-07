@@ -3,6 +3,8 @@ package soma.ghostrunner.domain.running.application.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Getter;
+import soma.ghostrunner.domain.running.domain.Running;
+import soma.ghostrunner.domain.running.domain.RunningRecord;
 
 @Getter
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -50,6 +52,20 @@ public class RunRecordInfo {
         this.duration = duration;
         this.averagePace = averagePace;
         this.cadence = cadence;
+    }
+
+    public RunRecordInfo(RunningRecord runningRecord) {
+        this.distance = runningRecord.getDistance();
+        this.duration = runningRecord.getDuration();
+        this.cadence = runningRecord.getCadence();
+        this.bpm = runningRecord.getBpm();
+        this.calories = runningRecord.getBurnedCalories();
+        this.averagePace = runningRecord.getAveragePace();
+        this.highestPace = runningRecord.getHighestPace();
+        this.lowestPace = runningRecord.getLowestPace();
+        this.elevationGain = (int) Math.round(runningRecord.getElevationGain());
+        this.elevationLoss = (int) Math.round(runningRecord.getElevationLoss());
+        this.elevationAverage = (int) Math.round(runningRecord.getElevationAverage());
     }
 
 }

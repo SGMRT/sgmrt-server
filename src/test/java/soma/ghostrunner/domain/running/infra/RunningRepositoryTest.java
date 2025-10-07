@@ -1,6 +1,7 @@
-package soma.ghostrunner.domain.running.dao;
+package soma.ghostrunner.domain.running.infra;
 
 import org.assertj.core.api.Assertions;
+import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -949,6 +950,69 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // then
         assertThat(c1RunCounts).isEqualTo(c1Runnings.size());
+    }
+
+    @DisplayName("코스 ID를 기반으로 사용자가 해당 코스에서 뛴 러닝 기록을 최신순으로 조회한다.")
+    @Test
+    void findRunningsByCourseId() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course c = createCourse(member, "이복둥 러닝 코스");
+        c.setIsPublic(true);
+        courseRepository.save(c);
+
+        List<Running> soloRunnings = new ArrayList<>();
+        long ts = 0L;
+        for (int i = 0; i < 30; i++) {
+            ts += 1000L;
+            soloRunnings.add(createRunning("S" + i, c, member, ts, RunningMode.SOLO));
+        }
+        runningRepository.saveAll(soloRunnings);
+
+        List<Running> ghostRunnings = new ArrayList<>();
+        ts = 0L;
+        for (int i = 0; i < 30; i++) {
+            ts += 500L;
+            ghostRunnings.add(createRunning("G" + i, c, member, ts, RunningMode.GHOST));
+        }
+        runningRepository.saveAll(ghostRunnings);
+
+        List<Running> runnings = new ArrayList<>();
+        runnings.addAll(soloRunnings);
+        runnings.addAll(ghostRunnings);
+        runnings.sort(
+                Comparator.comparing(Running::getStartedAt).reversed()
+                        .thenComparing(Comparator.comparing(Running::getId).reversed())
+        );
+
+        // when
+        List<Running> savedRunnings = runningRepository.findRunningsByCourseIdAndMemberId(c.getId(), member.getId());
+
+        // then
+        for (int i = 0; i < savedRunnings.size(); i++) {
+            Assertions.assertThat(savedRunnings.get(i).getId()).isEqualTo(runnings.get(i).getId());
+        }
+
+    }
+
+    @DisplayName("코스 ID를 기반으로 사용자가 해당 코스에서 뛴 러닝 기록을 최신순으로 조회할 때, 아무것도 없다면 리스트는 비어있다.")
+    @Test
+    void findNullRunningsByCourseId() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course c = createCourse(member, "이복둥 러닝 코스");
+        c.setIsPublic(true);
+        courseRepository.save(c);
+
+        // when
+        List<Running> savedRunnings = runningRepository.findRunningsByCourseIdAndMemberId(c.getId(), member.getId());
+
+        // then
+        Assertions.assertThat(savedRunnings).isEmpty();
     }
   
 }
