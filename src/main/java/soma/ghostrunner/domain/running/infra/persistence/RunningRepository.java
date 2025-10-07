@@ -37,7 +37,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     Optional<Running> findBestPublicRunByCourseIdAndMemberId(Long courseId, String memberUuid);
 
     @Query("SELECT r FROM Running r " +
-            "JOIN FETCH Course c on r.course.id = c.id " +
+            "JOIN FETCH r.course c " +
             "JOIN c.member m " +
             "WHERE m.uuid = :memberUuid AND r.course.id IN :courseIds " +
             "AND r.runningRecord.duration = (" +
