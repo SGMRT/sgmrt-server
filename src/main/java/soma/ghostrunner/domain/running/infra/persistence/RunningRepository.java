@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
@@ -74,7 +75,38 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     @Query("select count(r.id) from Running r where r.course.id = :courseId")
     long countTotalRunningsCount(Long courseId);
 
+    @Query(value = "SELECT COUNT(DISTINCT r.member_id) FROM running_record r WHERE r.course_id = :courseId AND r.is_public = true",
+            nativeQuery = true)
+    long countPublicRunnersInCourse(Long courseId);
+
     @Query("select r from Running r where r.course.id = :courseId and r.member.id = :memberId order by r.startedAt desc, r.id desc")
     List<Running> findRunningsByCourseIdAndMemberId(Long courseId, Long memberId);
+
+    @Query(value = """
+    SELECT
+        m.uuid AS runnerUuid,
+        m.profile_picture_url AS runnerProfileUrl,
+        m.nickname AS runnerNickname,
+        rr.id AS runningId,
+        rr.running_name AS runningName,
+        rr.`average_pace_min/km` AS averagePace,
+        rr.`average_cadence_spm` AS cadence,
+        rr.`average_bpm` AS bpm,
+        rr.`duration_sec` AS duration,
+        rr.is_public AS isPublic,
+        rr.started_at_ms  AS startedAt
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(PARTITION BY member_id ORDER BY duration_sec ASC) as rn
+        FROM running_record
+        WHERE course_id = :courseId AND is_public = true
+    ) AS rr
+    JOIN member m ON rr.member_id = m.id
+    WHERE rr.rn = 1
+    ORDER BY rr.`duration_sec` ASC
+    LIMIT :count
+""", nativeQuery = true)
+    List<CourseRunDto> findTopRankingRunsByCourseIdWithDistinctMember(@Param("courseId") Long courseId, @Param("count") Integer count);
 
 }

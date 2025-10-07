@@ -1,7 +1,6 @@
 package soma.ghostrunner.domain.running.infra;
 
 import org.assertj.core.api.Assertions;
-import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +9,7 @@ import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
+import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
@@ -702,9 +702,19 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         }
     }
 
+    private Running createRunning(String runningName, Course course, Member member, Long duration, Long startedAt) {
+        return Running.of(runningName, RunningMode.SOLO, null, createRunningRecord(duration), startedAt,
+                true, false, "시계열 URL", "시계열 URL", "시계열 URL", member, course);
+    }
+
     private RunningRecord createRunningRecord() {
         return RunningRecord.of(5.2, 30.0, 40.0, -20.0,
                 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
+    }
+
+    private RunningRecord createRunningRecord(long duration) {
+        return RunningRecord.of(5.2, 30.0, 40.0, -20.0,
+                6.1, 3423.2, 302.2, duration, 56, 100, 120);
     }
 
     @DisplayName("코스명, 러닝ID(DESC) 커서로 기간 내 러닝 리스트를 조회한다 — 정렬·연속성·중복없음")
@@ -1014,5 +1024,74 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         // then
         Assertions.assertThat(savedRunnings).isEmpty();
     }
+
+    @DisplayName("코스 ID를 기반으로 해당 코스에서 뛴 러닝 기록 중 상위 랭킹 러닝 기록을 조회한다. 같은 사용자의 중복된 러닝 기록은 허용되지 않는다.")
+    @Test
+    void findTopRankingRunsByCourseIdWithDistinctMember() {
+        // given
+        // 러닝 4개, 러너는 3명
+        Member member1 = createMember("이복둥");
+        Member member2 = createMember("이복둥 주인");
+        Member member3 = createMember("이복둥 주인의 주인");
+        memberRepository.saveAll(List.of(member1, member2, member3));
+
+        Course c = createCourse(member1, "이복둥 러닝 코스");
+        courseRepository.save(c);
+
+        List<Running> ghostRuns = new ArrayList<>();
+        ghostRuns.add(createRunning("러닝 1", c, member1, 180L, 1000L)); // 1등
+        ghostRuns.add(createRunning("러닝 2", c, member2, 210L, 2000L)); // 2등
+        ghostRuns.add(createRunning("러닝 3", c, member2, 240L, 3000L));
+        ghostRuns.add(createRunning("러닝 4", c, member3, 300L, 4000L)); // 3등
+        runningRepository.saveAll(ghostRuns);
+
+        // when
+        List<CourseRunDto> top3 = runningRepository.findTopRankingRunsByCourseIdWithDistinctMember(c.getId(), 3);
+        List<CourseRunDto> top5 = runningRepository.findTopRankingRunsByCourseIdWithDistinctMember(c.getId(), 5);
+
+        // then
+        assertThat(top3).hasSize(3);
+        assertThat(top3).extracting("runningName")
+                .containsExactly("러닝 1", "러닝 2", "러닝 4");
+        assertThat(top5).isEqualTo(top3); // top5로 해도 3건만 나옴
+    }
+
+    @DisplayName("코스 ID를 기반으로 해당 코스에 공개 러닝 기록을 등록한 회원의 수를 조회한다.")
+    @Test
+    void countPublicRunnersInCourse() {
+        // given
+        Member member1 = createMember("이복둥");
+        Member member2 = createMember("이복둥 주인");
+        Member member3 = createMember("이복둥 주인의 주인");
+        memberRepository.saveAll(List.of(member1, member2, member3));
+
+        Course c = createCourse(member1, "이복둥 러닝 코스");
+        courseRepository.save(c);
+
+        List<Running> runs = new ArrayList<>();
+        runs.add(createRunning(member1, c));
+        runs.add(createRunning(member2, c));
+        runs.add(createRunning(member2, c));
+        runs.add(createRunning(member3, c));
+        runs.add(createRunning(member3, c));
+        runningRepository.saveAll(runs);
+
+        // when
+        long count = runningRepository.countPublicRunnersInCourse(c.getId());
+
+        // then
+        Assertions.assertThat(count).isEqualTo(3L);
+    }
+
+    @DisplayName("코스 ID로 러너 수 조회 시 코스가 존재하지 않으면 0을 반환한다.")
+    @Test
+    void countPublicRunnersInCourse_noRuns() {
+        // when
+        long count = runningRepository.countPublicRunnersInCourse(12345L);
+
+        // then
+        Assertions.assertThat(count).isEqualTo(0L);
+    }
+
   
 }

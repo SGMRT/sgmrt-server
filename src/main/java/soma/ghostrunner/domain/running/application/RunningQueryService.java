@@ -80,11 +80,11 @@ public class RunningQueryService {
                 .orElseThrow(() -> new AccessDeniedException("접근할 수 없는 러닝 데이터입니다."));
     }
 
-    public Page<CourseGhostResponse> findTopRankingGhostsByCourseId(
-            Long courseId, Integer count) {
-        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
-        Pageable topNPageable = PageRequest.of(0, count, defaultSort);
-        return findPublicGhostRunsByCourseId(courseId, topNPageable);
+    public List<CourseGhostResponse> findTopRankingDistinctGhostsByCourseId(Long courseId, Integer count) {
+        return runningRepository.findTopRankingRunsByCourseIdWithDistinctMember(courseId, count)
+                .stream()
+                .map(mapper::toGhostResponse)
+                .toList();
     }
 
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
@@ -202,5 +202,9 @@ public class RunningQueryService {
         List<Running> runnings = runningRepository.findRunningsByCourseIdAndMemberId(courseId, member.getId());
         return mapper.toResponse(runnings);
     }
-  
+
+    public long findPublicRunnersCount(Long courseId) {
+        return runningRepository.countPublicRunnersInCourse(courseId);
+    }
+
 }

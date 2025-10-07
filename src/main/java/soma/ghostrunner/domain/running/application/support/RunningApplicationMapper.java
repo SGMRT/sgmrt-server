@@ -4,6 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
@@ -149,6 +150,10 @@ public interface RunningApplicationMapper {
     @Mapping(source = "runningRecord.duration", target = "duration")
     @Mapping(source = "createdAt", target = "startedAt")
     CourseGhostResponse toGhostResponse(Running running);
+
+    @Mapping(target = "startedAt",
+            expression = "java(java.time.LocalDateTime.ofEpochSecond(runDto.startedAt(), 0, java.time.ZoneOffset.UTC))")
+    CourseGhostResponse toGhostResponse(CourseRunDto runDto);
 
     default List<RunInfo> toResponse(List<Running> runnings) {
         return runnings.stream()

@@ -65,8 +65,10 @@ class CourseFacadeTest extends IntegrationTestSupport {
 
         List<Member> memberPool = IntStream.range(0, 10).boxed()
                 .map(i -> Member.of("회원" + i, "profile-url-" + i))
-                .toList();
+                .toList(); // {회원0, 회원1, ..., 회원9}
         memberRepository.saveAll(memberPool);
+
+        // 코스별 러닝 생성 (코스1 = 10개, 코스2 = 3개, 코스3 = 0개)
         saveDummyRunsToCourse(course1, 10, memberPool);
         saveDummyRunsToCourse(course2, 3, memberPool);
         saveDummyRunsToCourse(course3, 0, memberPool);
@@ -478,12 +480,12 @@ class CourseFacadeTest extends IntegrationTestSupport {
         return memberRepository.save(member);
     }
 
-    // 코스에 더미 러닝기록을 n개 저장한다 (러닝 성적은 i = 0~n으로 갈수록 낮아진다)
+    // 코스에 더미 러닝기록을 n개 저장한다 (러닝 성적은 i = 0->n으로 갈수록 낮아진다)
     private void saveDummyRunsToCourse(Course course, int runsToSave, List<Member> memberPool) {
         long initialRunDuration = 3600L;
         for (int i = 0; i < runsToSave; i++) {
             runningRepository.save(
-                    createRunning("러닝" + i, course, memberPool.get(i %  memberPool.size()), initialRunDuration + 60)
+                    createRunning("러닝" + i, course, memberPool.get(i %  memberPool.size()), initialRunDuration + 60L * i)
             );
         }
     }
