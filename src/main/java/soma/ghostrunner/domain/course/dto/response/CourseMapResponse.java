@@ -22,7 +22,6 @@ public record CourseMapResponse(
         LocalDateTime createdAt,
 
         CourseGhostResponse myGhostInfo,
-        boolean hasRan, // todo tmp erase
         List<RunnerProfile> runners,
         long runnersCount
 ) {}

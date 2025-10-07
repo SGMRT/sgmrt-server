@@ -66,18 +66,15 @@ public class CourseFacade {
             courseRedisRepository.saveAll(cacheUpdateCourses);
         } else {
             log.info("CourseFacade::findCoursesByPositionCached() - all courses cache hit. querying ghost");
-            // ghostForUser 조회를 위해 running 테이블 조회 (ghostForUser에 러닝기록을 담고 싶은 경우 이 부분 주석 해제)
-//            Map<Long, Running> bestRuns = runningQueryService.findBestRunningRecordsForCourses(courseIds, viewerUuid);
-            Map<Long, Boolean> hasRan = runningQueryService.checkRunningHistoryForCourses(courseIds, viewerUuid);
+            Map<Long, Running> memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(courseIds, viewerUuid);
             responses = courses.stream().map(course -> {
-//                CourseGhostResponse ghostForUser = null;
-//                if (bestRuns.containsKey(course.id())) {
-//                    ghostForUser = runningApiMapper.toGhostResponse(bestRuns.get(course.id()));
-//                }
+                CourseGhostResponse ghostForUser = null;
+                if (memberBestRuns.containsKey(course.id())) {
+                    ghostForUser = runningApiMapper.toGhostResponse(memberBestRuns.get(course.id()));
+                }
 
-//                return courseMapper.toCourseMapResponse(course, cachedCourse.topRunners(), cachedCourse.runnerCount(), ghostForUser);
                 CourseQueryModel cachedCourse = cachedCourses.get(course.id());
-                return courseMapper.toCourseMapResponseTmp(course, cachedCourse.topRunners(), cachedCourse.runnerCount(), hasRan.getOrDefault(course.id(), false));
+                return courseMapper.toCourseMapResponse(course, cachedCourse.topRunners(), cachedCourse.runnerCount(), ghostForUser);
             }).toList();
         }
 
