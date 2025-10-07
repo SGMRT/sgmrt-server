@@ -43,21 +43,22 @@ public class CourseFacade {
     public List<CourseMapResponse> findCoursesByPositionCached(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                                CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내 코스 리스트 조회
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
+        var courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
         List<Long> courseIds = courses.stream().map(CoursePreviewDto::id).toList();
 
         // 캐시에서 코스 정보 조회
-        Map<Long, CourseQueryModel> cachedCourses = courseRedisRepository.findAllById(courseIds);
+        Map<Long, CourseQueryModel> cachedCourseInfos = courseRedisRepository.findAllById(courseIds);
 
         // 캐시 히트 여부에 따라 처리 분기
+        var filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
         List<CourseMapResponse> responses;
-        List<Long> cacheMissedIds = filterCacheMissedIds(cachedCourses);
+        var cacheMissedIds = filterCacheMissedIds(cachedCourseInfos);
         if(!cacheMissedIds.isEmpty()) {
             log.info("CourseFacade::findCoursesByPositionCached() - found cache miss for {} courses", cacheMissedIds.size());
-            responses = handleCourseCacheMiss(viewerUuid, courses);
+            responses = handleCourseCacheMiss(viewerUuid, filteredCourses);
         } else {
-            log.info("CourseFacade::findCoursesByPositionCached() - all courses cache hit. querying ghost");
-            responses = handleCourseCacheHit(viewerUuid, courses, courseIds, cachedCourses);
+            log.info("CourseFacade::findCoursesByPositionCached() - all {} courses cache hit. querying ghost", filteredCourses.size());
+            responses = handleCourseCacheHit(viewerUuid, filteredCourses, courseIds, cachedCourseInfos);
         }
 
         return responses;
@@ -66,7 +67,7 @@ public class CourseFacade {
     private List<CourseMapResponse> handleCourseCacheMiss(String viewerUuid, List<CoursePreviewDto> courses) {
         // todo: miss된 id만 조회하도록 변경
         List<CourseMapResponse> responses;
-        List<CourseQueryModel> cacheUpdateCourses = new ArrayList<>();
+        var cacheUpdateCourses = new ArrayList<CourseQueryModel>();
         responses = new ArrayList<>();
         for(var course: courses) {
             // 코스별 Top 4 러너 프로필 & 본인 고스트 조회
