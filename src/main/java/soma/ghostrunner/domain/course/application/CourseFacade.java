@@ -71,12 +71,12 @@ public class CourseFacade {
         responses = new ArrayList<>();
         for(var course: courses) {
             // 코스별 Top 4 러너 프로필 & 본인 고스트 조회
-            Page<CourseGhostResponse> rankers = runningQueryService.findTopRankingGhostsByCourseId(course.id(), 4);
+            List<CourseGhostResponse> rankers = runningQueryService.findTopRankingDistinctGhostsByCourseId(course.id(), 4);
             CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
-            long runnersCount = rankers.getTotalElements();
+            long runnersCount = getRunnersCount(course.id(), rankers);
 
-            cacheUpdateCourses.add(courseMapper.toCourseQueryModel(course, rankers.getContent(), runnersCount));
-            responses.add(courseMapper.toCourseMapResponse(course, rankers.getContent().stream().map(RunnerProfile::from).toList(), runnersCount, ghostForUser));
+            cacheUpdateCourses.add(courseMapper.toCourseQueryModel(course, rankers, runnersCount));
+            responses.add(courseMapper.toCourseMapResponse(course, rankers.stream().map(RunnerProfile::from).toList(), runnersCount, ghostForUser));
         }
         courseRedisRepository.saveAll(cacheUpdateCourses);
         return responses;
@@ -109,7 +109,7 @@ public class CourseFacade {
                     MAX_RUNNER_PROFILES_PER_COURSE);
             CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
             long runnersCount = getRunnersCount(course.id(), rankers);
-            return courseMapper.toCourseMapResponse(course, rankers.getContent().stream().map(RunnerProfile::from).toList(), runnersCount, ghostForUser);
+            return courseMapper.toCourseMapResponse(course, rankers.stream().map(RunnerProfile::from).toList(), runnersCount, ghostForUser);
         }).toList();
     }
 
