@@ -38,7 +38,7 @@ class RunFinishedEventListenerTest {
     void handleRunFinishedAndSaveNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0);
+        RunFinishedEvent event = new RunFinishedEvent(1L, 1L, memberUuid, 6.0);
 
         Member mockMember = mock(Member.class);
 
@@ -62,7 +62,7 @@ class RunFinishedEventListenerTest {
     void handleRunFinishedAndUpdateNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0);
+        RunFinishedEvent event = new RunFinishedEvent(1L, 1L, memberUuid, 6.0);
 
         Member mockMember = mock(Member.class);
         MemberVdot mockMemberVdot = mock(MemberVdot.class);
