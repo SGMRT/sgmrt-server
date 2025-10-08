@@ -81,10 +81,10 @@ class CourseFacadeTest extends IntegrationTestSupport {
         // 코스별 상위 러너 정보 검증
         assertThat(courses).extracting("runnersCount")
                 .containsExactlyInAnyOrder(10L, 3L, 0L);
-        List<CourseMapResponse.MemberRecord> memberPoolRecords = memberPool.stream()
-                .map(member -> new CourseMapResponse.MemberRecord(member.getUuid(), member.getProfilePictureUrl()))
+        List<CourseMapResponse.RunnerInfo> memberPoolRecords = memberPool.stream()
+                .map(member -> new CourseMapResponse.RunnerInfo(member.getUuid(), member.getProfilePictureUrl()))
                 .toList();
-        assertThat(courses).extracting("runners")
+        assertThat(courses).extracting("top4Runners")
                 .containsExactlyInAnyOrder(
                         memberPoolRecords.stream().limit(4).toList(),
                         memberPoolRecords.stream().limit(3).toList(),
@@ -147,38 +147,6 @@ class CourseFacadeTest extends IntegrationTestSupport {
                 // 타인 코스만 있는 경우 -> 최대 10개
                 Arguments.of(0, 12, 0, 10)
         );
-    }
-
-    @DisplayName("주변 코스 검색 시 코스를 달린 기록이 존재하는 경우에만 고스트 정보가 포함된다.")
-    @Test
-    void findCoursesByPosition_withRuns() {
-        // given
-        Course courseRan = createCourse("달린 코스");
-        Course courseNotRan = createCourse("안 달린 코스");
-        courseRepository.saveAll(List.of(courseRan, courseNotRan));
-
-        Running myRunning = createRunning("나의 기록", courseRan, defaultMember);
-        runningRepository.save(myRunning);
-
-        // when
-        List<CourseMapResponse> courses = courseFacade
-                .findCoursesByPosition(DEFAULT_LAT, DEFAULT_LNG, 1000, CourseSortType.DISTANCE, null, defaultMember.getUuid());
-
-        // then
-        // 달린 코스의 고스트 응답 확인
-        CourseMapResponse ranCourseResponse = courses.stream()
-                .filter(c -> c.id().equals(courseRan.getId()))
-                .findFirst()
-                .orElseThrow();
-        assertThat(ranCourseResponse.myGhostInfo()).isNotNull();
-        assertThat(ranCourseResponse.myGhostInfo().runningId()).isEqualTo(myRunning.getId());
-
-        // 달리지 않은 코스의 고스트 응답 확인
-        CourseMapResponse notRanCourseResponse = courses.stream()
-                .filter(c -> c.id().equals(courseNotRan.getId()))
-                .findFirst()
-                .orElseThrow();
-        assertThat(notRanCourseResponse.myGhostInfo()).isNull();
     }
 
     @DisplayName("코스 상세 조회 시 코스를 달린 기록이 존재하는 경우에만 고스트 정보가 포함된다.")

@@ -1056,9 +1056,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         assertThat(top5).isEqualTo(top3); // top5로 해도 3건만 나옴
     }
 
-    @DisplayName("코스 ID를 기반으로 해당 코스에 공개 러닝 기록을 등록한 회원의 수를 조회한다.")
+    @DisplayName("코스 ID를 기반으로 해당 코스에 공개 러닝 기록을 등록한 회원의 ID 리스트를 조회한다.")
     @Test
-    void countPublicRunnersInCourse() {
+    void finRunnersIdsInCourse() {
         // given
         Member member1 = createMember("이복둥");
         Member member2 = createMember("이복둥 주인");
@@ -1077,21 +1077,13 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         runningRepository.saveAll(runs);
 
         // when
-        long count = runningRepository.countPublicRunnersInCourse(c.getId());
+        List<Long> runnersIds = runningRepository.countPublicRunnersInCourse(c.getId());
 
         // then
-        Assertions.assertThat(count).isEqualTo(3L);
+        Assertions.assertThat(runnersIds).hasSize(3);
+        Assertions.assertThat(runnersIds).contains(member1.getId());
+        Assertions.assertThat(runnersIds).contains(member2.getId());
+        Assertions.assertThat(runnersIds).contains(member3.getId());
     }
 
-    @DisplayName("코스 ID로 러너 수 조회 시 코스가 존재하지 않으면 0을 반환한다.")
-    @Test
-    void countPublicRunnersInCourse_noRuns() {
-        // when
-        long count = runningRepository.countPublicRunnersInCourse(12345L);
-
-        // then
-        Assertions.assertThat(count).isEqualTo(0L);
-    }
-
-  
 }

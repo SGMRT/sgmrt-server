@@ -22,7 +22,7 @@ import static soma.ghostrunner.domain.running.domain.QRunning.running;
 
 @Repository
 @RequiredArgsConstructor
-public class CustomCourseRepositoryImpl implements CustomCourseRepository{
+public class CustomCourseRepositoryImpl implements CustomCourseRepository {
 
   private final JPAQueryFactory queryFactory;
 

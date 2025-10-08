@@ -5,7 +5,6 @@ import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
@@ -28,9 +27,10 @@ public interface CourseMapper {
     @Mapping(source = "courseProfile.elevationLoss", target = "elevationLoss")
     CoursePreviewDto toCoursePreviewDto(Course course);
 
-    @Mapping(source = "ghosts", target = "runners")
+    @Mapping(source = "courseDto.elevationAverage", target = "elevation")
+    @Mapping(source = "ghosts", target = "top4Runners")
     CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts,
-                                          long runnersCount, CourseGhostResponse myGhostInfo);
+                                          long runnersCount, boolean hasMyRecord);
 
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
@@ -105,5 +105,5 @@ public interface CourseMapper {
 interface CourseSubMapper {
     @Mapping(source = "ghost.runnerUuid", target = "uuid")
     @Mapping(source = "ghost.runnerProfileUrl", target = "profileUrl")
-    CourseMapResponse.MemberRecord toMemberRecordDto(CourseGhostResponse ghost);
+    CourseMapResponse.RunnerInfo toMemberRecordDto(CourseGhostResponse ghost);
 }

@@ -13,19 +13,17 @@ public record CourseMapResponse(
         Double startLat,
         Double startLng,
         String routeUrl,
-        String checkpointsUrl,
-        String thumbnailUrl,
-        Integer distance,
-        Integer elevationAverage,
-        Integer elevationGain,
-        Integer elevationLoss,
-        LocalDateTime createdAt,
+        List<RunnerInfo> top4Runners,
 
-        CourseGhostResponse myGhostInfo,
-        List<MemberRecord> runners,
-        long runnersCount
+        long runnersCount,
+        boolean hasMyRecord,
+        Integer distance,
+        Integer elevation,
+        String thumbnailUrl,
+
+        LocalDateTime createdAt
 ) {
-    public record MemberRecord(
+    public record RunnerInfo(
             String uuid,
             String profileUrl
     ) {}
