@@ -2,9 +2,7 @@ package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import soma.ghostrunner.domain.course.dao.CourseCacheRepository;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
@@ -17,8 +15,7 @@ public class CourseCacheEventListener {
 
     private final CourseCacheRepository courseCacheRepository;
 
-    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
-//    @EventListener
+    @TransactionalEventListener
     public void handleRunFinishedEvent(RunFinishedEvent event) {
         // 캐시 무효화
         log.info("RunFinishedEvent received; invalidating cache with courseId {}", event.courseId());
@@ -26,8 +23,7 @@ public class CourseCacheEventListener {
         courseCacheRepository.deleteById(courseId);
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
-//    @EventListener
+    @TransactionalEventListener
     public void handleRunUpdatedEvent(RunUpdatedEvent event) {
         // 캐시 무효화
         log.info("RunUpdatedEvent received; invalidating cache with courseId {}", event.courseId());
