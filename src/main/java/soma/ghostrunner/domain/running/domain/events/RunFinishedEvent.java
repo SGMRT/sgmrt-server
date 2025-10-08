@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.running.domain.events;
 
 public record RunFinishedEvent(
         Long runId,
+        Long courseId,
         String memberUuid,
         Double averagePace
 ) {
