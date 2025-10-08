@@ -80,8 +80,8 @@ public class Running extends BaseTimeEntity {
     private void onPersisted() {
         domainEvents.add(new RunFinishedEvent(
                 id,
-                course.getId(),
-                member.getUuid(),
+                course != null ? course.getId() : null,
+                member != null ? member.getUuid() : null,
                 runningRecord.getAveragePace()
         ));
     }
@@ -90,8 +90,8 @@ public class Running extends BaseTimeEntity {
     private void onUpdated() {
         domainEvents.add(new RunUpdatedEvent(
                 id,
-                course.getId(),
-                member.getUuid(),
+                course != null ? course.getId() : null,
+                member != null ? member.getUuid() : null,
                 runningName,
                 isPublic
         ));
