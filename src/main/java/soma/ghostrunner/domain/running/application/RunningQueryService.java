@@ -142,7 +142,7 @@ public class RunningQueryService {
             });
     }
 
-    /** memberId 사용자가 courseIds에 해당하는 코스에서의 최고기록을 반환한다. (기록이 없으면 null) */
+    /** 사용자가 courseIds에 해당하는 코스에서의 최고기록을 매핑하여 반환한다. (Key: 코스 ID, Value: 최고 러닝 (nullable)) */
     public Map<Long, Running> findBestRunningRecordsForCourses(List<Long> courseIds, String memberUuid) {
         // IN 절로 한 번에 조회한 후 courseId 별로 맵핑
         Map<Long, Running> bestRunsByCourseId = runningRepository.findBestRunningRecordsByMemberIdAndCourseIds(memberUuid, courseIds)
@@ -159,19 +159,15 @@ public class RunningQueryService {
         return result;
     }
 
+    /** 사용자가 couseId에 해당하는 코스를 달렸는지 여부를 매핑하여 반환한다. (Key: 코스 ID, Value: 러닝 여부) */
     public Map<Long, Boolean> checkRunningHistoryForCourses(List<Long> courseIds, String memberUuid) {
-        // 1. DB에서 한 번의 쿼리로 사용자가 뛴 코스 ID 목록을 가져옵니다.
+        // 사용자가 달린 코스 ID 리스트를 조회하여 courseId와 비교한다
         List<Long> ranCourseIds = runningRepository.findRanCourseIdsByMemberIdAndCourseIds(memberUuid, courseIds);
-
-        // 2. 결과를 가공하여 반환합니다.
-        // Set으로 변환하여 조회 성능을 높입니다.
         Set<Long> ranCourseIdSet = new HashSet<>(ranCourseIds);
-
-        // courseIds 목록을 순회하며, 각 코스 ID에 대한 기록 존재 여부를 Map에 담습니다.
         return courseIds.stream()
                 .collect(Collectors.toMap(
-                        courseId -> courseId, // Key: 코스 ID
-                        ranCourseIdSet::contains // Value: 기록 존재 여부 (true/false)
+                        courseId -> courseId,
+                        ranCourseIdSet::contains
                 ));
     }
 
