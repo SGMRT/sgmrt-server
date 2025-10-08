@@ -244,7 +244,7 @@ public class PathSimplifier {
         List<CoordinatesWithTs> coordinatesWithTsList = new ArrayList<>();
         for (int i = 0; i < vwNodes.size(); i++) {
             if (isActive[i]) {
-                coordinatesWithTsList.add(utmPoints.get(i));
+                coordinatesWithTsList.add(points.get(i));
             }
         }
         return coordinatesWithTsList;
