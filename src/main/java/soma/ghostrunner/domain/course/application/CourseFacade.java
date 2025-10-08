@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.domain.course.dao.CourseRedisRepository;
+import soma.ghostrunner.domain.course.dao.CourseCacheRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
@@ -32,7 +32,7 @@ import java.util.Map;
 public class CourseFacade {
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
-    private final CourseRedisRepository courseRedisRepository;
+    private final CourseCacheRepository courseCacheRepository;
 
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
@@ -47,7 +47,7 @@ public class CourseFacade {
         List<Long> courseIds = courses.stream().map(CoursePreviewDto::id).toList();
 
         // 캐시에서 코스 정보 조회
-        Map<Long, CourseQueryModel> cachedCourseInfos = courseRedisRepository.findAllById(courseIds);
+        Map<Long, CourseQueryModel> cachedCourseInfos = courseCacheRepository.findAllById(courseIds);
 
         // 캐시 히트 여부에 따라 처리 분기
         var filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
@@ -78,7 +78,7 @@ public class CourseFacade {
             cacheUpdateCourses.add(courseMapper.toCourseQueryModel(course, rankers, runnersCount));
             responses.add(courseMapper.toCourseMapResponse(course, rankers.stream().map(RunnerProfile::from).toList(), runnersCount, ghostForUser));
         }
-        courseRedisRepository.saveAll(cacheUpdateCourses);
+        courseCacheRepository.saveAll(cacheUpdateCourses);
         return responses;
     }
 

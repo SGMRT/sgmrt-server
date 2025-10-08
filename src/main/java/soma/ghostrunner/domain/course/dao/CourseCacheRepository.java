@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
-public class CourseRedisRepository {
+public class CourseCacheRepository {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private static final String KEY_PREFIX = "course:";
