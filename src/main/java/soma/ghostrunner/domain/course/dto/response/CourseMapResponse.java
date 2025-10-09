@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.course.dto.response;
 
+import soma.ghostrunner.domain.course.dto.RunnerProfile;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 
 import java.time.LocalDateTime;
@@ -22,12 +23,8 @@ public record CourseMapResponse(
         LocalDateTime createdAt,
 
         CourseGhostResponse myGhostInfo,
-        List<MemberRecord> runners,
+        List<RunnerProfile> runners,
         long runnersCount
-) {
-    public record MemberRecord(
-            String uuid,
-            String profileUrl
-    ) {}
-}
+) {}
+
 
