@@ -12,4 +12,11 @@ public record RunnerProfile(
             ghost.runnerProfileUrl()
         );
     }
+
+    public static RunnerProfile from(CourseRunDto run) {
+        return new RunnerProfile(
+            run.runnerUuid(),
+            run.runnerProfileUrl()
+        );
+    }
 }

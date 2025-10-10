@@ -148,7 +148,7 @@ class RunningApplicationMapperTest {
         LocalDateTime now = LocalDateTime.of(2025, 6, 1, 12, 0, 0);
         CourseRunDto courseRunDto = new CourseRunDto(
             "member-uuid", "profile-url",  "호나우지뉴",
-                1L, "러닝 이름", 180.5, 180, 180,
+                1L, 2L, "러닝 이름", 180.5, 180, 180,
                 3600L, true, now.toEpochSecond(ZoneOffset.UTC)
         );
 
