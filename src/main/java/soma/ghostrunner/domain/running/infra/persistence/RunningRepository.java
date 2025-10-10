@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -30,11 +31,11 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     Optional<String> findInterpolatedTelemetryUrlByIdAndMemberUuid(Long runningId, String memberUuid);
 
     @Query("SELECT r FROM Running r JOIN FETCH r.member "
-        + "WHERE r.course.id = :courseId AND r.isPublic = true")
+            + "WHERE r.course.id = :courseId AND r.isPublic = true")
     Page<Running> findByCourse_IdAndIsPublicTrue(Long courseId, Pageable pageable);
 
     @Query("SELECT r FROM Running r JOIN FETCH r.member m WHERE r.course.id = :courseId AND r.isPublic = true "
-        + "AND m.uuid = :memberUuid ORDER BY r.runningRecord.duration LIMIT 1")
+            + "AND m.uuid = :memberUuid ORDER BY r.runningRecord.duration LIMIT 1")
     Optional<Running> findBestPublicRunByCourseIdAndMemberId(Long courseId, String memberUuid);
 
     @Query("SELECT r FROM Running r " +
@@ -53,7 +54,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     List<Long> findRanCourseIdsByMemberIdAndCourseIds(String memberUuid, List<Long> courseIds);
 
     @Query("SELECT COUNT(r) FROM Running r "
-        + "WHERE r.course.id = :courseId AND r.isPublic = true AND r.runningRecord.averagePace < :averagePace")
+            + "WHERE r.course.id = :courseId AND r.isPublic = true AND r.runningRecord.averagePace < :averagePace")
     Optional<Integer> countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(Long courseId, Double averagePace);
 
     @Query("select r from Running r where r.course.id = :courseId order by r.id asc limit 1")
@@ -88,6 +89,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
         m.profile_picture_url AS runnerProfileUrl,
         m.nickname AS runnerNickname,
         rr.id AS runningId,
+        rr.course_id AS courseId,
         rr.running_name AS runningName,
         rr.`average_pace_min/km` AS averagePace,
         rr.`average_cadence_spm` AS cadence,
@@ -100,7 +102,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
             *,
             ROW_NUMBER() OVER(PARTITION BY member_id ORDER BY duration_sec ASC) as rn
         FROM running_record
-        WHERE course_id = :courseId AND is_public = true
+        WHERE course_id = :courseId AND is_public = true AND deleted = false
     ) AS rr
     JOIN member m ON rr.member_id = m.id
     WHERE rr.rn = 1
@@ -108,5 +110,62 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     LIMIT :count
 """, nativeQuery = true)
     List<CourseRunDto> findTopRankingRunsByCourseIdWithDistinctMember(@Param("courseId") Long courseId, @Param("count") Integer count);
+
+    @Query(value = """
+        -- 멤버 별 개인 최고 기록
+        WITH filtered_runs AS (
+            SELECT
+                *,
+                ROW_NUMBER() OVER(PARTITION BY member_id, course_id ORDER BY duration_sec ASC) as rn
+            FROM running_record
+            WHERE course_id IN (:courseIds) AND is_public = true AND deleted = false
+        ),
+        -- 코스 별로 랭킹된 러닝 기록
+        ranked_runs AS (
+            SELECT
+                fr.course_id,
+                fr.running_name,
+                fr.id,
+                m.uuid,
+                m.profile_picture_url,
+                m.nickname,
+                fr.duration_sec,
+                fr.`average_pace_min/km`,
+                fr.average_cadence_spm,
+                fr.average_bpm,
+                fr.is_public,
+                fr.started_at_ms,
+                ROW_NUMBER() OVER(PARTITION BY fr.course_id ORDER BY fr.duration_sec ASC) as ranking
+            FROM filtered_runs fr
+            JOIN member m ON fr.member_id = m.id
+            WHERE fr.rn = 1
+        )
+        SELECT
+            rr.uuid AS runnerUuid,
+            rr.profile_picture_url AS runnerProfileUrl,
+            rr.nickname AS runnerNickname,
+            rr.id AS runningId,
+            rr.course_id AS courseId,
+            rr.running_name AS runningName,
+            rr.`average_pace_min/km` AS averagePace,
+            rr.average_cadence_spm AS cadence,
+            rr.average_bpm AS bpm,
+            rr.duration_sec AS duration,
+            rr.is_public AS isPublic,
+            rr.started_at_ms AS startedAt
+        FROM ranked_runs rr
+        WHERE rr.ranking <= :limit
+        ORDER BY rr.course_id, rr.ranking
+    """, nativeQuery = true)
+    List<CourseRunDto> findTopRankingRunsByCourseIdsWithDistinctMember(List<Long> courseIds, int limit);
+
+
+    @Query("""
+        SELECT r.course.id, COUNT(DISTINCT r.member.id)
+        FROM Running r
+        WHERE r.course.id IN :courseIds AND r.isPublic = true
+        GROUP BY r.course.id
+    """)
+    List<Pair<Long, Long>> findPublicRunnerCountsByCourseIds(List<Long> courseIds);
 
 }
