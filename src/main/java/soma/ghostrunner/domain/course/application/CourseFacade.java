@@ -108,6 +108,7 @@ public class CourseFacade {
             coursesToBeCached.put(course.id(), new CourseQueryModel(course.id(), course.name(),
                     runners.stream().map(RunnerProfile::from).toList(), Math.toIntExact(runnersCount)));
         }
+        log.info("CourseFacade::saveCoursesToCache() - saving {} courses to cache", coursesToBeCached.size());
         courseCacheRepository.saveAll(coursesToBeCached.values().stream().toList());
         return coursesToBeCached;
     }
