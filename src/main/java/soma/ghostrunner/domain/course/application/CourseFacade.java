@@ -71,7 +71,7 @@ public class CourseFacade {
                                                           List<CoursePreviewDto> cacheMissedCourses, Map<Long, CourseQueryModel> cachedCourses) {
         var totalCourseIds = totalCourses.stream().map(CoursePreviewDto::id).toList();
         var cacheMissedIds = cacheMissedCourses.stream().map(CoursePreviewDto::id).toList();
-        // 코스 별 Top 4 러너 프로필 & 러너 수 조회
+        // 코스 별 Top 4 러너 프로필 & 러너 수 & 본인 최고 기록 조회
         Map<Long, List<CourseRunDto>> topRunnersForCourse = runningQueryService.findTopRankingDistinctGhostsByCourseIds(cacheMissedIds, 4);
         Map<Long, Long> runnerCountsForCourse = runningQueryService.findPublicRunnersCountByCourseIds(cacheMissedIds);
         Map<Long, Running> memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(totalCourseIds, viewerUuid); // 본인 최고 기록은 캐싱되지 않으므로, 모든 코스에 대해 조회
