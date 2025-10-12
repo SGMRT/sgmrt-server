@@ -166,7 +166,7 @@ public class RunningQueryService {
 
         Map<Long, Running> result = new HashMap<>();
         for (Long courseId : courseIds) {
-            result.put(courseId, bestRunsByCourseId.get(courseId));
+            result.put(courseId, bestRunsByCourseId.get(courseId)); // 최고 기록이 없으면 null이 들어감
         }
         return result;
     }

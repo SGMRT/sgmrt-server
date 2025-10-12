@@ -40,7 +40,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
 
     @Query("SELECT r FROM Running r " +
             "JOIN FETCH r.course c " +
-            "JOIN c.member m " +
+            "JOIN r.member m " +
             "WHERE m.uuid = :memberUuid AND r.course.id IN :courseIds " +
             "AND r.runningRecord.duration = (" +
             "  SELECT MIN(r2.runningRecord.duration) " +
