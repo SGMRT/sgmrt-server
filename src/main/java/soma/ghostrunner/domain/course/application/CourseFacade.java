@@ -44,16 +44,16 @@ public class CourseFacade {
     public List<CourseMapResponse> findCoursesByPositionCached(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                                CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내 코스 리스트 조회
-        var courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
         List<Long> courseIds = courses.stream().map(CoursePreviewDto::id).toList();
 
         // 캐시에서 코스 정보 조회
-        var cachedCourseInfos = courseCacheRepository.findAllById(courseIds);
+        Map<Long, CourseQueryModel> cachedCourseInfos = courseCacheRepository.findAllById(courseIds);
 
         // 캐시 히트 여부에 따라 처리 분기
-        var filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
+        List<CoursePreviewDto> filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
         List<CourseMapResponse> responses;
-        var cacheMissedIds = filterCacheMissedIds(cachedCourseInfos);
+        List<Long> cacheMissedIds = filterCacheMissedIds(cachedCourseInfos);
         if(!cacheMissedIds.isEmpty()) {
             log.info("CourseFacade::findCoursesByPositionCached() - found cache miss for {} courses", cacheMissedIds.size());
             var cacheMissedCourses = filteredCourses.stream().filter(
@@ -72,13 +72,13 @@ public class CourseFacade {
         var totalCourseIds = totalCourses.stream().map(CoursePreviewDto::id).toList();
         var cacheMissedIds = cacheMissedCourses.stream().map(CoursePreviewDto::id).toList();
         // 코스 별 Top 4 러너 프로필 & 러너 수 조회
-        var topRunnersForCourse = runningQueryService.findTopRankingDistinctGhostsByCourseIds(cacheMissedIds, 4);
-        var runnerCountsForCourse = runningQueryService.findPublicRunnersCountByCourseIds(cacheMissedIds);
-        var memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(totalCourseIds, viewerUuid); // 본인 최고 기록은 캐싱되지 않으므로, 모든 코스에 대해 조회
+        Map<Long, List<CourseRunDto>> topRunnersForCourse = runningQueryService.findTopRankingDistinctGhostsByCourseIds(cacheMissedIds, 4);
+        Map<Long, Long> runnerCountsForCourse = runningQueryService.findPublicRunnersCountByCourseIds(cacheMissedIds);
+        Map<Long, Running> memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(totalCourseIds, viewerUuid); // 본인 최고 기록은 캐싱되지 않으므로, 모든 코스에 대해 조회
         // 캐시 저장
-        var newlyCachedCourses = saveCoursesToCache(cacheMissedCourses, topRunnersForCourse, runnerCountsForCourse);
+        Map<Long, CourseQueryModel> newlyCachedCourses = saveCoursesToCache(cacheMissedCourses, topRunnersForCourse, runnerCountsForCourse);
         // 기존 코스 순서에 맞춰 응답 반환
-        var ret = new ArrayList<CourseMapResponse>();
+        List<CourseMapResponse> ret = new ArrayList<>();
         for (var course: totalCourses) {
             CourseQueryModel courseModel;
             if (newlyCachedCourses.containsKey(course.id())) {
@@ -98,13 +98,13 @@ public class CourseFacade {
         return ret;
     }
 
-    private HashMap<Long, CourseQueryModel> saveCoursesToCache(List<CoursePreviewDto> cacheMissedCourses,
+    private Map<Long, CourseQueryModel> saveCoursesToCache(List<CoursePreviewDto> cacheMissedCourses,
                                                                Map<Long, List<CourseRunDto>> topRunnersForCourse,
                                                                Map<Long, Long> runnerCountsForCourse) {
-        var coursesToBeCached = new HashMap<Long, CourseQueryModel>();
+        Map<Long, CourseQueryModel> coursesToBeCached = new HashMap<>();
         for (var course: cacheMissedCourses) {
-            var runners = topRunnersForCourse.getOrDefault(course.id(), List.of());
-            var runnersCount = runnerCountsForCourse.getOrDefault(course.id(), 0L);
+            List<CourseRunDto> runners = topRunnersForCourse.getOrDefault(course.id(), List.of());
+            Long runnersCount = runnerCountsForCourse.getOrDefault(course.id(), 0L);
             coursesToBeCached.put(course.id(), new CourseQueryModel(course.id(), course.name(),
                     runners.stream().map(RunnerProfile::from).toList(), Math.toIntExact(runnersCount)));
         }
