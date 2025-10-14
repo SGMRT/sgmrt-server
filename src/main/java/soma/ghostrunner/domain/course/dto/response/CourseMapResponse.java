@@ -5,7 +5,7 @@ import soma.ghostrunner.domain.course.enums.CourseSource;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record CourseMapResponse(
+public record CourseMapResponse (
         Long id,
         String name,
         String ownerUuid,
@@ -28,4 +28,3 @@ public record CourseMapResponse(
             String profileUrl
     ) {}
 }
-

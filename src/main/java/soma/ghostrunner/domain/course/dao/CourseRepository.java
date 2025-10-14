@@ -6,7 +6,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import soma.ghostrunner.domain.course.dto.BestDurationInCourseDto;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.BestDurationProjection;
 
 import java.util.List;
 
@@ -14,17 +16,27 @@ import java.util.List;
 public interface CourseRepository extends CustomCourseRepository, JpaRepository<Course, Long> {
 
 
-    // TODO: owner 필드 포함한 후에는, ownerId가 일치하면 isPublic=false여도 보여줘야 함
-    /** 기준점 위경도 반경 내에 Course의 startPoint가 존재하는 코스 검색 (직사각형 형태) */
-    @Query("SELECT c FROM Course c WHERE " +
-            "c.startCoordinate.latitude BETWEEN :minLat AND :maxLat AND " +
-            "c.startCoordinate.longitude BETWEEN :minLng AND :maxLng AND " +
-            "c.isPublic = true")
-    List<Course> findPublicCoursesByBoundingBox(
-            @Param("minLat") Double minLat,
-            @Param("maxLat") Double maxLat,
-            @Param("minLng") Double minLng,
-            @Param("maxLng") Double maxLng
+    @Query(value = """
+        SELECT r.course_id AS courseId,
+               r.member_id AS memberId,
+               MIN(r.duration_sec) AS bestDurationSec
+        FROM `ghost-runner`.running_record r
+        INNER JOIN (
+            SELECT id
+            FROM `ghost-runner`.course
+            WHERE is_public = TRUE AND deleted = FALSE
+              AND start_latitude BETWEEN :minLat AND :maxLat
+              AND start_longtitude BETWEEN :minLng AND :maxLng
+        ) filtered_courses ON r.course_id = filtered_courses.id
+        WHERE r.is_public = TRUE AND r.deleted = FALSE
+        GROUP BY r.course_id, r.member_id
+        ORDER BY r.course_id, bestDurationSec
+        """, nativeQuery = true)
+    List<BestDurationProjection> findBestDurations(
+            @Param("minLat") double minLat,
+            @Param("maxLat") double maxLat,
+            @Param("minLng") double minLng,
+            @Param("maxLng") double maxLng
     );
 
     @Query("SELECT c FROM Course c LEFT JOIN FETCH c.member m " +
