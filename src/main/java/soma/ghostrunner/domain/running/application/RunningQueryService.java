@@ -24,8 +24,9 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -139,6 +140,35 @@ public class RunningQueryService {
                     throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
                 };
             });
+    }
+
+    /** 사용자가 courseIds에 해당하는 코스에서의 최고기록을 매핑하여 반환한다. (Key: 코스 ID, Value: 최고 러닝 (nullable)) */
+    public Map<Long, Running> findBestRunningRecordsForCourses(List<Long> courseIds, String memberUuid) {
+        // IN 절로 한 번에 조회한 후 courseId 별로 맵핑
+        Map<Long, Running> bestRunsByCourseId = runningRepository.findBestRunningRecordsByMemberIdAndCourseIds(memberUuid, courseIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        run -> run.getCourse().getId(),
+                        Function.identity()
+                ));
+
+        Map<Long, Running> result = new HashMap<>();
+        for (Long courseId : courseIds) {
+            result.put(courseId, bestRunsByCourseId.get(courseId));
+        }
+        return result;
+    }
+
+    /** 사용자가 couseId에 해당하는 코스를 달렸는지 여부를 매핑하여 반환한다. (Key: 코스 ID, Value: 러닝 여부) */
+    public Map<Long, Boolean> checkRunningHistoryForCourses(List<Long> courseIds, String memberUuid) {
+        // 사용자가 달린 코스 ID 리스트를 조회하여 courseId와 비교한다
+        List<Long> ranCourseIds = runningRepository.findRanCourseIdsByMemberIdAndCourseIds(memberUuid, courseIds);
+        Set<Long> ranCourseIdSet = new HashSet<>(ranCourseIds);
+        return courseIds.stream()
+                .collect(Collectors.toMap(
+                        courseId -> courseId,
+                        ranCourseIdSet::contains
+                ));
     }
 
     public List<RunInfo> findRunnings(String filteredBy,

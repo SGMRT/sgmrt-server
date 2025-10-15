@@ -11,7 +11,6 @@ import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
-import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
@@ -29,8 +28,7 @@ public class CourseService {
     private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
 
-    public Long save(
-            Course course) {
+    public Long save(Course course) {
         return courseRepository.save(course).getId();
     }
 
@@ -101,4 +99,22 @@ public class CourseService {
         if(course.getIsPublic() == true) throw new CourseAlreadyPublicException(ErrorCode.COURSE_ALREADY_PUBLIC, course.getId());
         course.setIsPublic(isPublic);
     }
+
+    /** (lat, lng)을 radiusM로 둘러싼 직사각형의 네 꼭지점 좌표를 반환한다 */
+    private static LatLngs getBoundingBoxLatLngs(Double lat, Double lng, double radiusM) {
+        double radiusKm = radiusM / 1000d;
+        double latDelta = radiusKm / 111.0;
+        double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
+
+        double minLat = lat - latDelta;
+        double maxLat = lat + latDelta;
+        double minLng = lng - lngDelta;
+        double maxLng = lng + lngDelta;
+
+        return new LatLngs(minLat, maxLat, minLng, maxLng);
+    }
+
+    private record LatLngs(double minLat, double maxLat, double minLng, double maxLng) {
+    }
+
 }

@@ -33,6 +33,19 @@ class NotificationTest {
         assertThat(notification.getStatus()).isEqualTo(NotificationStatus.CREATED);
     }
 
+    @DisplayName("Notification 생성 시 제목과 본문이 동시에 null이면 예외가 발생한다.")
+    @Test
+    void createNotificationWithNullTitleAndBody() {
+        // given
+        Member member = Member.of("흰둥이", "test-url");
+        PushToken pushToken = new PushToken(member, "test-token");
+
+        // when & then
+        assertThatThrownBy(() -> Notification.of(pushToken, null, null, Map.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("제목과 본문이 동시에 null일 수 없음");
+    }
+
     @DisplayName("Notification의 상태를 SENT로 변경할 수 있다.")
     @Test
     void markAsSent() {

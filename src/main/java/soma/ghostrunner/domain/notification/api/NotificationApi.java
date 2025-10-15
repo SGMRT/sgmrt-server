@@ -21,14 +21,10 @@ public class NotificationApi {
 
     @AdminOnly
     @PostMapping("/v1/admin/notifications")
-    public NotificationBatchResult sendNotification(@RequestBody NotificationSendRequest request) {
-        try {
-            CompletableFuture<NotificationBatchResult> notificationFuture = notificationService
-                    .sendPushNotificationAsync(request.getUserIds(), request.getTitle(), request.getBody(), request.getData());
-            return notificationFuture.get(30, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public NotificationBatchResult sendNotification(@RequestBody NotificationSendRequest request) throws Exception {
+        CompletableFuture<NotificationBatchResult> notificationFuture = notificationService
+                .sendPushNotificationAsync(request.getUserIds(), request.getTitle(), request.getBody(), request.getData());
+        return notificationFuture.get(30, TimeUnit.SECONDS);
     }
 
     @PostMapping("/v1/member/{memberUuid}/push-token")

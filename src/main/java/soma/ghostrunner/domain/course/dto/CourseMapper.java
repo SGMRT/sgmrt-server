@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.course.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.dto.MemberMetaInfoDto;
@@ -35,6 +36,10 @@ public interface CourseMapper {
     @Mapping(source = "ghosts", target = "top4Runners")
     CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts,
                                           long runnersCount, boolean hasMyRecord);
+
+    @Mapping(source = "runners", target = "runners")
+    CourseMapResponse toCourseMapResponseTmp(CoursePreviewDto courseDto, List<RunnerProfile> runners,
+                                          long runnersCount, Boolean hasRan);
 
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
