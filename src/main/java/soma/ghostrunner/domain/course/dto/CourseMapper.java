@@ -6,9 +6,13 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.member.infra.dao.dto.MemberMetaInfoDto;
 import soma.ghostrunner.domain.running.domain.Running;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Mapper(componentModel = "spring", uses = { CourseSubMapper.class})
 public interface CourseMapper {
@@ -28,9 +32,10 @@ public interface CourseMapper {
     @Mapping(source = "courseProfile.elevationLoss", target = "elevationLoss")
     CoursePreviewDto toCoursePreviewDto(Course course);
 
-    @Mapping(source = "runners", target = "runners")
-    CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<RunnerProfile> runners,
-                                          long runnersCount, CourseGhostResponse myGhostInfo);
+    @Mapping(source = "courseDto.elevationAverage", target = "elevation")
+    @Mapping(source = "ghosts", target = "top4Runners")
+    CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts,
+                                          long runnersCount, boolean hasMyRecord);
 
     @Mapping(source = "runners", target = "runners")
     CourseMapResponse toCourseMapResponseTmp(CoursePreviewDto courseDto, List<RunnerProfile> runners,
@@ -103,9 +108,35 @@ public interface CourseMapper {
     @Mapping(source = "avgCaloriesBurned", target = "averageCaloriesBurned")
     CourseStatisticsResponse toCourseStatisticsResponse(CourseRunStatisticsDto stats);
 
-    @Mapping(source = "ghosts", target = "topRunners")
-    CourseQueryModel toCourseQueryModel(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts, long runnerCount);
+    default List<CourseMapResponse2> toResponse(HashMap<Long, CoursePreviewDto2> coursePreviewMap,
+                                                Map<Long, CourseMetaInfoDto> courseMetaInfoMap,
+                                                Map<Long, MemberMetaInfoDto> memberMetaInfoMap) {
 
+        List<CourseMapResponse2> result = new ArrayList<>();
+        for (Long courseId : coursePreviewMap.keySet()) {
+
+            CoursePreviewDto2 previewDto = coursePreviewMap.get(courseId);
+
+            // 코스 정보
+            CourseMetaInfoDto courseMetaInfo = courseMetaInfoMap.get(courseId);
+            CourseMapResponse2 response2 = CourseMapResponse2.of(courseMetaInfo.getCourseId(), courseMetaInfo.getName(),
+                    courseMetaInfo.getSource(), courseMetaInfo.getStartLatitude(), courseMetaInfo.getStartLongitude(),
+                    courseMetaInfo.getRouteUrl(), courseMetaInfo.getCreatedAt(),
+                    previewDto.getRunnersCount(), previewDto.isHasMyRecord(),
+                    courseMetaInfo.getDistanceKm(), courseMetaInfo.getElevationAverage(), courseMetaInfo.getThumbnailUrl());
+
+            // TOP4 러너 정보
+            List<Long> top4RunnersId = previewDto.getTop4RunnerIds();
+            for (Long runnerId : top4RunnersId) {
+                MemberMetaInfoDto memberMetaInfo = memberMetaInfoMap.get(runnerId);
+                response2.addRunnerInfo(memberMetaInfo.getUuid(), memberMetaInfo.getProfileUrl());
+            }
+
+            result.add(response2);
+        }
+
+        return result;
+    }
 
 }
 
@@ -113,5 +144,5 @@ public interface CourseMapper {
 interface CourseSubMapper {
     @Mapping(source = "ghost.runnerUuid", target = "uuid")
     @Mapping(source = "ghost.runnerProfileUrl", target = "profileUrl")
-    RunnerProfile toMemberRecordDto(CourseGhostResponse ghost);
+    CourseMapResponse.RunnerInfo toMemberRecordDto(CourseGhostResponse ghost);
 }

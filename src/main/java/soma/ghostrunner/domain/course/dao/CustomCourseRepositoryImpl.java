@@ -8,24 +8,29 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.CourseMetaInfoDto;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
+import soma.ghostrunner.domain.course.dto.QCourseMetaInfoDto;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static soma.ghostrunner.domain.course.domain.QCourse.course;
 import static soma.ghostrunner.domain.running.domain.QRunning.running;
 
 @Repository
 @RequiredArgsConstructor
-public class CustomCourseRepositoryImpl implements CustomCourseRepository{
+public class CustomCourseRepositoryImpl implements CustomCourseRepository {
 
   private final JPAQueryFactory queryFactory;
 
   @Override
   public List<Course> findCoursesWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
                                                             Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort) {
-    // todo - 코스에 딸린 러닝기록 수 반정규화해서 따로 저장해두면 굳이 Running 테이블까지 조인할 필요 없음
+
     JPAQuery<Course> query = queryFactory
             .selectFrom(course)
             .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
@@ -48,31 +53,28 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
   }
 
   @Override
-  public List<Long> findCourseIdsWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
-                                             Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort) {
-    JPAQuery<Long> query = queryFactory
-            .select(course.id)
+  public List<CourseMetaInfoDto> findCourseMetaInfoByCourseId(Set<Long> courseIds) {
+    List<Long> courseIdsList = new ArrayList<>(courseIds);
+
+    return queryFactory
+            .select(new QCourseMetaInfoDto(
+                    course.id,
+                    course.member.id,
+                    course.name,
+                    course.source,
+                    course.startCoordinate.latitude,
+                    course.startCoordinate.longitude,
+                    course.courseDataUrls.routeUrl,
+                    course.courseProfile.distance,
+                    course.courseProfile.elevationAverage,
+                    course.courseDataUrls.thumbnailUrl,
+                    course.createdAt
+            ))
             .from(course)
-            .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
-            .leftJoin(course.member)
-            .where(
-                    course.isPublic.isTrue(),
-                    startPointWithinBoundary(minLat, maxLat, minLng, maxLng),
-                    withSearchFilters(filters)
-            )
-            .groupBy(course);
-
-    // 정렬 조건 분기 처리
-    if (sort == CourseSortType.DISTANCE) {
-      query.orderBy(calculateDistance(curLat, curLng).asc());
-    } else if (sort == CourseSortType.POPULARITY) {
-      query.orderBy(running.id.count().desc(), course.id.desc());
-    }
-
-    return query.fetch();
+            .where(course.id.in(courseIdsList))
+            .fetch();
   }
-  
-  /** Haversine 공식을 사용하여 (y, x)와 코스 사이 실제 거리를 계산하는 표현식 반환 */
+
   private NumberExpression<Double> calculateDistance(Double lat, Double lng) {
     NumberExpression<Double> latRad = Expressions.numberTemplate(Double.class, "RADIANS({0})", course.startCoordinate.latitude);
     NumberExpression<Double> userLatRad = Expressions.numberTemplate(Double.class, "RADIANS({0})", lat);

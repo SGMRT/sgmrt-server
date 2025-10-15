@@ -15,6 +15,8 @@ import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
+import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -30,9 +32,10 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class CourseFacade {
+
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
-    private final CourseCacheRepository courseCacheRepository;
+    private final MemberService memberService;
 
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
@@ -100,25 +103,31 @@ public class CourseFacade {
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                          CourseSearchFilterDto filters, String viewerUuid) {
-        // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
+
+        Member member = memberService.findMemberByUuid(viewerUuid);
+
+        List<CoursePreviewDto> courses = courseService.searchCourses(lat, lng, radiusM, sort, filters);
         List<CoursePreviewDto> filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
-        // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
+
         return filteredCourses.stream().map(course -> {
             List<CourseGhostResponse> rankers = runningQueryService.findTopRankingDistinctGhostsByCourseId(course.id(),
                     MAX_RUNNER_PROFILES_PER_COURSE);
-            CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
-            long runnersCount = getRunnersCount(course.id(), rankers);
-            return courseMapper.toCourseMapResponse(course, rankers.stream().map(RunnerProfile::from).toList(), runnersCount, ghostForUser);
+
+            List<Long> runnersIdInCourse = runningQueryService.findPublicRunnersInCourse(course.id());
+            long runnersCount = runnersIdInCourse.size();
+            boolean hasMyRecord = isMemberIdInRunnersIdInCourse(runnersIdInCourse, member.getId());
+
+            return courseMapper.toCourseMapResponse(course, rankers, runnersCount, hasMyRecord);
         }).toList();
     }
 
-    private long getRunnersCount(Long courseId, List<CourseGhostResponse> rankers) {
-        if (rankers.size() < MAX_RUNNER_PROFILES_PER_COURSE) {
-            return rankers.size();
-        } else {
-            return runningQueryService.findPublicRunnersCount(courseId);
+    private boolean isMemberIdInRunnersIdInCourse(List<Long> runnersIdInCourse, Long memberId) {
+        for (Long runnerId : runnersIdInCourse) {
+            if (runnerId.equals(memberId)) {
+                return true;
+            }
         }
+        return false;
     }
 
     /** 본인 코스, 주변 랜덤 코스를 고려하여 limit개 이하로 제한한다. */

@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.member.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.member.infra.dao.dto.MemberMetaInfoDto;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
@@ -21,6 +22,8 @@ import soma.ghostrunner.global.error.ErrorCode;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -216,6 +219,12 @@ public class MemberService {
     public MemberVdot findMemberVdot(Member member) {
         return memberVdotRepository.findByMemberId(member.getId())
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find vdot, memberUuid: " + member.getUuid()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<MemberMetaInfoDto> findMemberMetaInfo(Set<Long> memberIds) {
+        List<Long> memberIdsList = new ArrayList<>(memberIds);
+        return memberRepository.findMemberMetaInfosInIds(memberIdsList);
     }
 
 }

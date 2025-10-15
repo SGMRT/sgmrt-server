@@ -5,7 +5,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.member.infra.dao.dto.MemberMetaInfoDto;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -32,5 +34,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findSoftDeletedMemberByUuid(String uuid);
 
     boolean existsByUuid(String memberUuid);
+
+    @Query("SELECT new soma.ghostrunner.domain.member.infra.dao.dto.MemberMetaInfoDto(m.id, m.uuid, m.profilePictureUrl)" +
+            "FROM Member m " +
+            "WHERE m.id in :memberIds")
+    List<MemberMetaInfoDto> findMemberMetaInfosInIds(List<Long> memberIds);
 
 }

@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.course.application.CourseFacade;
+import soma.ghostrunner.domain.course.application.CourseFacade2;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
@@ -24,9 +25,10 @@ import java.util.List;
 public class CourseApi {
 
     private final CourseFacade courseFacade;
+    private final CourseFacade2 courseFacade2;
 
     @GetMapping("/courses")
-    public List<CourseMapResponse> getCoursesByPosition(
+    public List<CourseMapResponse2> getCoursesByPosition(
             @RequestParam Double lat,
             @RequestParam Double lng,
             @RequestParam(required = false, defaultValue = "2000") @Max(value = 20000) Integer radiusM,
@@ -37,8 +39,7 @@ public class CourseApi {
             @RequestParam(required = false) Integer minElevationM,
             @RequestParam(required = false) Integer maxElevationM,
             @AuthenticationPrincipal JwtUserDetails userDetails) {
-//        return courseFacade.findCoursesByPosition(lat, lng, radiusM, sort,
-        return courseFacade.findCoursesByPositionCached(lat, lng, radiusM, sort,
+        return courseFacade2.findCoursesByPosition(lat, lng, radiusM, sort,
                 CourseSearchFilterDto.of(minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid),
                 userDetails.getUserId());
     }
