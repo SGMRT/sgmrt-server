@@ -6,6 +6,7 @@ public record CourseRunDto (
     String runnerNickname,
 
     Long runningId,
+    Long courseId,
     String runningName,
     Double averagePace,
     Integer cadence,

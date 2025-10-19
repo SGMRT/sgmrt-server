@@ -6,9 +6,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.util.Pair;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
@@ -87,6 +89,16 @@ public class RunningQueryService {
                 .toList();
     }
 
+    /** 코스 ID 별로 상위 랭킹 :limit위까지의 러닝 기록을 리스트로 매핑하여 반환한다. (러너 별로 최대 하나의 기록만 포함된다) (Key = 코스 ID, Value = 랭킹 내의 러닝 기록 리스트)*/
+    public Map<Long, List<CourseRunDto>> findTopRankingDistinctGhostsByCourseIds(
+            List<Long> cachedMissedCourseIds, int limit) {
+        Map<Long, List<CourseRunDto>> map = new HashMap<>();
+        cachedMissedCourseIds.forEach(id -> map.put(id, new ArrayList<>()));
+        runningRepository.findTopRankingRunsByCourseIdsWithDistinctMember(cachedMissedCourseIds, limit)
+                .forEach(proj -> map.get(proj.courseId()).add(proj));
+        return map;
+    }
+
     public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
         Long courseId, Pageable pageable) {
         validateSortProperty(pageable);
@@ -142,7 +154,7 @@ public class RunningQueryService {
             });
     }
 
-    /** 사용자가 courseIds에 해당하는 코스에서의 최고기록을 매핑하여 반환한다. (Key: 코스 ID, Value: 최고 러닝 (nullable)) */
+    /** 코스 ID 별로 사용자의 최고기록을 매핑하여 반환한다. (Key: 코스 ID, Value: 최고 러닝 (nullable)) */
     public Map<Long, Running> findBestRunningRecordsForCourses(List<Long> courseIds, String memberUuid) {
         // IN 절로 한 번에 조회한 후 courseId 별로 맵핑
         Map<Long, Running> bestRunsByCourseId = runningRepository.findBestRunningRecordsByMemberIdAndCourseIds(memberUuid, courseIds)
@@ -154,7 +166,7 @@ public class RunningQueryService {
 
         Map<Long, Running> result = new HashMap<>();
         for (Long courseId : courseIds) {
-            result.put(courseId, bestRunsByCourseId.get(courseId));
+            result.put(courseId, bestRunsByCourseId.get(courseId)); // 최고 기록이 없으면 null이 들어감
         }
         return result;
     }
@@ -201,6 +213,20 @@ public class RunningQueryService {
 
     public long findPublicRunnersCount(Long courseId) {
         return runningRepository.countPublicRunnersInCourse(courseId);
+    }
+
+    /** 코스 ID 별로 러너의 수를 매핑하여 반환한다. (Key = 코스 ID, Value = 러너 수) */
+    public Map<Long, Long> findPublicRunnersCountByCourseIds(List<Long> courseIds) {
+        Map<Long, Long> ret = courseIds.stream()
+                .collect(Collectors.toMap(
+                        Function.identity(),
+                        id -> 0L
+                ));
+        List<Pair<Long, Long>> counts = runningRepository.findPublicRunnerCountsByCourseIds(courseIds);
+        for (var count: counts) {
+            ret.put(count.getFirst(), count.getSecond());
+        }
+        return ret;
     }
 
 }
