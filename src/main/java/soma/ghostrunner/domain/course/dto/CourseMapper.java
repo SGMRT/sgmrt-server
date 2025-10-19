@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.course.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.dto.MemberMetaInfoDto;
@@ -132,6 +133,8 @@ public interface CourseMapper {
 
         return result;
     }
+
+    CourseMapResponse3 toResponse(CourseReadModel courseInfo, Boolean hasMyRecord);
 
 }
 

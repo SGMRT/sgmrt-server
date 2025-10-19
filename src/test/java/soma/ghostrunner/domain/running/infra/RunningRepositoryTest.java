@@ -24,6 +24,7 @@ import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -688,7 +689,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 nullCourseInfoCount += 1;
             }
         }
-        Assertions.assertThat(nullCourseInfoCount).isEqualTo(runningWithPrivateCourseCount);
+        assertThat(nullCourseInfoCount).isEqualTo(runningWithPrivateCourseCount);
     }
 
     private Running createRunning(String runningName, Course course, Member member, Long startedAt, RunningMode runningMode) {
@@ -1002,7 +1003,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // then
         for (int i = 0; i < savedRunnings.size(); i++) {
-            Assertions.assertThat(savedRunnings.get(i).getId()).isEqualTo(runnings.get(i).getId());
+            assertThat(savedRunnings.get(i).getId()).isEqualTo(runnings.get(i).getId());
         }
 
     }
@@ -1022,7 +1023,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         List<Running> savedRunnings = runningRepository.findRunningsByCourseIdAndMemberId(c.getId(), member.getId());
 
         // then
-        Assertions.assertThat(savedRunnings).isEmpty();
+        assertThat(savedRunnings).isEmpty();
     }
 
     @DisplayName("코스 ID를 기반으로 해당 코스에서 뛴 러닝 기록 중 상위 랭킹 러닝 기록을 조회한다. 같은 사용자의 중복된 러닝 기록은 허용되지 않는다.")
@@ -1080,10 +1081,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         List<Long> runnersIds = runningRepository.countPublicRunnersInCourse(c.getId());
 
         // then
-        Assertions.assertThat(runnersIds).hasSize(3);
-        Assertions.assertThat(runnersIds).contains(member1.getId());
-        Assertions.assertThat(runnersIds).contains(member2.getId());
-        Assertions.assertThat(runnersIds).contains(member3.getId());
+        assertThat(runnersIds).hasSize(3);
+        assertThat(runnersIds).contains(member1.getId());
+        assertThat(runnersIds).contains(member2.getId());
+        assertThat(runnersIds).contains(member3.getId());
     }
 
 }

@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.course.dao;
 
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseMetaInfoDto;
+import soma.ghostrunner.domain.course.dto.CourseRankInfo;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 

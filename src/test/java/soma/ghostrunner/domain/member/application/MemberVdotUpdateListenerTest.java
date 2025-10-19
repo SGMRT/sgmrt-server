@@ -19,7 +19,7 @@ import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class MemberVdotUpdateEventListenerTest {
+class MemberVdotUpdateListenerTest {
 
     @Mock
     private MemberService memberService;
@@ -31,14 +31,14 @@ class MemberVdotUpdateEventListenerTest {
     private MemberMapper mapper;
 
     @InjectMocks
-    private MemberVdotUpdateEventListener runFinishedEventListener;
+    private MemberVdotUpdateListener runFinishedEventListener;
 
     @DisplayName("VDOT가 기존에 없다면 새롭게 VDOT가 저장된다.")
     @Test
     void handleRunFinishedAndSaveNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, 2L);
+        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, 2L, true);
 
         Member mockMember = mock(Member.class);
 
@@ -62,7 +62,7 @@ class MemberVdotUpdateEventListenerTest {
     void handleRunFinishedAndUpdateNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, 2L);
+        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, 2L, true);
 
         Member mockMember = mock(Member.class);
         MemberVdot mockMemberVdot = mock(MemberVdot.class);

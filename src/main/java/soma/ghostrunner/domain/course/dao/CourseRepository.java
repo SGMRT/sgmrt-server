@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.dto.BestDurationInCourseDto;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.BestDurationProjection;
+import soma.ghostrunner.domain.member.domain.Member;
 
 import java.util.List;
 
@@ -31,7 +32,8 @@ public interface CourseRepository extends CustomCourseRepository, JpaRepository<
         WHERE r.is_public = TRUE AND r.deleted = FALSE
         GROUP BY r.course_id, r.member_id
         ORDER BY r.course_id, bestDurationSec
-        """, nativeQuery = true)
+        """, nativeQuery = true
+    )
     List<BestDurationProjection> findBestDurations(
             @Param("minLat") double minLat,
             @Param("maxLat") double maxLat,
@@ -43,5 +45,7 @@ public interface CourseRepository extends CustomCourseRepository, JpaRepository<
             "WHERE m.uuid = :memberUuid AND c.isPublic = true " +
             "ORDER BY c.createdAt DESC")
     Page<Course> findPublicCoursesFetchJoinMembersByMemberUuidOrderByCreatedAtDesc(String memberUuid, Pageable pageable);
+
+    List<Course> findAllByMember(Member member);
 
 }

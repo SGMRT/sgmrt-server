@@ -1,11 +1,15 @@
 package soma.ghostrunner.domain.member.application;
 
+import jakarta.persistence.EntityManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.domain.Coordinate;
+import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
@@ -28,14 +32,25 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class MemberServiceTest extends IntegrationTestSupport {
 
-    @Autowired MemberService memberService;
-    @Autowired MemberRepository memberRepository;
-    @Autowired MemberSettingsRepository memberSettingsRepository;
-    @Autowired MemberAuthInfoRepository memberAuthInfoRepository;
-    @Autowired TermsAgreementRepository termsAgreementRepository;
-    @Autowired RunningRepository runningRepository;
-    @Autowired CourseRepository courseRepository;
-    @Autowired MemberVdotRepository memberVdotRepository;
+    @Autowired
+    MemberService memberService;
+    @Autowired
+    MemberRepository memberRepository;
+    @Autowired
+    MemberSettingsRepository memberSettingsRepository;
+    @Autowired
+    MemberAuthInfoRepository memberAuthInfoRepository;
+    @Autowired
+    TermsAgreementRepository termsAgreementRepository;
+    @Autowired
+    RunningRepository runningRepository;
+    @Autowired
+    CourseRepository courseRepository;
+    @Autowired
+    MemberVdotRepository memberVdotRepository;
+
+    @Autowired
+    EntityManager em;
 
     @DisplayName("회원가입 성공 시 입력한 정보대로 회원을 저장한다.")
     @Test
@@ -278,15 +293,18 @@ class MemberServiceTest extends IntegrationTestSupport {
         String uuid = member.getUuid();
         memberRepository.save(member);
 
-        Running running1 = createRunning("run 1", member);
-        Running running2 = createRunning("run 2", member);
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        Running running1 = createRunning("run 1", member, course);
+        Running running2 = createRunning("run 2", member, course);
         runningRepository.saveAll(List.of(running1, running2));
 
         // when
         memberService.removeAccount(uuid);
 
         // then
-        assertThat(runningRepository.findAll().size()).isEqualTo(0);
+        assertThat(runningRepository.count()).isZero();
     }
 
     @DisplayName("멤버의 VDOT를 조회한다.")
@@ -320,16 +338,36 @@ class MemberServiceTest extends IntegrationTestSupport {
     }
 
     // --- Helper methods ---
+    private Course createCourse(Member testMember) {
+        CourseProfile p = createCourseProfile();
+        Coordinate start = createStartPoint();
+        Course c = Course.of(testMember, p.getDistance(), p.getElevationAverage(),
+                p.getElevationGain(), p.getElevationLoss(),
+                start.getLatitude(), start.getLongitude(),
+                "route://1", "URL", "thumb://1");
+        c.setIsPublic(true);
+        return c;
+    }
+
+    private Coordinate createStartPoint() {
+        return Coordinate.of(37.55, 127.01);
+    }
+
+    private CourseProfile createCourseProfile() {
+        return CourseProfile.of(10.0, 12.3, 40.0, -10.0);
+    }
 
     private Member createAndSaveMember(String name) {
         return Member.of(name, "test-url");
     }
 
-    private Running createRunning(String name, Member member) {
-        return Running.of("name", RunningMode.SOLO, null, createRunningRecord(),
+    private Running createRunning(String name, Member member, Course course) {
+        Running running = Running.of("name", RunningMode.SOLO, null, createRunningRecord(),
                 System.currentTimeMillis(), true, false,
                 "telemetry-url", "telemetry-url", "telemetry-url",
-                member, null);
+                member, course);
+        member.getRuns().add(running);
+        return running;
     }
 
     private RunningRecord createRunningRecord() {

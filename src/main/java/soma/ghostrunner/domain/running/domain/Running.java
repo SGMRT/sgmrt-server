@@ -80,7 +80,9 @@ public class Running extends BaseTimeEntity {
         domainEvents.add(new RunFinishedEvent(
                 id,
                 member.getUuid(),
-                runningRecord.getAveragePace()
+                runningRecord.getAveragePace(),
+                course.getId(),
+                !isPublic
         ));
     }
 
