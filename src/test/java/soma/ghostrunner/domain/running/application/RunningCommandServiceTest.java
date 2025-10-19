@@ -6,42 +6,29 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.application.CourseService;
+import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
-import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
-import soma.ghostrunner.domain.running.domain.path.*;
-import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
-import soma.ghostrunner.domain.course.dao.CourseRepository;
-import soma.ghostrunner.domain.course.domain.Coordinate;
-import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseProfile;
-import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
-import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
-import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.RunningMode;
-import soma.ghostrunner.domain.running.domain.RunningRecord;
-import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+import soma.ghostrunner.domain.running.domain.path.*;
+import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -53,6 +40,7 @@ class RunningCommandServiceTest {
     @Mock RunningRepository runningRepository;
     @Mock TelemetryProcessor telemetryProcessor;
     @Mock RunningFileUploader runningFileUploader;
+    @Mock ApplicationEventPublisher applicationEventPublisher;
     @Mock PathSimplificationService pathSimplificationService;
     @Mock RunningQueryService runningQueryService;
     @Mock CourseService courseService;
@@ -69,7 +57,7 @@ class RunningCommandServiceTest {
     void setUp() {
         sut = new RunningCommandService(
                 mapper, runningRepository,
-                telemetryProcessor, runningFileUploader,
+                telemetryProcessor, runningFileUploader, applicationEventPublisher,
                 pathSimplificationService, runningQueryService, courseService, memberService
         );
     }

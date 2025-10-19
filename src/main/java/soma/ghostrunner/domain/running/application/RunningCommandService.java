@@ -1,6 +1,7 @@
 package soma.ghostrunner.domain.running.application;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +32,7 @@ public class RunningCommandService {
 
     private final TelemetryProcessor telemetryProcessor;
     private final RunningFileUploader runningFileUploader;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final PathSimplificationService pathSimplificationService;
     private final RunningQueryService runningQueryService;
@@ -95,6 +97,8 @@ public class RunningCommandService {
 
         RunningDataUrlsDto runningDataUrlsDto = upload(rawTelemetry, processedTelemetries, screenShotImage, member);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
+
+        eventPublisher.publishEvent(mapper.toCourseRunEvent(running, course, member));
         return running.getId();
     }
 

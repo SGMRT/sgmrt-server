@@ -12,6 +12,7 @@ import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerSetResponse;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
+import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
@@ -160,5 +161,13 @@ public interface RunningApplicationMapper {
                 .map(RunInfo::new)
                 .toList();
     }
-  
+
+    @Mapping(source = "course.id", target = "courseId")
+    @Mapping(source = "course.name", target = "courseName")
+    @Mapping(source = "course.member.id", target = "courseOwnerId")
+    @Mapping(source = "running.id", target = "runningId")
+    @Mapping(source = "member.id", target = "runnerId")
+    @Mapping(source = "member.nickname", target = "runnerNickname")
+    CourseRunEvent toCourseRunEvent(Running running, Course course, Member member);
+
 }
