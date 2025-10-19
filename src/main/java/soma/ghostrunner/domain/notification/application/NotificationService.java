@@ -2,9 +2,9 @@ package soma.ghostrunner.domain.notification.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
@@ -36,7 +36,7 @@ public class NotificationService {
     private final PushTokenRepository pushTokenRepository;
     private final MemberRepository memberRepository;
 
-    @EventListener(NotificationEvent.class)
+    @TransactionalEventListener
     public void handleNotificationEvent(NotificationEvent event) {
         // todo NotificationEventTranslator 구현 (외부 이벤트 listen -> NotificationEvent publish)
         sendPushNotificationAsync(

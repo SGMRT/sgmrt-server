@@ -113,7 +113,7 @@ public class RunningCommandService {
     }
 
     private Course findCourse(Long courseId) {
-        return courseService.findCourseById(courseId);
+        return courseService.findCourseByIdFetchJoinMember(courseId);
     }
 
     private void validateBelongsToCourseIfGhostMode(CreateRunCommand command, Long courseId) {

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.Course;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CourseRepository extends CustomCourseRepository, JpaRepository<Course, Long> {
@@ -32,4 +33,6 @@ public interface CourseRepository extends CustomCourseRepository, JpaRepository<
             "ORDER BY c.createdAt DESC")
     Page<Course> findPublicCoursesFetchJoinMembersByMemberUuidOrderByCreatedAtDesc(String memberUuid, Pageable pageable);
 
+    @Query("SELECT c FROM Course c LEFT JOIN FETCH c.member m WHERE c.id = :courseId")
+    Optional<Course> findByIdFetchJoinMember(Long courseId);
 }
