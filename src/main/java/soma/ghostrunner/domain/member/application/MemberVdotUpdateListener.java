@@ -15,7 +15,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class RunFinishedEventListener {
+public class MemberVdotUpdateEventListener {
 
     private final MemberMapper mapper;
     private final MemberVdotRepository memberVdotRepository;
