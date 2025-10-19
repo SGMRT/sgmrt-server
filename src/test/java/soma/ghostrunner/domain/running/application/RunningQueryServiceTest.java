@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.springframework.data.domain.*;
+import org.springframework.data.util.Pair;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -312,6 +313,31 @@ class RunningQueryServiceTest {
         verify(memberService).findMemberByUuid(memberUuid);
         verify(runningRepository).findRunningsByCourseIdAndMemberId(courseId, 1L);
         verify(mapper).toResponse(repoResult);
+    }
+
+    @DisplayName("findPublicRunnersCountByCourseIds: 코스ID 리스트에 대한 공개 러너 수 맵 반환")
+    @Test
+    void findPublicRunnersCountByCourseIds() {
+        // given
+        List<Long> courseIds = List.of(1L, 2L, 3L);
+        List<Pair<Long, Long>> repoResult = List.of(
+                Pair.of(1L, 5L),
+                Pair.of(2L, 10L)
+        );
+        when(runningRepository.findPublicRunnerCountsByCourseIds(courseIds))
+                .thenReturn(repoResult);
+
+        // when
+        Map<Long, Long> result = sut.findPublicRunnersCountByCourseIds(courseIds);
+
+        // then
+        Map<Long, Long> expected = Map.of(
+                1L, 5L,
+                2L, 10L,
+                3L, 0L  // 빈 코스 ID는 0으로 채워짐
+        );
+        assertThat(result).isEqualTo(expected);
+        verify(runningRepository).findPublicRunnerCountsByCourseIds(courseIds);
     }
 
 }

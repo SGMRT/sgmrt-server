@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.util.Pair;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Coordinate;
@@ -1025,7 +1026,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Assertions.assertThat(savedRunnings).isEmpty();
     }
 
-    @DisplayName("코스 ID를 기반으로 해당 코스에서 뛴 러닝 기록 중 상위 랭킹 러닝 기록을 조회한다. 같은 사용자의 중복된 러닝 기록은 허용되지 않는다.")
+    @DisplayName("코스 ID를 기반으로 해당 코스의 상위 랭킹 러닝 기록을 조회한다. 이때 같은 사용자의 중복된 러닝 기록은 허용되지 않는다.")
     @Test
     void findTopRankingRunsByCourseIdWithDistinctMember() {
         // given
@@ -1054,6 +1055,151 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         assertThat(top3).extracting("runningName")
                 .containsExactly("러닝 1", "러닝 2", "러닝 4");
         assertThat(top5).isEqualTo(top3); // top5로 해도 3건만 나옴
+    }
+
+    @DisplayName("여러 코스에 대해 조회한 상위 랭커의 모든 필드가 DTO에 정확히 매핑된다.")
+    @Test
+    void findTopRankingRunsByCourseIdWithDistinctMember_testFieldMapping() {
+        // given
+        Member testRunner = memberRepository.save(Member.of("해적왕", "https://profile.url/test.jpg"));
+        Course testCourse = courseRepository.save(createCourse(testRunner, "내 어린 시절 우연히"));
+        Running testRunning = runningRepository.save(createDetailedRunning(
+                testRunner, testCourse, 1234L, "잊지 못할 한마디", 5.5
+        ));
+
+        // when
+        List<CourseRunDto> topRunners = runningRepository.findTopRankingRunsByCourseIdWithDistinctMember(testCourse.getId(), 1);
+
+        // then
+        assertThat(topRunners).hasSize(1);
+        CourseRunDto result = topRunners.get(0);
+        // 필드 검증
+        assertThat(result.courseId()).isEqualTo(testCourse.getId());
+        assertThat(result.runnerUuid()).isEqualTo(testRunner.getUuid());
+        assertThat(result.runnerProfileUrl()).isEqualTo(testRunner.getProfilePictureUrl());
+        assertThat(result.runnerNickname()).isEqualTo(testRunner.getNickname());
+        assertThat(result.runningId()).isEqualTo(testRunning.getId());
+        assertThat(result.duration()).isEqualTo(testRunning.getRunningRecord().getDuration());
+        assertThat(result.runningName()).isEqualTo(testRunning.getRunningName());
+        assertThat(result.averagePace()).isEqualTo(testRunning.getRunningRecord().getAveragePace());
+        assertThat(result.cadence()).isEqualTo(testRunning.getRunningRecord().getCadence());
+        assertThat(result.bpm()).isEqualTo(testRunning.getRunningRecord().getBpm());
+        assertThat(result.isPublic()).isTrue();
+        assertThat(result.startedAt()).isEqualTo(testRunning.getStartedAt());
+    }
+
+    @DisplayName("코스 ID 리스트를 입력 받아 각 코스별 상위 랭킹 러닝 기록을 조회한다. 같은 사용자의 중복된 러닝 기록은 허용되지 않는다.")
+    @Test
+    void findTopRankingRunsByCourseIdsWithDistinctMember() {
+        // given
+        // 러너 1이 A코스의 1, 2등 기록 보유
+        Member runner1 = createMember("에이스");
+        Member runner2 = createMember("루피");
+        memberRepository.saveAll(List.of(runner1, runner2));
+
+        Course courseA = createCourse(runner1);
+        courseRepository.save(courseA);
+
+        runningRepository.save(createRunning(runner1, courseA, 1000L));  // 에이스 1등 기록
+        runningRepository.save(createRunning(runner1, courseA, 1100L));  // 에이스 2등 기록 (무시되어야 함)
+        runningRepository.save(createRunning(runner2, courseA, 1200L)); // 일반러너 3등 기록
+
+        // when
+        List<CourseRunDto> topRunners = runningRepository
+                .findTopRankingRunsByCourseIdsWithDistinctMember(List.of(courseA.getId()), 2);
+
+        // then
+        // 러너 1의 기록과 러너 2의 기록이 랭킹에 포함 (러너 1이 두 번 포함되지 않음)
+        assertThat(topRunners).hasSize(2);
+        assertThat(topRunners).extracting("runnerNickname", "duration")
+                .containsExactly(
+                        tuple("에이스", 1000L),
+                        tuple("루피", 1200L)
+                );
+    }
+
+    Running createRunning(Member member, Course course, Long duration) {
+        return Running.of("테스트 러닝", RunningMode.SOLO, null,
+                createRunningRecord(duration), System.currentTimeMillis(),
+                true, false, "시계열 URL", "시계열 URL", "시계열 URL", member, course);
+    }
+
+    @DisplayName("여러 코스의 상위 러닝 기록 조회 시, 한 멤버의 다른 코스 기록이 더 좋아도 현재 코스 랭킹에서 누락되지 않아야 한다.")
+    @Test
+    void findTopRankingRuns_shouldNotOmitRunner() {
+        // given
+        Member runner1 = createMember("에이스");
+        Member runner2 = createMember("루피");
+        memberRepository.saveAll(List.of(runner1, runner2));
+
+        Course courseA = createCourse(runner1, "A코스");
+        Course courseB = createCourse(runner1, "B코스");
+        courseRepository.saveAll(List.of(courseA, courseB));
+
+        // 러너 1은 A코스 기록(1000초)이 B코스 기록(1200초)보다 좋다. 하지만 B코스 내에서는 러너1의 1200초가 1등 기록이다.
+        runningRepository.save(createRunning(runner1, courseA, 1000L));
+        runningRepository.save(createRunning(runner1, courseB, 1200L));
+        runningRepository.save(createRunning(runner2, courseB, 1300L));
+
+        // when
+        List<CourseRunDto> allTopRunners = runningRepository.findTopRankingRunsByCourseIdsWithDistinctMember(List.of(courseA.getId(), courseB.getId()), 4);
+
+        // then
+        // 러너 1은 A 코스 1등, B 코스도 1등이여야 한다
+        // 결과를 코스 ID별로 그룹핑하여 검증
+        Map<Long, List<CourseRunDto>> resultsByCourse = allTopRunners.stream()
+                .collect(Collectors.groupingBy(CourseRunDto::courseId));
+
+        // A코스 결과 검증
+        List<CourseRunDto> courseARanking = resultsByCourse.get(courseA.getId());
+        assertThat(courseARanking).hasSize(1);
+        assertThat(courseARanking.get(0).runnerNickname()).isEqualTo("에이스");
+
+        // B코스 결과 검증
+        List<CourseRunDto> courseBRanking = resultsByCourse.get(courseB.getId());
+        assertThat(courseBRanking).hasSize(2);
+        assertThat(courseBRanking).extracting("runnerNickname", "duration")
+                .containsExactly(
+                        tuple("에이스", 1200L),
+                        tuple("루피", 1300L)
+                );
+    }
+
+    private Running createDetailedRunning(Member member, Course course, long duration, String runningName, double avgPace) {
+        RunningRecord record = RunningRecord.of(5.0, 0.0, 0.0, 0.0, avgPace, 4.0, 6.0, duration, 300, 180, 150);
+        return Running.of(runningName, RunningMode.SOLO, null, record, 1750729987181L,
+                true, false, "url", "url", "url", member, course);
+    }
+
+    @DisplayName("여러 코스에 대해 조회한 상위 랭커의 모든 필드가 DTO에 정확히 매핑된다.")
+    @Test
+    void findTopRankingRuns_shouldMapAllFieldsCorrectly() {
+        // given
+        Member testRunner = memberRepository.save(Member.of("해적왕", "https://profile.url/test.jpg"));
+        Course testCourse = courseRepository.save(createCourse(testRunner, "내 어린 시절 우연히"));
+        Running testRunning = runningRepository.save(createDetailedRunning(
+                testRunner, testCourse, 1234L, "잊지 못할 한마디", 5.5
+        ));
+
+        // when
+        List<CourseRunDto> topRunners = runningRepository.findTopRankingRunsByCourseIdsWithDistinctMember(List.of(testCourse.getId()), 1);
+
+        // then
+        assertThat(topRunners).hasSize(1);
+        CourseRunDto result = topRunners.get(0);
+        // 필드 검증
+        assertThat(result.courseId()).isEqualTo(testCourse.getId());
+        assertThat(result.runnerUuid()).isEqualTo(testRunner.getUuid());
+        assertThat(result.runnerProfileUrl()).isEqualTo(testRunner.getProfilePictureUrl());
+        assertThat(result.runnerNickname()).isEqualTo(testRunner.getNickname());
+        assertThat(result.runningId()).isEqualTo(testRunning.getId());
+        assertThat(result.duration()).isEqualTo(testRunning.getRunningRecord().getDuration());
+        assertThat(result.runningName()).isEqualTo(testRunning.getRunningName());
+        assertThat(result.averagePace()).isEqualTo(testRunning.getRunningRecord().getAveragePace());
+        assertThat(result.cadence()).isEqualTo(testRunning.getRunningRecord().getCadence());
+        assertThat(result.bpm()).isEqualTo(testRunning.getRunningRecord().getBpm());
+        assertThat(result.isPublic()).isTrue();
+        assertThat(result.startedAt()).isEqualTo(testRunning.getStartedAt());
     }
 
     @DisplayName("코스 ID를 기반으로 해당 코스에 공개 러닝 기록을 등록한 회원의 수를 조회한다.")
@@ -1093,5 +1239,39 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Assertions.assertThat(count).isEqualTo(0L);
     }
 
+    @DisplayName("코스 ID 목록을 기반으로 각 코스에 공개 러닝 기록을 등록한 회원의 수를 조회한다.")
+    @Test
+    void findPublicRunnerCountsByCourseIds() {
+        // given
+        Member m1 = createMember("신짱구");
+        Member m2 = createMember("신짱아");
+        memberRepository.saveAll(List.of(m1, m2));
+        // 코스 3개 생성
+        List<Course> courses = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            Course c = createCourse(m1, "코스" + i);
+            courses.add(c);
+        }
+        courseRepository.saveAll(courses);
+        List<Long> courseIds = courses.stream().map(Course::getId).toList();
+        // 러닝 5개 생성 - 코스 1에 한 명, 코스 2에 두 명, 코스 3에는 한 명
+        Running r1 = createRunning(m1, courses.get(0));
+        Running r2 = createRunning(m1, courses.get(1));
+        Running r3 = createRunning(m2, courses.get(1));
+        Running r4 = createRunning(m2, courses.get(2));
+        Running r5 = createRunning(m2, courses.get(2));
+        runningRepository.saveAll(List.of(r1, r2, r3, r4, r5));
+
+        // when
+        List<Pair<Long, Long>> courseRunnerCounts = runningRepository.findPublicRunnerCountsByCourseIds(courseIds);
+
+        // then
+        assertThat(courseRunnerCounts).hasSize(3);
+        assertThat(courseRunnerCounts).containsExactlyInAnyOrder(
+                Pair.of(courses.get(0).getId(), 1L),
+                Pair.of(courses.get(1).getId(), 2L),
+                Pair.of(courses.get(2).getId(), 1L)
+        );
+    }
   
 }

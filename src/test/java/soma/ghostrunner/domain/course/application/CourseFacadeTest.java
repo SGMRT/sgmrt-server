@@ -9,10 +9,12 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.course.dao.CourseCacheRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.dto.RunnerProfile;
+import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseMapResponse;
@@ -46,6 +48,9 @@ class CourseFacadeTest extends IntegrationTestSupport {
 
     @Autowired
     private RunningRepository runningRepository;
+
+    @Autowired
+    private CourseCacheRepository courseCacheRepository;
 
     private Member defaultMember;
 
@@ -417,6 +422,75 @@ class CourseFacadeTest extends IntegrationTestSupport {
                 assertThat(actualCourseNames).containsSequence(expectedOrder);
             }
         }
+    }
+
+    @DisplayName("주변 코스 조회 시 일부 캐시만 미스가 발생한 경우, DB에서 다시 조회하여 응답한다.")
+    @Test
+    void findCoursesByPosition_OnPartialCacheMiss() {
+        // given
+        var viewer = createMember("아이유");
+        memberRepository.save(viewer);
+        var memberPool = IntStream.range(0, 5).boxed()
+                .map(i -> Member.of("회원" + i, "profile-url-" + i))
+                .toList();
+        memberRepository.saveAll(memberPool);
+        // 코스 저장 - 하나는 캐시, 두 개는 DB에 저장
+        var hitCourse = createCourse("캐시된 코스");
+        var missedCourse1 = createCourse("DB 저장 코스 1");
+        var missedCourse2 = createCourse("DB 저장 코스 2");
+        courseRepository.saveAll(List.of(hitCourse, missedCourse1, missedCourse2));
+        CourseQueryModel cachedData = new CourseQueryModel(
+                hitCourse.getId(),
+                "캐시된 코스",
+                List.of(new RunnerProfile(viewer.getUuid(), viewer.getProfilePictureUrl())),
+                1
+        );
+        courseCacheRepository.save(cachedData);
+        // 러닝 기록 저장 - 캐시된 코스는 1명, DB 코스 1은 3명, DB 코스 2는 5명
+        // viewer는 코스 1을 달렸다고 가정
+        saveDummyRunsToCourse(hitCourse, 1, List.of(viewer));
+        saveDummyRunsToCourse(missedCourse1, 3, memberPool);
+        saveDummyRunsToCourse(missedCourse2, 5, memberPool);
+
+        // when
+        var courses = courseFacade.findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG, 5000,
+                CourseSortType.DISTANCE, null, viewer.getUuid());
+
+        // then
+        assertThat(courses).hasSize(3);
+        // 캐시 히트된 코스 검증
+        var hitResponse = courses.stream().filter(c -> c.id().equals(hitCourse.getId())).findFirst()
+                .orElseThrow();
+        assertThat(hitResponse.runnersCount()).isEqualTo(1L);
+        assertThat(hitResponse.runners()).hasSize(1)
+                .extracting("uuid")
+                .containsExactly(viewer.getUuid());
+        assertThat(hitResponse.myGhostInfo().runnerUuid()).isEqualTo(viewer.getUuid());
+        // 캐시 미스된 코스들 검증
+        var missedResponse1 = courses.stream().filter(c -> c.id().equals(missedCourse1.getId())).findFirst()
+                .orElseThrow();
+        assertThat(missedResponse1.runnersCount()).isEqualTo(3L);
+        assertThat(missedResponse1.runners()).hasSize(3)
+                .extracting("uuid")
+                .containsExactlyElementsOf(
+                        memberPool.stream().limit(3).map(Member::getUuid).toList()
+                );
+        assertThat(missedResponse1.myGhostInfo()).isNull();
+
+        var missedResponse2 = courses.stream().filter(c -> c.id().equals(missedCourse2.getId())).findFirst()
+                .orElseThrow();
+        assertThat(missedResponse2.runnersCount()).isEqualTo(5L);
+        assertThat(missedResponse2.runners()).hasSize(4)
+                .extracting("uuid")
+                .containsExactlyElementsOf(
+                        memberPool.stream().limit(4).map(Member::getUuid).toList()
+                );
+        assertThat(missedResponse2.myGhostInfo()).isNull();
+
+        // 캐시 리포지토리에는 캐시된 코스 존재
+        assertThat(courseCacheRepository.findById(hitCourse.getId()).id()).isNotNull();
+        assertThat(courseCacheRepository.findById(missedCourse1.getId())).isNotNull();
+        assertThat(courseCacheRepository.findById(missedCourse2.getId())).isNotNull();
     }
 
     // --- Helper Methods ---
