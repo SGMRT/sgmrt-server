@@ -155,36 +155,55 @@ public class CourseFacade {
 
     /** 본인 코스, 주변 랜덤 코스를 고려하여 limit개 이하로 제한한다. */
     private List<CoursePreviewDto> limitCoursesForViewer(List<CoursePreviewDto> courses, String viewerUuid, int limit) {
-        var usersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 본인의 코스 (idx -> dto)
-        var othersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 다른 사람 코스 (idx -> dto)
+
+        // 코스 분류 (key: 인덱스, value: dto)
+        var usersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 본인의 코스
+        var othersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 다른 사람 코스
+        var recommendedCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 추천 지정 코스
+        var dummyCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 더미 코스
+
         int idx = 0;
         for (var course : courses) {
-            if (course.ownerUuid() != null && course.ownerUuid().equals(viewerUuid)) {
-                usersCoursesMap.put(idx, course);
+            if (course.source() == CourseSource.RECOMMENDED) {
+                recommendedCoursesMap.put(idx, course);
+            } else if (course.source() == CourseSource.OFFICIAL) {
+                dummyCoursesMap.put(idx, course);
             } else {
-                othersCoursesMap.put(idx, course);
+                if (course.ownerUuid() != null && course.ownerUuid().equals(viewerUuid)) {
+                    usersCoursesMap.put(idx, course);
+                } else {
+                    othersCoursesMap.put(idx, course);
+                }
             }
             idx++;
         }
 
-        // 본인의 코스 - 최대 절반까지, 단 otherCourses가 부족한 경우 더 담음
-        var userCourseIndices = usersCoursesMap.keySet().stream()
-                .limit(Math.max(limit / 2, limit - othersCoursesMap.size()))
-                .toList();
+        var finalIndices = new ArrayList<Integer>(); // 최종 선택될 코스 인덱스를 담을 리스트
+        // 본인의 코스 - 최대 절반까지 선택
+        int userCourseLen = Math.min(limit / 2, usersCoursesMap.size());
+        var userCourseIndices = new ArrayList<>(usersCoursesMap.keySet());
+        Collections.shuffle(userCourseIndices);
+        finalIndices.addAll(userCourseIndices.stream().limit(userCourseLen).toList());
 
-        // 주변 랜덤 코스 - 다른 사람 코스를 랜덤하게 선택
-        var otherCourseIndices = new ArrayList<>(othersCoursesMap.keySet());
-        Collections.shuffle(otherCourseIndices);
-        var otherCourseRandomIndices = otherCourseIndices.stream()
-                .limit(limit - userCourseIndices.size())
-                .toList();
+        // 추천 지정 코스 - 최대 1/5까지 선택
+        int recommendedCourseLen = Math.min(limit / 5, recommendedCoursesMap.size());
+        var recommendedCourseIndices = new ArrayList<>(recommendedCoursesMap.keySet());
+        Collections.shuffle(recommendedCourseIndices);
+        finalIndices.addAll(recommendedCourseIndices.stream().limit(recommendedCourseLen).toList());
 
-        // 인덱스 기존 순서대로 정렬 후 dto로 매핑하여 반환
-        var finalIndices = new ArrayList<Integer>();
-        finalIndices.addAll(userCourseIndices);
-        finalIndices.addAll(otherCourseRandomIndices);
-        Collections.sort(finalIndices);
+        // 다른 사람 코스 - 남은 개수만큼 선택
+        int remainingLen = limit - finalIndices.size();
+        var otherUserCourseIndices = new ArrayList<>(othersCoursesMap.keySet());
+        Collections.shuffle(otherUserCourseIndices);
+        finalIndices.addAll(otherUserCourseIndices.stream().limit(remainingLen).toList());
 
+        // 더미 코스 - 남은 개수만큼 선택
+        int dummyLen = limit - finalIndices.size();
+        var dummyCourseIndices = new ArrayList<>(dummyCoursesMap.keySet());
+        Collections.shuffle(dummyCourseIndices);
+        finalIndices.addAll(dummyCourseIndices.stream().limit(dummyLen).toList());
+
+        Collections.sort(finalIndices); // courses 순서대로 정렬
         return finalIndices.stream()
                 .map(courses::get)
                 .toList();
