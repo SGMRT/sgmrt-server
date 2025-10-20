@@ -9,10 +9,7 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.dto.MemberMetaInfoDto;
 import soma.ghostrunner.domain.running.domain.Running;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Mapper(componentModel = "spring", uses = { CourseSubMapper.class})
 public interface CourseMapper {
@@ -134,7 +131,17 @@ public interface CourseMapper {
         return result;
     }
 
-    CourseMapResponse3 toResponse(CourseReadModel courseInfo, Boolean hasMyRecord);
+    default List<CourseMapResponse3> toResponse(List<CourseReadModel> readModels, Set<Long> viewerRunCourseIds) {
+        List<CourseMapResponse3> result = new ArrayList<>();
+        for (CourseReadModel readModel : readModels) {
+            if (viewerRunCourseIds.contains(readModel.getCourseId())) {
+                result.add(new CourseMapResponse3(readModel, true));
+            } else {
+                result.add(new CourseMapResponse3(readModel, false));
+            }
+        }
+        return result;
+    }
 
 }
 

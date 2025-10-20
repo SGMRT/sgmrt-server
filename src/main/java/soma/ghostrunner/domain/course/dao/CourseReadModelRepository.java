@@ -9,24 +9,29 @@ import soma.ghostrunner.domain.course.domain.CourseReadModel;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 public interface CourseReadModelRepository extends JpaRepository<CourseReadModel, Long> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CourseReadModel> findByCourseId(Long courseId);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select crm " +
-            "from CourseReadModel crm " +
-            "where crm.startLatitude between :minLat and :maxLat and crm.startLongitude between :minLng and :maxLng ")
-    List<CourseReadModel> findNearCoursesReadModel(
+    List<CourseReadModel> findByCourseIdIn(List<Long> courseIds);
+
+    @Query("select distinct r.course.id from Running r where r.course.id in :courseIds and r.member.id = :memberId")
+    List<Long> findMemberRunningIdsInCourses(List<Long> courseIds, Long memberId);
+
+    @Query(value = """
+        SELECT id
+        FROM `ghost-runner`.course
+        WHERE is_public = TRUE AND deleted = FALSE
+              AND start_latitude BETWEEN :minLat AND :maxLat
+              AND start_longtitude BETWEEN :minLng AND :maxLng
+    """, nativeQuery = true)
+    List<Long> findNearCourseIds(
             @Param("minLat") double minLat,
             @Param("maxLat") double maxLat,
             @Param("minLng") double minLng,
             @Param("maxLng") double maxLng
     );
-
-    @Query("select distinct r.course.id from Running r where r.course.id in :courseIds and r.member.id = :memberId")
-    List<Long> findMemberRunningIdsInCourses(Set<Long> courseIds, Long memberId);
 
 }

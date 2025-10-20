@@ -2,10 +2,12 @@ package soma.ghostrunner.domain.course.dao;
 
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import io.lettuce.core.dynamic.annotation.Param;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.CourseRankFinder;
+import soma.ghostrunner.domain.course.domain.QCourse;
 import soma.ghostrunner.domain.course.dto.CourseRankInfo;
 import soma.ghostrunner.domain.course.dto.QCourseRankInfo;
 import soma.ghostrunner.domain.member.domain.QMember;

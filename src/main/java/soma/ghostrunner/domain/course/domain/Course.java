@@ -11,7 +11,7 @@ import soma.ghostrunner.global.common.BaseTimeEntity;
 @Table(name = "course")
 @SoftDelete
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Course extends BaseTimeEntity {
+public class    Course extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.course.dto.CourseRankInfo;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -39,8 +40,12 @@ public class CourseReadModelCommandListener {
         Course course = event.course();
 
         if (courseIsPublic(course)) {
-            CourseReadModel courseReadModel = findReadModel(course);
+            Optional<CourseReadModel> optionalCourseReadModel = courseReadModelRepository.findByCourseId(course.getId());
+            if (optionalCourseReadModel.isEmpty()) {
+                return;
+            }
 
+            CourseReadModel courseReadModel = optionalCourseReadModel.get();
             Long runnersCount = courseRankFinder.countRunnersByCourseId(course.getId());
             updateRunnersCount(courseReadModel, runnersCount);
 
@@ -55,11 +60,6 @@ public class CourseReadModelCommandListener {
 
     private Boolean courseIsPublic(Course course) {
         return course.validateIsPublic();
-    }
-
-    private CourseReadModel findReadModel(Course course) {
-        return courseReadModelRepository.findByCourseId(course.getId())
-                .orElseThrow(() -> new IllegalArgumentException("공개되지 않은 코스를 조회하여 리드모델이 없는 경우"));
     }
 
     private void updateRunnersCount(CourseReadModel courseReadModel, Long runnersCount) {

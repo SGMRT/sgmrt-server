@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.course.dao;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,12 +17,13 @@ import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CourseReadModelRepositoryTest extends IntegrationTestSupport {
+
+    @Autowired
+    EntityManager em;
 
     @Autowired
     CourseReadModelRepository courseReadModelRepository;
@@ -43,12 +45,18 @@ class CourseReadModelRepositoryTest extends IntegrationTestSupport {
         Member member2 = createMember("이복둥 주인");
         Member member3 = createMember("이복둥 아빠");
         Member member4 = createMember("이복둥 엄마");
-        memberRepository.saveAll(List.of(member1, member2, member3, member4));
+        List<Member> members = List.of(member1, member2, member3, member4);
+        for (Member member : members) {
+            em.persist(member);
+        }
 
         Course c1 = createCourse(member1);
         Course c2 = createCourse(member2);
         Course c3 = createCourse(member4);
-        courseRepository.saveAll(List.of(c1, c2, c3));
+        List<Course> courses = List.of(c1, c2, c3);
+        for (Course course : courses) {
+            em.persist(course);
+        }
 
         List<Running> runs = new ArrayList<>();
         runs.add(createRunning(member1, c1));
@@ -56,10 +64,12 @@ class CourseReadModelRepositoryTest extends IntegrationTestSupport {
         runs.add(createRunning(member2, c2));
         runs.add(createRunning(member3, c2));
         runs.add(createRunning(member4, c2));
-        runningRepository.saveAll(runs);
+        for (Running running : runs) {
+            em.persist(running);
+        }
 
         // when
-        Set<Long> targetCourseIds = Set.of(c1.getId(), c2.getId(), c3.getId());
+        List<Long> targetCourseIds = List.of(c1.getId(), c2.getId(), c3.getId());
         List<Long> result = courseReadModelRepository.findMemberRunningIdsInCourses(targetCourseIds, member2.getId());
 
         // then
