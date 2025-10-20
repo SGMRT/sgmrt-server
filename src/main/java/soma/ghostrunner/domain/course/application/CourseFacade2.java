@@ -9,6 +9,7 @@ import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dto.BestDurationInCourseDto;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.response.CourseMapResponse2;
+import soma.ghostrunner.domain.course.dto.response.CourseMapResponse3;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -28,6 +29,8 @@ public class CourseFacade2 {
     private final MemberService memberService;
 
     private static final int MAX_RUNNER_PROFILES_PER_COURSE = 10;
+
+    private static final double EARTH_RADIUS_M = 6371000.0;
 
     @Transactional(readOnly = true)
     public List<CourseMapResponse2> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
@@ -60,7 +63,9 @@ public class CourseFacade2 {
         Map<Long, MemberMetaInfoDto> memberMetaInfoMap = toMemberMetaInfoMap(memberMetaInfoDtos);
 
         // 변환
-        return mapper.toResponse(coursePreviewMap, courseMetaInfoMap, memberMetaInfoMap);
+        List<CourseMapResponse2> result = mapper.toResponse(coursePreviewMap, courseMetaInfoMap, memberMetaInfoMap);
+        sortFromCurrentCoordinates(lat, lng, result);
+        return result;
     }
 
     private HashMap<Long, MemberMetaInfoDto> toMemberMetaInfoMap(List<MemberMetaInfoDto> memberMetaInfoDtos) {
@@ -160,6 +165,26 @@ public class CourseFacade2 {
             result.put(courseId, coursePreviewMap.get(courseId));
         }
         return result;
+    }
+
+    private void sortFromCurrentCoordinates(Double lat, Double lng, List<CourseMapResponse2> result) {
+        result.sort(Comparator.comparingDouble(r ->
+                distApproxMeters(
+                        lat, lng,
+                        r.getStartLat(),
+                        r.getStartLng()
+                )
+        ));
+    }
+
+    private double distApproxMeters(double lat1, double lng1, double lat2, double lng2) {
+        double φ1 = Math.toRadians(lat1);
+        double φ2 = Math.toRadians(lat2);
+        double λ1 = Math.toRadians(lng1);
+        double λ2 = Math.toRadians(lng2);
+        double x = (λ2 - λ1) * Math.cos((φ1 + φ2) / 2.0);
+        double y = (φ2 - φ1);
+        return Math.sqrt(x * x + y * y) * EARTH_RADIUS_M;
     }
 
 }
