@@ -5,14 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
-import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.response.CourseMapResponse3;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.application.RunningQueryService;
 
 import java.util.*;
 
@@ -21,11 +19,12 @@ import java.util.*;
 @RequiredArgsConstructor
 public class CourseFacade3 {
 
+    private static final double EARTH_RADIUS_M = 6371000.0;
+
     private final CourseReadModelRepository courseReadModelRepository;
     private final CourseMapper mapper;
 
     private final MemberService memberService;
-    private final RunningQueryService runningQueryService;
 
     private static final int MAX_RUNNER_PROFILES_PER_COURSE = 10;
 
@@ -41,8 +40,10 @@ public class CourseFacade3 {
         Set<Long> viewerRunCourseIds = new HashSet<>(findViewerRunCourses(readModelsHashMap, viewer));
         Map<Long, Boolean> viewerHasRecordsInfoOnCourses = enumerateViewerRunCourses(readModelsHashMap.keySet(), viewerRunCourseIds);
 
-        // 랜덤 뽑기
-        return extractRandomCoursesForViewer(readModelsHashMap, viewerHasRecordsInfoOnCourses);
+        // 랜덤으로 뽑아서 거리순 정렬
+        List<CourseMapResponse3> result = extractRandomCoursesForViewer(readModelsHashMap, viewerHasRecordsInfoOnCourses);
+        sortFromCurrentCoordinates(lat, lng, result);
+        return result;
     }
 
     private List<CourseReadModel> findNearCoursesReadModel(Double lat, Double lng, Integer radiusM) {
@@ -125,6 +126,26 @@ public class CourseFacade3 {
             result.add(mapper.toResponse(readModelsHashMap.get(courseId), false));
         }
         return result;
+    }
+
+    private double distApproxMeters(double lat1, double lng1, double lat2, double lng2) {
+        double φ1 = Math.toRadians(lat1);
+        double φ2 = Math.toRadians(lat2);
+        double λ1 = Math.toRadians(lng1);
+        double λ2 = Math.toRadians(lng2);
+        double x = (λ2 - λ1) * Math.cos((φ1 + φ2) / 2.0);
+        double y = (φ2 - φ1);
+        return Math.sqrt(x * x + y * y) * EARTH_RADIUS_M;
+    }
+
+    private void sortFromCurrentCoordinates(Double lat, Double lng, List<CourseMapResponse3> result) {
+        result.sort(Comparator.comparingDouble(r ->
+                distApproxMeters(
+                        lat, lng,
+                        r.getCourseInfo().getStartLatitude(),
+                        r.getCourseInfo().getStartLongitude()
+                )
+        ));
     }
 
 }
