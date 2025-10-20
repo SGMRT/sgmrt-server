@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.member.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
@@ -35,6 +36,7 @@ public class MemberService {
     private final MemberAuthInfoRepository memberAuthInfoRepository;
     private final MemberSettingsRepository memberSettingsRepository;
     private final MemberVdotRepository memberVdotRepository;
+    private final CourseRepository courseRepository;
 
     @Transactional(readOnly = true)
     public Member findMemberByUuid(String uuid) {
@@ -208,7 +210,8 @@ public class MemberService {
 
     @Transactional
     public void removeAccount(String memberUuid) {
-        if(!memberRepository.existsByUuid(memberUuid)) throw new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, memberUuid);
+        Member member = findMemberByUuid(memberUuid);
+        courseRepository.bulkSetOwnerToNullByMemberId(member.getId());
         memberRepository.deleteByUuid(memberUuid);
     }
 
