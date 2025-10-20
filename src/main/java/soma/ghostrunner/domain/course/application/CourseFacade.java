@@ -235,13 +235,13 @@ public class CourseFacade {
 
     @Transactional(readOnly = true)
     public Page<CourseSummaryResponse> findCourseSummariesOfMember(String memberUuid, Pageable pageable) {
-        // todo: 평균 데이터 캐싱 (Course 테이블에 저장 혹은 캐싱)
         Page<CourseWithMemberDetailsDto> courseDetails = courseService.findCoursesByMemberUuid(memberUuid, pageable);
         List<CourseSummaryResponse> results = new ArrayList<>();
 
         for(CourseWithMemberDetailsDto courseDto : courseDetails.getContent()) {
-            CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseDto.getCourseId())
-                    .orElse(new CourseRunStatisticsDto());
+//            CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseDto.getCourseId())
+//                    .orElse(new CourseRunStatisticsDto());
+            CourseRunStatisticsDto courseStatistics = getDummyCourseStatistics(); // 통계 더이상 필요 없음 - 프론트 하위호환성 고려하여 빈 객체 반환
             CourseGhostResponse ghostForUser = getGhostResponse(courseDto.getCourseId(), memberUuid);
             results.add(courseMapper.toCourseSummaryResponse(courseDto, courseStatistics.getUniqueRunnersCount(),
                     courseStatistics.getTotalRunsCount(), courseStatistics.getAvgCompletionTime(),
@@ -249,6 +249,10 @@ public class CourseFacade {
         }
 
         return new PageImpl<>(results, pageable, courseDetails.getTotalElements());
+    }
+
+    private static CourseRunStatisticsDto getDummyCourseStatistics() {
+        return new CourseRunStatisticsDto(0d, 0d, 0d, 0d, 0d, 0, 0);
     }
 
     public CourseStatisticsResponse findCourseStatistics(Long courseId) {

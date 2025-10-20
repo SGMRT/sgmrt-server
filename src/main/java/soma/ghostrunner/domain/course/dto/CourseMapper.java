@@ -88,6 +88,7 @@ public interface CourseMapper {
     @Mapping(source = "courseDto.courseId", target = "id")
     @Mapping(source = "courseDto.courseName", target = "name")
     @Mapping(source = "courseDto.courseThumbnailUrl", target = "thumbnailUrl")
+    @Mapping(source = "courseDto.elevationGain", target = "elevationGain")
     @Mapping(source = "courseDto.distance", target = "distance")
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")
