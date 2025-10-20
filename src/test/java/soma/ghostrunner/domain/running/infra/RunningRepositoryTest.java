@@ -1273,5 +1273,33 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 Pair.of(courses.get(2).getId(), 1L)
         );
     }
+
+    @DisplayName("코스 ID와 멤버 ID를 기반으로 사용자가 해당 코스에서 뛴 최신 러닝 기록을 조회한다.")
+    @Test
+    void findLatestRunsByCourseIdAndMemberId() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course c = createCourse(member, "이복둥 러닝 코스");
+        c.setIsPublic(true);
+        courseRepository.save(c);
+
+        List<Running> runnings = new ArrayList<>();
+        long ts = 0L;
+        for (int i = 0; i < 5; i++) {
+            ts += 1000L;
+            runnings.add(createRunning("러닝" + i, c, member, ts, RunningMode.SOLO));
+        }
+        runningRepository.saveAll(runnings);
+
+        // when
+        List<Running> latestRunningOpt = runningRepository.findLatestRunsByCourseIdAndMemberId(c.getId(), member.getUuid(), 2);
+
+        // then
+        assertThat(latestRunningOpt).hasSize(2);
+        assertThat(latestRunningOpt.get(0).getStartedAt()).isEqualTo(5000L);
+        assertThat(latestRunningOpt.get(1).getStartedAt()).isEqualTo(4000L);
+    }
   
 }

@@ -168,4 +168,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     """)
     List<Pair<Long, Long>> findPublicRunnerCountsByCourseIds(List<Long> courseIds);
 
+    @Query("select r from Running r where r.course.id = :courseId and r.member.uuid = :memberUuid order by r.startedAt desc, r.id desc limit :limit")
+    List<Running> findLatestRunsByCourseIdAndMemberId(Long courseId, String memberUuid, int limit);
+
 }

@@ -42,6 +42,11 @@ public class MemberService {
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find member uuid: " + uuid));
     }
 
+    public Member findMemberById(Long id) {
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find member id: " + id));
+    }
+
     public String findUuidByAuthUid(String authUid) {
         return memberAuthInfoRepository.findMemberUuidByExternalAuthUid(authUid)
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND));
