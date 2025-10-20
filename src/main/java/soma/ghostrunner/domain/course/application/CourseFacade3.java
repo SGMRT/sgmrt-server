@@ -56,7 +56,6 @@ public class CourseFacade3 {
         double maxLat = lat + latDelta;
         double minLng = lng - lngDelta;
         double maxLng = lng + lngDelta;
-
         return courseReadModelRepository.findNearCoursesReadModel(minLat, maxLat, minLng, maxLng);
     }
 

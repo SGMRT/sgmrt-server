@@ -1,7 +1,9 @@
 package soma.ghostrunner.domain.course.dao;
 
 import io.lettuce.core.dynamic.annotation.Param;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import soma.ghostrunner.domain.course.domain.CourseReadModel;
 
@@ -13,6 +15,7 @@ public interface CourseReadModelRepository extends JpaRepository<CourseReadModel
 
     Optional<CourseReadModel> findByCourseId(Long courseId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select crm " +
             "from CourseReadModel crm " +
             "where crm.startLatitude between :minLat and :maxLat and crm.startLongitude between :minLng and :maxLng ")

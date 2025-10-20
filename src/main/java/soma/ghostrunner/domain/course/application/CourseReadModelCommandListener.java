@@ -20,7 +20,6 @@ public class CourseReadModelCommandListener {
     CourseRankFinder courseRankFinder;
     CourseService courseService;
 
-    @EventListener
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     public void createReadModel(CourseRegisteredEvents event) {
         Course course = event.getCourse();
@@ -36,7 +35,6 @@ public class CourseReadModelCommandListener {
         return RankSlot.of(rankInfo.getMemberId(), rankInfo.getMemberProfileUrl());
     }
 
-    // TODO : 리드모델의 낙관/비관락 고려
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     public void updateReadModel(RunFinishedEvent event) {
         Course course = courseService.findCourseById(event.courseId());
