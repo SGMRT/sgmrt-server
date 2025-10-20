@@ -9,6 +9,9 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 
 import java.lang.reflect.Field;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Month;
 
 import static org.assertj.core.api.Assertions.*;
 

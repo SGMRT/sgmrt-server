@@ -91,7 +91,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     WHERE rr.rn = 1
     ORDER BY rr.`duration_sec` ASC
     LIMIT :count
-""", nativeQuery = true)
+    """, nativeQuery = true)
     List<CourseRunDto> findTopRankingRunsByCourseIdWithDistinctMember(@Param("courseId") Long courseId, @Param("count") Integer count);
 
 }

@@ -2,6 +2,8 @@ package soma.ghostrunner.domain.running.infra.persistence;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -9,8 +11,10 @@ import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.QUserPaceStatsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
-import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.domain.running.domain.QRunning;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -251,6 +255,41 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
                    .groupBy(running.member.uuid)
                    .fetchOne()
         );
+    }
+
+    @Override
+    public List<DayRunCountProjection> findDayRunInfosFilteredByDate(Integer year, Integer month, Long memberId) {
+
+        String tz = "Asia/Seoul";
+        ZoneId zone = ZoneId.of(tz);
+
+        var start = ZonedDateTime.of(year, month, 1, 0, 0, 0, 0, zone);
+        var end   = start.plusMonths(1);
+        long startMs = start.toInstant().toEpochMilli();
+        long endMs   = end.toInstant().toEpochMilli();
+
+        QRunning r = QRunning.running;
+
+        NumberExpression<Integer> day =
+                Expressions.numberTemplate(Integer.class,
+                        "floor(({0} - {1})/86400000) + 1", r.startedAt, startMs);
+
+        return queryFactory
+                .select(new QDayRunInfo(
+                        Expressions.constant(year),      // 입력값 그대로
+                        Expressions.constant(month),     // 입력값 그대로
+                        day,
+                        r.id.count().intValue()
+                ))
+                .from(r)
+                .where(
+                        r.member.id.eq(memberId),
+                        r.startedAt.goe(startMs),
+                        r.startedAt.lt(endMs)
+                )
+                .groupBy(day)
+                .orderBy(day.asc())
+                .fetch();
     }
 
 }

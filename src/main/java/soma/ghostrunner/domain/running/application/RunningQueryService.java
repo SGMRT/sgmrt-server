@@ -173,4 +173,6 @@ public class RunningQueryService {
         return runningRepository.countPublicRunnersInCourse(courseId);
     }
 
+    public List<>
+
 }
