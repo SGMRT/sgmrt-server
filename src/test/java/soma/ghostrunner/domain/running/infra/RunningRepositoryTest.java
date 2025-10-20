@@ -1127,15 +1127,15 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         em.flush(); em.clear();
 
         // when
-        List<DayRunCountProjection> dayRunCountProjections = runningRepository.findDayRunInfosFilteredByDate(2025, 10, member.getId());
+        List<DayRunInfo> dayRunInfos = runningRepository.findDayRunInfosFilteredByDate(2025, 10, member.getId());
 
         // then
         // 1) 행 수(집계된 일자 수)
-        assertThat(dayRunCountProjections).hasSize(8);
+        assertThat(dayRunInfos).hasSize(8);
 
         // 2) 연/월 일관성
-        assertThat(dayRunCountProjections).extracting(DayRunCountProjection::getYear).containsOnly(2025);
-        assertThat(dayRunCountProjections).extracting(DayRunCountProjection::getMonth).containsOnly(10);
+        assertThat(dayRunInfos).extracting(DayRunInfo::getYear).containsOnly(2025);
+        assertThat(dayRunInfos).extracting(DayRunInfo::getMonth).containsOnly(10);
 
         // 3) 기대 일자와 카운트 매칭
         Map<Integer, Integer> expected = new LinkedHashMap<>();
@@ -1149,20 +1149,20 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         expected.put(30, 1);
 
         // 일자 집합
-        assertThat(dayRunCountProjections).extracting(DayRunCountProjection::getDay)
+        assertThat(dayRunInfos).extracting(DayRunInfo::getDay)
                 .containsExactlyInAnyOrderElementsOf(expected.keySet());
 
         // 일자별 카운트
-        Map<Integer, Integer> actual = dayRunCountProjections.stream()
-                .collect(Collectors.toMap(DayRunCountProjection::getDay, DayRunCountProjection::getRunCount));
+        Map<Integer, Integer> actual = dayRunInfos.stream()
+                .collect(Collectors.toMap(DayRunInfo::getDay, DayRunInfo::getRunCount));
         expected.forEach((d, cnt) -> assertThat(actual).containsEntry(d, cnt));
 
         // 4) 총합(해당 월 개수)
-        int total = dayRunCountProjections.stream().mapToInt(DayRunCountProjection::getRunCount).sum();
+        int total = dayRunInfos.stream().mapToInt(DayRunInfo::getRunCount).sum();
         assertThat(total).isEqualTo(10);
 
         // 5) (선택) day 오름차순 정렬 보장 시
-        List<Integer> sortedDays = dayRunCountProjections.stream().map(DayRunCountProjection::getDay).toList();
+        List<Integer> sortedDays = dayRunInfos.stream().map(DayRunInfo::getDay).toList();
         assertThat(sortedDays).isSorted();
     }
 
@@ -1191,10 +1191,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         courseRepository.save(course);
 
         // when
-        List<DayRunCountProjection> dayRunCountProjections = runningRepository.findDayRunInfosFilteredByDate(2025, 10, member.getId());
+        List<DayRunInfo> dayRunInfos = runningRepository.findDayRunInfosFilteredByDate(2025, 10, member.getId());
 
         // then
-        assertThat(dayRunCountProjections).isEmpty();
+        assertThat(dayRunInfos).isEmpty();
     }
   
 }

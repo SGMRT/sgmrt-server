@@ -4,7 +4,7 @@ import com.querydsl.core.annotations.QueryProjection;
 import lombok.Getter;
 
 @Getter
-public class DayRunCountProjection {
+public class DayRunInfo {
 
     private Integer year;
     private Integer month;
@@ -12,7 +12,7 @@ public class DayRunCountProjection {
     private Integer runCount;
 
     @QueryProjection
-    public DayRunCountProjection(Integer year, Integer month, Integer day, Integer runCount) {
+    public DayRunInfo(Integer year, Integer month, Integer day, Integer runCount) {
         this.year = year;
         this.month = month;
         this.day = day;

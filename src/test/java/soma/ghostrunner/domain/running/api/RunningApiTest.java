@@ -1,23 +1,30 @@
 package soma.ghostrunner.domain.running.api;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import soma.ghostrunner.ApiTestSupport;
 import soma.ghostrunner.domain.running.api.dto.request.*;
+import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
+import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -415,7 +422,7 @@ class RunningApiTest extends ApiTestSupport {
     @Test
     void getRunningTelemetries() throws Exception{
         // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/1/telemetries")
+        mockMvc.perform(get("/v1/runs/1/telemetries")
                         .contentType(MediaType.APPLICATION_JSON)
                 )
                 .andDo(print())
@@ -500,7 +507,7 @@ class RunningApiTest extends ApiTestSupport {
     @Test
     void getRunInfos() throws Exception {
         // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+        mockMvc.perform(get("/v1/runs")
                         .queryParam("filteredBy", "DATE")
                         .queryParam("cursorStartedAt", "1")
                         .queryParam("cursorRunningId", "2")
@@ -514,7 +521,7 @@ class RunningApiTest extends ApiTestSupport {
     @Test
     void runningModeCannotBeNullWhenGetRunInfos() throws Exception {
         // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+        mockMvc.perform(get("/v1/runs")
                         .queryParam("filteredBy", "DATE"))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
@@ -526,7 +533,7 @@ class RunningApiTest extends ApiTestSupport {
     @Test
     void filteredByCannotBeNullWhenGetRunInfos() throws Exception {
         // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+        mockMvc.perform(get("/v1/runs")
                         .queryParam("runningMode", "SOLO"))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
@@ -538,7 +545,7 @@ class RunningApiTest extends ApiTestSupport {
     @Test
     void epochCannotBeNullWhenGetRunInfos() throws Exception {
         // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+        mockMvc.perform(get("/v1/runs")
                         .queryParam("runningMode", "SOLO")
                         .queryParam("filteredBy", "DATE")
                         .queryParam("cursorStartedAt", "1")
@@ -553,13 +560,41 @@ class RunningApiTest extends ApiTestSupport {
     @Test
     void filteredByMustBeInRunningInfoFilterWhenGetRunInfos() throws Exception {
         // when // then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs")
+        mockMvc.perform(get("/v1/runs")
                         .queryParam("runningMode", "SOLO")
                         .queryParam("filteredBy", "FAKE_DATE"))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("G-002"))
                 .andExpect(jsonPath("$.message").value("잘못된 파라미터"));
+    }
+
+    @DisplayName("GET /v1/runs/monthly/status: 연/월별 일자 러닝 상태를 반환한다")
+    @Test
+    void getRunMonthlyStatus_success() throws Exception {
+        // when // then
+        mockMvc.perform(get("/v1/runs/monthly/status")
+                        .queryParam("year", "2025")
+                        .queryParam("month", "1"))
+                .andDo(print())
+                .andExpect(status().isOk());
+    }
+
+    @DisplayName("GET /v1/runs/monthly/status: 잘못된 월(13)이면 400을 반환한다")
+    @Test
+    void getRunMonthlyStatus_validationError() throws Exception {
+        // given
+        JwtUserDetails principal = Mockito.mock(JwtUserDetails.class);
+        when(principal.getUserId()).thenReturn("mem-x");
+
+        // when // then
+        mockMvc.perform(get("/v1/runs/monthly/status")
+                        .param("year", "2025")
+                        .param("month", "13") // @Max(12) 위반
+                        .with(authentication(new UsernamePasswordAuthenticationToken(principal, "N/A", List.of()))))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(runningQueryService);
     }
 
     @DisplayName("페이스메이커를 생성한다.")

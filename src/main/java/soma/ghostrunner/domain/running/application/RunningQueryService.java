@@ -15,6 +15,7 @@ import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.course.enums.GhostSortType;
+import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
@@ -173,6 +174,10 @@ public class RunningQueryService {
         return runningRepository.countPublicRunnersInCourse(courseId);
     }
 
-    public List<>
+    public List<RunMonthlyStatusResponse> findMonthlyDayRunStatus(Integer year, Integer month, String memberUuid) {
+        Member member = findMember(memberUuid);
+        List<DayRunInfo> dayRunInfos = runningRepository.findDayRunInfosFilteredByDate(year, month, member.getId());
+        return mapper.toDayRunStatusResponses(dayRunInfos);
+    }
 
 }

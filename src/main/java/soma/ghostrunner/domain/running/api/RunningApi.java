@@ -1,12 +1,14 @@
 package soma.ghostrunner.domain.running.api;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import lombok.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.*;
@@ -18,7 +20,6 @@ import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInf
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
-import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.validator.enums.EnumValid;
 import soma.ghostrunner.global.error.ErrorCode;
@@ -156,6 +157,15 @@ public class RunningApi {
             @PathVariable Long courseId) {
         String memberUuid = userDetails.getUserId();
         return runningQueryService.findRunnings(courseId, memberUuid);
+    }
+
+    @GetMapping("/v1/runs/monthly/status")
+    public List<RunMonthlyStatusResponse> getRunMonthlyStatus(
+            @AuthenticationPrincipal JwtUserDetails userDetails,
+            @RequestParam @Min(2000) @Max(2100) Integer year,
+            @RequestParam @Min(1) @Max(12) Integer month) {
+        String memberUuid = userDetails.getUserId();
+        return runningQueryService.findMonthlyDayRunStatus(year, month, memberUuid);
     }
 
     @PostMapping("/v1/runs/pacemaker")

@@ -4,14 +4,17 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.core.types.dsl.NumberTemplate;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.QUserPaceStatsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.domain.QRunning;
+import soma.ghostrunner.domain.running.domain.RunningMode;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -258,7 +261,7 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
     }
 
     @Override
-    public List<DayRunCountProjection> findDayRunInfosFilteredByDate(Integer year, Integer month, Long memberId) {
+    public List<DayRunInfo> findDayRunInfosFilteredByDate(Integer year, Integer month, Long memberId) {
 
         String tz = "Asia/Seoul";
         ZoneId zone = ZoneId.of(tz);
