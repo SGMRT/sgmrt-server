@@ -6,6 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -38,7 +40,7 @@ class MemberVdotUpdateListenerTest {
     void handleRunFinishedAndSaveNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, 2L, true);
+        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, mock(Course.class), true);
 
         Member mockMember = mock(Member.class);
 
@@ -62,7 +64,7 @@ class MemberVdotUpdateListenerTest {
     void handleRunFinishedAndUpdateNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, 2L, true);
+        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, mock(Course.class), true);
 
         Member mockMember = mock(Member.class);
         MemberVdot mockMemberVdot = mock(MemberVdot.class);

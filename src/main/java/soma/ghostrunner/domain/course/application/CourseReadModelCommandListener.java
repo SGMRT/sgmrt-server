@@ -16,9 +16,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CourseReadModelCommandListener {
 
-    CourseReadModelRepository courseReadModelRepository;
-    CourseRankFinder courseRankFinder;
-    CourseService courseService;
+    private final CourseReadModelRepository courseReadModelRepository;
+    private final CourseRankFinder courseRankFinder;
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     public void createReadModel(CourseRegisteredEvents event) {
@@ -35,15 +34,15 @@ public class CourseReadModelCommandListener {
         return RankSlot.of(rankInfo.getMemberId(), rankInfo.getMemberProfileUrl());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
+    @EventListener
     public void updateReadModel(RunFinishedEvent event) {
-        Course course = courseService.findCourseById(event.courseId());
+        Course course = event.course();
 
         if (courseIsPublic(course)) {
             CourseReadModel courseReadModel = findReadModel(course);
 
             Long runnersCount = courseRankFinder.countRunnersByCourseId(course.getId());
-            updateRunnersCont(courseReadModel, runnersCount);
+            updateRunnersCount(courseReadModel, runnersCount);
 
             if (!event.hasPaused()) {
                 List<CourseRankInfo> top4Runners = courseRankFinder.findCourseTop4RankInfoByCourseId(course.getId());
@@ -63,7 +62,7 @@ public class CourseReadModelCommandListener {
                 .orElseThrow(() -> new IllegalArgumentException("공개되지 않은 코스를 조회하여 리드모델이 없는 경우"));
     }
 
-    private void updateRunnersCont(CourseReadModel courseReadModel, Long runnersCount) {
+    private void updateRunnersCount(CourseReadModel courseReadModel, Long runnersCount) {
         courseReadModel.updateRunnersCount(runnersCount);
     }
 

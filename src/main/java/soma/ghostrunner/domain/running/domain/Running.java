@@ -81,7 +81,7 @@ public class Running extends BaseTimeEntity {
                 id,
                 member.getUuid(),
                 runningRecord.getAveragePace(),
-                course.getId(),
+                course,
                 !isPublic
         ));
     }

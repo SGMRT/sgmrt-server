@@ -1,10 +1,12 @@
 package soma.ghostrunner.domain.running.domain.events;
 
+import soma.ghostrunner.domain.course.domain.Course;
+
 public record RunFinishedEvent(
         Long runId,
         String memberUuid,
         Double averagePace,
-        Long courseId,
+        Course course,
         Boolean hasPaused
 ) {
 }
