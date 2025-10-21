@@ -301,6 +301,7 @@ class CourseFacadeTest extends IntegrationTestSupport {
                         List.of());
     }
 
+//    -- Deprecated: 이전 버전 코스 제한 정책. 추후 삭제 --
 //    @DisplayName("주변 코스 검색 결과 본인과 타인의 코스가 섞여있을 때, 소유권에 따른 개수 제한 정책을 올바르게 적용한다.")
 //    @ParameterizedTest(name = "[{index}] 내 코스 {0}개, 타인 코스 {1}개일 때 -> 내 코스 {2}개, 타인 코스 {3}개 반환")
 //    @MethodSource("provideCourseCountsForLimiting")
@@ -543,6 +544,26 @@ class CourseFacadeTest extends IntegrationTestSupport {
                 assertThat(actualCourseNames).containsSequence(expectedOrder);
             }
         }
+    }
+
+    @DisplayName("주변 코스 조회 시 본인 코스는 비공개여도 조회한다.")
+    @Test
+    void findCoursesByPosition_privateCourseSearchByOwner() {
+        // given
+        var viewer = createMember("아이유");
+        memberRepository.save(viewer);
+        var privateCourse = createCourse("비공개 코스", viewer);
+        privateCourse.setIsPublic(false);
+        courseRepository.save(privateCourse);
+
+        // when
+        var courses = courseFacade.findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG, 5000,
+                CourseSortType.DISTANCE, null, viewer.getUuid());
+
+        // then
+        assertThat(courses).hasSize(1);
+        var courseResponse = courses.get(0);
+        assertThat(courseResponse.id()).isEqualTo(privateCourse.getId());
     }
 
     @DisplayName("주변 코스 조회 시 일부 캐시만 미스가 발생한 경우, DB에서 다시 조회하여 응답한다.")

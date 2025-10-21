@@ -39,7 +39,7 @@ public class CourseFacade {
     public List<CourseMapResponse> findCoursesByPositionCached(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                                CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내 코스 리스트 조회
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters, viewerUuid);
         List<Long> courseIds = courses.stream().map(CoursePreviewDto::id).toList();
 
         // 캐시에서 코스 정보 조회
@@ -128,7 +128,7 @@ public class CourseFacade {
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                          CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters, viewerUuid);
         List<CoursePreviewDto> filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
         // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
         return filteredCourses.stream().map(course -> {

@@ -23,15 +23,16 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
   private final JPAQueryFactory queryFactory;
 
   @Override
-  public List<Course> findCoursesWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
-                                                            Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort) {
+  public List<Course> findCoursesWithFilters(Double curLat, Double curLng,
+                                             Double minLat, Double maxLat, Double minLng, Double maxLng,
+                                             CourseSearchFilterDto filters, CourseSortType sort, String viewerUuid) {
     // todo - 코스에 딸린 러닝기록 수 반정규화해서 따로 저장해두면 굳이 Running 테이블까지 조인할 필요 없음
     JPAQuery<Course> query = queryFactory
             .selectFrom(course)
             .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
             .leftJoin(course.member).fetchJoin() // 코스 소유자 정보도 함께 조회
             .where(
-                    course.isPublic.isTrue(),
+                    course.isPublic.isTrue().or(isOwner(viewerUuid)), // 공개 코스이거나 조회자가 소유자일 때
                     startPointWithinBoundary(minLat, maxLat, minLng, maxLng),
                     withSearchFilters(filters)
             )
@@ -49,14 +50,14 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
 
   @Override
   public List<Long> findCourseIdsWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
-                                             Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort) {
+                                             Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort, String viewerUuid) {
     JPAQuery<Long> query = queryFactory
             .select(course.id)
             .from(course)
             .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
             .leftJoin(course.member)
             .where(
-                    course.isPublic.isTrue(),
+                    course.isPublic.isTrue().or(isOwner(viewerUuid)), // 공개 코스이거나 조회자가 소유자일 때
                     startPointWithinBoundary(minLat, maxLat, minLng, maxLng),
                     withSearchFilters(filters)
             )
@@ -106,6 +107,14 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
             filters.getOwnerUuid() != null ?
                     course.member.uuid.eq(filters.getOwnerUuid()) : null
     );
+  }
+
+  /** viewerUuid가 해당 코스의 주인인지 확인한다. */
+  private BooleanExpression isOwner(String viewerUuid) {
+    if (viewerUuid == null) {
+      return null; // QueryDSL에서 null 반환 시 해당 조건은 무시됨
+    }
+    return course.member.uuid.eq(viewerUuid);
   }
 
 }

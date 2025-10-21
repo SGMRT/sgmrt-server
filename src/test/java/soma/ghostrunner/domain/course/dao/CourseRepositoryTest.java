@@ -64,6 +64,44 @@ class CourseRepositoryTest extends IntegrationTestSupport {
         assertThat(resultPage.getContent()).allMatch(Course::getIsPublic); // 공개 여부 확인
     }
 
+    @DisplayName("비공개 코스는 소유자 외에는 조회할 수 없다.")
+    @Test
+    void findCoursesWithFilters_excludePrivateCourses() {
+        // given
+        Course publicCourse = createCourse(member1, "공개 코스", true);
+        Course privateCourse = createCourse(member2, "비공개 코스", false);
+        courseRepository.saveAll(List.of(publicCourse, privateCourse));
+
+        // when
+        List<Course> results = courseRepository.findCoursesWithFilters(0.0, 0.0, 37d, 39d, 127d, 129d,
+                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, null);
+
+        // then
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getName()).isEqualTo("공개 코스");
+    }
+
+    @DisplayName("사용자는 본인이 소유한 비공개 코스를 조회할 수 있다.")
+    @Test
+    void findCoursesWithFilters_privateCourses() {
+        // given
+        Course publicCourse1 = createCourse(member1, "내 공개 코스", true);
+        Course privateCourse1 = createCourse(member1, "내 비공개 코스", false);
+        Course publicCourse2 = createCourse(member2, "다른 사람 공개 코스", true);
+        Course privateCourse2 = createCourse(member2, "다른 사람 비공개 코스", false);
+        courseRepository.saveAll(List.of(publicCourse1, privateCourse1, publicCourse2, privateCourse2));
+        String viewerUuid = member1.getUuid();
+
+        // when
+        List<Course> results = courseRepository.findCoursesWithFilters(0.0, 0.0, 37d, 39d, 127d, 129d,
+                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, viewerUuid);
+        // then
+        assertThat(results).hasSize(3);
+        assertThat(results).extracting(Course::getName)
+                .containsExactlyInAnyOrder("내 공개 코스", "내 비공개 코스", "다른 사람 공개 코스");
+        assertThat(results).noneMatch(course -> course.getName().equals("다른 사람 비공개 코스"));
+    }
+
     @DisplayName("거리 순으로 코스를 정렬하여 조회한다")
     @Test
     void findCoursesWithFilters_SortByDistance() {
@@ -78,7 +116,7 @@ class CourseRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<Course> results = courseRepository.findCoursesWithFilters(centerLat, centerLng, 37d, 38d, 127d, 129d,
-                CourseSearchFilterDto.of(), CourseSortType.DISTANCE);
+                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, null);
 
         // then
         assertThat(results).extracting(Course::getName)
@@ -99,7 +137,7 @@ class CourseRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<Course> results = courseRepository.findCoursesWithFilters(0.0, 0.0, 37d, 39d, 127d, 129d,
-                CourseSearchFilterDto.of(), CourseSortType.POPULARITY);
+                CourseSearchFilterDto.of(), CourseSortType.POPULARITY, null);
 
         // then
         assertThat(results).extracting(Course::getName)
@@ -126,7 +164,7 @@ class CourseRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<Course> results = courseRepository.findCoursesWithFilters(37.5, 127.0, 37.0, 38.0, 126.0, 128.0,
-                filters, CourseSortType.DISTANCE);
+                filters, CourseSortType.DISTANCE, null);
 
         // then
         assertThat(results).hasSize(1);
