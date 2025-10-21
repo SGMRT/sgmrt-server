@@ -184,4 +184,19 @@ public class RunningApi {
         return paceMakerService.getPacemaker(pacemakerId, memberUuid);
     }
 
+    @GetMapping("/v1/kill")
+    public String killServer(@AuthenticationPrincipal JwtUserDetails userDetails) {
+        new Thread(() -> {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            System.exit(0);
+        }).start();
+
+        return "서버 종료 명령을 수신했습니다. 0.5초 후 서버가 종료됩니다.";
+    }
+
+
 }
