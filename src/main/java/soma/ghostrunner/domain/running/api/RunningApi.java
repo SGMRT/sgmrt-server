@@ -198,5 +198,4 @@ public class RunningApi {
         return "서버 종료 명령을 수신했습니다. 0.5초 후 서버가 종료됩니다.";
     }
 
-
 }
