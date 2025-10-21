@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.running.infra;
 
+import jakarta.persistence.EntityManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,15 +14,16 @@ import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
-import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
-import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
-import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
+import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -38,6 +40,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
     private MemberRepository memberRepository;
+
+    @Autowired
+    EntityManager em;
 
     @DisplayName("특정 코스 ID에 해당하는 모든 러닝 ID 목록을 조회한다")
     @Test
@@ -1239,6 +1244,106 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Assertions.assertThat(count).isEqualTo(0L);
     }
 
+    @DisplayName("특정 연, 월에 저장되어 있는 러닝 카운트를 집계한다. 없는 날짜는 조회되지 않는다.")
+    @Test
+    void findDayRunInfosFilteredByDate() {
+        // given
+        Member member = memberRepository.save(createMember("이복둥"));
+        Course course = courseRepository.save(createCourse(member, "한강 10K"));
+
+        // 2025-10월에 다음 일자/횟수로 데이터 생성:
+        // 1(1), 3(2), 4(1), 5(1), 10(1), 12(1), 20(2), 30(1)  → 총 10개
+        List<Running> runs = new ArrayList<>();
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 1)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 3)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 3)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 4)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 5)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 10)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 12)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 20)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 20)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 10, 30)));
+
+        // 경계 검증용: 전월/익월 데이터 (집계 제외되어야 함)
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 9, 30)));
+        runs.add(createRunningAt(member, course, LocalDate.of(2025, 11, 1)));
+
+        runningRepository.saveAll(runs);
+        em.flush(); em.clear();
+
+        // when
+        List<DayRunInfo> dayRunInfos = runningRepository.findDayRunInfosFilteredByDate(2025, 10, member.getId());
+
+        // then
+        // 1) 행 수(집계된 일자 수)
+        assertThat(dayRunInfos).hasSize(8);
+
+        // 2) 연/월 일관성
+        assertThat(dayRunInfos).extracting(DayRunInfo::getYear).containsOnly(2025);
+        assertThat(dayRunInfos).extracting(DayRunInfo::getMonth).containsOnly(10);
+
+        // 3) 기대 일자와 카운트 매칭
+        Map<Integer, Integer> expected = new LinkedHashMap<>();
+        expected.put(1, 1);
+        expected.put(3, 2);
+        expected.put(4, 1);
+        expected.put(5, 1);
+        expected.put(10, 1);
+        expected.put(12, 1);
+        expected.put(20, 2);
+        expected.put(30, 1);
+
+        // 일자 집합
+        assertThat(dayRunInfos).extracting(DayRunInfo::getDay)
+                .containsExactlyInAnyOrderElementsOf(expected.keySet());
+
+        // 일자별 카운트
+        Map<Integer, Integer> actual = dayRunInfos.stream()
+                .collect(Collectors.toMap(DayRunInfo::getDay, DayRunInfo::getRunCount));
+        expected.forEach((d, cnt) -> assertThat(actual).containsEntry(d, cnt));
+
+        // 4) 총합(해당 월 개수)
+        int total = dayRunInfos.stream().mapToInt(DayRunInfo::getRunCount).sum();
+        assertThat(total).isEqualTo(10);
+
+        // 5) (선택) day 오름차순 정렬 보장 시
+        List<Integer> sortedDays = dayRunInfos.stream().map(DayRunInfo::getDay).toList();
+        assertThat(sortedDays).isSorted();
+    }
+
+    private Running createRunningAt(Member m, Course c, LocalDate dateKst) {
+        long ms = toEpochMsKst(dateKst);
+        RunningRecord rr = RunningRecord.of(5.2, 30.0, 40.0, -20.0,
+                6.1, 4.9, 6.9, 3423L, 302, 120, 56);
+        return Running.of("테스트 러닝 제목", RunningMode.SOLO, null, rr,
+                ms, true, false, "URL", "URL", "URL", m, c);
+    }
+
+    private long toEpochMsKst(LocalDate dateKst) {
+        ZoneId KST = ZoneId.of("Asia/Seoul");
+        return ZonedDateTime.of(dateKst, LocalTime.MIDNIGHT, KST)
+                .toInstant().toEpochMilli();
+    }
+
+    @DisplayName("특정 연, 월에 저장되어 있는 러닝 카운트를 집계한다. 없는 날짜는 조회되지 않는다.")
+    @Test
+    void findDayRunInfosFilteredByDate_WithEmptyRunnings() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        // when
+        List<DayRunInfo> dayRunInfos = runningRepository.findDayRunInfosFilteredByDate(2025, 10, member.getId());
+
+        // then
+        assertThat(dayRunInfos).isEmpty();
+      
+    }
+      
     @DisplayName("코스 ID 목록을 기반으로 각 코스에 공개 러닝 기록을 등록한 회원의 수를 조회한다.")
     @Test
     void findPublicRunnerCountsByCourseIds() {

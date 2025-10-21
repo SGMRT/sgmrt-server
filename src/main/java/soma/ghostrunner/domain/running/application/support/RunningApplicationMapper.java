@@ -8,9 +8,11 @@ import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
+import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerResponse;
 import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerSetResponse;
+import soma.ghostrunner.domain.running.application.dto.response.DayRunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
@@ -158,6 +160,12 @@ public interface RunningApplicationMapper {
     default List<RunInfo> toResponse(List<Running> runnings) {
         return runnings.stream()
                 .map(RunInfo::new)
+                .toList();
+    }
+
+    default List<RunMonthlyStatusResponse> toDayRunStatusResponses(List<DayRunInfo> dayRunInfos) {
+        return dayRunInfos.stream()
+                .map(RunMonthlyStatusResponse::of)
                 .toList();
     }
   

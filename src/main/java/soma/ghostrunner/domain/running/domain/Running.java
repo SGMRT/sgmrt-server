@@ -12,13 +12,14 @@ import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
+import soma.ghostrunner.global.common.document.TestOnly;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.*;
 
 @Entity
 @Table(name = "running_record")
