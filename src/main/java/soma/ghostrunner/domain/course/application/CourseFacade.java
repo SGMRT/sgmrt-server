@@ -3,7 +3,6 @@ package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,11 +20,7 @@ import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -153,41 +148,68 @@ public class CourseFacade {
         }
     }
 
-    /** 본인 코스, 주변 랜덤 코스를 고려하여 limit개 이하로 제한한다. */
+    /** 본인 코스 > RECOMMENDED 지정 코스 > 타 러너 코스 > 더미 코스 순으로 limit개 이하를 선택한다. */
     private List<CoursePreviewDto> limitCoursesForViewer(List<CoursePreviewDto> courses, String viewerUuid, int limit) {
-        var usersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 본인의 코스 (idx -> dto)
-        var othersCoursesMap = new HashMap<Integer, CoursePreviewDto>(); // 다른 사람 코스 (idx -> dto)
-        int idx = 0;
-        for (var course : courses) {
-            if (course.ownerUuid() != null && course.ownerUuid().equals(viewerUuid)) {
-                usersCoursesMap.put(idx, course);
-            } else {
-                othersCoursesMap.put(idx, course);
-            }
-            idx++;
-        }
-
-        // 본인의 코스 - 최대 절반까지, 단 otherCourses가 부족한 경우 더 담음
-        var userCourseIndices = usersCoursesMap.keySet().stream()
-                .limit(Math.max(limit / 2, limit - othersCoursesMap.size()))
-                .toList();
-
-        // 주변 랜덤 코스 - 다른 사람 코스를 랜덤하게 선택
-        var otherCourseIndices = new ArrayList<>(othersCoursesMap.keySet());
-        Collections.shuffle(otherCourseIndices);
-        var otherCourseRandomIndices = otherCourseIndices.stream()
-                .limit(limit - userCourseIndices.size())
-                .toList();
-
-        // 인덱스 기존 순서대로 정렬 후 dto로 매핑하여 반환
+        CourseMapHolder categorizedCourses = categorizeCourses(courses, viewerUuid);
         var finalIndices = new ArrayList<Integer>();
-        finalIndices.addAll(userCourseIndices);
-        finalIndices.addAll(otherCourseRandomIndices);
-        Collections.sort(finalIndices);
 
+        // 본인의 코스 - 최대 절반까지 선택
+        int userCnt = Math.min(limit / 2, categorizedCourses.usersCoursesMap().size());
+        finalIndices.addAll(randomSelect(categorizedCourses.usersCoursesMap().keySet(), userCnt));
+
+        // 추천 지정 코스 - 최대 1/5까지 선택
+        int recommendedCnt = Math.min(limit / 5, categorizedCourses.recommendedCoursesMap().size());
+        finalIndices.addAll(randomSelect(categorizedCourses.recommendedCoursesMap().keySet(), recommendedCnt));
+
+        // 다른 사람 코스 - 남은 개수만큼 선택
+        int otherCnt = Math.min(limit - finalIndices.size(), categorizedCourses.othersCoursesMap().size());
+        finalIndices.addAll(randomSelect(categorizedCourses.othersCoursesMap().keySet(), otherCnt));
+
+        // 더미 코스 - 남은 개수만큼 선택
+        int dummyCnt = Math.min(limit - finalIndices.size(),  categorizedCourses.dummyCoursesMap().size());
+        finalIndices.addAll(randomSelect(categorizedCourses.dummyCoursesMap().keySet(), dummyCnt));
+
+        // courses 순서대로 정렬하고 CoursePreviewDto로 매핑하여 반환
+        Collections.sort(finalIndices);
         return finalIndices.stream()
                 .map(courses::get)
                 .toList();
+    }
+
+    private record CourseMapHolder(
+            Map<Integer, CoursePreviewDto> usersCoursesMap, // 본인 코스
+            Map<Integer, CoursePreviewDto> recommendedCoursesMap, // 추천 코스
+            Map<Integer, CoursePreviewDto> othersCoursesMap, // 타인 코스
+            Map<Integer, CoursePreviewDto> dummyCoursesMap // 더미 코스
+    ) {}
+
+    /** courses의 dto를 순회하며 본인 코스 / 추천 코스 / 타인 코스 / 더미 코스 중 하나로 분류하여 CourseMapHolder에 담는다.  */
+    private CourseMapHolder categorizeCourses(List<CoursePreviewDto> courses, String viewerUuid) {
+        // 코스 분류 (key: courses의 인덱스, value: dto)
+        var users = new HashMap<Integer, CoursePreviewDto>();
+        var others = new HashMap<Integer, CoursePreviewDto>();
+        var recommended = new HashMap<Integer, CoursePreviewDto>();
+        var dummy = new HashMap<Integer, CoursePreviewDto>();
+
+        int idx = 0;
+        for (var course : courses) {
+            if (course.source() == CourseSource.RECOMMENDED) recommended.put(idx, course);
+            else if (course.source() == CourseSource.OFFICIAL) dummy.put(idx, course);
+            else {
+                if (course.ownerUuid() != null && course.ownerUuid().equals(viewerUuid)) users.put(idx, course);
+                else others.put(idx, course);
+            }
+            idx++;
+        }
+        return new CourseMapHolder(users, recommended, others, dummy);
+    }
+
+    /** source 중 count 개를 랜덤으로 고른다. */
+    private List<Integer> randomSelect(Collection<Integer> source, int count) {
+        if (count <= 0) return Collections.emptyList();
+        var indices = new ArrayList<>(source);
+        Collections.shuffle(indices);
+        return indices.stream().limit(count).toList();
     }
 
     @Transactional(readOnly = true)
@@ -235,13 +257,13 @@ public class CourseFacade {
 
     @Transactional(readOnly = true)
     public Page<CourseSummaryResponse> findCourseSummariesOfMember(String memberUuid, Pageable pageable) {
-        // todo: 평균 데이터 캐싱 (Course 테이블에 저장 혹은 캐싱)
         Page<CourseWithMemberDetailsDto> courseDetails = courseService.findCoursesByMemberUuid(memberUuid, pageable);
         List<CourseSummaryResponse> results = new ArrayList<>();
 
         for(CourseWithMemberDetailsDto courseDto : courseDetails.getContent()) {
-            CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseDto.getCourseId())
-                    .orElse(new CourseRunStatisticsDto());
+//            CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseDto.getCourseId())
+//                    .orElse(new CourseRunStatisticsDto());
+            CourseRunStatisticsDto courseStatistics = getDummyCourseStatistics(); // 통계 더이상 필요 없음 - 프론트 하위호환성 고려하여 빈 객체 반환
             CourseGhostResponse ghostForUser = getGhostResponse(courseDto.getCourseId(), memberUuid);
             results.add(courseMapper.toCourseSummaryResponse(courseDto, courseStatistics.getUniqueRunnersCount(),
                     courseStatistics.getTotalRunsCount(), courseStatistics.getAvgCompletionTime(),
@@ -249,6 +271,10 @@ public class CourseFacade {
         }
 
         return new PageImpl<>(results, pageable, courseDetails.getTotalElements());
+    }
+
+    private static CourseRunStatisticsDto getDummyCourseStatistics() {
+        return new CourseRunStatisticsDto(0d, 0d, 0d, 0d, 0d, 0, 0);
     }
 
     public CourseStatisticsResponse findCourseStatistics(Long courseId) {
