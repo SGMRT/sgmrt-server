@@ -47,7 +47,6 @@ public class Notice extends BaseTimeEntity {
         return new Notice(null, title, content, NoticeType.GENERAL, imageUrl, 0, LocalDateTime.now(), null);
     }
 
-
     public static Notice of(String title, String content, NoticeType noticeType, String imageUrl, Integer priority,
                             LocalDateTime startAt, LocalDateTime endAt) {
         if(title == null && content == null && imageUrl == null) throw new IllegalArgumentException();

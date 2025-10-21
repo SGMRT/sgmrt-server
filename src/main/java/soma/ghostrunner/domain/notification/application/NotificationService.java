@@ -38,7 +38,6 @@ public class NotificationService {
 
     @TransactionalEventListener
     public void handleNotificationEvent(NotificationEvent event) {
-        // todo NotificationEventTranslator 구현 (외부 이벤트 listen -> NotificationEvent publish)
         sendPushNotificationAsync(
                 event.userIds(),
                 event.title(),
