@@ -9,9 +9,12 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.course.dao.CourseCacheRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
+import soma.ghostrunner.domain.course.dto.RunnerProfile;
+import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseMapResponse;
@@ -45,6 +48,9 @@ class CourseFacadeTest extends IntegrationTestSupport {
 
     @Autowired
     private RunningRepository runningRepository;
+
+    @Autowired
+    private CourseCacheRepository courseCacheRepository;
 
     private Member defaultMember;
 
@@ -81,8 +87,8 @@ class CourseFacadeTest extends IntegrationTestSupport {
         // 코스별 상위 러너 정보 검증
         assertThat(courses).extracting("runnersCount")
                 .containsExactlyInAnyOrder(10L, 3L, 0L);
-        List<CourseMapResponse.MemberRecord> memberPoolRecords = memberPool.stream()
-                .map(member -> new CourseMapResponse.MemberRecord(member.getUuid(), member.getProfilePictureUrl()))
+        List<RunnerProfile> memberPoolRecords = memberPool.stream()
+                .map(member -> new RunnerProfile(member.getUuid(), member.getProfilePictureUrl()))
                 .toList();
         assertThat(courses).extracting("runners")
                 .containsExactlyInAnyOrder(
@@ -210,7 +216,7 @@ class CourseFacadeTest extends IntegrationTestSupport {
     @DisplayName("주변 코스 검색 시")
     @ParameterizedTest(name = "{0} 기준으로 정렬하면 그에 맞게 정렬되어야 한다.")
     @EnumSource(value = CourseSortType.class, names = {"DISTANCE", "POPULARITY"})
-    void sortNearbyCourses(CourseSortType sortType) {
+    void findCoursesByPosition_properlySorted(CourseSortType sortType) {
         // given
         Course courseNear = createCourse("가까운 코스", DEFAULT_LAT, DEFAULT_LNG);
         Course courseMid = createCourse("중간 코스", DEFAULT_LAT + 0.005, DEFAULT_LNG + 0.005);
@@ -256,6 +262,235 @@ class CourseFacadeTest extends IntegrationTestSupport {
                 assertThat(actualCourseNames).containsSequence(expectedOrder);
             }
         }
+    }
+
+    @DisplayName("주변 코스를 검색하면, 각 코스별 상위 최대 4명의 러너 정보가 함께 조회된다.")
+    @Test
+    void findCoursesByPositionCached() {
+        // given
+        Course course1 = createCourse("유명한 코스");
+        Course course2 = createCourse("적당히 달린 코스");
+        Course course3 = createCourse("아무도 안 달린 코스");
+        courseRepository.saveAll(List.of(course1, course2, course3));
+
+        List<Member> memberPool = IntStream.range(0, 10).boxed()
+                .map(i -> Member.of("회원" + i, "profile-url-" + i))
+                .toList();
+        memberRepository.saveAll(memberPool);
+        saveDummyRunsToCourse(course1, 10, memberPool);
+        saveDummyRunsToCourse(course2, 3, memberPool);
+        saveDummyRunsToCourse(course3, 0, memberPool);
+
+        // when
+        List<CourseMapResponse> courses = courseFacade
+                .findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG, 1000, CourseSortType.DISTANCE, null, defaultMember.getUuid());
+
+        // then
+        assertThat(courses.size()).isEqualTo(3);
+        // 코스별 상위 러너 정보 검증
+        assertThat(courses).extracting("runnersCount")
+                .containsExactlyInAnyOrder(10L, 3L, 0L);
+        List<RunnerProfile> memberPoolRecords = memberPool.stream()
+                .map(member -> new RunnerProfile(member.getUuid(), member.getProfilePictureUrl()))
+                .toList();
+        assertThat(courses).extracting("runners")
+                .containsExactlyInAnyOrder(
+                        memberPoolRecords.stream().limit(4).toList(),
+                        memberPoolRecords.stream().limit(3).toList(),
+                        List.of());
+    }
+
+    @DisplayName("주변 코스 검색 결과 본인과 타인의 코스가 섞여있을 때, 소유권에 따른 개수 제한 정책을 올바르게 적용한다.")
+    @ParameterizedTest(name = "[{index}] 내 코스 {0}개, 타인 코스 {1}개일 때 -> 내 코스 {2}개, 타인 코스 {3}개 반환")
+    @MethodSource("provideCourseCountsForLimiting")
+    void findCoursesByPositionCached_limitCount(int myCourseCount, int otherCourseCount, int expectedMyCourseCount, int expectedOtherCourseCount) {
+        // given
+        Member viewer = createMember("아이유");
+        memberRepository.save(viewer);
+
+        // 본인 소유 코스 생성
+        List<Course> myCourses = IntStream.range(0, myCourseCount)
+                .mapToObj(i -> createCourse("내 코스 " + i, viewer, DEFAULT_LAT + i * 0.0001, DEFAULT_LNG))
+                .toList();
+        courseRepository.saveAll(myCourses);
+
+        // 타인 소유 코스 생성
+        List<Course> otherCourses = IntStream.range(0, otherCourseCount)
+                .mapToObj(i -> {
+                    Member owner = saveMember(createMember("회원 " + i));
+                    return createCourse("타인 코스 " + i, owner, DEFAULT_LAT - i * 0.0001, DEFAULT_LNG);
+                })
+                .toList();
+        courseRepository.saveAll(otherCourses);
+
+        // when
+        List<CourseMapResponse> courses = courseFacade.findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG,
+                5000, CourseSortType.DISTANCE, null, viewer.getUuid());
+
+        // then
+        long actualMyCourses = courses.stream()
+                .filter(c -> c.ownerUuid().equals(viewer.getUuid()))
+                .count();
+
+        long actualOtherCourses = courses.stream()
+                .filter(c -> !c.ownerUuid().equals(viewer.getUuid()))
+                .count();
+
+        assertThat(actualMyCourses).isEqualTo(expectedMyCourseCount);
+        assertThat(actualOtherCourses).isEqualTo(expectedOtherCourseCount);
+        assertThat(courses.size()).isEqualTo(expectedMyCourseCount + expectedOtherCourseCount);
+    }
+
+    @DisplayName("주변 코스 검색 시 코스를 달린 기록이 존재하는 경우에만 고스트 정보가 포함된다.")
+    @Test
+    void findCoursesByPositionCached_withRuns() {
+        // given
+        Course courseRan = createCourse("달린 코스");
+        Course courseNotRan = createCourse("안 달린 코스");
+        courseRepository.saveAll(List.of(courseRan, courseNotRan));
+
+        Running myRunning = createRunning("나의 기록", courseRan, defaultMember);
+        runningRepository.save(myRunning);
+
+        // when
+        List<CourseMapResponse> courses = courseFacade
+                .findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG, 1000, CourseSortType.DISTANCE, null, defaultMember.getUuid());
+
+        // then
+        // 달린 코스의 고스트 응답 확인
+        CourseMapResponse ranCourseResponse = courses.stream()
+                .filter(c -> c.id().equals(courseRan.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(ranCourseResponse.myGhostInfo()).isNotNull();
+        assertThat(ranCourseResponse.myGhostInfo().runningId()).isEqualTo(myRunning.getId());
+
+        // 달리지 않은 코스의 고스트 응답 확인
+        CourseMapResponse notRanCourseResponse = courses.stream()
+                .filter(c -> c.id().equals(courseNotRan.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(notRanCourseResponse.myGhostInfo()).isNull();
+    }
+
+    @DisplayName("주변 코스 검색 시")
+    @ParameterizedTest(name = "{0} 기준으로 정렬하면 그에 맞게 정렬되어야 한다.")
+    @EnumSource(value = CourseSortType.class, names = {"DISTANCE", "POPULARITY"})
+    void findCoursesByPositionCached_properlySorted(CourseSortType sortType) {
+        // given
+        Course courseNear = createCourse("가까운 코스", DEFAULT_LAT, DEFAULT_LNG);
+        Course courseMid = createCourse("중간 코스", DEFAULT_LAT + 0.005, DEFAULT_LNG + 0.005);
+        Course courseFar = createCourse("먼 코스", defaultMember, DEFAULT_LAT + 0.01, DEFAULT_LNG + 0.01);
+
+        // 인기순: 러너가 많은 코스, 보통 코스, 적은 코스
+        Course coursePopular = createCourse("인기 코스", DEFAULT_LAT + 0.015, DEFAULT_LNG + 0.015);
+        Course courseNormal = createCourse("보통 코스", defaultMember,  DEFAULT_LAT + 0.02, DEFAULT_LNG + 0.02);
+        Course courseUnpopular = createCourse("비인기 코스", DEFAULT_LAT + 0.025, DEFAULT_LNG + 0.025);
+
+        // 최신순: 오래된 코스, 중간 코스, 최신 코스 (ID 오름차순으로 생성)
+        courseRepository.saveAll(List.of(courseNear, courseMid, courseFar, coursePopular, courseNormal, courseUnpopular));
+
+        // 인기순 정렬을 위한 더미 데이터 생성
+        List<Member> memberPool = IntStream.range(0, 10).boxed()
+                .map(i -> createMember("회원" + i))
+                .toList();
+        memberRepository.saveAll(memberPool);
+        saveDummyRunsToCourse(coursePopular, 10, memberPool); // 인기 코스: 10명
+        saveDummyRunsToCourse(courseNormal, 5, memberPool); // 보통 코스: 5명
+        saveDummyRunsToCourse(courseUnpopular, 3, memberPool); // 비인기 코스: 1명
+        saveDummyRunsToCourse(courseNear, 2, memberPool);
+        saveDummyRunsToCourse(courseMid, 1, memberPool);
+        saveDummyRunsToCourse(courseFar, 0, memberPool);
+
+        // when
+        List<CourseMapResponse> actualCourses = courseFacade
+                .findCoursesByPosition(DEFAULT_LAT, DEFAULT_LNG, 19999, sortType, null, defaultMember.getUuid());
+
+        // then
+        List<String> actualCourseNames = actualCourses.stream()
+                .map(CourseMapResponse::name)
+                .toList();
+
+        // 정렬 기준(sortType)에 따라 기대되는 이름 순서를 정의하고 실제 결과와 비교
+        switch (sortType) {
+            case DISTANCE -> {
+                List<String> expectedOrder = List.of("가까운 코스", "중간 코스", "먼 코스", "인기 코스", "보통 코스", "비인기 코스");
+                assertThat(actualCourseNames).containsSequence(expectedOrder);
+            }
+            case POPULARITY -> {
+                List<String> expectedOrder = List.of("인기 코스", "보통 코스", "비인기 코스", "가까운 코스", "중간 코스", "먼 코스");
+                assertThat(actualCourseNames).containsSequence(expectedOrder);
+            }
+        }
+    }
+
+    @DisplayName("주변 코스 조회 시 일부 캐시만 미스가 발생한 경우, DB에서 다시 조회하여 응답한다.")
+    @Test
+    void findCoursesByPosition_OnPartialCacheMiss() {
+        // given
+        var viewer = createMember("아이유");
+        memberRepository.save(viewer);
+        var memberPool = IntStream.range(0, 5).boxed()
+                .map(i -> Member.of("회원" + i, "profile-url-" + i))
+                .toList();
+        memberRepository.saveAll(memberPool);
+        // 코스 저장 - 하나는 캐시, 두 개는 DB에 저장
+        var hitCourse = createCourse("캐시된 코스");
+        var missedCourse1 = createCourse("DB 저장 코스 1");
+        var missedCourse2 = createCourse("DB 저장 코스 2");
+        courseRepository.saveAll(List.of(hitCourse, missedCourse1, missedCourse2));
+        CourseQueryModel cachedData = new CourseQueryModel(
+                hitCourse.getId(),
+                "캐시된 코스",
+                List.of(new RunnerProfile(viewer.getUuid(), viewer.getProfilePictureUrl())),
+                1
+        );
+        courseCacheRepository.save(cachedData);
+        // 러닝 기록 저장 - 캐시된 코스는 1명, DB 코스 1은 3명, DB 코스 2는 5명
+        // viewer는 코스 1을 달렸다고 가정
+        saveDummyRunsToCourse(hitCourse, 1, List.of(viewer));
+        saveDummyRunsToCourse(missedCourse1, 3, memberPool);
+        saveDummyRunsToCourse(missedCourse2, 5, memberPool);
+
+        // when
+        var courses = courseFacade.findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG, 5000,
+                CourseSortType.DISTANCE, null, viewer.getUuid());
+
+        // then
+        assertThat(courses).hasSize(3);
+        // 캐시 히트된 코스 검증
+        var hitResponse = courses.stream().filter(c -> c.id().equals(hitCourse.getId())).findFirst()
+                .orElseThrow();
+        assertThat(hitResponse.runnersCount()).isEqualTo(1L);
+        assertThat(hitResponse.runners()).hasSize(1)
+                .extracting("uuid")
+                .containsExactly(viewer.getUuid());
+        assertThat(hitResponse.myGhostInfo().runnerUuid()).isEqualTo(viewer.getUuid());
+        // 캐시 미스된 코스들 검증
+        var missedResponse1 = courses.stream().filter(c -> c.id().equals(missedCourse1.getId())).findFirst()
+                .orElseThrow();
+        assertThat(missedResponse1.runnersCount()).isEqualTo(3L);
+        assertThat(missedResponse1.runners()).hasSize(3)
+                .extracting("uuid")
+                .containsExactlyElementsOf(
+                        memberPool.stream().limit(3).map(Member::getUuid).toList()
+                );
+        assertThat(missedResponse1.myGhostInfo()).isNull();
+
+        var missedResponse2 = courses.stream().filter(c -> c.id().equals(missedCourse2.getId())).findFirst()
+                .orElseThrow();
+        assertThat(missedResponse2.runnersCount()).isEqualTo(5L);
+        assertThat(missedResponse2.runners()).hasSize(4)
+                .extracting("uuid")
+                .containsExactlyElementsOf(
+                        memberPool.stream().limit(4).map(Member::getUuid).toList()
+                );
+        assertThat(missedResponse2.myGhostInfo()).isNull();
+
+        // 캐시 리포지토리에는 캐시된 코스 존재
+        assertThat(courseCacheRepository.findById(hitCourse.getId()).id()).isNotNull();
+        assertThat(courseCacheRepository.findById(missedCourse1.getId())).isNotNull();
+        assertThat(courseCacheRepository.findById(missedCourse2.getId())).isNotNull();
     }
 
     // --- Helper Methods ---

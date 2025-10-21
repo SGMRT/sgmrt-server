@@ -1,6 +1,5 @@
 package soma.ghostrunner.domain.course.dao;
 
-import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
@@ -10,12 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
-import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
-import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 
 import java.util.List;
-import java.util.Optional;
 
 import static soma.ghostrunner.domain.course.domain.QCourse.course;
 import static soma.ghostrunner.domain.running.domain.QRunning.running;
@@ -34,6 +30,31 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
             .selectFrom(course)
             .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
             .leftJoin(course.member).fetchJoin() // 코스 소유자 정보도 함께 조회
+            .where(
+                    course.isPublic.isTrue(),
+                    startPointWithinBoundary(minLat, maxLat, minLng, maxLng),
+                    withSearchFilters(filters)
+            )
+            .groupBy(course);
+
+    // 정렬 조건 분기 처리
+    if (sort == CourseSortType.DISTANCE) {
+      query.orderBy(calculateDistance(curLat, curLng).asc());
+    } else if (sort == CourseSortType.POPULARITY) {
+      query.orderBy(running.id.count().desc(), course.id.desc());
+    }
+
+    return query.fetch();
+  }
+
+  @Override
+  public List<Long> findCourseIdsWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
+                                             Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort) {
+    JPAQuery<Long> query = queryFactory
+            .select(course.id)
+            .from(course)
+            .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
+            .leftJoin(course.member)
             .where(
                     course.isPublic.isTrue(),
                     startPointWithinBoundary(minLat, maxLat, minLng, maxLng),

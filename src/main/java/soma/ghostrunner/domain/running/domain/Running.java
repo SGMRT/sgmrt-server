@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
+import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.common.document.TestOnly;
@@ -80,8 +81,20 @@ public class Running extends BaseTimeEntity {
     private void onPersisted() {
         domainEvents.add(new RunFinishedEvent(
                 id,
-                member.getUuid(),
+                course != null ? course.getId() : null,
+                member != null ? member.getUuid() : null,
                 runningRecord.getAveragePace()
+        ));
+    }
+
+    @PostUpdate
+    private void onUpdated() {
+        domainEvents.add(new RunUpdatedEvent(
+                id,
+                course != null ? course.getId() : null,
+                member != null ? member.getUuid() : null,
+                runningName,
+                isPublic
         ));
     }
 

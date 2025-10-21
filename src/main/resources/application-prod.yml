@@ -59,6 +59,10 @@ sentry:
   traces-sample-rate: 1.0
   max-request-body-size: medium
   exception-resolver-order: -1
+  ignored-transactions:
+    - "GET /"
+    - "GET /favicon.ico"
+    - "GET /actuator/prometheus"
 
 management:
   endpoints:

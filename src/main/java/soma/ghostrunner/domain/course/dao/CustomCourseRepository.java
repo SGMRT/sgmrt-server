@@ -13,4 +13,7 @@ public interface CustomCourseRepository {
   List<Course> findCoursesWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
                                       Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort);
 
+  List<Long> findCourseIdsWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
+                                      Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort);
+
 }
