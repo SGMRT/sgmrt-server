@@ -496,14 +496,16 @@ class CourseFacadeTest extends IntegrationTestSupport {
     @ParameterizedTest(name = "{0} 기준으로 정렬하면 그에 맞게 정렬되어야 한다.")
     @EnumSource(value = CourseSortType.class, names = {"DISTANCE", "POPULARITY"})
     void findCoursesByPositionCached_properlySorted(CourseSortType sortType) {
+        Member member = createMember("회원");
+        memberRepository.save(member);
         // given
         Course courseNear = createCourse("가까운 코스", DEFAULT_LAT, DEFAULT_LNG);
         Course courseMid = createCourse("중간 코스", DEFAULT_LAT + 0.005, DEFAULT_LNG + 0.005);
-        Course courseFar = createCourse("먼 코스", defaultMember, DEFAULT_LAT + 0.01, DEFAULT_LNG + 0.01);
+        Course courseFar = createCourse("먼 코스", member, DEFAULT_LAT + 0.01, DEFAULT_LNG + 0.01);
 
         // 인기순: 러너가 많은 코스, 보통 코스, 적은 코스
         Course coursePopular = createCourse("인기 코스", DEFAULT_LAT + 0.015, DEFAULT_LNG + 0.015);
-        Course courseNormal = createCourse("보통 코스", defaultMember,  DEFAULT_LAT + 0.02, DEFAULT_LNG + 0.02);
+        Course courseNormal = createCourse("보통 코스", member,  DEFAULT_LAT + 0.02, DEFAULT_LNG + 0.02);
         Course courseUnpopular = createCourse("비인기 코스", DEFAULT_LAT + 0.025, DEFAULT_LNG + 0.025);
 
         // 최신순: 오래된 코스, 중간 코스, 최신 코스 (ID 오름차순으로 생성)
