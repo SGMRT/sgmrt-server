@@ -20,11 +20,7 @@ import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -158,20 +154,20 @@ public class CourseFacade {
         var finalIndices = new ArrayList<Integer>();
 
         // 본인의 코스 - 최대 절반까지 선택
-        int userLen = Math.min(limit / 2, categorizedCourses.usersCoursesMap().size());
-        finalIndices.addAll(shuffleAndSelectIndices(categorizedCourses.usersCoursesMap(), userLen));
+        int userCnt = Math.min(limit / 2, categorizedCourses.usersCoursesMap().size());
+        finalIndices.addAll(randomSelect(categorizedCourses.usersCoursesMap().keySet(), userCnt));
 
         // 추천 지정 코스 - 최대 1/5까지 선택
-        int recommendedLen = Math.min(limit / 5, categorizedCourses.recommendedCoursesMap().size());
-        finalIndices.addAll(shuffleAndSelectIndices(categorizedCourses.recommendedCoursesMap(), recommendedLen));
+        int recommendedCnt = Math.min(limit / 5, categorizedCourses.recommendedCoursesMap().size());
+        finalIndices.addAll(randomSelect(categorizedCourses.recommendedCoursesMap().keySet(), recommendedCnt));
 
         // 다른 사람 코스 - 남은 개수만큼 선택
-        int otherLen = Math.min(limit - finalIndices.size(), categorizedCourses.othersCoursesMap().size());
-        finalIndices.addAll(shuffleAndSelectIndices(categorizedCourses.othersCoursesMap(), otherLen));
+        int otherCnt = Math.min(limit - finalIndices.size(), categorizedCourses.othersCoursesMap().size());
+        finalIndices.addAll(randomSelect(categorizedCourses.othersCoursesMap().keySet(), otherCnt));
 
         // 더미 코스 - 남은 개수만큼 선택
-        int dummyLen = Math.min(limit - finalIndices.size(),  categorizedCourses.dummyCoursesMap().size());
-        finalIndices.addAll(shuffleAndSelectIndices(categorizedCourses.dummyCoursesMap(), dummyLen));
+        int dummyCnt = Math.min(limit - finalIndices.size(),  categorizedCourses.dummyCoursesMap().size());
+        finalIndices.addAll(randomSelect(categorizedCourses.dummyCoursesMap().keySet(), dummyCnt));
 
         // courses 순서대로 정렬하고 CoursePreviewDto로 매핑하여 반환
         Collections.sort(finalIndices);
@@ -208,10 +204,10 @@ public class CourseFacade {
         return new CourseMapHolder(users, recommended, others, dummy);
     }
 
-    /** sourceMap의 인덱스 중 count개를 랜덤으로 고른다. */
-    private List<Integer> shuffleAndSelectIndices(Map<Integer, CoursePreviewDto> sourceMap, int count) {
+    /** source 중 count 개를 랜덤으로 고른다. */
+    private List<Integer> randomSelect(Collection<Integer> source, int count) {
         if (count <= 0) return Collections.emptyList();
-        var indices = new ArrayList<>(sourceMap.keySet());
+        var indices = new ArrayList<>(source);
         Collections.shuffle(indices);
         return indices.stream().limit(count).toList();
     }
