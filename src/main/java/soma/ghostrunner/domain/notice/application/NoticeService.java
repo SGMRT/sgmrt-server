@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.domain.notice.exceptions.NoticeTypeDeprecatedException;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -52,6 +53,7 @@ public class NoticeService {
     @Transactional
     public Long saveNotice(NoticeCreationRequest request) {
         Assert.notNull(request, "공지 생성 request는 null일 수 없음");
+        throwIfNoticeTypeDeprecated(request.getType());
 
         Notice notice = Notice.of(request.getTitle(),
                 request.getContent(),
@@ -73,6 +75,13 @@ public class NoticeService {
         }
 
         return noticeId;
+    }
+
+    private void throwIfNoticeTypeDeprecated(NoticeType type) {
+        var deprecatedTypes = NoticeType.getDeprecatedTypes();
+        if(deprecatedTypes.contains(type)) {
+            throw new NoticeTypeDeprecatedException();
+        }
     }
 
     @Transactional(readOnly = true)
