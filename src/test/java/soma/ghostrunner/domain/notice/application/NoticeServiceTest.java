@@ -153,8 +153,10 @@ class NoticeServiceTest extends IntegrationTestSupport {
     void findActiveNotices_byType(NoticeType type) {
         // given
         Member member = createAndSaveMember("user-type");
-        createAndSaveNotice("일반 공지", NoticeType.GENERAL_V2, NOW.minusDays(1), NOW.plusDays(1));
-        createAndSaveNotice("이벤트 공지", NoticeType.EVENT_V2, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("일반 공지 V2", NoticeType.GENERAL_V2, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지 V2", NoticeType.EVENT_V2, NOW.minusDays(1), NOW.plusDays(1));
         Notice hiddenNotice = createAndSaveNotice("숨긴 공지", NoticeType.EVENT_V2, NOW.minusDays(1), NOW.plusDays(1));
         createAndSaveDismissal(member, hiddenNotice, null);
 
@@ -162,6 +164,8 @@ class NoticeServiceTest extends IntegrationTestSupport {
         List<NoticeDetailedResponse> notices = noticeService.findActiveNotices(member.getUuid(), NOW, type);
 
         // then
+        var _n = noticeRepository.findAll();
+        var _x = noticeDismissalRepository.findAll();
         assertThat(notices).hasSize(1);
         assertThat(notices).allMatch(n -> n.type() == type);
     }
@@ -186,13 +190,16 @@ class NoticeServiceTest extends IntegrationTestSupport {
     @EnumSource(NoticeType.class)
     void findAllNotices_byType(NoticeType type) {
         // given
-        createAndSaveNotice("일반 공지", NoticeType.GENERAL_V2, NOW, NOW.plusDays(1));
-        createAndSaveNotice("이벤트 공지", NoticeType.EVENT_V2, NOW, NOW.plusDays(2));
+        createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW, NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW, NOW.plusDays(2));
+        createAndSaveNotice("일반 공지 V2", NoticeType.GENERAL_V2, NOW, NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지 V2", NoticeType.EVENT_V2, NOW, NOW.plusDays(2));
 
         // when
         Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, type);
 
         // then
+        var _n = noticeRepository.findAll();
         assertThat(notices.getTotalElements()).isEqualTo(1);
         assertThat(notices.getContent()).allMatch(n -> n.type() == type);
     }
