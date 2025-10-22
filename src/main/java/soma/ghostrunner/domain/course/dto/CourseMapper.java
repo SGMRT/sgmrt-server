@@ -3,9 +3,9 @@ package soma.ghostrunner.domain.course.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
@@ -28,9 +28,13 @@ public interface CourseMapper {
     @Mapping(source = "courseProfile.elevationLoss", target = "elevationLoss")
     CoursePreviewDto toCoursePreviewDto(Course course);
 
-    @Mapping(source = "ghosts", target = "runners")
-    CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts,
+    @Mapping(source = "runners", target = "runners")
+    CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<RunnerProfile> runners,
                                           long runnersCount, CourseGhostResponse myGhostInfo);
+
+    @Mapping(source = "runners", target = "runners")
+    CourseMapResponse toCourseMapResponseTmp(CoursePreviewDto courseDto, List<RunnerProfile> runners,
+                                          long runnersCount, Boolean hasRan);
 
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
@@ -69,6 +73,7 @@ public interface CourseMapper {
     @Mapping(source = "course.courseDataUrls.thumbnailUrl", target = "courseThumbnailUrl")
     @Mapping(source = "course.startCoordinate.latitude", target = "startLat")
     @Mapping(source = "course.startCoordinate.longitude", target = "startLng")
+    @Mapping(source = "course.courseProfile.elevationGain", target = "elevationGain")
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
@@ -84,6 +89,7 @@ public interface CourseMapper {
     @Mapping(source = "courseDto.courseId", target = "id")
     @Mapping(source = "courseDto.courseName", target = "name")
     @Mapping(source = "courseDto.courseThumbnailUrl", target = "thumbnailUrl")
+    @Mapping(source = "courseDto.elevationGain", target = "elevationGain")
     @Mapping(source = "courseDto.distance", target = "distance")
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")
@@ -99,11 +105,15 @@ public interface CourseMapper {
     @Mapping(source = "avgCaloriesBurned", target = "averageCaloriesBurned")
     CourseStatisticsResponse toCourseStatisticsResponse(CourseRunStatisticsDto stats);
 
+    @Mapping(source = "ghosts", target = "topRunners")
+    CourseQueryModel toCourseQueryModel(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts, long runnerCount);
+
+
 }
 
 @Mapper(componentModel = "spring")
 interface CourseSubMapper {
     @Mapping(source = "ghost.runnerUuid", target = "uuid")
     @Mapping(source = "ghost.runnerProfileUrl", target = "profileUrl")
-    CourseMapResponse.MemberRecord toMemberRecordDto(CourseGhostResponse ghost);
+    RunnerProfile toMemberRecordDto(CourseGhostResponse ghost);
 }

@@ -6,6 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.domain.Coordinate;
+import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseDataUrls;
+import soma.ghostrunner.domain.course.domain.CourseProfile;
+import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
@@ -272,7 +277,7 @@ class MemberServiceTest extends IntegrationTestSupport {
 
     @DisplayName("회원 탈퇴 성공 시 연관된 Running 엔티티가 함께 삭제된다.")
     @Test
-    void removeAccount_cascade() {
+    void removeAccount_cascadeRuns() {
         // given
         Member member = createAndSaveMember("카리나");
         String uuid = member.getUuid();
@@ -287,6 +292,28 @@ class MemberServiceTest extends IntegrationTestSupport {
 
         // then
         assertThat(runningRepository.findAll().size()).isEqualTo(0);
+    }
+
+    @DisplayName("회원 탈퇴를 하더라도 연관된 Course 엔티티는 그대로 조회 가능하다.")
+    @Test
+    void removeAccount_cascadeCourses() {
+        // given
+        Member member = createAndSaveMember("카리나");
+        var uuid = member.getUuid();
+        memberRepository.save(member);
+
+        var course1 = createCourse(member);
+        var course2 = createCourse(member);
+        courseRepository.saveAll(List.of(course1, course2));
+
+        // when
+        memberService.removeAccount(uuid);
+
+        // then
+        List<Course> courses = courseRepository.findAll();
+        assertThat(courses.size()).isEqualTo(2);
+        assertThat(courses.get(0).getId()).isEqualTo(course1.getId());
+        assertThat(courses.get(1).getId()).isEqualTo(course2.getId());
     }
 
     @DisplayName("멤버의 VDOT를 조회한다.")
@@ -340,6 +367,14 @@ class MemberServiceTest extends IntegrationTestSupport {
 
     private TermsAgreement createTermsAgreement() {
         return TermsAgreement.createIfAllMandatoryTermsAgreed(true, true, true, null);
+    }
+
+    private Course createCourse(Member member) {
+        CourseProfile profile = CourseProfile.of(5.0, 10.0, 100.0, 50.0);
+        Coordinate coordinate = Coordinate.of(37d, 129d);
+        CourseDataUrls urls = CourseDataUrls.of("route.url", "checkpoint.url", "thumbnail.url");
+
+        return Course.of(member, "테스트 코스", profile, coordinate, CourseSource.USER, true, urls);
     }
 
 }

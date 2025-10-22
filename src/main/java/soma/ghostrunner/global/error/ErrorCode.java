@@ -45,6 +45,9 @@ public enum ErrorCode {
     VDOT_NOT_FOUND("R-002", NOT_FOUND, "VDOT가 기록되어 있지 않아, 평균 페이스가 필요합니다."),
     PROCESSING_PACEMAKER("R-003", BAD_REQUEST, "페이스메이커가 아직 생성되지 않았습니다."),
     FAILED_PACEMAKER("R-004", HttpStatus.SERVICE_UNAVAILABLE, "페이스메이커를 생성하는데 실패했습니다."),
+
+    // Notice
+    DEPRECATED_NOTICE_TYPE("N-001", BAD_REQUEST, "더 이상 지원되지 않는 공지 타입입니다."),
     ;
 
     private final String code;

@@ -55,7 +55,7 @@ class NoticeApiTest extends ApiTestSupport {
         // given
         String userId = UUID.randomUUID().toString();
         given(authService.isOwner(any(), any())).willReturn(true);
-        given(noticeService.findActiveNotices(userId, NOW, NoticeType.GENERAL)).willReturn(List.of());
+        given(noticeService.findActiveNotices(userId, NOW, NoticeType.GENERAL_V2)).willReturn(List.of());
 
         JwtUserDetails userDetails = new JwtUserDetails(userId);
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -77,7 +77,7 @@ class NoticeApiTest extends ApiTestSupport {
     void getNotice_success() throws Exception {
         // given
         Long noticeId = 1L;
-        NoticeDetailedResponse response = new NoticeDetailedResponse(noticeId, "제목", NoticeType.GENERAL, "내용", null,
+        NoticeDetailedResponse response = new NoticeDetailedResponse(noticeId, "제목", NoticeType.GENERAL_V2, "내용", null,
                 null, NOW, null);
         given(noticeService.findNotice(noticeId)).willReturn(response);
 

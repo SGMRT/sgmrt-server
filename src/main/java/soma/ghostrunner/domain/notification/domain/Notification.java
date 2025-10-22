@@ -21,10 +21,10 @@ public class Notification extends BaseTimeEntity {
     @JoinColumn(name = "push_token_id", nullable = false)
     private PushToken pushToken;
 
-    @Column(nullable = false)
+    @Column
     private String title;
 
-    @Column(nullable = false)
+    @Column
     private String body;
 
     @Convert(converter = JsonToMapConverter.class)
@@ -38,6 +38,9 @@ public class Notification extends BaseTimeEntity {
     private String ticketId; // Expo Push Ticket Id
 
     public static Notification of(PushToken pushToken, String title, String body, Map<String, Object> data) {
+        if(title == null && body == null) {
+            throw new IllegalArgumentException("제목과 본문이 동시에 null일 수 없음");
+        }
         Notification notification = new Notification();
         notification.pushToken = pushToken;
         notification.title = title;

@@ -37,7 +37,8 @@ public class CourseApi {
             @RequestParam(required = false) Integer minElevationM,
             @RequestParam(required = false) Integer maxElevationM,
             @AuthenticationPrincipal JwtUserDetails userDetails) {
-        return courseFacade.findCoursesByPosition(lat, lng, radiusM, sort,
+//        return courseFacade.findCoursesByPosition(lat, lng, radiusM, sort,
+        return courseFacade.findCoursesByPositionCached(lat, lng, radiusM, sort,
                 CourseSearchFilterDto.of(minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid),
                 userDetails.getUserId());
     }
