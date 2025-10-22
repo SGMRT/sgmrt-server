@@ -261,9 +261,9 @@ public class CourseFacade {
         List<CourseSummaryResponse> results = new ArrayList<>();
 
         for(CourseWithMemberDetailsDto courseDto : courseDetails.getContent()) {
-//            CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseDto.getCourseId())
-//                    .orElse(new CourseRunStatisticsDto());
-            CourseRunStatisticsDto courseStatistics = getDummyCourseStatistics(); // 통계 더이상 필요 없음 - 프론트 하위호환성 고려하여 빈 객체 반환
+            CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseDto.getCourseId())
+                    .orElse(new CourseRunStatisticsDto());
+            courseStatistics = switchTotalRunsCountToUniqueRunnersCount(courseStatistics);
             CourseGhostResponse ghostForUser = getGhostResponse(courseDto.getCourseId(), memberUuid);
             results.add(courseMapper.toCourseSummaryResponse(courseDto, courseStatistics.getUniqueRunnersCount(),
                     courseStatistics.getTotalRunsCount(), courseStatistics.getAvgCompletionTime(),
@@ -271,6 +271,20 @@ public class CourseFacade {
         }
 
         return new PageImpl<>(results, pageable, courseDetails.getTotalElements());
+    }
+
+    // totalRunsCount 대신 uniqueRunnersCount를 할당하여 반환 (프론트 요청)
+    private CourseRunStatisticsDto switchTotalRunsCountToUniqueRunnersCount(CourseRunStatisticsDto courseStatistics) {
+        int uniqueRunnersCount = courseStatistics.getUniqueRunnersCount();
+        return new CourseRunStatisticsDto(
+                courseStatistics.getAvgCompletionTime(),
+                courseStatistics.getAvgFinisherPace(),
+                courseStatistics.getAvgFinisherCadence(),
+                courseStatistics.getAvgCaloriesBurned(),
+                courseStatistics.getLowestFinisherPace(),
+                uniqueRunnersCount,
+                uniqueRunnersCount // totalRunsCount 대신 uniqueRunnersCount 할당
+        );
     }
 
     private static CourseRunStatisticsDto getDummyCourseStatistics() {

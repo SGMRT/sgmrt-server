@@ -38,7 +38,7 @@ class NoticeTest {
         String content = "전체 내용";
         String imageUrl = "http://example.com/image.png";
         Integer priority = 10;
-        NoticeType type = NoticeType.EVENT;
+        NoticeType type = NoticeType.EVENT_V2;
         LocalDateTime startAt = LocalDateTime.now().plusDays(1);
         LocalDateTime endAt = LocalDateTime.now().plusDays(10);
 
@@ -71,7 +71,7 @@ class NoticeTest {
         LocalDateTime endAt = LocalDateTime.now().plusDays(1);
 
         // when & then
-        assertThatThrownBy(() -> Notice.of("제목", "내용", NoticeType.GENERAL, null, 1, startAt, endAt))
+        assertThatThrownBy(() -> Notice.of("제목", "내용", NoticeType.GENERAL_V2, null, 1, startAt, endAt))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("startAt cannot be after endAt");
     }
@@ -84,7 +84,7 @@ class NoticeTest {
         LocalDateTime endAt = LocalDateTime.now().plusDays(5);
 
         // when
-        Notice notice = Notice.of(title, "내용", NoticeType.GENERAL, "url", null, null, endAt);
+        Notice notice = Notice.of(title, "내용", NoticeType.GENERAL_V2, "url", null, null, endAt);
 
         // then
         assertThat(notice.getPriority()).isZero(); // priority 기본값 0
@@ -99,7 +99,7 @@ class NoticeTest {
         LocalDateTime sameTime = LocalDateTime.now().plusHours(1);
 
         // when
-        Notice notice = Notice.of("제목", "내용", NoticeType.GENERAL, null, 1, sameTime, sameTime);
+        Notice notice = Notice.of("제목", "내용", NoticeType.GENERAL_V2, null, 1, sameTime, sameTime);
 
         // then
         assertThat(notice.getStartAt()).isEqualTo(sameTime);
