@@ -76,6 +76,7 @@ public class NoticeApi {
     }
 
     private NoticeType validateAndConvertToNoticeType(String noticeType) {
+        if (noticeType == null) return null;
         try {
             return NoticeType.valueOf(noticeType.toUpperCase());
         } catch (IllegalArgumentException e) {
