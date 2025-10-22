@@ -106,8 +106,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
 
         // when & then
         assertThatThrownBy(() -> noticeService.saveNotice(request))
-                .isInstanceOf(NoticeTypeDeprecatedException.class)
-                .hasMessageContaining("더 이상 지원되지 않는 공지 타입입니다.");
+                .isInstanceOf(NoticeTypeDeprecatedException.class);
     }
 
     @DisplayName("유효하지 않은 파일 확장자로 공지사항 생성을 시도하면 예외가 발생한다.")

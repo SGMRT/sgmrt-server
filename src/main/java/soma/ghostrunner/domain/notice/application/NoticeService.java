@@ -78,6 +78,7 @@ public class NoticeService {
     }
 
     private void throwIfNoticeTypeDeprecated(NoticeType type) {
+        if (type == null) return;
         var deprecatedTypes = NoticeType.getDeprecatedTypes();
         if(deprecatedTypes.contains(type)) {
             throw new NoticeTypeDeprecatedException();
