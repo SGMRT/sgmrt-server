@@ -10,6 +10,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.notice.exceptions.NoticeTypeDeprecatedException;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
@@ -89,6 +90,26 @@ class NoticeServiceTest extends IntegrationTestSupport {
         verify(s3Client, times(1)).uploadMultipartFile(any(MultipartFile.class), any(String.class));
     }
 
+    @DisplayName("Deprecated된 타입의 공지사항 생성을 시도하면 예외가 발생한다.")
+    @ParameterizedTest
+    @EnumSource(value = NoticeType.class, names = {"GENERAL", "EVENT"}, mode = EnumSource.Mode.INCLUDE)
+    void saveNotice_deprecatedTypes(NoticeType deprecatedType) {
+        // given
+        NoticeCreationRequest request = NoticeCreationRequest.builder()
+                .title("제목")
+                .content("내용")
+                .type(deprecatedType)
+                .priority(1)
+                .startAt(NOW.minusDays(1))
+                .endAt(NOW.plusDays(7))
+                .build();
+
+        // when & then
+        assertThatThrownBy(() -> noticeService.saveNotice(request))
+                .isInstanceOf(NoticeTypeDeprecatedException.class)
+                .hasMessageContaining("더 이상 지원되지 않는 공지 타입입니다.");
+    }
+
     @DisplayName("유효하지 않은 파일 확장자로 공지사항 생성을 시도하면 예외가 발생한다.")
     @Test
     void saveNotice_withInvalidFileExtension_fail() {
@@ -133,9 +154,9 @@ class NoticeServiceTest extends IntegrationTestSupport {
     void findActiveNotices_byType(NoticeType type) {
         // given
         Member member = createAndSaveMember("user-type");
-        createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW.minusDays(1), NOW.plusDays(1));
-        createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(1));
-        Notice hiddenNotice = createAndSaveNotice("숨긴 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("일반 공지", NoticeType.GENERAL_V2, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지", NoticeType.EVENT_V2, NOW.minusDays(1), NOW.plusDays(1));
+        Notice hiddenNotice = createAndSaveNotice("숨긴 공지", NoticeType.EVENT_V2, NOW.minusDays(1), NOW.plusDays(1));
         createAndSaveDismissal(member, hiddenNotice, null);
 
         // when
@@ -150,8 +171,8 @@ class NoticeServiceTest extends IntegrationTestSupport {
     @Test
     void findAllNotices_success() {
         // given
-        createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW.minusDays(1), NOW.plusDays(1));
-        createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(2));
+        createAndSaveNotice("일반 공지", NoticeType.GENERAL_V2, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지", NoticeType.EVENT_V2, NOW.minusDays(1), NOW.plusDays(2));
 
         // when
         Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, null);
@@ -166,8 +187,8 @@ class NoticeServiceTest extends IntegrationTestSupport {
     @EnumSource(NoticeType.class)
     void findAllNotices_byType(NoticeType type) {
         // given
-        createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW, NOW.plusDays(1));
-        createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW, NOW.plusDays(2));
+        createAndSaveNotice("일반 공지", NoticeType.GENERAL_V2, NOW, NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지", NoticeType.EVENT_V2, NOW, NOW.plusDays(2));
 
         // when
         Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, type);
@@ -314,7 +335,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
     }
 
     private Notice createAndSaveNotice(String title, LocalDateTime start, LocalDateTime end) {
-        return noticeRepository.save(Notice.of(title, "내용", NoticeType.GENERAL, null, 1, start, end));
+        return noticeRepository.save(Notice.of(title, "내용", NoticeType.GENERAL_V2, null, 1, start, end));
     }
 
     private NoticeDismissal createAndSaveDismissal(Member member, Notice notice, LocalDateTime dismissUntil) {

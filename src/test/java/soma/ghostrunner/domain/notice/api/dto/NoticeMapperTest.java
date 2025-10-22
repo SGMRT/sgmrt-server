@@ -21,7 +21,7 @@ class NoticeMapperTest {
         // given
         LocalDateTime start = LocalDateTime.of(2025, 1, 1, 0, 0);
         LocalDateTime end = LocalDateTime.of(2025, 1, 31, 23, 59);
-        Notice notice = Notice.of("테스트 제목", "테스트 내용", NoticeType.GENERAL, "http://example.com/image.png", 5, start, end);
+        Notice notice = Notice.of("테스트 제목", "테스트 내용", NoticeType.GENERAL_V2, "http://example.com/image.png", 5, start, end);
         setField(notice, "id", 1L);
 
         // when
@@ -43,7 +43,7 @@ class NoticeMapperTest {
     void toDetailedResponse_withNullFields_edge() {
         // given
         // content, imageUrl, endAt이 null인 경우
-        Notice notice = Notice.of("제목만 있는 공지", null, NoticeType.EVENT, null, 1, LocalDateTime.now(), null);
+        Notice notice = Notice.of("제목만 있는 공지", null, NoticeType.EVENT_V2, null, 1, LocalDateTime.now(), null);
         setField(notice, "id", 2L);
 
         // when
