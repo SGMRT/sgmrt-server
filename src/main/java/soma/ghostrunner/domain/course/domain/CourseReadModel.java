@@ -131,4 +131,8 @@ public class CourseReadModel extends BaseTimeEntity {
         this.rank1 = slot;
     }
 
+    public void updateCourseInfo(Course course) {
+        this.courseName = course.getName();
+    }
+
 }

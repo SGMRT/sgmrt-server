@@ -119,7 +119,7 @@ public class CourseFacade {
     }
 
     public void updateCourse(Long courseId, CoursePatchRequest request) {
-        courseService.updateCourse(courseId, request);
+        courseService.registerCourse(courseId, request);
     }
 
     public void deleteCourse(Long courseId) {

@@ -21,14 +21,18 @@ public class CourseReadModelCommandListener {
     private final CourseRankFinder courseRankFinder;
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
-    public void createReadModel(CourseRegisteredEvents event) {
-        Course course = event.getCourse();
-        CourseReadModel readModel = CourseReadModel.of(course);
+    public void createOrUpdateReadModel(CourseRegisteredEvents event) {
+        final Course course = event.getCourse();
 
-        CourseRankInfo rankInfo = courseRankFinder.findFirstRunnerByCourseId(course.getId());
-        readModel.updateFirstRunner(toRankSlot(rankInfo));
-
-        courseReadModelRepository.save(readModel);
+        courseReadModelRepository.findByCourseId(course.getId())
+                .ifPresentOrElse(existing -> {
+                    existing.updateCourseInfo(course);
+                }, () -> {
+                    CourseReadModel newReadModel = CourseReadModel.of(course);
+                    CourseRankInfo rankInfo = courseRankFinder.findFirstRunnerByCourseId(course.getId());
+                    newReadModel.updateFirstRunner(toRankSlot(rankInfo));
+                    courseReadModelRepository.save(newReadModel);
+                });
     }
 
     private RankSlot toRankSlot(CourseRankInfo rankInfo) {

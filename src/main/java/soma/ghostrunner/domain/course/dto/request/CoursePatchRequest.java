@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.course.dto.request;
 
+import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -10,12 +11,17 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CoursePatchRequest {
-    private String name;
-    private Boolean isPublic;
-    private Set<UpdatedAttr> updatedAttrs = Set.of();
 
+    @NotEmpty
+    private String name;
+
+    @NotEmpty
+    private Boolean isPublic;
+
+    private Set<UpdatedAttr> updatedAttrs = Set.of();
     public enum UpdatedAttr {
         NAME,
         IS_PUBLIC
     }
+
 }

@@ -13,7 +13,6 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseRegisteredEvents;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
-import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
@@ -78,8 +77,8 @@ public class CourseService {
     }
 
     @Transactional
-    public void updateCourse(Long courseId, CoursePatchRequest request) {
-        Course course = findCourseById(courseId); // courseId null 체크는 메소드 내에서 이뤄짐
+    public void registerCourse(Long courseId, CoursePatchRequest request) {
+        Course course = findCourseById(courseId);
 
         if (request.getName() != null) {
             updateCourseName(course, request.getName());
