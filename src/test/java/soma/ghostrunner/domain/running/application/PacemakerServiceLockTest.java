@@ -25,7 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @SpringBootTest
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS) // 실행 끝나면 컨텍스트/DB/Redis 초기화
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PacemakerServiceLockTest extends IntegrationTestSupport {
 
     @Autowired

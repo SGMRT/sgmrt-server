@@ -45,7 +45,7 @@ class RunFinishedEventListenerTest {
         given(memberService.findMemberByUuid(memberUuid)).willReturn(mockMember);
         given(runningVdotService.calculateVdot(6.0)).willReturn(50);
 
-        given(memberVdotRepository.findByMemberId(mockMember.getId())).willReturn(Optional.empty());
+        given(memberVdotRepository.findByMemberUuid(mockMember.getUuid())).willReturn(Optional.empty());
 
         MemberVdot mapped = mock(MemberVdot.class);
         given(mapper.toMemberVdot(mockMember, 50)).willReturn(mapped);
@@ -69,7 +69,7 @@ class RunFinishedEventListenerTest {
 
         given(memberService.findMemberByUuid(memberUuid)).willReturn(mockMember);
         given(runningVdotService.calculateVdot(6.0)).willReturn(50);
-        given(memberVdotRepository.findByMemberId(mockMember.getId())).willReturn(Optional.of(mockMemberVdot));
+        given(memberVdotRepository.findByMemberUuid(mockMember.getUuid())).willReturn(Optional.of(mockMemberVdot));
 
         // when
         runFinishedEventListener.handleRunFinished(event);

@@ -63,5 +63,11 @@ public class MemberApi {
             @AuthenticationPrincipal JwtUserDetails userDetails) {
         memberService.removeAccount(memberUuid);
     }
+
+    @GetMapping("/vdot")
+    public Integer getVdot(@AuthenticationPrincipal JwtUserDetails userDetails) {
+        String memberUuid = userDetails.getUserId();
+        return memberService.findMemberVdot(memberUuid);
+    }
   
 }

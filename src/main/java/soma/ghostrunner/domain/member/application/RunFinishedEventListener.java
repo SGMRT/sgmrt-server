@@ -30,7 +30,7 @@ public class RunFinishedEventListener {
     }
 
     private void upsertMemberVdot(Member member, int vdot) {
-        Optional<MemberVdot> optionalMemberVdot = memberVdotRepository.findByMemberId(member.getId());
+        Optional<MemberVdot> optionalMemberVdot = memberVdotRepository.findByMemberUuid(member.getUuid());
         if (optionalMemberVdot.isPresent()) {
             optionalMemberVdot.get().updateVdot(vdot);
         } else {

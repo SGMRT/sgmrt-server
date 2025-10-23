@@ -327,10 +327,10 @@ class MemberServiceTest extends IntegrationTestSupport {
         memberVdotRepository.save(memberVdot);
 
         // when
-        MemberVdot savedMemberVdot = memberService.findMemberVdot(member);
+        Integer savedMemberVdot = memberService.findMemberVdot(member.getUuid());
 
         // then
-        Assertions.assertThat(savedMemberVdot.getVdot()).isEqualTo(memberVdot.getVdot());
+        Assertions.assertThat(savedMemberVdot).isEqualTo(memberVdot.getVdot());
     }
 
     @DisplayName("멤버의 VDOT가 없다면 예외를 발생한다.")
@@ -341,7 +341,7 @@ class MemberServiceTest extends IntegrationTestSupport {
         memberRepository.save(member);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> memberService.findMemberVdot(member))
+        Assertions.assertThatThrownBy(() -> memberService.findMemberVdot(member.getUuid()))
                 .isInstanceOf(MemberNotFoundException.class)
                 .hasMessage("cannot find vdot, memberUuid: " + member.getUuid());
     }

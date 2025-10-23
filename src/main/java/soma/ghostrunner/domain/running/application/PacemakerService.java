@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.running.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.redisson.api.RLock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,9 +50,10 @@ public class PacemakerService {
     private final String PACEMAKER_LOCK_KEY_PREFIX = "pacemaker_api_lock:";
     private final String PACEMAKER_API_RATE_LIMIT_KEY_PREFIX = "pacemaker_api_rate_limit:";
 
+
+    public static final long DAILY_LIMIT = 3;
     private static final long LOCK_WAIT_TIME_SECONDS = 0;
     private static final long LOCK_LEASE_TIME_SECONDS = 180;
-    private static final long DAILY_LIMIT = 3;
     private static final int KEY_EXPIRATION_TIME_SECONDS = 86400;
 
     public Long createPaceMaker(String memberUuid, CreatePacemakerCommand command) throws InterruptedException {
@@ -91,7 +93,7 @@ public class PacemakerService {
             return runningVdotService.calculateVdot(command.getPacePerKm());
         }
         try {
-            return memberService.findMemberVdot(member).getVdot();
+            return memberService.findMemberVdot(member.getUuid());
         } catch (MemberNotFoundException e) {
             throw new InvalidRunningException(VDOT_NOT_FOUND, "기존 VDOT 기록이 없어 페이스메이커를 생성할 수 없습니다.");
         }
@@ -106,7 +108,7 @@ public class PacemakerService {
 
     private String handleApiRateLimit(String memberUuid, LocalDate localDate) {
 
-        String rateLimitKey = PACEMAKER_API_RATE_LIMIT_KEY_PREFIX + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        String rateLimitKey = createRateLimitKey(memberUuid, localDate);
 
         Long currentCount = redisRunningRepository.incrementRateLimitCounter(
                 rateLimitKey,
@@ -125,6 +127,10 @@ public class PacemakerService {
         }
 
         return rateLimitKey;
+    }
+
+    private String createRateLimitKey(String memberUuid, LocalDate localDate) {
+        return PACEMAKER_API_RATE_LIMIT_KEY_PREFIX + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
     }
 
     private Pacemaker savePacemaker(CreatePacemakerCommand command, Member member) {
@@ -157,6 +163,18 @@ public class PacemakerService {
     private Pacemaker findPacemaker(Long pacemakerId) {
         return pacemakerRepository.findById(pacemakerId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, pacemakerId));
+    }
+
+    @Transactional(readOnly = true)
+    public Long getRateLimitCounter(String memberUuid) {
+        String rateLimitKey = createRateLimitKey(memberUuid, LocalDate.now());
+
+        String counter = redisRunningRepository.get(rateLimitKey);
+        if (counter == null) {
+            return DAILY_LIMIT;
+        }
+
+        return DAILY_LIMIT - Long.parseLong(counter);
     }
 
 }

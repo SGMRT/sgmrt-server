@@ -44,19 +44,22 @@ class PacemakerServiceTest {
     RedisRunningRepository redisRunningRepository;
     @Mock
     MemberService memberService;
-    @Mock RunningVdotService runningVdotService;
-    @Mock WorkoutService workoutService;
-    @Mock PacemakerLlmService llmService;
+    @Mock
+    RunningVdotService runningVdotService;
+    @Mock
+    WorkoutService workoutService;
+    @Mock
+    PacemakerLlmService llmService;
     @Mock
     RunningApplicationMapper mapper;
     @Mock
     RLock rLock;
 
-    PacemakerService sut;
+    PacemakerService pacemakerService;
 
     @BeforeEach
     void setUp() {
-        sut = new PacemakerService(
+        pacemakerService = new PacemakerService(
                 pacemakerRepository,
                 pacemakerSetRepository,
                 redisRunningRepository,
@@ -88,7 +91,7 @@ class PacemakerServiceTest {
         when(pacemakerRepository.save(any())).thenReturn(pacemaker);
 
         // when
-        Long id = sut.createPaceMaker(uuid, cmd);
+        Long id = pacemakerService.createPaceMaker(uuid, cmd);
 
         // then
         assertThat(id).isEqualTo(pacemaker.getId());
@@ -111,7 +114,7 @@ class PacemakerServiceTest {
         CreatePacemakerCommand cmd = new CreatePacemakerCommand("MARATHON", 2.0, 5, 30, 6.2, LocalDate.now());
 
         // when // then
-        assertThatThrownBy(() -> sut.createPaceMaker(uuid, cmd))
+        assertThatThrownBy(() -> pacemakerService.createPaceMaker(uuid, cmd))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("3km 미만의 거리는 페이스메이커를 생성할 수 없습니다.");
 
@@ -135,7 +138,7 @@ class PacemakerServiceTest {
                 .thenReturn(4L); // 3회 초과
 
         // when // then
-        assertThatThrownBy(() -> sut.createPaceMaker(uuid, cmd))
+        assertThatThrownBy(() -> pacemakerService.createPaceMaker(uuid, cmd))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessage("일일 사용량을 초과했습니다.");
 
@@ -163,7 +166,7 @@ class PacemakerServiceTest {
         when(mapper.toResponse(completed, sets)).thenReturn(expected);
 
         // when
-        PacemakerPollingResponse actual = sut.getPacemaker(id, owner);
+        PacemakerPollingResponse actual = pacemakerService.getPacemaker(id, owner);
 
         // then
         assertThat(actual).isSameAs(expected);
@@ -197,7 +200,7 @@ class PacemakerServiceTest {
         when(mapper.toResponse(status)).thenReturn(expected);
 
         // when
-        PacemakerPollingResponse actual = sut.getPacemaker(id, owner);
+        PacemakerPollingResponse actual = pacemakerService.getPacemaker(id, owner);
 
         // then
         assertThat(actual).isSameAs(expected);
@@ -226,7 +229,7 @@ class PacemakerServiceTest {
         when(pacemakerRepository.findById(id)).thenReturn(Optional.of(entity));
 
         // when/then
-        assertThatThrownBy(() -> sut.getPacemaker(id, other))
+        assertThatThrownBy(() -> pacemakerService.getPacemaker(id, other))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
 
@@ -244,10 +247,38 @@ class PacemakerServiceTest {
         when(pacemakerRepository.findById(id)).thenReturn(Optional.empty());
 
         // when/then
-        assertThatThrownBy(() -> sut.getPacemaker(id, "any-uuid"))
+        assertThatThrownBy(() -> pacemakerService.getPacemaker(id, "any-uuid"))
                 .isInstanceOf(RunningNotFoundException.class);
 
         verifyNoInteractions(pacemakerSetRepository, mapper);
+    }
+
+    @DisplayName("일일 제한 횟수를 조회한다. 생성했던 수 만큼 DAILY_LIMIT에서 차감되어 조회된다.")
+    @Test
+    void getRateLimitCounter() {
+        // given
+        Long dailyCount = PacemakerService.DAILY_LIMIT;
+        when(redisRunningRepository.get(anyString())).thenReturn("1");
+
+        // when
+        Long remainedRateLimitCount = pacemakerService.getRateLimitCounter("Mock Member Uuid");
+
+        // then
+        assertThat(remainedRateLimitCount).isEqualTo(dailyCount - 1);
+    }
+
+    @DisplayName("아직 페이스메이커를 생성하지 않았다면 DAILY_LIMIT이 출력된다.")
+    @Test
+    void getDailyMaxLimitCountWhenNotCreatePacemaker() {
+        // given
+        Long dailyCount = PacemakerService.DAILY_LIMIT;
+        when(redisRunningRepository.get(anyString())).thenReturn(null);
+
+        // when
+        Long remainedRateLimitCount = pacemakerService.getRateLimitCounter("Mock Member Uuid");
+
+        // then
+        assertThat(remainedRateLimitCount).isEqualTo(dailyCount);
     }
 
 }

@@ -5,17 +5,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import soma.ghostrunner.ApiTestSupport;
 import soma.ghostrunner.domain.running.api.dto.request.*;
-import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.time.LocalDate;
@@ -676,6 +673,18 @@ class RunningApiTest extends ApiTestSupport {
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrorInfos[0].field").value("temperature"));
+        ;
+    }
+
+    @DisplayName("페이스메이커를 생성하기 위한 일일 제한 횟수를 조회한다.")
+    @Test
+    void getRateLimitCounterToMakePacemaker() throws Exception {
+        // when // then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/runs/pacemaker/rate-limit")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                )
+                .andDo(print())
+                .andExpect(status().isOk())
         ;
     }
 
