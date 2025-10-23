@@ -2,6 +2,8 @@ package soma.ghostrunner.domain.running.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
@@ -168,6 +170,30 @@ class RunningTest {
     void calculateOneMilePace() {
         // when // then
         assertThat(Running.calculateOneMilePace(6.0)).isEqualTo(9.6);
+    }
+
+    @DisplayName("calculatePaceFromRunningLevel: 러닝 레벨별로 기대 1마일 페이스를 반환한다")
+    @ParameterizedTest(name = "[{index}] level={0} -> expected={1}")
+    @CsvSource(value = {
+            "입문자, 12.8",  // 8.0 * 1.6
+            "중급자, 9.6",   // 6.0 * 1.6
+            "상급자, 8.0"    // 5.0 * 1.6
+    })
+    void calculatePaceFromRunningLevel_levels(String level, double expected) {
+        // when
+        double result = Running.calculatePaceFromRunningLevel(level);
+
+        // then
+        assertThat(result).isCloseTo(expected, within(1e-9));
+    }
+
+    @DisplayName("calculatePaceFromRunningLevel: 알 수 없는 레벨은 예외을 반환한다")
+    @Test
+    void calculatePaceFromRunningLevel_unknown() {
+        // when // then
+        assertThatThrownBy(() -> Running.calculatePaceFromRunningLevel("초고수"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("올바르지 않은 러닝 레벨입니다.");
     }
   
 }

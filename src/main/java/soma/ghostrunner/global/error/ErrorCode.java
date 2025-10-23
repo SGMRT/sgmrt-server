@@ -34,6 +34,7 @@ public enum ErrorCode {
     NICKNAME_ALREADY_EXIST("M-003", CONFLICT, "이미 존재하는 닉네임"),
     TERMS_AGREEMENT_NOT_CHANGED("M-004", CONFLICT, "기존 약관 동의와 동일함"),
     VDOT_NOT_FOUND("M-005", NOT_FOUND, "회원의 VDOT가 존재하지 않음"),
+    VDOT_ALREADY_EXIST("M-006", CONFLICT, "이미 VDOT가 존재하는 경우"),
 
     // Course
     COURSE_NOT_FOUND("C-001", NOT_FOUND, "존재하지 않는 코스"),

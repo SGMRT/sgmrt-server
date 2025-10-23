@@ -29,6 +29,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.BDDMockito.given;
 
 
 class MemberServiceTest extends IntegrationTestSupport {
@@ -346,8 +347,6 @@ class MemberServiceTest extends IntegrationTestSupport {
                 .hasMessage("cannot find vdot, memberUuid: " + member.getUuid());
     }
 
-    // --- Helper methods ---
-
     private Member createAndSaveMember(String name) {
         return Member.of(name, "test-url");
     }
@@ -375,6 +374,39 @@ class MemberServiceTest extends IntegrationTestSupport {
         CourseDataUrls urls = CourseDataUrls.of("route.url", "checkpoint.url", "thumbnail.url");
 
         return Course.of(member, "테스트 코스", profile, coordinate, CourseSource.USER, true, urls);
+    }
+
+    @DisplayName("calculateAndSaveVdot: 주어진 러닝 레벨로 VDOT를 계산하고 MemberVdot을 저장한다.")
+    @Test
+    void calculateAndSaveVdot_success() {
+        // given
+        Member member = createAndSaveMember("아이유");
+        String uuid = member.getUuid();
+        memberRepository.save(member);
+
+        // when
+        memberService.calculateAndSaveVdot(uuid, "입문자");
+
+        // then
+        MemberVdot membervdot = memberVdotRepository.findByMemberUuid(uuid).get();
+        assertThat(membervdot.getVdot()).isEqualTo(20);
+    }
+
+    @DisplayName("calculateAndSaveVdot: 이미 저장되어 있다면 예외를 발생한다.")
+    @Test
+    void cannotCalculateAndSaveVdotIfAlreadyExist() {
+        // given
+        Member member = createAndSaveMember("아이유");
+        String uuid = member.getUuid();
+        memberRepository.save(member);
+
+        MemberVdot memberVdot = MemberVdot.of(20, member);
+        memberVdotRepository.save(memberVdot);
+
+        // when // then
+        assertThatThrownBy(() -> memberService.calculateAndSaveVdot(uuid, "입문자"))
+                .isInstanceOf(InvalidMemberException.class)
+                .hasMessage("이미 VDOT가 저장되어 있음.");
     }
 
 }

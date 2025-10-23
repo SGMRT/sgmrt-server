@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import soma.ghostrunner.domain.member.RunningLevel;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
@@ -68,6 +69,13 @@ public class MemberApi {
     public Integer getVdot(@AuthenticationPrincipal JwtUserDetails userDetails) {
         String memberUuid = userDetails.getUserId();
         return memberService.findMemberVdot(memberUuid);
+    }
+
+    @PostMapping("/vdot")
+    public void postVdot(
+            @AuthenticationPrincipal JwtUserDetails userDetails, @RequestParam RunningLevel level) {
+        String memberUuid = userDetails.getUserId();
+        memberService.calculateAndSaveVdot(memberUuid, level.getDisplayName());
     }
   
 }

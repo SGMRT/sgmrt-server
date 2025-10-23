@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.member.application.dto.MemberMapper;
+import soma.ghostrunner.domain.running.application.RunningVdotService;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
@@ -30,6 +32,10 @@ import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 @Service
 @RequiredArgsConstructor
 public class MemberService {
+
+    private final RunningVdotService runningVdotService;
+
+    private final MemberMapper mapper;
 
     private final MemberRepository memberRepository;
     private final TermsAgreementRepository termsAgreementRepository;
@@ -220,6 +226,20 @@ public class MemberService {
         return memberVdotRepository.findByMemberUuid(memberUuid)
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.VDOT_NOT_FOUND, "cannot find vdot, memberUuid: " + memberUuid))
                 .getVdot();
+    }
+
+    @Transactional
+    public void calculateAndSaveVdot(String memberUuid, String level) {
+        Member member = findMemberByUuid(memberUuid);
+        cannotSaveIfAlreadyVdotExist(memberUuid);
+        int vdot = runningVdotService.calculateVdotFromRunningLevel(level);
+        memberVdotRepository.save(mapper.toMemberVdot(member, vdot));
+    }
+
+    private void cannotSaveIfAlreadyVdotExist(String memberUuid) {
+        if (memberVdotRepository.existsByMemberUuid(memberUuid)) {
+            throw new InvalidMemberException(ErrorCode.VDOT_ALREADY_EXIST, "이미 VDOT가 저장되어 있음.");
+        }
     }
 
 }
