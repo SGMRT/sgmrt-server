@@ -170,7 +170,7 @@ public class RunningQueryService {
         return mapper.toResponse(runnings);
     }
 
-    public List<Long> findPublicRunnersInCourse(Long courseId) {
+    public long findPublicRunnersCount(Long courseId) {
         return runningRepository.countPublicRunnersInCourse(courseId);
     }
 

@@ -32,7 +32,6 @@ public class CourseFacade {
 
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
-    private final MemberService memberService;
 
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;

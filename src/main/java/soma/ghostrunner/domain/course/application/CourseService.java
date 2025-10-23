@@ -31,8 +31,7 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    public Long save(
-            Course course) {
+    public Long save(Course course) {
         return courseRepository.save(course).getId();
     }
 
@@ -105,4 +104,22 @@ public class CourseService {
         if(course.getIsPublic() == true) throw new CourseAlreadyPublicException(ErrorCode.COURSE_ALREADY_PUBLIC, course.getId());
         course.setIsPublic(isPublic);
     }
+
+    /** (lat, lng)을 radiusM로 둘러싼 직사각형의 네 꼭지점 좌표를 반환한다 */
+    private static LatLngs getBoundingBoxLatLngs(Double lat, Double lng, double radiusM) {
+        double radiusKm = radiusM / 1000d;
+        double latDelta = radiusKm / 111.0;
+        double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
+
+        double minLat = lat - latDelta;
+        double maxLat = lat + latDelta;
+        double minLng = lng - lngDelta;
+        double maxLng = lng + lngDelta;
+
+        return new LatLngs(minLat, maxLat, minLng, maxLng);
+    }
+
+    private record LatLngs(double minLat, double maxLat, double minLng, double maxLng) {
+    }
+
 }

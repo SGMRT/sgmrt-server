@@ -689,7 +689,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 nullCourseInfoCount += 1;
             }
         }
-        assertThat(nullCourseInfoCount).isEqualTo(runningWithPrivateCourseCount);
+        Assertions.assertThat(nullCourseInfoCount).isEqualTo(runningWithPrivateCourseCount);
     }
 
     private Running createRunning(String runningName, Course course, Member member, Long startedAt, RunningMode runningMode) {
@@ -1003,7 +1003,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
         // then
         for (int i = 0; i < savedRunnings.size(); i++) {
-            assertThat(savedRunnings.get(i).getId()).isEqualTo(runnings.get(i).getId());
+            Assertions.assertThat(savedRunnings.get(i).getId()).isEqualTo(runnings.get(i).getId());
         }
 
     }
@@ -1023,7 +1023,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         List<Running> savedRunnings = runningRepository.findRunningsByCourseIdAndMemberId(c.getId(), member.getId());
 
         // then
-        assertThat(savedRunnings).isEmpty();
+        Assertions.assertThat(savedRunnings).isEmpty();
     }
 
     @DisplayName("코스 ID를 기반으로 해당 코스에서 뛴 러닝 기록 중 상위 랭킹 러닝 기록을 조회한다. 같은 사용자의 중복된 러닝 기록은 허용되지 않는다.")
@@ -1057,9 +1057,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         assertThat(top5).isEqualTo(top3); // top5로 해도 3건만 나옴
     }
 
-    @DisplayName("코스 ID를 기반으로 해당 코스에 공개 러닝 기록을 등록한 회원의 ID 리스트를 조회한다.")
+    @DisplayName("코스 ID를 기반으로 해당 코스에 공개 러닝 기록을 등록한 회원의 수를 조회한다.")
     @Test
-    void finRunnersIdsInCourse() {
+    void countPublicRunnersInCourse() {
         // given
         Member member1 = createMember("이복둥");
         Member member2 = createMember("이복둥 주인");

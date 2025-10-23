@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.course.dto.response;
 
+import soma.ghostrunner.domain.course.dto.RunnerProfile;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 
 import java.time.LocalDateTime;

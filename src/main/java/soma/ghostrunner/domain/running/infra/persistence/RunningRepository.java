@@ -39,6 +39,21 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
         + "AND m.uuid = :memberUuid ORDER BY r.runningRecord.duration LIMIT 1")
     Optional<Running> findBestPublicRunByCourseIdAndMemberId(Long courseId, String memberUuid);
 
+    @Query("SELECT r FROM Running r " +
+            "JOIN FETCH r.course c " +
+            "JOIN c.member m " +
+            "WHERE m.uuid = :memberUuid AND r.course.id IN :courseIds " +
+            "AND r.runningRecord.duration = (" +
+            "  SELECT MIN(r2.runningRecord.duration) " +
+            "  FROM Running r2 " +
+            "  WHERE r2.member.uuid = :memberUuid AND r2.course.id = r.course.id" +
+            ")")
+    List<Running> findBestRunningRecordsByMemberIdAndCourseIds(String memberUuid, List<Long> courseIds);
+
+    @Query("SELECT DISTINCT r.course.id FROM Running r JOIN r.member m " +
+            "WHERE m.uuid = :memberUuid AND r.course.id IN :courseIds")
+    List<Long> findRanCourseIdsByMemberIdAndCourseIds(String memberUuid, List<Long> courseIds);
+
     @Query("SELECT COUNT(r) FROM Running r "
         + "WHERE r.course.id = :courseId AND r.isPublic = true AND r.runningRecord.averagePace < :averagePace")
     Optional<Integer> countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(Long courseId, Double averagePace);

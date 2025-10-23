@@ -149,5 +149,5 @@ public interface CourseMapper {
 interface CourseSubMapper {
     @Mapping(source = "ghost.runnerUuid", target = "uuid")
     @Mapping(source = "ghost.runnerProfileUrl", target = "profileUrl")
-    CourseMapResponse.RunnerInfo toMemberRecordDto(CourseGhostResponse ghost);
+    CourseMapResponse.MemberRecord toMemberRecordDto(CourseGhostResponse ghost);
 }

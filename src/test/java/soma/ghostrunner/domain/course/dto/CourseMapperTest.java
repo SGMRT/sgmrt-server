@@ -69,10 +69,11 @@ class CourseMapperTest {
         // given
         CoursePreviewDto courseDto = createCoursePreviewDto();
         List<CourseGhostResponse> ghosts = List.of(createCourseGhostResponse());
+        CourseGhostResponse myGhostInfo = createCourseGhostResponse();
         long runnersCount = 1L;
 
         // when
-        CourseMapResponse response = courseMapper.toCourseMapResponse(courseDto, ghosts, runnersCount, true);
+        CourseMapResponse response = courseMapper.toCourseMapResponse(courseDto, ghosts, runnersCount, myGhostInfo);
 
         // then
         // CoursePreviewDto 필드 검증
@@ -83,16 +84,19 @@ class CourseMapperTest {
         assertThat(response.startLat()).isEqualTo(courseDto.startLat());
         assertThat(response.startLng()).isEqualTo(courseDto.startLng());
         assertThat(response.routeUrl()).isEqualTo(courseDto.routeUrl());
+        assertThat(response.checkpointsUrl()).isEqualTo(courseDto.checkpointsUrl());
         assertThat(response.thumbnailUrl()).isEqualTo(courseDto.thumbnailUrl());
         assertThat(response.distance()).isEqualTo(courseDto.distance());
-        assertThat(response.elevation()).isEqualTo(courseDto.elevationAverage());
+        assertThat(response.elevationAverage()).isEqualTo(courseDto.elevationAverage());
+        assertThat(response.elevationGain()).isEqualTo(courseDto.elevationGain());
+        assertThat(response.elevationLoss()).isEqualTo(courseDto.elevationLoss());
         assertThat(response.createdAt()).isEqualTo(courseDto.createdAt());
         // CourseMapResponse 필드 검증
         assertThat(response.runnersCount()).isEqualTo(runnersCount);
-        assertThat(response.top4Runners()).hasSize(1);
-        assertThat(response.top4Runners().get(0).uuid()).isEqualTo(ghosts.get(0).runnerUuid());
-        assertThat(response.top4Runners().get(0).profileUrl()).isEqualTo(ghosts.get(0).runnerProfileUrl());
-        assertThat(response.hasMyRecord()).isEqualTo(true);
+        assertThat(response.runners()).hasSize(1);
+        assertThat(response.runners().get(0).uuid()).isEqualTo(ghosts.get(0).runnerUuid());
+        assertThat(response.runners().get(0).profileUrl()).isEqualTo(ghosts.get(0).runnerProfileUrl());
+        assertThat(response.myGhostInfo()).isEqualTo(myGhostInfo);
     }
 
     @DisplayName("Course와 통계 데이터를 CourseDetailedResponse로 변환한다.")
@@ -252,7 +256,7 @@ class CourseMapperTest {
         CourseGhostResponse ghost = createCourseGhostResponse();
 
         // when
-        CourseMapResponse.RunnerInfo runnerInfo = courseSubMapper.toMemberRecordDto(ghost);
+        CourseMapResponse.MemberRecord memberRecord = courseSubMapper.toMemberRecordDto(ghost);
 
         // then
         assertThat(runnerInfo.uuid()).isEqualTo(ghost.runnerUuid());
