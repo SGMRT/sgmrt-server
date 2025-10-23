@@ -9,7 +9,6 @@ import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseDataUrls;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
-import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -70,10 +69,11 @@ class CourseMapperTest {
         // given
         CoursePreviewDto courseDto = createCoursePreviewDto();
         List<CourseGhostResponse> ghosts = List.of(createCourseGhostResponse());
+        CourseGhostResponse myGhostInfo = createCourseGhostResponse();
         long runnersCount = 1L;
 
         // when
-        CourseMapResponse response = courseMapper.toCourseMapResponse(courseDto, ghosts, runnersCount, true);
+        CourseMapResponse response = courseMapper.toCourseMapResponse(courseDto, ghosts, runnersCount, myGhostInfo);
 
         // then
         // CoursePreviewDto 필드 검증
@@ -84,16 +84,19 @@ class CourseMapperTest {
         assertThat(response.startLat()).isEqualTo(courseDto.startLat());
         assertThat(response.startLng()).isEqualTo(courseDto.startLng());
         assertThat(response.routeUrl()).isEqualTo(courseDto.routeUrl());
+        assertThat(response.checkpointsUrl()).isEqualTo(courseDto.checkpointsUrl());
         assertThat(response.thumbnailUrl()).isEqualTo(courseDto.thumbnailUrl());
         assertThat(response.distance()).isEqualTo(courseDto.distance());
-        assertThat(response.elevation()).isEqualTo(courseDto.elevationAverage());
+        assertThat(response.elevationAverage()).isEqualTo(courseDto.elevationAverage());
+        assertThat(response.elevationGain()).isEqualTo(courseDto.elevationGain());
+        assertThat(response.elevationLoss()).isEqualTo(courseDto.elevationLoss());
         assertThat(response.createdAt()).isEqualTo(courseDto.createdAt());
         // CourseMapResponse 필드 검증
         assertThat(response.runnersCount()).isEqualTo(runnersCount);
-        assertThat(response.top4Runners()).hasSize(1);
-        assertThat(response.top4Runners().get(0).uuid()).isEqualTo(ghosts.get(0).runnerUuid());
-        assertThat(response.top4Runners().get(0).profileUrl()).isEqualTo(ghosts.get(0).runnerProfileUrl());
-        assertThat(response.hasMyRecord()).isEqualTo(true);
+        assertThat(response.runners()).hasSize(1);
+        assertThat(response.runners().get(0).uuid()).isEqualTo(ghosts.get(0).runnerUuid());
+        assertThat(response.runners().get(0).profileUrl()).isEqualTo(ghosts.get(0).runnerProfileUrl());
+        assertThat(response.myGhostInfo()).isEqualTo(myGhostInfo);
     }
 
     @DisplayName("Course와 통계 데이터를 CourseDetailedResponse로 변환한다.")
@@ -245,6 +248,7 @@ class CourseMapperTest {
         assertThat(response.totalRunsCount()).isEqualTo(stats.getTotalRunsCount());
     }
 
+
     @DisplayName("(SubMapper) CourseGhostResponse를 MemberRecord로 변환한다.")
     @Test
     void toMemberRecordDto() {
@@ -252,34 +256,11 @@ class CourseMapperTest {
         CourseGhostResponse ghost = createCourseGhostResponse();
 
         // when
-        CourseMapResponse.RunnerInfo runnerInfo = courseSubMapper.toMemberRecordDto(ghost);
+        CourseMapResponse.MemberRecord memberRecord = courseSubMapper.toMemberRecordDto(ghost);
 
         // then
         assertThat(runnerInfo.uuid()).isEqualTo(ghost.runnerUuid());
         assertThat(runnerInfo.profileUrl()).isEqualTo(ghost.runnerProfileUrl());
-    }
-
-    @DisplayName("CoursePreviewDto와 CourseGhostResponse 리스트를 CourseQueryModel로 변환한다.")
-    @Test
-    void toCourseQueryModel() {
-        // given
-        CoursePreviewDto courseDto = createCoursePreviewDto();
-        List<CourseGhostResponse> ghosts = List.of(createCourseGhostResponse(), createCourseGhostResponse());
-        long runnerCount = 2L;
-
-        // when
-        CourseQueryModel queryModel = courseMapper.toCourseQueryModel(courseDto, ghosts, runnerCount);
-
-        // then
-        assertThat(queryModel.id()).isEqualTo(courseDto.id());
-        assertThat(queryModel.name()).isEqualTo(courseDto.name());
-        assertThat(queryModel.runnerCount()).isEqualTo((int) runnerCount);
-        assertThat(queryModel.topRunners()).hasSize(ghosts.size());
-        for (int i = 0; i < ghosts.size(); i++) {
-            assertThat(queryModel.topRunners().get(i).uuid()).isEqualTo(ghosts.get(i).runnerUuid());
-            assertThat(queryModel.topRunners().get(i).profileUrl()).isEqualTo(ghosts.get(i).runnerProfileUrl());
-        }
-
     }
 
 
@@ -311,10 +292,6 @@ class CourseMapperTest {
 
     private CoursePreviewDto createCoursePreviewDto() {
         return new CoursePreviewDto(1L, "Test Course", "dummy-uuid", 37.0, 127.0, CourseSource.USER, "route.url", "checkpoint.url", "thumbnail.url", 5000, 10, 100, -50, LocalDateTime.now());
-    }
-
-    private RunnerProfile createRunnerProfile(String uuid) {
-        return new RunnerProfile(uuid, "profile.url");
     }
 
     private CourseGhostResponse createCourseGhostResponse() {

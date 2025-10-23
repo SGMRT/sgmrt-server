@@ -6,10 +6,12 @@ import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailIn
 import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
+import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface RunningQueryRepository {
 

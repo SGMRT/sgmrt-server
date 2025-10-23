@@ -9,10 +9,12 @@ import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.QUserPaceStatsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
 import soma.ghostrunner.domain.running.application.dto.response.*;
+import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static soma.ghostrunner.domain.course.domain.QCourse.course;
 import static soma.ghostrunner.domain.member.domain.QMember.member;

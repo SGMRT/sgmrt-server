@@ -24,6 +24,7 @@ import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -1056,9 +1057,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         assertThat(top5).isEqualTo(top3); // top5로 해도 3건만 나옴
     }
 
-    @DisplayName("코스 ID를 기반으로 해당 코스에 공개 러닝 기록을 등록한 회원의 ID 리스트를 조회한다.")
+    @DisplayName("코스 ID를 기반으로 해당 코스에 공개 러닝 기록을 등록한 회원의 수를 조회한다.")
     @Test
-    void finRunnersIdsInCourse() {
+    void countPublicRunnersInCourse() {
         // given
         Member member1 = createMember("이복둥");
         Member member2 = createMember("이복둥 주인");
@@ -1080,10 +1081,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         List<Long> runnersIds = runningRepository.countPublicRunnersInCourse(c.getId());
 
         // then
-        Assertions.assertThat(runnersIds).hasSize(3);
-        Assertions.assertThat(runnersIds).contains(member1.getId());
-        Assertions.assertThat(runnersIds).contains(member2.getId());
-        Assertions.assertThat(runnersIds).contains(member3.getId());
+        assertThat(runnersIds).hasSize(3);
+        assertThat(runnersIds).contains(member1.getId());
+        assertThat(runnersIds).contains(member2.getId());
+        assertThat(runnersIds).contains(member3.getId());
     }
 
 }

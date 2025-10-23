@@ -3,16 +3,13 @@ package soma.ghostrunner.domain.course.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
+import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.dto.MemberMetaInfoDto;
 import soma.ghostrunner.domain.running.domain.Running;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Mapper(componentModel = "spring", uses = { CourseSubMapper.class})
 public interface CourseMapper {
@@ -36,10 +33,6 @@ public interface CourseMapper {
     @Mapping(source = "ghosts", target = "top4Runners")
     CourseMapResponse toCourseMapResponse(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts,
                                           long runnersCount, boolean hasMyRecord);
-
-    @Mapping(source = "runners", target = "runners")
-    CourseMapResponse toCourseMapResponseTmp(CoursePreviewDto courseDto, List<RunnerProfile> runners,
-                                          long runnersCount, Boolean hasRan);
 
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
@@ -138,11 +131,23 @@ public interface CourseMapper {
         return result;
     }
 
+    default List<CourseMapResponse3> toResponse(List<CourseReadModel> readModels, Set<Long> viewerRunCourseIds) {
+        List<CourseMapResponse3> result = new ArrayList<>();
+        for (CourseReadModel readModel : readModels) {
+            if (viewerRunCourseIds.contains(readModel.getCourseId())) {
+                result.add(new CourseMapResponse3(readModel, true));
+            } else {
+                result.add(new CourseMapResponse3(readModel, false));
+            }
+        }
+        return result;
+    }
+
 }
 
 @Mapper(componentModel = "spring")
 interface CourseSubMapper {
     @Mapping(source = "ghost.runnerUuid", target = "uuid")
     @Mapping(source = "ghost.runnerProfileUrl", target = "profileUrl")
-    CourseMapResponse.RunnerInfo toMemberRecordDto(CourseGhostResponse ghost);
+    CourseMapResponse.MemberRecord toMemberRecordDto(CourseGhostResponse ghost);
 }

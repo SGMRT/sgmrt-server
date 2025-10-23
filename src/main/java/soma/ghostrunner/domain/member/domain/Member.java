@@ -47,7 +47,8 @@ public class Member extends BaseTimeEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "member")
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "member",
+            cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<Running> runs = new ArrayList<>();
 
     @Builder

@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -9,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseRegisteredEvents;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
@@ -27,6 +29,7 @@ public class CourseService {
 
     private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public Long save(Course course) {
         return courseRepository.save(course).getId();
@@ -73,8 +76,8 @@ public class CourseService {
     }
 
     @Transactional
-    public void updateCourse(Long courseId, CoursePatchRequest request) {
-        Course course = findCourseById(courseId); // courseId null 체크는 메소드 내에서 이뤄짐
+    public void registerCourse(Long courseId, CoursePatchRequest request) {
+        Course course = findCourseById(courseId);
 
         if (request.getName() != null) {
             updateCourseName(course, request.getName());
@@ -82,6 +85,8 @@ public class CourseService {
         if (request.getIsPublic() != null) {
             updateCoursePublicity(course, request.getIsPublic());
         }
+
+        eventPublisher.publishEvent(new CourseRegisteredEvents(course));
         courseRepository.save(course);
     }
 

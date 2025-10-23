@@ -6,6 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -19,7 +21,7 @@ import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class RunFinishedEventListenerTest {
+class MemberVdotUpdateListenerTest {
 
     @Mock
     private MemberService memberService;
@@ -31,14 +33,14 @@ class RunFinishedEventListenerTest {
     private MemberMapper mapper;
 
     @InjectMocks
-    private RunFinishedEventListener runFinishedEventListener;
+    private MemberVdotUpdateListener runFinishedEventListener;
 
     @DisplayName("VDOT가 기존에 없다면 새롭게 VDOT가 저장된다.")
     @Test
     void handleRunFinishedAndSaveNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(1L, 1L, memberUuid, 6.0);
+        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, mock(Course.class), true);
 
         Member mockMember = mock(Member.class);
 
@@ -62,7 +64,7 @@ class RunFinishedEventListenerTest {
     void handleRunFinishedAndUpdateNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(1L, 1L, memberUuid, 6.0);
+        RunFinishedEvent event = new RunFinishedEvent(1L, memberUuid, 6.0, mock(Course.class), true);
 
         Member mockMember = mock(Member.class);
         MemberVdot mockMemberVdot = mock(MemberVdot.class);

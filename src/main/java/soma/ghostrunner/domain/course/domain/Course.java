@@ -11,7 +11,7 @@ import soma.ghostrunner.global.common.BaseTimeEntity;
 @Table(name = "course")
 @SoftDelete
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Course extends BaseTimeEntity {
+public class    Course extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,7 +42,8 @@ public class Course extends BaseTimeEntity {
     private CourseDataUrls courseDataUrls;
 
     @Builder(access = AccessLevel.PRIVATE)
-    private Course(CourseProfile courseProfile, Member member, String name, Coordinate startCoordinate, CourseSource source, Boolean isPublic, CourseDataUrls courseDataUrls) {
+    private Course(CourseProfile courseProfile, Member member, String name,
+                   Coordinate startCoordinate, CourseSource source, Boolean isPublic, CourseDataUrls courseDataUrls) {
         this.courseProfile = courseProfile;
         this.member = member;
         this.startCoordinate = startCoordinate;
@@ -79,6 +80,7 @@ public class Course extends BaseTimeEntity {
                 .courseProfile(courseProfile)
                 .startCoordinate(startCoordinate)
                 .isPublic(false)
+                .source(CourseSource.USER)
                 .courseDataUrls(courseDataUrls1)
                 .build();
     }
@@ -98,4 +100,13 @@ public class Course extends BaseTimeEntity {
     public String getOfficialTelemetryUrl() {
         return courseDataUrls.getRouteUrl();
     }
+
+    public boolean validateIsPublic() {
+        return isPublic;
+    }
+
+    public void setOwnerNull() {
+        this.member = null;
+    }
+
 }

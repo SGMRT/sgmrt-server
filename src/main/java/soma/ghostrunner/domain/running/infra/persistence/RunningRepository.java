@@ -8,10 +8,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.dto.CourseRunDto;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface RunningRepository extends JpaRepository<Running, Long>, RunningQueryRepository {
@@ -83,30 +85,33 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     List<Running> findRunningsByCourseIdAndMemberId(Long courseId, Long memberId);
 
     @Query(value = """
-    SELECT
-        m.uuid AS runnerUuid,
-        m.profile_picture_url AS runnerProfileUrl,
-        m.nickname AS runnerNickname,
-        rr.id AS runningId,
-        rr.running_name AS runningName,
-        rr.`average_pace_min/km` AS averagePace,
-        rr.`average_cadence_spm` AS cadence,
-        rr.`average_bpm` AS bpm,
-        rr.`duration_sec` AS duration,
-        rr.is_public AS isPublic,
-        rr.started_at_ms  AS startedAt
-    FROM (
         SELECT
-            *,
-            ROW_NUMBER() OVER(PARTITION BY member_id ORDER BY duration_sec ASC) as rn
-        FROM running_record
-        WHERE course_id = :courseId AND is_public = true
-    ) AS rr
-    JOIN member m ON rr.member_id = m.id
-    WHERE rr.rn = 1
-    ORDER BY rr.`duration_sec` ASC
-    LIMIT :count
-""", nativeQuery = true)
+            m.uuid AS runnerUuid,
+            m.profile_picture_url AS runnerProfileUrl,
+            m.nickname AS runnerNickname,
+            rr.id AS runningId,
+            rr.running_name AS runningName,
+            rr.`average_pace_min/km` AS averagePace,
+            rr.`average_cadence_spm` AS cadence,
+            rr.`average_bpm` AS bpm,
+            rr.`duration_sec` AS duration,
+            rr.is_public AS isPublic,
+            rr.started_at_ms  AS startedAt
+        FROM (
+            SELECT
+                *,
+                ROW_NUMBER() OVER(PARTITION BY member_id ORDER BY duration_sec ASC) as rn
+            FROM running_record
+            WHERE course_id = :courseId AND is_public = true
+        ) AS rr
+        JOIN member m ON rr.member_id = m.id
+        WHERE rr.rn = 1
+        ORDER BY rr.`duration_sec` ASC
+        LIMIT :count
+        """, nativeQuery = true
+    )
     List<CourseRunDto> findTopRankingRunsByCourseIdWithDistinctMember(@Param("courseId") Long courseId, @Param("count") Integer count);
+
+    void deleteAllByMember(Member member);
 
 }
