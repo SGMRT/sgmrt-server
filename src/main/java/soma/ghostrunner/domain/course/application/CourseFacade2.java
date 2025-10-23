@@ -38,7 +38,12 @@ public class CourseFacade2 {
 
         // 멤버, 주변 코스 조회
         Member member = memberService.findMemberByUuid(viewerUuid);
+
         List<BestDurationInCourseDto> bestDurationInCourses = findNearCoursesAndBestDurationPerRunners(lat, lng, radiusM);
+        if (bestDurationInCourses.isEmpty()) {
+            return Collections.emptyList();
+        }
+
         HashMap<Long, List<BestDurationInCourseDto>> bestDurationInCoursesMap = toHashMap(bestDurationInCourses);
 
         // 코스 내 메타정보 가공
@@ -157,7 +162,6 @@ public class CourseFacade2 {
         var finalIndices = new ArrayList<Long>();
         finalIndices.addAll(userCourseRandomIndices);
         finalIndices.addAll(otherCourseRandomIndices);
-        Collections.sort(finalIndices);
 
         // 리턴
         HashMap<Long, CoursePreviewDto2> result = new HashMap<>();

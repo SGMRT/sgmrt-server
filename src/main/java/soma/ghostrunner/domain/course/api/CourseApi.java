@@ -26,10 +26,45 @@ import java.util.List;
 public class CourseApi {
 
     private final CourseFacade courseFacade;
+    private final CourseFacade2 courseFacade2;
     private final CourseFacade3 courseFacade3;
 
-    @GetMapping("/courses")
-    public List<CourseMapResponse3> getCoursesByPosition(
+    @GetMapping("/courses1")
+    public List<CourseMapResponse> getCoursesByPosition1(
+            @RequestParam Double lat,
+            @RequestParam Double lng,
+            @RequestParam(required = false, defaultValue = "2000") @Max(value = 20000) Integer radiusM,
+            @RequestParam(required = false, defaultValue = "DISTANCE") CourseSortType sort,
+            @RequestParam(required = false) String ownerUuid,
+            @RequestParam(required = false) Integer minDistanceM,
+            @RequestParam(required = false) Integer maxDistanceM,
+            @RequestParam(required = false) Integer minElevationM,
+            @RequestParam(required = false) Integer maxElevationM,
+            @AuthenticationPrincipal JwtUserDetails userDetails) {
+        return courseFacade.findCoursesByPosition(lat, lng, radiusM, sort,
+                CourseSearchFilterDto.of(minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid),
+                userDetails.getUserId());
+    }
+
+    @GetMapping("/courses2")
+    public List<CourseMapResponse2> getCoursesByPosition2(
+            @RequestParam Double lat,
+            @RequestParam Double lng,
+            @RequestParam(required = false, defaultValue = "2000") @Max(value = 20000) Integer radiusM,
+            @RequestParam(required = false, defaultValue = "DISTANCE") CourseSortType sort,
+            @RequestParam(required = false) String ownerUuid,
+            @RequestParam(required = false) Integer minDistanceM,
+            @RequestParam(required = false) Integer maxDistanceM,
+            @RequestParam(required = false) Integer minElevationM,
+            @RequestParam(required = false) Integer maxElevationM,
+            @AuthenticationPrincipal JwtUserDetails userDetails) {
+        return courseFacade2.findCoursesByPosition(lat, lng, radiusM, sort,
+                CourseSearchFilterDto.of(minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid),
+                userDetails.getUserId());
+    }
+
+    @GetMapping("/courses3")
+    public List<CourseMapResponse3> getCoursesByPosition3(
             @RequestParam Double lat,
             @RequestParam Double lng,
             @RequestParam(required = false, defaultValue = "2000") @Max(value = 20000) Integer radiusM,

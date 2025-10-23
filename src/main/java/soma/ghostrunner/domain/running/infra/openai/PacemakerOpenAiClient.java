@@ -15,6 +15,7 @@ public class PacemakerOpenAiClient implements PacemakerLlmClient {
     private final WebClient openAiWebClient;
 
     private final String OPENAI_MODEL = "gpt-5";
+//    private final String OPENAI_MODEL = "gpt-5-nano";
 
     @Override
     public Mono<String> improveWorkout(String prompt) {
