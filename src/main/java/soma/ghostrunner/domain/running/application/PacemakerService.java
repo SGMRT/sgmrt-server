@@ -186,7 +186,7 @@ public class PacemakerService {
             return DAILY_LIMIT;
         }
 
-        return DAILY_LIMIT - Long.parseLong(counter);
+        return Math.max(0, DAILY_LIMIT - Long.parseLong(counter));
     }
 
     @Transactional

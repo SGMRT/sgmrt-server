@@ -286,6 +286,20 @@ class PacemakerServiceTest {
         assertThat(remainedRateLimitCount).isEqualTo(dailyCount - 1);
     }
 
+    @DisplayName("일일 제한 횟수를 조회한다. 혹여나 제한 횟수를 초과하였더라도 마이너스가 아닌 0으로 출력된다.")
+    @Test
+    void getExceedRateLimitCounter() {
+        // given
+        Long dailyCount = PacemakerService.DAILY_LIMIT;
+        when(redisRunningRepository.get(anyString())).thenReturn("5");
+
+        // when
+        Long remainedRateLimitCount = pacemakerService.getRateLimitCounter("Mock Member Uuid");
+
+        // then
+        assertThat(remainedRateLimitCount).isEqualTo(0);
+    }
+
     @DisplayName("아직 페이스메이커를 생성하지 않았다면 DAILY_LIMIT이 출력된다.")
     @Test
     void getDailyMaxLimitCountWhenNotCreatePacemaker() {
