@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.notice.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,10 +40,12 @@ public class NoticeService {
     private String noticeDirectory;
 
     private final MemberService memberService;
+    private final ApplicationEventPublisher eventPublisher;
     private final GhostRunnerS3Client s3Client;
+    private final NoticeMapper noticeMapper;
+
     private final NoticeRepository noticeRepository;
     private final NoticeDismissalRepository noticeDismissalRepository;
-    private final NoticeMapper noticeMapper;
 
     @Transactional(readOnly = true)
     public Notice findNoticeById(Long id) {
