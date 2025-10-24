@@ -75,7 +75,6 @@ public class PacemakerService {
         RLock lock = redisRunningRepository.getLock(PACEMAKER_LOCK_KEY_PREFIX + memberUuid);
         try {
             boolean isLocked = lock.tryLock(LOCK_WAIT_TIME_SECONDS, LOCK_LEASE_TIME_SECONDS, TimeUnit.SECONDS);
-
             verifyLockAlreadyGotten(memberUuid, isLocked);
             String rateLimitKey = handleApiRateLimit(memberUuid, command.getLocalDate());
 
@@ -83,7 +82,9 @@ public class PacemakerService {
             requestLlmToCreatePacemaker(command, member, workoutDto, vdot, pacemaker, rateLimitKey);
             return pacemaker.getId();
         } finally {
-            lock.unlock();
+            if (lock.isLocked() && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
     }
 

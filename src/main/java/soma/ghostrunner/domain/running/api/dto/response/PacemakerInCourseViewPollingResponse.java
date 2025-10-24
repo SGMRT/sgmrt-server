@@ -12,6 +12,6 @@ import lombok.NoArgsConstructor;
 public class PacemakerInCourseViewPollingResponse {
 
     private String processingStatus;
-    private PacemakerResponse pacemakerResponse;
+    private PacemakerSummaryResponse pacemakerSummaryResponse;
 
 }

@@ -195,31 +195,4 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         }
     }
 
-    private Member createMember() {
-        Member member = Member.of("testUser", "http://profile.url");
-        member.setUuid("test-uuid-1234");
-        return member;
-    }
-
-    private Course createCourse(Member testMember) {
-        CourseProfile testCourseProfile = createCourseProfile();
-        Coordinate testCoordinate = createStartPoint();
-        return toCourse(testMember, testCourseProfile, testCoordinate);
-    }
-
-    private CourseProfile createCourseProfile() {
-        return CourseProfile.of(5.2, 30.0, 40.0, -10.0);
-    }
-
-    private Coordinate createStartPoint() {
-        return Coordinate.of(37.545354, 34.7878);
-    }
-
-    private Course toCourse(Member testMember, CourseProfile testCourseProfile, Coordinate testCoordinate) {
-        return Course.of(testMember, testCourseProfile.getDistance(),
-                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
-                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
-                "URL", "URL", "URL");
-    }
-
 }

@@ -186,14 +186,14 @@ public interface RunningApplicationMapper {
                         .build())
                 .toList();
 
-        PacemakerResponse pacemakerResponse = PacemakerResponse.builder()
+        PacemakerSummaryResponse pacemakerSummaryResponse = PacemakerSummaryResponse.builder()
                 .id(p.getId())
                 .sets(setResponses)
                 .build();
 
         return PacemakerInCourseViewPollingResponse.builder()
                 .processingStatus(p.getStatus().name())
-                .pacemakerResponse(pacemakerResponse)
+                .pacemakerSummaryResponse(pacemakerSummaryResponse)
                 .build();
     }
   
