@@ -99,7 +99,7 @@ public class PacemakerService {
     private void verifyLockAlreadyGotten(String memberUuid, boolean isLocked) {
         if (!isLocked) {
             log.warn("사용자 UUID '{}'의 락 획득 실패. 이미 다른 요청이 처리 중입니다.", memberUuid);
-            throw new IllegalStateException("이미 다른 요청이 처리 중입니다.");
+            throw new IllegalArgumentException("이미 다른 요청이 처리 중입니다.");
         }
     }
 

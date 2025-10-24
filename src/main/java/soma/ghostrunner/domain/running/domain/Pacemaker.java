@@ -122,7 +122,7 @@ public class Pacemaker extends BaseTimeEntity {
 
     private void verifyAlreadyHasRunWith() {
         if (hasRunWith) {
-            throw new IllegalStateException("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
+            throw new IllegalArgumentException("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
         }
     }
 

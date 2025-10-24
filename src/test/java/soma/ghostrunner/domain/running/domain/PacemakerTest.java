@@ -55,7 +55,7 @@ class PacemakerTest {
 
         // when // then
         Assertions.assertThatThrownBy(() -> pacemaker.updateAfterRunning(4L))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
     }
 
