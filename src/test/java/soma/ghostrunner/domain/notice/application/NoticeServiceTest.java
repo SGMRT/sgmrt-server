@@ -10,6 +10,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.notice.api.dto.request.NoticeActivationRequest;
 import soma.ghostrunner.domain.notice.exceptions.NoticeTypeDeprecatedException;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -38,24 +39,15 @@ import static org.mockito.Mockito.verify;
 
 class NoticeServiceTest extends IntegrationTestSupport {
 
-    @Autowired
-    private NoticeService noticeService;
-
-    @Autowired
-    private NoticeRepository noticeRepository;
-
-    @Autowired
-    private NoticeDismissalRepository noticeDismissalRepository;
-
-    @Autowired
-    private MemberRepository memberRepository;
-
-    @MockitoBean
-    private GhostRunnerS3Client s3Client; // S3 클라이언트는 모킹 처리
+    @Autowired private NoticeService noticeService;
+    @Autowired private NoticeRepository noticeRepository;
+    @Autowired private NoticeDismissalRepository noticeDismissalRepository;
+    @Autowired private MemberRepository memberRepository;
+    @MockitoBean private GhostRunnerS3Client s3Client; // S3 클라이언트는 모킹 처리
 
     private final LocalDateTime NOW = LocalDateTime.of(2025, 8, 8, 12, 0);
 
-    @DisplayName("새로운 공지사항을 성공적으로 생성한다.")
+    @DisplayName("새로운 공지사항을 성공적으로 생성한다. 시작일과 종료일은 null로 설정된다.")
     @Test
     void saveNotice_success() {
         // given
@@ -70,6 +62,8 @@ class NoticeServiceTest extends IntegrationTestSupport {
         assertThat(foundNotice).isPresent();
         assertThat(foundNotice.get().getTitle()).isEqualTo("공지 제목");
         assertThat(foundNotice.get().getContent()).isEqualTo("공지 내용");
+        assertThat(foundNotice.get().getStartAt()).isNull();
+        assertThat(foundNotice.get().getEndAt()).isNull();
     }
 
     @DisplayName("이미지와 함께 새로운 공지사항을 성공적으로 생성한다.")
@@ -100,8 +94,6 @@ class NoticeServiceTest extends IntegrationTestSupport {
                 .content("내용")
                 .type(deprecatedType)
                 .priority(1)
-                .startAt(NOW.minusDays(1))
-                .endAt(NOW.plusDays(7))
                 .build();
 
         // when & then
@@ -147,6 +139,51 @@ class NoticeServiceTest extends IntegrationTestSupport {
         assertThat(noticesForMember2).hasSize(3).extracting("title").containsExactlyInAnyOrder("활성 공지", "숨김 공지", "영구 숨김 공지");
     }
 
+    @DisplayName("활성 공지사항 조회 시 비활성 상태인 공지사항은 포함되지 않는다. (시작일과 종료일이 null인 공지)")
+    @Test
+    void findActiveNotices_excludesDeactivatedNotices() {
+        // given
+        Member member = createAndSaveMember("멋쟁이 토마토");
+        Notice deactivatedNotice = createAndSaveNotice("비활성 공지", null, null);
+        Notice activeNotice = createAndSaveNotice("활성 공지", NOW.minusDays(1), NOW.plusDays(1));
+        // when
+        List<NoticeDetailedResponse> notices = noticeService.findActiveNotices(member.getUuid(), NOW, null);
+        // then
+        assertThat(notices).hasSize(1).extracting("title").containsExactly("활성 공지");
+    }
+
+    @DisplayName("공지사항을 활성화하면 시작기간 및 종료기간이 설정된다.")
+    @Test
+    void activateNotices_success() {
+        // given
+        Notice notice1 = createAndSaveNotice("비활성 공지 1", null, null);
+        Notice notice2 = createAndSaveNotice("비활성 공지 2", null, null);
+
+        // when
+        List<Long> activatedIds = noticeService.activateNotices(List.of(notice1.getId(), notice2.getId()), NOW, NOW.plusDays(7));
+
+        // then
+        assertThat(activatedIds).containsExactlyInAnyOrder(notice1.getId(), notice2.getId());
+        List<Notice> activatedNotices = noticeRepository.findAllById(activatedIds);
+        assertThat(activatedNotices).allMatch(n -> n.getStartAt().isEqual(NOW) && n.getEndAt().isEqual(NOW.plusDays(7)));
+    }
+
+    @DisplayName("공지사항을 비활성화하면 시작기간 및 종료기간이 null로 설정된다.")
+    @Test
+    void deactivateNotices_success() {
+        // given
+        Notice notice1 = createAndSaveNotice("활성 공지 1", NOW.minusDays(1), NOW.plusDays(1));
+        Notice notice2 = createAndSaveNotice("활성 공지 2", NOW.minusDays(2), NOW.plusDays(2));
+
+        // when
+        List<Long> deactivatedIds = noticeService.deactivateNotices(List.of(notice1.getId(), notice2.getId()));
+
+        // then
+        assertThat(deactivatedIds).containsExactlyInAnyOrder(notice1.getId(), notice2.getId());
+        List<Notice> deactivatedNotices = noticeRepository.findAllById(deactivatedIds);
+        assertThat(deactivatedNotices).allMatch(n -> n.getStartAt() == null && n.getEndAt() == null);
+    }
+
     @DisplayName("활성 공지사항 조회 시 특정 타입의 공지만 조회한다.")
     @ParameterizedTest
     @EnumSource(NoticeType.class)
@@ -164,8 +201,6 @@ class NoticeServiceTest extends IntegrationTestSupport {
         List<NoticeDetailedResponse> notices = noticeService.findActiveNotices(member.getUuid(), NOW, type);
 
         // then
-        var _n = noticeRepository.findAll();
-        var _x = noticeDismissalRepository.findAll();
         assertThat(notices).hasSize(1);
         assertThat(notices).allMatch(n -> n.type() == type);
     }
@@ -199,9 +234,24 @@ class NoticeServiceTest extends IntegrationTestSupport {
         Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, type);
 
         // then
-        var _n = noticeRepository.findAll();
         assertThat(notices.getTotalElements()).isEqualTo(1);
         assertThat(notices.getContent()).allMatch(n -> n.type() == type);
+    }
+
+    @DisplayName("비활성화된 공지사항을 조회한다.")
+    @Test
+    void findDeactivatedNotices_success() {
+        // given
+        createAndSaveNotice("활성 공지", NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("비활성 공지 1", null, null);
+        createAndSaveNotice("비활성 공지 2", null, null);
+
+        // when
+        List<NoticeDetailedResponse> deactivatedNotices = noticeService.findDeactivatedNotices();
+
+        // then
+        assertThat(deactivatedNotices).hasSize(2);
+        assertThat(deactivatedNotices).extracting("title").containsExactlyInAnyOrder("비활성 공지 1", "비활성 공지 2");
     }
 
     @DisplayName("공지사항을 '오늘 하루 보지 않기'로 설정한다.")
@@ -354,8 +404,6 @@ class NoticeServiceTest extends IntegrationTestSupport {
                 .content(content)
                 .image(image)
                 .priority(1)
-                .startAt(NOW.minusDays(1))
-                .endAt(NOW.plusDays(7))
                 .build();
     }
 

@@ -27,10 +27,4 @@ public class NoticeCreationRequest {
 
     private MultipartFile image;
 
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    private LocalDateTime startAt;
-
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    private LocalDateTime endAt;
-
 }
