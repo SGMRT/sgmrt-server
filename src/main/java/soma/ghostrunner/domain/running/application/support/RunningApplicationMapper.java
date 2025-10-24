@@ -7,11 +7,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
-import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
-import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerResponse;
-import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse.PacemakerSetResponse;
+import soma.ghostrunner.domain.running.api.dto.response.*;
 import soma.ghostrunner.domain.running.application.dto.response.DayRunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
@@ -102,19 +98,20 @@ public interface RunningApplicationMapper {
 
     @Mapping(source = "running.id", target = "runningId")
     @Mapping(source = "course.id", target = "courseId")
-    CreateCourseAndRunResponse toResponse(Running running, Course course);
+    CreateCourseAndRunResponse toPacemakerPollingResponse(Running running, Course course);
 
-    default Pacemaker toPacemaker(Pacemaker.Norm norm, CreatePacemakerCommand command, Member member) {
-        return Pacemaker.of(norm, command.getTargetDistance(), member.getUuid());
+    default Pacemaker toPacemaker(Pacemaker.Norm norm, CreatePacemakerCommand command, Long courseId, Member member) {
+        return Pacemaker.of(norm, command.getTargetDistance(), courseId, member.getUuid());
     }
 
-    default PacemakerPollingResponse toResponse(Pacemaker.Status status) {
+    default PacemakerPollingResponse toPacemakerPollingResponse(Pacemaker p) {
         return PacemakerPollingResponse.builder()
-                .processingStatus(status.name())
+                .processingStatus(p.getStatus().name())
                 .build();
     }
 
-    default PacemakerPollingResponse toResponse(Pacemaker p, List<PacemakerSet> sets) {
+    default PacemakerPollingResponse toPacemakerPollingResponse(Pacemaker p, List<PacemakerSet> sets) {
+
         List<PacemakerSetResponse> setResponses = sets.stream()
                 .map(s -> PacemakerSetResponse.builder()
                         .setNum(s.getSetNum())
@@ -125,6 +122,8 @@ public interface RunningApplicationMapper {
                         .build())
                 .toList();
 
+        PacemakerTimeTableResponse timeTable = new PacemakerTimeTableResponse(setResponses, p.getExpectedTime());
+
         PacemakerResponse pacemakerResponse = PacemakerResponse.builder()
                 .id(p.getId())
                 .norm(p.getNorm())
@@ -132,13 +131,13 @@ public interface RunningApplicationMapper {
                 .goalKm(p.getGoalDistance())
                 .expectedMinutes(p.getExpectedTime())
                 .initialMessage(p.getInitialMessage())
-                .runningId(p.getRunningId())
                 .sets(setResponses)
+                .timeTable(timeTable)
                 .build();
 
         return PacemakerPollingResponse.builder()
                 .processingStatus(p.getStatus().name())
-                .pacemaker(pacemakerResponse)
+                .pacemakerResponse(pacemakerResponse)
                 .build();
     }
 
@@ -157,7 +156,7 @@ public interface RunningApplicationMapper {
             expression = "java(java.time.LocalDateTime.ofEpochSecond(runDto.startedAt(), 0, java.time.ZoneOffset.UTC))")
     CourseGhostResponse toGhostResponse(CourseRunDto runDto);
 
-    default List<RunInfo> toResponse(List<Running> runnings) {
+    default List<RunInfo> toPacemakerPollingResponse(List<Running> runnings) {
         return runnings.stream()
                 .map(RunInfo::new)
                 .toList();
@@ -167,6 +166,35 @@ public interface RunningApplicationMapper {
         return dayRunInfos.stream()
                 .map(RunMonthlyStatusResponse::of)
                 .toList();
+    }
+
+    default PacemakerInCourseViewPollingResponse toPacemakerInCourseViewPollingResponse(Pacemaker p) {
+        return PacemakerInCourseViewPollingResponse.builder()
+                .processingStatus(p.getStatus().name())
+                .build();
+    }
+
+    default PacemakerInCourseViewPollingResponse toPacemakerInCourseViewPollingResponse(Pacemaker p, List<PacemakerSet> sets) {
+
+        List<PacemakerSetResponse> setResponses = sets.stream()
+                .map(s -> PacemakerSetResponse.builder()
+                        .setNum(s.getSetNum())
+                        .message(s.getMessage())
+                        .startPoint(s.getStartPoint())
+                        .endPoint(s.getEndPoint())
+                        .pace(s.getPace())
+                        .build())
+                .toList();
+
+        PacemakerSummaryResponse pacemakerSummaryResponse = PacemakerSummaryResponse.builder()
+                .id(p.getId())
+                .sets(setResponses)
+                .build();
+
+        return PacemakerInCourseViewPollingResponse.builder()
+                .processingStatus(p.getStatus().name())
+                .pacemakerSummaryResponse(pacemakerSummaryResponse)
+                .build();
     }
   
 }

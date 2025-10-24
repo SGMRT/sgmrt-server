@@ -289,9 +289,6 @@ class CourseMapperTest {
 
     }
 
-
-    // --- 헬퍼 메소드 ---
-
     private Member createMember() {
         Member member = Member.of("testUser", "http://profile.url");
         member.setUuid("test-uuid-1234");

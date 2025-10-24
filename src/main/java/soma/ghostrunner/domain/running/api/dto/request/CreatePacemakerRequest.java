@@ -5,15 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
+import soma.ghostrunner.domain.running.api.support.PacemakerType;
 
 @Data @Builder
 @AllArgsConstructor @NoArgsConstructor
 public class CreatePacemakerRequest {
 
-    @NotEmpty
-    private String purpose;
+    @NotNull
+    private PacemakerType type;
 
     @NotNull
     @Positive
@@ -26,10 +25,7 @@ public class CreatePacemakerRequest {
     @Min(-50) @Max(50)
     private Integer temperature;
 
-    @Positive
-    private Double pacePerKm;
-
     @NotNull
-    private LocalDate localDate;
+    private Long courseId;
 
 }

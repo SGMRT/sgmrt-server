@@ -51,7 +51,7 @@ public class RunningCommandService {
 
         Course course = createAndSaveCourse(member, command, telemetryStatistics, dataUrlsDto);
         Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
-        return mapper.toResponse(running, course);
+        return mapper.toPacemakerPollingResponse(running, course);
     }
 
     private Member findMember(String memberUuid) {
