@@ -43,9 +43,6 @@ public enum ErrorCode {
     COURSE_RUN_NOT_FOUND("C-004", BAD_REQUEST, "해당 코스를 달린 기록이 없음"),
 
     // Running
-    INVALID_PACEMAKER_DISTANCE("R-001", BAD_REQUEST, "3K 이하의 거리는 페이스메이커를 생성할 수 없습니다."),
-    PROCESSING_PACEMAKER("R-002", BAD_REQUEST, "페이스메이커가 아직 생성되지 않았습니다."),
-    FAILED_PACEMAKER("R-003", HttpStatus.SERVICE_UNAVAILABLE, "페이스메이커를 생성하는데 실패했습니다."),
 
     // Notice
     DEPRECATED_NOTICE_TYPE("N-001", BAD_REQUEST, "더 이상 지원되지 않는 공지 타입입니다."),
