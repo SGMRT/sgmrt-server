@@ -209,7 +209,7 @@ public class RunningQueryService {
     public List<RunInfo> findRunnings(Long courseId, String memberUuid) {
         Member member = findMember(memberUuid);
         List<Running> runnings = runningRepository.findRunningsByCourseIdAndMemberId(courseId, member.getId());
-        return mapper.toResponse(runnings);
+        return mapper.toPacemakerPollingResponse(runnings);
     }
 
     public long findPublicRunnersCount(Long courseId) {

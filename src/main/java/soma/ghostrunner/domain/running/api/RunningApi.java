@@ -35,7 +35,6 @@ public class RunningApi {
 
     private final RunningQueryService runningQueryService;
     private final RunningCommandService runningCommandService;
-    private final PacemakerService paceMakerService;
 
     @GetMapping("/")
     public String hello() {
@@ -166,28 +165,6 @@ public class RunningApi {
             @RequestParam @Min(1) @Max(12) Integer month) {
         String memberUuid = userDetails.getUserId();
         return runningQueryService.findMonthlyDayRunStatus(year, month, memberUuid);
-    }
-
-    @PostMapping("/v1/runs/pacemaker")
-    public Long createPacemaker(
-            @AuthenticationPrincipal JwtUserDetails userDetails,
-            @RequestBody @Valid CreatePacemakerRequest request) throws InterruptedException {
-        String memberUuid = userDetails.getUserId();
-        return paceMakerService.createPaceMaker(memberUuid, mapper.toCommand(request));
-    }
-
-    @GetMapping("/v1/runs/pacemaker/{pacemakerId}")
-    public PacemakerPollingResponse getPacemaker(
-            @AuthenticationPrincipal JwtUserDetails userDetails,
-            @PathVariable Long pacemakerId) {
-        String memberUuid = userDetails.getUserId();
-        return paceMakerService.getPacemaker(pacemakerId, memberUuid);
-    }
-
-    @GetMapping("/v1/runs/pacemaker/rate-limit")
-    public Long getRateLimitCounterToMakePacemaker(@AuthenticationPrincipal JwtUserDetails userDetails) {
-        String memberUuid = userDetails.getUserId();
-        return paceMakerService.getRateLimitCounter(memberUuid);
     }
 
 }

@@ -11,7 +11,7 @@ class PacemakerTest {
     @Test
     void updateStatus() {
         // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, "멤버 UUID");
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, "멤버 UUID");
 
         // when
         pacemaker.updateStatus(Pacemaker.Status.COMPLETED);
@@ -24,12 +24,39 @@ class PacemakerTest {
     @Test
     void verifyMember() {
         // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, "이복둥의 UUID");
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, "이복둥의 UUID");
 
         // when // then
         Assertions.assertThatThrownBy(() -> pacemaker.verifyMember("이진의 UUID"))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("접근할 수 없는 러닝 데이터입니다.");
+    }
+
+    @DisplayName("페이스메이커와 러닝 후 상태를 업대이트한다.")
+    @Test
+    void updateAfterRunning() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, "멤버 UUID");
+
+        // when
+        pacemaker.updateAfterRunning(3L);
+
+        // then
+        Assertions.assertThat(pacemaker.getRunningId()).isEqualTo(3L);
+        Assertions.assertThat(pacemaker.getHasRunWith()).isTrue();
+    }
+
+    @DisplayName("이미 함께 뛴 기록이 있는 페이스메이커라면 예외가 발생한다.")
+    @Test
+    void throwExceptionWhenRunWithAlreadyDone() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, "멤버 UUID");
+        pacemaker.updateAfterRunning(3L);
+
+        // when // then
+        Assertions.assertThatThrownBy(() -> pacemaker.updateAfterRunning(4L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
     }
 
 }

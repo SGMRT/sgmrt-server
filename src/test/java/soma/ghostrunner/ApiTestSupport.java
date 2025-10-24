@@ -9,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import soma.ghostrunner.domain.member.api.MemberApi;
 import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.running.api.PacemakerApi;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 import soma.ghostrunner.domain.auth.api.AuthApi;
 import soma.ghostrunner.domain.auth.application.AuthService;
@@ -24,7 +25,7 @@ import soma.ghostrunner.global.common.CommonApi;
 import soma.ghostrunner.global.common.log.HttpLogger;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
-@WebMvcTest(controllers = {RunningApi.class, AuthApi.class, CommonApi.class, NoticeApi.class, MemberApi.class})
+@WebMvcTest(controllers = {RunningApi.class, AuthApi.class, CommonApi.class, NoticeApi.class, MemberApi.class, PacemakerApi.class})
 @Import(RunningApiMapperImpl.class)
 @WithMockUser
 public abstract class ApiTestSupport {

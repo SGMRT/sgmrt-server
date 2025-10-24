@@ -4,14 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import soma.ghostrunner.domain.running.domain.Pacemaker;
-
-import java.util.List;
 
 @Getter
-@AllArgsConstructor @Builder
+@AllArgsConstructor
+@Builder
 @NoArgsConstructor
-public class PacemakerPollingResponse {
+public class PacemakerInCourseViewPollingResponse {
 
     private String processingStatus;
     private PacemakerResponse pacemakerResponse;

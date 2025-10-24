@@ -5,6 +5,9 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.Where;
 import soma.ghostrunner.domain.running.application.dto.WorkoutSetDto;
 
 import java.math.BigDecimal;
@@ -12,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@SQLDelete(sql = "UPDATE pacemaker_set SET deleted = true WHERE id=?")
+@Where(clause = "deleted = false")
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -36,7 +41,10 @@ public class PacemakerSet {
     @Column(name = "pace_min/km", nullable = false)
     private Double pace;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
+    @Column(nullable = false)
+    private boolean deleted = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pacemaker_id", nullable = false)
     private Pacemaker pacemaker;
 

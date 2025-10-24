@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.member;
+package soma.ghostrunner.domain.member.api;
 
 public enum RunningLevel {
 

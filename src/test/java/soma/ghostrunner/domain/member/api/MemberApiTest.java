@@ -5,9 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import soma.ghostrunner.ApiTestSupport;
-import soma.ghostrunner.domain.member.RunningLevel;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
