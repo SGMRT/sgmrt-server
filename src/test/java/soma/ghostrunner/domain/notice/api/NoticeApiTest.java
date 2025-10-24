@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -123,19 +124,17 @@ class NoticeApiTest extends ApiTestSupport {
         given(noticeService.saveNotice(any())).willReturn(1L);
 
         // when & then
-        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/notices")
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/admin/notices")
                         .file(imagePart)
                         .param("title", "새 공지")
                         .param("content", "공지 내용입니다.")
                         .param("priority", "1")
-                        .param("startAt", NOW.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                         .with(SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
     }
-
 
     @DisplayName("공지사항을 수정한다.")
     @Test
@@ -146,7 +145,7 @@ class NoticeApiTest extends ApiTestSupport {
         MockMultipartFile updateAttrsPart = new MockMultipartFile("updateAttrs", "", "text/plain", "TITLE".getBytes(StandardCharsets.UTF_8));
 
         // when & then
-        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/notices/{noticeId}", noticeId)
+        mockMvc.perform(MockMvcRequestBuilders.multipart("/v1/admin/notices/{noticeId}", noticeId)
                         .file(titlePart)
                         .file(updateAttrsPart)
                         .with(request -> {
@@ -166,9 +165,59 @@ class NoticeApiTest extends ApiTestSupport {
         Long noticeId = 1L;
 
         // when & then
-        mockMvc.perform(MockMvcRequestBuilders.delete("/v1/notices/{noticeId}", noticeId)
+        mockMvc.perform(MockMvcRequestBuilders.delete("/v1/admin/notices/{noticeId}", noticeId)
                         .with(SecurityMockMvcRequestPostProcessors.csrf()))
                 .andDo(print())
                 .andExpect(status().isOk());
     }
+
+    @DisplayName("공지사항 활성화 요청을 처리한다.")
+    @Test
+    void activateNotices_success() throws Exception {
+        // given
+        List<Long> noticeIds = List.of(1L, 2L, 3L);
+        LocalDateTime endAt = NOW.plusDays(7);
+        String endAtStr = endAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        given(noticeService.activateNotices(eq(noticeIds), any(LocalDateTime.class), eq(endAt))).willReturn(noticeIds);
+        String requestBody = """
+                {
+                    "noticeIds": [1, 2, 3],
+                    "endAt": "%s"
+                }
+                """.formatted(endAtStr);
+        // when & then
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/admin/notices/activate")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value(1))
+                .andExpect(jsonPath("$[1]").value(2))
+                .andExpect(jsonPath("$[2]").value(3));
+    }
+
+    @DisplayName("공지사항 비활성화 요청을 처리한다.")
+    @Test
+    void deactivateNotices_success() throws Exception {
+        // given
+        List<Long> noticeIds = List.of(1L, 2L, 3L);
+        given(noticeService.deactivateNotices(noticeIds)).willReturn(noticeIds);
+        String requestBody = """
+                {
+                    "noticeIds": [1, 2, 3]
+                }
+                """;
+        // when & then
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/admin/notices/deactivate")
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value(1))
+                .andExpect(jsonPath("$[1]").value(2))
+                .andExpect(jsonPath("$[2]").value(3));
+    }
+
 }
