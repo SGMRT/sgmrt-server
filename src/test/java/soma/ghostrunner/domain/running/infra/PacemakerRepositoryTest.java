@@ -195,4 +195,61 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         }
     }
 
+    @DisplayName("가공중인 페이스메이커가 두 개라면 최신 가공중인 페이스메이커가 조회된다.")
+    @Test
+    void returnLatestProceedingPacemaker() throws InterruptedException {
+        // given
+        String member = "MEMBER-A";
+        Long courseId = 600L;
+
+        Pacemaker ran1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        ran1.updateAfterRunning(1L);
+        Pacemaker ran2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        ran2.updateAfterRunning(1L);
+        pacemakerRepository.saveAll(List.of(ran1, ran2));
+
+        Pacemaker notYetRun1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        pacemakerRepository.save(notYetRun1);
+
+        Thread.sleep(5);
+
+        Pacemaker notYetRun2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        pacemakerRepository.save(notYetRun2);
+
+        // when
+        Optional<Pacemaker> found = pacemakerRepository.findByCourseId(courseId, member);
+
+        // then
+        assertThat(found.get().getId()).isEqualTo(notYetRun2.getId());
+    }
+
+    @DisplayName("가장 최근 페이스메이커가 가공에 실패했다면 이전의 가공되어 있는 페이스메이커가 나온다.")
+    @Test
+    void returnNotFailedPacemaker() throws InterruptedException {
+        // given
+        String member = "MEMBER-A";
+        Long courseId = 600L;
+
+        Pacemaker ran1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        ran1.updateAfterRunning(1L);
+        Pacemaker ran2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        ran2.updateAfterRunning(1L);
+        pacemakerRepository.saveAll(List.of(ran1, ran2));
+
+        Pacemaker succeedPacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        pacemakerRepository.save(succeedPacemaker);
+
+        Thread.sleep(5);
+
+        Pacemaker failedRun = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        failedRun.updateStatus(Pacemaker.Status.FAILED);
+        pacemakerRepository.save(failedRun);
+
+        // when
+        Optional<Pacemaker> found = pacemakerRepository.findByCourseId(courseId, member);
+
+        // then
+        assertThat(found.get().getId()).isEqualTo(succeedPacemaker.getId());
+    }
+
 }
