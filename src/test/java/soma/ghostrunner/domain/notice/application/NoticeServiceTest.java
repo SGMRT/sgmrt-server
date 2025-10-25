@@ -220,6 +220,19 @@ class NoticeServiceTest extends IntegrationTestSupport {
         assertThat(notices.getContent()).extracting("title").contains("일반 공지", "이벤트 공지");
     }
 
+    @DisplayName("모든 공지사항 조회 시에도 비활성화 공지는 확인할 수 없다.")
+    @Test
+    void findAllNotices_excludesDeactivatedNotices() {
+        // given
+        createAndSaveNotice("활성 공지", NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("비활성 공지", null, null);
+        // when
+        Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, null);
+        // then
+        assertThat(notices.getTotalElements()).isEqualTo(1);
+        assertThat(notices.getContent()).extracting("title").containsExactly("활성 공지");
+    }
+
     @DisplayName("특정 공지사항을 ID로 조회한다.")
     @ParameterizedTest
     @EnumSource(NoticeType.class)

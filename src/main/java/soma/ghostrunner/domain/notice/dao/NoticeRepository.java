@@ -26,7 +26,8 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
             "ORDER BY n.priority DESC, n.createdAt DESC")
     List<Notice> findActiveNoticesForMember(LocalDateTime now, String memberUuid, NoticeType noticeType);
 
-    @Query("SELECT n FROM Notice n WHERE (:noticeType IS NULL OR n.type = :noticeType)") // noticeType != null일 때만 필터링
+    @Query("SELECT n FROM Notice n WHERE (:noticeType IS NULL OR n.type = :noticeType) " +
+            "AND NOT (n.startAt is NULL OR n.endAt is NULL)") // noticeType != null일 때만 필터링
     Page<Notice> findAllByType(NoticeType noticeType, Pageable pageable);
 
     @Query("SELECT n FROM Notice n WHERE n.startAt IS NULL AND n.endAt IS NULL ")
