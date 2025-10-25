@@ -87,7 +87,7 @@ public class NoticeService {
         for(Notice notice : notices) {
             notice.activate(startAt, endAt);
         }
-        eventPublisher.publishEvent(NoticeActivatedEvent.from(notices));
+        eventPublisher.publishEvent(noticeMapper.toNoticeActivatedEvent(notices));
         return notices.stream().map(Notice::getId).toList();
     }
 
