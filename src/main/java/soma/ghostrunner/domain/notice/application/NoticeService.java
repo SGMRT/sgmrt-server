@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
 import soma.ghostrunner.domain.notice.exceptions.NoticeTypeDeprecatedException;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.application.MemberService;
@@ -86,6 +87,7 @@ public class NoticeService {
         for(Notice notice : notices) {
             notice.activate(startAt, endAt);
         }
+        eventPublisher.publishEvent(NoticeActivatedEvent.from(notices));
         return notices.stream().map(Notice::getId).toList();
     }
 
