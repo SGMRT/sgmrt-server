@@ -60,8 +60,8 @@ public class NoticeService {
                 request.getType(),
                 null,
                 request.getPriority(),
-                request.getStartAt(),
-                request.getEndAt()
+                null,
+                null
                 );
         Notice savedNotice = noticeRepository.save(notice);
         Long noticeId =  savedNotice.getId();
@@ -77,12 +77,20 @@ public class NoticeService {
         return noticeId;
     }
 
-    private void throwIfNoticeTypeDeprecated(NoticeType type) {
-        if (type == null) return;
-        var deprecatedTypes = NoticeType.getDeprecatedTypes();
-        if(deprecatedTypes.contains(type)) {
-            throw new NoticeTypeDeprecatedException();
+    @Transactional
+    public List<Long> activateNotices(List<Long> noticeIds, LocalDateTime startAt, LocalDateTime endAt) {
+        List<Notice> notices = noticeRepository.findAllById(noticeIds);
+        for(Notice notice : notices) {
+            notice.activate(startAt, endAt);
         }
+        return notices.stream().map(Notice::getId).toList();
+    }
+
+    @Transactional
+    public List<Long> deactivateNotices(List<Long> noticeIds) {
+        List<Notice> notices = noticeRepository.findAllById(noticeIds);
+        notices.forEach(Notice::deactivate);
+        return notices.stream().map(Notice::getId).toList();
     }
 
     @Transactional(readOnly = true)
@@ -90,6 +98,13 @@ public class NoticeService {
         // 노출 기간 내의 공지사항을 숨김 처리 여부와 공지 타입으로 필터링하여 조회
         List<Notice> filteredNotices = noticeRepository.findActiveNoticesForMember(queryTime, memberUuid, noticeType);
         return filteredNotices.stream().map(noticeMapper::toDetailedResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<NoticeDetailedResponse> findDeactivatedNotices() {
+        // startAt과 endAt이 모두 null인 공지사항 조회
+        List<Notice> deactivatedNotices = noticeRepository.findDeactivatedNotices();
+        return deactivatedNotices.stream().map(noticeMapper::toDetailedResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -164,6 +179,14 @@ public class NoticeService {
         String ext = StringUtils.getFilenameExtension(file.getOriginalFilename());
         if(ext == null || !allowedExtensions.contains(ext)) {
             throw new IllegalArgumentException("'" + ext + "'는 허용되지 않은 확장자입니다.");
+        }
+    }
+
+    private void throwIfNoticeTypeDeprecated(NoticeType type) {
+        if (type == null) return;
+        var deprecatedTypes = NoticeType.getDeprecatedTypes();
+        if(deprecatedTypes.contains(type)) {
+            throw new NoticeTypeDeprecatedException();
         }
     }
 
