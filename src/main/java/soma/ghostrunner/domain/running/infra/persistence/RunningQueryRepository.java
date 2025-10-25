@@ -2,10 +2,7 @@ package soma.ghostrunner.domain.running.infra.persistence;
 
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
-import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
-import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
-import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
-import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
+import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 
 import java.util.List;
@@ -34,5 +31,7 @@ public interface RunningQueryRepository {
     Optional<CourseRunStatisticsDto> findPublicRunStatisticsByCourseId(Long courseId);
 
     Optional<UserPaceStatsDto> findUserRunStatisticsByCourseId(Long courseId, String memberUuid);
+
+    List<DayRunInfo> findDayRunInfosFilteredByDate(Integer year, Integer month, Long memberId);
 
 }

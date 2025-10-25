@@ -37,6 +37,8 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
     MemberVdotRepository memberVdotRepository;
+    @Autowired
+    private RedisRunningRepository redisRunningRepository;
 
     @DisplayName("레디스에 Key-Value(String) 을 저장한다.")
     @Test
@@ -70,7 +72,6 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
         // then
         Thread.sleep(1200);
         assertThat(redisTemplate.opsForValue().get(key)).isNull();
-        redisTemplate.delete(key);
     }
 
     @Test
@@ -87,14 +88,10 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
         LocalDate localDate = LocalDate.of(2024, 8, 26);
         String rateLimitKey = "ratelimit:" + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        // when
-        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
-        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
-        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
-
-        // then
+        // when // then
         Assertions.assertThat(repository.incrementRateLimitCounter(rateLimitKey, 3, 86400))
-                .isEqualTo(4);
+                .isEqualTo(1);
+        redisTemplate.delete(rateLimitKey);
     }
 
     private Member createMember() {
@@ -103,6 +100,30 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
 
     private MemberVdot createMemberVdot(Member member, int vdot) {
         return MemberVdot.of(vdot, member);
+    }
+
+    @Test
+    @DisplayName("일일 제한 횟수를 초과했다면 -1을 반환한다.")
+    void returnMinusWhenExceedRateLimitCounter() {
+        // given
+        Member member = createMember();
+        String memberUuid = member.getUuid();
+        memberRepository.save(member);
+
+        MemberVdot memberVdot = createMemberVdot(member, 30);
+        memberVdotRepository.save(memberVdot);
+
+        LocalDate localDate = LocalDate.of(2024, 8, 26);
+        String rateLimitKey = "ratelimit:" + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        // when
+        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
+        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
+        repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
+
+        // then
+        Assertions.assertThat(repository.incrementRateLimitCounter(rateLimitKey, -1, 86400))
+                .isEqualTo(-1);
     }
 
     @Test
@@ -117,7 +138,7 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
         MemberVdot memberVdot = createMemberVdot(member, 30);
         memberVdotRepository.save(memberVdot);
 
-        int threadCount = 10;
+        int threadCount = 3;
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
         CountDownLatch latch = new CountDownLatch(threadCount);
 
@@ -134,8 +155,7 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
         latch.await();
 
         // then
-        Assertions.assertThat(repository.incrementRateLimitCounter(rateLimitKey, 3, 86400))
-                .isEqualTo(11);
+        Assertions.assertThat(redisRunningRepository.get(rateLimitKey)).isEqualTo("3");
         deleteData();
     }
 

@@ -216,6 +216,7 @@ class CourseMapperTest {
         // CourseWithMemberDetailsDto 필드 검증
         assertThat(response.id()).isEqualTo(courseDto.getCourseId());
         assertThat(response.name()).isEqualTo(courseDto.getCourseName());
+        assertThat(response.elevationGain()).isEqualTo(courseDto.getElevationGain());
         assertThat(response.thumbnailUrl()).isEqualTo(courseDto.getCourseThumbnailUrl());
         assertThat(response.createdAt()).isEqualTo(courseDto.getCourseCreatedAt());
         assertThat(response.distance()).isEqualTo(courseDto.getDistance());
@@ -287,9 +288,6 @@ class CourseMapperTest {
         }
 
     }
-
-
-    // --- 헬퍼 메소드 ---
 
     private Member createMember() {
         Member member = Member.of("testUser", "http://profile.url");

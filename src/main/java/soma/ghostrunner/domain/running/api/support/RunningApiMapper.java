@@ -32,6 +32,7 @@ public interface RunningApiMapper {
     @Mapping(source = "createdAt", target = "startedAt")
     CourseGhostResponse toGhostResponse(Running running);
 
+    @Mapping(target = "localDate", expression = "java(java.time.LocalDate.now())")
     CreatePacemakerCommand toCommand(CreatePacemakerRequest request);
 
 }

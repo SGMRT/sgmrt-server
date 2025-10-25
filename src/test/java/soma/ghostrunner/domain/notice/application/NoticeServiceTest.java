@@ -10,6 +10,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.notice.api.dto.request.NoticeActivationRequest;
+import soma.ghostrunner.domain.notice.exceptions.NoticeTypeDeprecatedException;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
@@ -37,24 +39,15 @@ import static org.mockito.Mockito.verify;
 
 class NoticeServiceTest extends IntegrationTestSupport {
 
-    @Autowired
-    private NoticeService noticeService;
-
-    @Autowired
-    private NoticeRepository noticeRepository;
-
-    @Autowired
-    private NoticeDismissalRepository noticeDismissalRepository;
-
-    @Autowired
-    private MemberRepository memberRepository;
-
-    @MockitoBean
-    private GhostRunnerS3Client s3Client; // S3 클라이언트는 모킹 처리
+    @Autowired private NoticeService noticeService;
+    @Autowired private NoticeRepository noticeRepository;
+    @Autowired private NoticeDismissalRepository noticeDismissalRepository;
+    @Autowired private MemberRepository memberRepository;
+    @MockitoBean private GhostRunnerS3Client s3Client; // S3 클라이언트는 모킹 처리
 
     private final LocalDateTime NOW = LocalDateTime.of(2025, 8, 8, 12, 0);
 
-    @DisplayName("새로운 공지사항을 성공적으로 생성한다.")
+    @DisplayName("새로운 공지사항을 성공적으로 생성한다. 시작일과 종료일은 null로 설정된다.")
     @Test
     void saveNotice_success() {
         // given
@@ -69,6 +62,8 @@ class NoticeServiceTest extends IntegrationTestSupport {
         assertThat(foundNotice).isPresent();
         assertThat(foundNotice.get().getTitle()).isEqualTo("공지 제목");
         assertThat(foundNotice.get().getContent()).isEqualTo("공지 내용");
+        assertThat(foundNotice.get().getStartAt()).isNull();
+        assertThat(foundNotice.get().getEndAt()).isNull();
     }
 
     @DisplayName("이미지와 함께 새로운 공지사항을 성공적으로 생성한다.")
@@ -87,6 +82,23 @@ class NoticeServiceTest extends IntegrationTestSupport {
         Notice foundNotice = noticeRepository.findById(noticeId).orElseThrow();
         assertThat(foundNotice.getImageUrl()).isEqualTo("http://s3-test-url/image.png");
         verify(s3Client, times(1)).uploadMultipartFile(any(MultipartFile.class), any(String.class));
+    }
+
+    @DisplayName("Deprecated된 타입의 공지사항 생성을 시도하면 예외가 발생한다.")
+    @ParameterizedTest
+    @EnumSource(value = NoticeType.class, names = {"GENERAL", "EVENT"}, mode = EnumSource.Mode.INCLUDE)
+    void saveNotice_deprecatedTypes(NoticeType deprecatedType) {
+        // given
+        NoticeCreationRequest request = NoticeCreationRequest.builder()
+                .title("제목")
+                .content("내용")
+                .type(deprecatedType)
+                .priority(1)
+                .build();
+
+        // when & then
+        assertThatThrownBy(() -> noticeService.saveNotice(request))
+                .isInstanceOf(NoticeTypeDeprecatedException.class);
     }
 
     @DisplayName("유효하지 않은 파일 확장자로 공지사항 생성을 시도하면 예외가 발생한다.")
@@ -127,6 +139,51 @@ class NoticeServiceTest extends IntegrationTestSupport {
         assertThat(noticesForMember2).hasSize(3).extracting("title").containsExactlyInAnyOrder("활성 공지", "숨김 공지", "영구 숨김 공지");
     }
 
+    @DisplayName("활성 공지사항 조회 시 비활성 상태인 공지사항은 포함되지 않는다. (시작일과 종료일이 null인 공지)")
+    @Test
+    void findActiveNotices_excludesDeactivatedNotices() {
+        // given
+        Member member = createAndSaveMember("멋쟁이 토마토");
+        Notice deactivatedNotice = createAndSaveNotice("비활성 공지", null, null);
+        Notice activeNotice = createAndSaveNotice("활성 공지", NOW.minusDays(1), NOW.plusDays(1));
+        // when
+        List<NoticeDetailedResponse> notices = noticeService.findActiveNotices(member.getUuid(), NOW, null);
+        // then
+        assertThat(notices).hasSize(1).extracting("title").containsExactly("활성 공지");
+    }
+
+    @DisplayName("공지사항을 활성화하면 시작기간 및 종료기간이 설정된다.")
+    @Test
+    void activateNotices_success() {
+        // given
+        Notice notice1 = createAndSaveNotice("비활성 공지 1", null, null);
+        Notice notice2 = createAndSaveNotice("비활성 공지 2", null, null);
+
+        // when
+        List<Long> activatedIds = noticeService.activateNotices(List.of(notice1.getId(), notice2.getId()), NOW, NOW.plusDays(7));
+
+        // then
+        assertThat(activatedIds).containsExactlyInAnyOrder(notice1.getId(), notice2.getId());
+        List<Notice> activatedNotices = noticeRepository.findAllById(activatedIds);
+        assertThat(activatedNotices).allMatch(n -> n.getStartAt().isEqual(NOW) && n.getEndAt().isEqual(NOW.plusDays(7)));
+    }
+
+    @DisplayName("공지사항을 비활성화하면 시작기간 및 종료기간이 null로 설정된다.")
+    @Test
+    void deactivateNotices_success() {
+        // given
+        Notice notice1 = createAndSaveNotice("활성 공지 1", NOW.minusDays(1), NOW.plusDays(1));
+        Notice notice2 = createAndSaveNotice("활성 공지 2", NOW.minusDays(2), NOW.plusDays(2));
+
+        // when
+        List<Long> deactivatedIds = noticeService.deactivateNotices(List.of(notice1.getId(), notice2.getId()));
+
+        // then
+        assertThat(deactivatedIds).containsExactlyInAnyOrder(notice1.getId(), notice2.getId());
+        List<Notice> deactivatedNotices = noticeRepository.findAllById(deactivatedIds);
+        assertThat(deactivatedNotices).allMatch(n -> n.getStartAt() == null && n.getEndAt() == null);
+    }
+
     @DisplayName("활성 공지사항 조회 시 특정 타입의 공지만 조회한다.")
     @ParameterizedTest
     @EnumSource(NoticeType.class)
@@ -135,7 +192,9 @@ class NoticeServiceTest extends IntegrationTestSupport {
         Member member = createAndSaveMember("user-type");
         createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW.minusDays(1), NOW.plusDays(1));
         createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(1));
-        Notice hiddenNotice = createAndSaveNotice("숨긴 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("일반 공지 V2", NoticeType.GENERAL_V2, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지 V2", NoticeType.EVENT_V2, NOW.minusDays(1), NOW.plusDays(1));
+        Notice hiddenNotice = createAndSaveNotice("숨긴 공지", NoticeType.EVENT_V2, NOW.minusDays(1), NOW.plusDays(1));
         createAndSaveDismissal(member, hiddenNotice, null);
 
         // when
@@ -150,8 +209,8 @@ class NoticeServiceTest extends IntegrationTestSupport {
     @Test
     void findAllNotices_success() {
         // given
-        createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW.minusDays(1), NOW.plusDays(1));
-        createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW.minusDays(1), NOW.plusDays(2));
+        createAndSaveNotice("일반 공지", NoticeType.GENERAL_V2, NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지", NoticeType.EVENT_V2, NOW.minusDays(1), NOW.plusDays(2));
 
         // when
         Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, null);
@@ -161,6 +220,19 @@ class NoticeServiceTest extends IntegrationTestSupport {
         assertThat(notices.getContent()).extracting("title").contains("일반 공지", "이벤트 공지");
     }
 
+    @DisplayName("모든 공지사항 조회 시에도 비활성화 공지는 확인할 수 없다.")
+    @Test
+    void findAllNotices_excludesDeactivatedNotices() {
+        // given
+        createAndSaveNotice("활성 공지", NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("비활성 공지", null, null);
+        // when
+        Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, null);
+        // then
+        assertThat(notices.getTotalElements()).isEqualTo(1);
+        assertThat(notices.getContent()).extracting("title").containsExactly("활성 공지");
+    }
+
     @DisplayName("특정 공지사항을 ID로 조회한다.")
     @ParameterizedTest
     @EnumSource(NoticeType.class)
@@ -168,6 +240,8 @@ class NoticeServiceTest extends IntegrationTestSupport {
         // given
         createAndSaveNotice("일반 공지", NoticeType.GENERAL, NOW, NOW.plusDays(1));
         createAndSaveNotice("이벤트 공지", NoticeType.EVENT, NOW, NOW.plusDays(2));
+        createAndSaveNotice("일반 공지 V2", NoticeType.GENERAL_V2, NOW, NOW.plusDays(1));
+        createAndSaveNotice("이벤트 공지 V2", NoticeType.EVENT_V2, NOW, NOW.plusDays(2));
 
         // when
         Page<NoticeDetailedResponse> notices = noticeService.findAllNotices(0, 10, type);
@@ -175,6 +249,22 @@ class NoticeServiceTest extends IntegrationTestSupport {
         // then
         assertThat(notices.getTotalElements()).isEqualTo(1);
         assertThat(notices.getContent()).allMatch(n -> n.type() == type);
+    }
+
+    @DisplayName("비활성화된 공지사항을 조회한다.")
+    @Test
+    void findDeactivatedNotices_success() {
+        // given
+        createAndSaveNotice("활성 공지", NOW.minusDays(1), NOW.plusDays(1));
+        createAndSaveNotice("비활성 공지 1", null, null);
+        createAndSaveNotice("비활성 공지 2", null, null);
+
+        // when
+        List<NoticeDetailedResponse> deactivatedNotices = noticeService.findDeactivatedNotices();
+
+        // then
+        assertThat(deactivatedNotices).hasSize(2);
+        assertThat(deactivatedNotices).extracting("title").containsExactlyInAnyOrder("비활성 공지 1", "비활성 공지 2");
     }
 
     @DisplayName("공지사항을 '오늘 하루 보지 않기'로 설정한다.")
@@ -314,7 +404,7 @@ class NoticeServiceTest extends IntegrationTestSupport {
     }
 
     private Notice createAndSaveNotice(String title, LocalDateTime start, LocalDateTime end) {
-        return noticeRepository.save(Notice.of(title, "내용", NoticeType.GENERAL, null, 1, start, end));
+        return noticeRepository.save(Notice.of(title, "내용", NoticeType.GENERAL_V2, null, 1, start, end));
     }
 
     private NoticeDismissal createAndSaveDismissal(Member member, Notice notice, LocalDateTime dismissUntil) {
@@ -327,8 +417,6 @@ class NoticeServiceTest extends IntegrationTestSupport {
                 .content(content)
                 .image(image)
                 .priority(1)
-                .startAt(NOW.minusDays(1))
-                .endAt(NOW.plusDays(7))
                 .build();
     }
 

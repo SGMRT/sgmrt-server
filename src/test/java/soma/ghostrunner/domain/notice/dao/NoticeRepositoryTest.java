@@ -31,6 +31,7 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
     NoticeDismissalRepository noticeDismissalRepository;
 
     private Member defaultMember;
+    private static final LocalDateTime NOW = LocalDateTime.of(2025, 9, 15, 10, 0);
 
     @BeforeEach
     void setUp() {
@@ -88,22 +89,6 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
             assertThat(result).isEmpty();
         }
 
-        @Test
-        @DisplayName("종료 시간이 없는 영구 활성 공지는 조회되어야 한다.")
-        void should_find_permanent_active_notice() {
-            // given
-            LocalDateTime baseDateTime = LocalDateTime.of(2025, 9, 15, 10, 0);
-            Notice permanentNotice = createNotice("영구 공지", baseDateTime.minusDays(1), null);
-            noticeRepository.save(permanentNotice);
-
-            // when
-            List<Notice> result = noticeRepository.findActiveNoticesForMember(baseDateTime, defaultMember.getUuid(), null);
-
-            // then
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).isEqualTo("영구 공지");
-        }
-
         @DisplayName("공지사항은 우선순위 내림차순으로 정렬되어 출력된다.")
         @Test
         public void activeNotices_OrderedByPriority() {
@@ -117,7 +102,7 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
             noticeRepository.saveAll(List.of(notice1, notice2, notice3));
 
             // when
-            List<Notice> activeNotices = noticeRepository.findActiveNoticesForMember(LocalDateTime.now(), member.getUuid(), null);
+            List<Notice> activeNotices = noticeRepository.findActiveNoticesForMember(NOW, member.getUuid(), null);
 
             // then
             Assertions.assertThat(activeNotices).hasSize(3);
@@ -189,12 +174,12 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
         void should_find_only_specific_type_notices() {
             // given
             LocalDateTime baseDateTime = LocalDateTime.of(2025, 9, 15, 10, 0);
-            Notice eventNotice = createNotice("이벤트 공지", baseDateTime.minusDays(1), baseDateTime.plusDays(1), NoticeType.EVENT);
-            Notice updateNotice = createNotice("업데이트 공지", baseDateTime.minusDays(1), baseDateTime.plusDays(1), NoticeType.GENERAL);
+            Notice eventNotice = createNotice("이벤트 공지", baseDateTime.minusDays(1), baseDateTime.plusDays(1), NoticeType.EVENT_V2);
+            Notice updateNotice = createNotice("업데이트 공지", baseDateTime.minusDays(1), baseDateTime.plusDays(1), NoticeType.GENERAL_V2);
             noticeRepository.saveAll(List.of(eventNotice, updateNotice));
 
             // when
-            List<Notice> result = noticeRepository.findActiveNoticesForMember(baseDateTime, defaultMember.getUuid(), NoticeType.EVENT);
+            List<Notice> result = noticeRepository.findActiveNoticesForMember(baseDateTime, defaultMember.getUuid(), NoticeType.EVENT_V2);
 
             // then
             assertThat(result).hasSize(1);
@@ -206,8 +191,8 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
         void should_find_all_type_notices_when_type_is_null() {
             // given
             LocalDateTime baseDateTime = LocalDateTime.of(2025, 9, 15, 10, 0);
-            Notice eventNotice = createNotice("이벤트 공지", baseDateTime.minusDays(1), baseDateTime.plusDays(1), NoticeType.EVENT);
-            Notice updateNotice = createNotice("업데이트 공지", baseDateTime.minusDays(1), baseDateTime.plusDays(1), NoticeType.GENERAL);
+            Notice eventNotice = createNotice("이벤트 공지", baseDateTime.minusDays(1), baseDateTime.plusDays(1), NoticeType.EVENT_V2);
+            Notice updateNotice = createNotice("업데이트 공지", baseDateTime.minusDays(1), baseDateTime.plusDays(1), NoticeType.GENERAL_V2);
             noticeRepository.saveAll(List.of(eventNotice, updateNotice));
 
             // when
@@ -225,7 +210,7 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
     }
 
     private Notice createNotice(String name, LocalDateTime startAt, LocalDateTime endAt) {
-        return Notice.of(name , "dummy content", NoticeType.GENERAL, "dummy-url", 0, startAt, endAt);
+        return Notice.of(name , "dummy content", NoticeType.GENERAL_V2, "dummy-url", 0, startAt, endAt);
     }
 
     private Notice createNotice(String name, LocalDateTime startAt, LocalDateTime endAt, NoticeType type) {
@@ -233,7 +218,7 @@ class NoticeRepositoryTest extends IntegrationTestSupport {
     }
 
     private Notice createNotice(String name, Integer priority) {
-        return Notice.of(name , "dummy content", NoticeType.GENERAL, "dummy-url", priority, null, null);
+        return Notice.of(name , "dummy content", NoticeType.GENERAL_V2, "dummy-url", priority, NOW.minusDays(1), NOW.plusDays(1));
     }
 
     private Member createMember(String name) {

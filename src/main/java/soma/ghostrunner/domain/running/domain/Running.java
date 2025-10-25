@@ -12,13 +12,14 @@ import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
+import soma.ghostrunner.global.common.document.TestOnly;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.*;
 
 @Entity
 @Table(name = "running_record")
@@ -190,6 +191,23 @@ public class Running extends BaseTimeEntity {
         BigDecimal bigDecimalAveragePace = BigDecimal.valueOf(averagePace);
         BigDecimal oneMilePace = bigDecimalAveragePace.multiply(BigDecimal.valueOf(1.6));
         return oneMilePace.doubleValue();
+    }
+
+    public static double calculatePaceFromRunningLevel(String runningLevel) {
+        switch (runningLevel) {
+            case "입문자" -> {
+                return calculateOneMilePace(8.0);
+            }
+            case "중급자" -> {
+                return calculateOneMilePace(6.0);
+            }
+            case "상급자" -> {
+                return calculateOneMilePace(5.0);
+            }
+            default -> {
+                throw new IllegalArgumentException("올바르지 않은 러닝 레벨입니다.");
+            }
+        }
     }
 
 }

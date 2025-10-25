@@ -73,6 +73,7 @@ public interface CourseMapper {
     @Mapping(source = "course.courseDataUrls.thumbnailUrl", target = "courseThumbnailUrl")
     @Mapping(source = "course.startCoordinate.latitude", target = "startLat")
     @Mapping(source = "course.startCoordinate.longitude", target = "startLng")
+    @Mapping(source = "course.courseProfile.elevationGain", target = "elevationGain")
     @Mapping(target = "distance",
             expression = "java(course.getCourseProfile() != null && course.getCourseProfile().getDistance() != null " +
                     "? (int) (course.getCourseProfile().getDistance() * 1000) " +
@@ -88,6 +89,7 @@ public interface CourseMapper {
     @Mapping(source = "courseDto.courseId", target = "id")
     @Mapping(source = "courseDto.courseName", target = "name")
     @Mapping(source = "courseDto.courseThumbnailUrl", target = "thumbnailUrl")
+    @Mapping(source = "courseDto.elevationGain", target = "elevationGain")
     @Mapping(source = "courseDto.distance", target = "distance")
     @Mapping(source = "courseDto.courseIsPublic", target = "isPublic")
     @Mapping(source = "courseDto.courseCreatedAt", target = "createdAt")

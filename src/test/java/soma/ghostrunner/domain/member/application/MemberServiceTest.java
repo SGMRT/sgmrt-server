@@ -6,6 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.domain.Coordinate;
+import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseDataUrls;
+import soma.ghostrunner.domain.course.domain.CourseProfile;
+import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberUpdateRequest;
 import soma.ghostrunner.domain.member.application.dto.MemberCreationRequest;
@@ -24,6 +29,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.BDDMockito.given;
 
 
 class MemberServiceTest extends IntegrationTestSupport {
@@ -272,7 +278,7 @@ class MemberServiceTest extends IntegrationTestSupport {
 
     @DisplayName("회원 탈퇴 성공 시 연관된 Running 엔티티가 함께 삭제된다.")
     @Test
-    void removeAccount_cascade() {
+    void removeAccount_cascadeRuns() {
         // given
         Member member = createAndSaveMember("카리나");
         String uuid = member.getUuid();
@@ -289,6 +295,28 @@ class MemberServiceTest extends IntegrationTestSupport {
         assertThat(runningRepository.findAll().size()).isEqualTo(0);
     }
 
+    @DisplayName("회원 탈퇴를 하더라도 연관된 Course 엔티티는 그대로 조회 가능하다.")
+    @Test
+    void removeAccount_cascadeCourses() {
+        // given
+        Member member = createAndSaveMember("카리나");
+        var uuid = member.getUuid();
+        memberRepository.save(member);
+
+        var course1 = createCourse(member);
+        var course2 = createCourse(member);
+        courseRepository.saveAll(List.of(course1, course2));
+
+        // when
+        memberService.removeAccount(uuid);
+
+        // then
+        List<Course> courses = courseRepository.findAll();
+        assertThat(courses.size()).isEqualTo(2);
+        assertThat(courses.get(0).getId()).isEqualTo(course1.getId());
+        assertThat(courses.get(1).getId()).isEqualTo(course2.getId());
+    }
+
     @DisplayName("멤버의 VDOT를 조회한다.")
     @Test
     void findMemberVdot() {
@@ -300,10 +328,10 @@ class MemberServiceTest extends IntegrationTestSupport {
         memberVdotRepository.save(memberVdot);
 
         // when
-        MemberVdot savedMemberVdot = memberService.findMemberVdot(member);
+        Integer savedMemberVdot = memberService.findMemberVdot(member.getUuid());
 
         // then
-        Assertions.assertThat(savedMemberVdot.getVdot()).isEqualTo(memberVdot.getVdot());
+        Assertions.assertThat(savedMemberVdot).isEqualTo(memberVdot.getVdot());
     }
 
     @DisplayName("멤버의 VDOT가 없다면 예외를 발생한다.")
@@ -314,12 +342,10 @@ class MemberServiceTest extends IntegrationTestSupport {
         memberRepository.save(member);
 
         // when // then
-        Assertions.assertThatThrownBy(() -> memberService.findMemberVdot(member))
+        Assertions.assertThatThrownBy(() -> memberService.findMemberVdot(member.getUuid()))
                 .isInstanceOf(MemberNotFoundException.class)
                 .hasMessage("cannot find vdot, memberUuid: " + member.getUuid());
     }
-
-    // --- Helper methods ---
 
     private Member createAndSaveMember(String name) {
         return Member.of(name, "test-url");
@@ -340,6 +366,47 @@ class MemberServiceTest extends IntegrationTestSupport {
 
     private TermsAgreement createTermsAgreement() {
         return TermsAgreement.createIfAllMandatoryTermsAgreed(true, true, true, null);
+    }
+
+    private Course createCourse(Member member) {
+        CourseProfile profile = CourseProfile.of(5.0, 10.0, 100.0, 50.0);
+        Coordinate coordinate = Coordinate.of(37d, 129d);
+        CourseDataUrls urls = CourseDataUrls.of("route.url", "checkpoint.url", "thumbnail.url");
+
+        return Course.of(member, "테스트 코스", profile, coordinate, CourseSource.USER, true, urls);
+    }
+
+    @DisplayName("calculateAndSaveVdot: 주어진 러닝 레벨로 VDOT를 계산하고 MemberVdot을 저장한다.")
+    @Test
+    void calculateAndSaveVdot_success() {
+        // given
+        Member member = createAndSaveMember("아이유");
+        String uuid = member.getUuid();
+        memberRepository.save(member);
+
+        // when
+        memberService.calculateAndSaveVdot(uuid, "입문자");
+
+        // then
+        MemberVdot membervdot = memberVdotRepository.findByMemberUuid(uuid).get();
+        assertThat(membervdot.getVdot()).isEqualTo(20);
+    }
+
+    @DisplayName("calculateAndSaveVdot: 이미 저장되어 있다면 예외를 발생한다.")
+    @Test
+    void cannotCalculateAndSaveVdotIfAlreadyExist() {
+        // given
+        Member member = createAndSaveMember("아이유");
+        String uuid = member.getUuid();
+        memberRepository.save(member);
+
+        MemberVdot memberVdot = MemberVdot.of(20, member);
+        memberVdotRepository.save(memberVdot);
+
+        // when // then
+        assertThatThrownBy(() -> memberService.calculateAndSaveVdot(uuid, "입문자"))
+                .isInstanceOf(InvalidMemberException.class)
+                .hasMessage("이미 VDOT가 저장되어 있음.");
     }
 
 }

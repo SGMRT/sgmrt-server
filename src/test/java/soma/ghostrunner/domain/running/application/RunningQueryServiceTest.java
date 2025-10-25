@@ -11,16 +11,13 @@ import org.springframework.data.domain.*;
 import org.springframework.data.util.Pair;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.application.dto.response.MemberAndRunRecordInfo;
-import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
+import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
+import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
-import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
-import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
@@ -272,7 +269,7 @@ class RunningQueryServiceTest {
                 .thenReturn(List.of());
 
         // mapper도 빈 리스트를 그대로 빈으로 매핑하도록 목 설정
-        when(mapper.toResponse(List.of())).thenReturn(List.of());
+        when(mapper.toPacemakerPollingResponse(List.of())).thenReturn(List.of());
 
         // when
         List<RunInfo> result = sut.findRunnings(courseId, memberUuid);
@@ -282,7 +279,7 @@ class RunningQueryServiceTest {
 
         verify(memberService).findMemberByUuid(memberUuid);
         verify(runningRepository).findRunningsByCourseIdAndMemberId(courseId, 1L);
-        verify(mapper).toResponse(List.of());
+        verify(mapper).toPacemakerPollingResponse(List.of());
         verifyNoMoreInteractions(memberService, runningRepository, mapper);
     }
 
@@ -303,7 +300,7 @@ class RunningQueryServiceTest {
                 .thenReturn(repoResult);
 
         List<RunInfo> mapped = List.of(mock(RunInfo.class), mock(RunInfo.class));
-        when(mapper.toResponse(repoResult)).thenReturn(mapped);
+        when(mapper.toPacemakerPollingResponse(repoResult)).thenReturn(mapped);
 
         // when
         List<RunInfo> result = sut.findRunnings(courseId, memberUuid);
@@ -312,9 +309,75 @@ class RunningQueryServiceTest {
         assertThat(result).isEqualTo(mapped);
         verify(memberService).findMemberByUuid(memberUuid);
         verify(runningRepository).findRunningsByCourseIdAndMemberId(courseId, 1L);
-        verify(mapper).toResponse(repoResult);
+        verify(mapper).toPacemakerPollingResponse(repoResult);
     }
 
+    @Test
+    @DisplayName("findMonthlyDayRunStatus: 멤버 조회 → 월별 일자 집계 조회 → 응답으로 매핑 후 반환")
+    void findMonthlyDayRunStatus_success() {
+        // given
+        int year = 2025, month = 10;
+        String memberUuid = "mem-42";
+
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(42L);
+        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
+
+        DayRunInfo d1 = mock(DayRunInfo.class);
+        DayRunInfo d2 = mock(DayRunInfo.class);
+        List<DayRunInfo> repoOut = List.of(d1, d2);
+        when(runningRepository.findDayRunInfosFilteredByDate(year, month, 42L))
+                .thenReturn(repoOut);
+
+        RunMonthlyStatusResponse r1 = mock(RunMonthlyStatusResponse.class);
+        RunMonthlyStatusResponse r2 = mock(RunMonthlyStatusResponse.class);
+        List<RunMonthlyStatusResponse> mapped = List.of(r1, r2);
+        when(mapper.toDayRunStatusResponses(repoOut)).thenReturn(mapped);
+
+        // when
+        List<RunMonthlyStatusResponse> result = sut.findMonthlyDayRunStatus(year, month, memberUuid);
+
+        // then
+        assertThat(result).isEqualTo(mapped);
+
+        // interaction 검증
+        verify(memberService).findMemberByUuid(memberUuid);
+        verify(runningRepository).findDayRunInfosFilteredByDate(year, month, 42L);
+        verify(mapper).toDayRunStatusResponses(repoOut);
+        verifyNoMoreInteractions(memberService, runningRepository, mapper);
+    }
+
+    @Test
+    @DisplayName("findMonthlyDayRunStatus: 리포지토리가 빈 결과를 주면 빈 응답 리스트로 매핑/반환한다")
+    void findMonthlyDayRunStatus_empty() {
+        // given
+        int year = 2025, month = 10;
+        String memberUuid = "mem-empty";
+
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(7L);
+        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
+
+        List<DayRunInfo> repoOut = List.of(); // empty
+        when(runningRepository.findDayRunInfosFilteredByDate(year, month, 7L))
+                .thenReturn(repoOut);
+
+        List<RunMonthlyStatusResponse> mapped = List.of(); // mapper 역시 빈 리스트 반환
+        when(mapper.toDayRunStatusResponses(repoOut)).thenReturn(mapped);
+
+        // when
+        List<RunMonthlyStatusResponse> result = sut.findMonthlyDayRunStatus(year, month, memberUuid);
+
+        // then
+        assertThat(result).isNotNull().isEmpty();
+
+        verify(memberService).findMemberByUuid(memberUuid);
+        verify(runningRepository).findDayRunInfosFilteredByDate(year, month, 7L);
+        verify(mapper).toDayRunStatusResponses(repoOut);
+        verifyNoMoreInteractions(memberService, runningRepository, mapper);
+      
+    }
+      
     @DisplayName("findPublicRunnersCountByCourseIds: 코스ID 리스트에 대한 공개 러너 수 맵 반환")
     @Test
     void findPublicRunnersCountByCourseIds() {

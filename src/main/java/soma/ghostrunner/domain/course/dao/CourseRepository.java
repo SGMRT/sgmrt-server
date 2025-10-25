@@ -4,6 +4,7 @@ import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -35,4 +36,9 @@ public interface CourseRepository extends CustomCourseRepository, JpaRepository<
 
     @Query("SELECT c FROM Course c LEFT JOIN FETCH c.member m WHERE c.id = :courseId")
     Optional<Course> findByIdFetchJoinMember(Long courseId);
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Course c SET c.member = NULL WHERE c.member.id = :memberId")
+    void bulkSetOwnerToNullByMemberId(Long memberId);
+
 }

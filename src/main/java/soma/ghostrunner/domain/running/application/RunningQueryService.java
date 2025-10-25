@@ -17,6 +17,7 @@ import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.course.enums.GhostSortType;
+import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
@@ -214,13 +215,19 @@ public class RunningQueryService {
     public List<RunInfo> findRunnings(Long courseId, String memberUuid) {
         Member member = findMember(memberUuid);
         List<Running> runnings = runningRepository.findRunningsByCourseIdAndMemberId(courseId, member.getId());
-        return mapper.toResponse(runnings);
+        return mapper.toPacemakerPollingResponse(runnings);
     }
 
     public long findPublicRunnersCount(Long courseId) {
         return runningRepository.countPublicRunnersInCourse(courseId);
     }
 
+    public List<RunMonthlyStatusResponse> findMonthlyDayRunStatus(Integer year, Integer month, String memberUuid) {
+        Member member = findMember(memberUuid);
+        List<DayRunInfo> dayRunInfos = runningRepository.findDayRunInfosFilteredByDate(year, month, member.getId());
+        return mapper.toDayRunStatusResponses(dayRunInfos);
+    }
+  
     /** 코스 ID 별로 러너의 수를 매핑하여 반환한다. (Key = 코스 ID, Value = 러너 수) */
     public Map<Long, Long> findPublicRunnersCountByCourseIds(List<Long> courseIds) {
         Map<Long, Long> ret = courseIds.stream()

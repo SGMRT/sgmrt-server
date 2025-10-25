@@ -13,6 +13,6 @@ import java.util.List;
 public interface PacemakerSetRepository extends JpaRepository<PacemakerSet, Long> {
 
     @Query("select s from PacemakerSet s where s.pacemaker.id = :pacemakerId order by s.setNum asc, s.pace desc ")
-    List<PacemakerSet> findByPacemakerIdOrderBySetNumAsc(@Param("pacemakerId") Long pacemakerId);
+    List<PacemakerSet> findByPacemakerIdOrderBySetNumAsc(Long pacemakerId);
 
 }

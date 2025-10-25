@@ -96,7 +96,7 @@ class NoticeDismissalRepositoryTest extends IntegrationTestSupport {
     }
 
     private Notice createAndSaveNotice(String title, String content) {
-        Notice notice = Notice.of(title, content, NoticeType.GENERAL, null, 1, LocalDateTime.now(), LocalDateTime.now().plusDays(7));
+        Notice notice = Notice.of(title, content, NoticeType.GENERAL_V2, null, 1, LocalDateTime.now(), LocalDateTime.now().plusDays(7));
         return noticeRepository.save(notice);
     }
 

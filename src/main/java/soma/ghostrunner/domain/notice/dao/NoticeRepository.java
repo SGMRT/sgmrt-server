@@ -16,7 +16,7 @@ import java.util.List;
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
     @Query("SELECT n FROM Notice n " +
-            "WHERE (n.startAt <= :now AND (n.endAt >= :now OR n.endAt IS NULL)) " +
+            "WHERE (n.startAt <= :now AND n.endAt >= :now) " +
             "AND (:noticeType IS NULL OR n.type = :noticeType) " + // noticeType != null일 때만 필터링
             "AND n.id NOT IN (" +
             "   SELECT nd.notice.id FROM NoticeDismissal nd " +
@@ -26,7 +26,11 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
             "ORDER BY n.priority DESC, n.createdAt DESC")
     List<Notice> findActiveNoticesForMember(LocalDateTime now, String memberUuid, NoticeType noticeType);
 
-    @Query("SELECT n FROM Notice n WHERE (:noticeType IS NULL OR n.type = :noticeType)") // noticeType != null일 때만 필터링
+    @Query("SELECT n FROM Notice n WHERE (:noticeType IS NULL OR n.type = :noticeType) " +
+            "AND NOT (n.startAt is NULL OR n.endAt is NULL)") // noticeType != null일 때만 필터링
     Page<Notice> findAllByType(NoticeType noticeType, Pageable pageable);
+
+    @Query("SELECT n FROM Notice n WHERE n.startAt IS NULL AND n.endAt IS NULL ")
+    List<Notice> findDeactivatedNotices();
 
 }

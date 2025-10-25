@@ -7,6 +7,7 @@ public record CourseSummaryResponse (
         Long id,
         String name,
         String thumbnailUrl,
+        Integer elevationGain,
         LocalDateTime createdAt,
         Integer uniqueRunnersCount,
         Integer totalRunsCount,
