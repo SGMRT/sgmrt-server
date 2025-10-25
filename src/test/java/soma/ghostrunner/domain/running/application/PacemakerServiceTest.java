@@ -30,7 +30,6 @@ import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,8 +58,6 @@ class PacemakerServiceTest {
     PacemakerLlmService llmService;
     @Mock
     RunningApplicationMapper mapper;
-    @Mock
-    RLock rLock;
 
     PacemakerService pacemakerService;
 
@@ -103,8 +100,6 @@ class PacemakerServiceTest {
         when(workoutService.generateWorkouts(eq(10.0), any(), any()))
                 .thenReturn(WorkoutDto.of(RunningType.M, 10.0, java.util.List.of()));
 
-        when(redisRunningRepository.getLock(anyString())).thenReturn(rLock);
-        when(rLock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
         when(redisRunningRepository.incrementRateLimitCounter(anyString(), anyLong(), anyInt()))
                 .thenReturn(1L);
 
@@ -145,16 +140,14 @@ class PacemakerServiceTest {
                 new CreatePacemakerCommand(PacemakerType.MARATHON, 10.0, 5, 30, courseId);
 
         when(memberService.findMemberByUuid(uuid)).thenReturn(member);
-        when(memberService.findMemberVdot(uuid)).thenReturn(30);                // ✅ 변경
-        when(courseService.findCourseById(courseId)).thenReturn(mock(Course.class)); // ✅ 추가
+        when(memberService.findMemberVdot(uuid)).thenReturn(30);
+        when(courseService.findCourseById(courseId)).thenReturn(mock(Course.class));
         when(runningVdotService.getExpectedPacesByVdot(anyInt())).thenReturn(Map.of());
         when(workoutService.generateWorkouts(anyDouble(), any(), any()))
                 .thenReturn(WorkoutDto.of(RunningType.M, 10.0, java.util.List.of()));
-        when(redisRunningRepository.getLock(anyString())).thenReturn(rLock);
-        when(rLock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
         // 3회 초과
         when(redisRunningRepository.incrementRateLimitCounter(anyString(), anyLong(), anyInt()))
-                .thenReturn(4L);
+                .thenReturn(-1L);
 
         // when // then
         assertThatThrownBy(() -> pacemakerService.createPaceMaker(uuid, cmd))
@@ -272,7 +265,7 @@ class PacemakerServiceTest {
         verifyNoInteractions(pacemakerSetRepository, mapper);
     }
 
-    @DisplayName("일일 제한 횟수를 조회한다. 생성했던 수 만큼 DAILY_LIMIT에서 차감되어 조회된다.")
+    @DisplayName("일일 제한 횟수를 계산한다. 생성했던 수를 조회하여 DAILY_LIMIT에서 차감한다.")
     @Test
     void getRateLimitCounter() {
         // given
@@ -286,7 +279,7 @@ class PacemakerServiceTest {
         assertThat(remainedRateLimitCount).isEqualTo(dailyCount - 1);
     }
 
-    @DisplayName("일일 제한 횟수를 조회한다. 혹여나 제한 횟수를 초과하였더라도 마이너스가 아닌 0으로 출력된다.")
+    @DisplayName("일일 제한 횟수를 계산한다. 제한 횟수를 초과했다면 마이너스가 아닌 0으로 출력된다.")
     @Test
     void getExceedRateLimitCounter() {
         // given

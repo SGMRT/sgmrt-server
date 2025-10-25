@@ -45,19 +45,14 @@ public class PacemakerService {
     private final RunningQueryService runningQueryService;
     private final CourseService courseService;
     private final MemberService memberService;
-
     private final RunningVdotService runningVdotService;
     private final WorkoutService workoutService;
     private final PacemakerLlmService llmService;
 
     private final RunningApplicationMapper mapper;
 
-    private final String PACEMAKER_LOCK_KEY_PREFIX = "pacemaker_api_lock:";
     private final String PACEMAKER_API_RATE_LIMIT_KEY_PREFIX = "pacemaker_api_rate_limit:";
-
     public static final long DAILY_LIMIT = 3;
-    private static final long LOCK_WAIT_TIME_SECONDS = 0;
-    private static final long LOCK_LEASE_TIME_SECONDS = 180;
     private static final int KEY_EXPIRATION_TIME_SECONDS = 86400;
 
     @Transactional
@@ -72,20 +67,11 @@ public class PacemakerService {
         RunningType runningType = RunningType.toRunningType(command.getType());
         WorkoutDto workoutDto = workoutService.generateWorkouts(command.getTargetDistance(), runningType, expectedPaces);
 
-        RLock lock = redisRunningRepository.getLock(PACEMAKER_LOCK_KEY_PREFIX + memberUuid);
-        try {
-            boolean isLocked = lock.tryLock(LOCK_WAIT_TIME_SECONDS, LOCK_LEASE_TIME_SECONDS, TimeUnit.SECONDS);
-            verifyLockAlreadyGotten(memberUuid, isLocked);
-            String rateLimitKey = handleApiRateLimit(memberUuid, command.getLocalDate());
+        String rateLimitKey = handleApiRateLimit(memberUuid, command.getLocalDate());
 
-            Pacemaker pacemaker = savePacemaker(command, command.getCourseId(), member);
-            requestLlmToCreatePacemaker(command, member, workoutDto, vdot, pacemaker, rateLimitKey);
-            return pacemaker.getId();
-        } finally {
-            if (lock.isLocked() && lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
+        Pacemaker pacemaker = savePacemaker(command, command.getCourseId(), member);
+        requestLlmToCreatePacemaker(command, member, workoutDto, vdot, pacemaker, rateLimitKey);
+        return pacemaker.getId();
     }
 
     private int determineVdot(Member member) {
@@ -93,13 +79,6 @@ public class PacemakerService {
             return memberService.findMemberVdot(member.getUuid());
         } catch (MemberNotFoundException e) {
             throw new InvalidRunningException(VDOT_NOT_FOUND, "기존 VDOT 기록이 없어 페이스메이커를 생성할 수 없습니다.");
-        }
-    }
-
-    private void verifyLockAlreadyGotten(String memberUuid, boolean isLocked) {
-        if (!isLocked) {
-            log.warn("사용자 UUID '{}'의 락 획득 실패. 이미 다른 요청이 처리 중입니다.", memberUuid);
-            throw new IllegalArgumentException("이미 다른 요청이 처리 중입니다.");
         }
     }
 
@@ -118,7 +97,7 @@ public class PacemakerService {
             throw new RuntimeException("Redis 스크립트 실행 오류가 발생했습니다.");
         }
 
-        if (currentCount > DAILY_LIMIT) {
+        if (currentCount == -1) {
             log.warn("사용자 ID '{}'가 일일 사용량({})을 초과했습니다.", memberUuid, DAILY_LIMIT);
             throw new InvalidRunningException(TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다.");
         }

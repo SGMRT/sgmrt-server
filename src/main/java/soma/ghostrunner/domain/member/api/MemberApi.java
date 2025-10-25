@@ -71,8 +71,7 @@ public class MemberApi {
     }
 
     @PostMapping("/vdot")
-    public void postVdot(
-            @AuthenticationPrincipal JwtUserDetails userDetails, @RequestParam RunningLevel level) {
+    public void postVdot(@AuthenticationPrincipal JwtUserDetails userDetails, @RequestParam RunningLevel level) {
         String memberUuid = userDetails.getUserId();
         memberService.calculateAndSaveVdot(memberUuid, level.getDisplayName());
     }
