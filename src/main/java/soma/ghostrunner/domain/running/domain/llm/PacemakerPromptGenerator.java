@@ -20,7 +20,7 @@ public class PacemakerPromptGenerator {
                 컨디션은 '매우 안좋음, 안좋음, 보통, 좋음, 매우 좋음' 중 하나로 주어진다. 
                                 
                 각 구간은 setNum 필드를 통해 구분되며, 세트 재구성이 필요하다면 json 규격에 맞게 재구성할 수 있다.
-                쉬는 구간은 pace_min/km 필드값을 0:00 으로 통일한다.
+                쉬는 구간은 pace_min/km 필드값을 0:00 으로 통일하며, 첫 번째 세트와 마지막 세트는 웜업(Warm-Up)과 쿨 다운(Cool-Down) 세트임을 인지하고 최적화한다.
                                 
                 ---
                                 
