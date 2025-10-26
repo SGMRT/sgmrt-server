@@ -11,9 +11,11 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
+import soma.ghostrunner.domain.running.domain.Pacemaker;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
@@ -189,6 +191,31 @@ class RunningApplicationMapperTest {
         assertThat(event.runningId()).isEqualTo(running.getId());
         assertThat(event.runnerId()).isEqualTo(runner.getId());
         assertThat(event.runnerNickname()).isEqualTo(runner.getNickname());
+    }
+
+    @DisplayName("페이스메이커 엔티티를 PacemakerCreatedEvent로 변환한다.")
+    @Test
+    void toPacemakerCreatedEvent() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 500d, 1L, "uuid");
+        setPacemakerId(pacemaker, 100L);
+
+        // when
+        PacemakerCreatedEvent event = mapper.toPacemakerCreatedEvent(pacemaker);
+        // then
+        assertThat(event.pacemakerId()).isEqualTo(pacemaker.getId());
+        assertThat(event.courseId()).isEqualTo(pacemaker.getCourseId());
+        assertThat(event.memberUuid()).isEqualTo(pacemaker.getMemberUuid());
+    }
+
+    private void setPacemakerId(Pacemaker pacemaker, long id) {
+        try {
+            java.lang.reflect.Field idField = Pacemaker.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(pacemaker, id);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Running createPublicSoloRunning(Member member, Course course) {

@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionalEventListener;
+import soma.ghostrunner.domain.course.application.CourseService;
+import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
@@ -15,6 +17,7 @@ import soma.ghostrunner.domain.notification.domain.event.NotificationEvent;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
+import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 
 import java.util.List;
 
@@ -26,8 +29,10 @@ import java.util.List;
 public class NotificationEventListener {
 
     private final MemberService memberService;
+    private final CourseService courseService;
     private final RunningQueryService runningQueryService;
 
+    private final NotificationEventAssembler notificationEventAssembler;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     /** 본인 코스를 다른 러너가 달린 경우 */
@@ -37,19 +42,10 @@ public class NotificationEventListener {
         if (runEvent.courseOwnerId().equals(runEvent.runnerId())) {
             return;
         }
-        NotificationEvent notificationEvent = buildCourseRunNotificationEvent(runEvent);
+        NotificationEvent notificationEvent = notificationEventAssembler.buildCourseRunEvent(runEvent);
         log.info("알림 이벤트 전송 - 회원 '{}'가 회원 '{}'의 코스 '{}'를 달림 (event={})",
                 runEvent.runnerId(), runEvent.courseOwnerId(), runEvent.courseId(), notificationEvent);
         applicationEventPublisher.publishEvent(notificationEvent);
-    }
-
-    private NotificationEvent buildCourseRunNotificationEvent(CourseRunEvent runEvent) {
-        return new NotificationEvent(
-                List.of(runEvent.courseOwnerId()),
-                "누군가 내 코스를 달렸어요!",
-                runEvent.runnerNickname() + " 님이 회원님의 " + determineCourseName(runEvent.courseName()) + "를 완주했습니다.",
-                null
-        );
     }
 
     /** 코스의 본인 최고 기록을 갱신한 경우 */
@@ -71,12 +67,7 @@ public class NotificationEventListener {
     private void sendNotificationIfTopRecordUpdated(CourseRunEvent runEvent, Running currentRun, Running previousRun) {
         if(currentRun.getRunningRecord().getDuration() < previousRun.getRunningRecord().getDuration()) {
             // 기록이 개선된 경우 알림을 전송한다
-            NotificationEvent notificationEvent = new NotificationEvent(
-                    List.of(runEvent.runnerId()),
-                    "개인 기록 갱신!",
-                    "축하해요! " + determineCourseName(runEvent.courseName()) + "에서 개인 최고 기록을 갱신했어요!",
-                    null
-            );
+            NotificationEvent notificationEvent = notificationEventAssembler.buildTopRecordUpdatedEvent(runEvent);
             log.info("알림 이벤트 전송 - 회원 '{}'가 코스 '{}'에서 개인 기록 갱신 (event={})",
                     runEvent.runnerId(), runEvent.courseId(), notificationEvent);
             applicationEventPublisher.publishEvent(notificationEvent);
@@ -97,100 +88,37 @@ public class NotificationEventListener {
         }
     }
 
-    private List<NoticeActivatedEvent.NoticeRecord> filterNoticeRecords(NoticeActivatedEvent event, List<NoticeType> noticeTypes) {
+    private List<NoticeActivatedEvent.NoticeRecord> filterNoticeRecords(NoticeActivatedEvent event, List<NoticeType> filterTypes) {
         return event.activatedNotices().stream()
-                .filter(notice -> noticeTypes.contains(notice.noticeType()))
+                .filter(notice -> filterTypes.contains(notice.noticeType()))
                 .toList();
     }
 
     /** 새로운 일반 공지사항이 게시된 경우 (즉, 일반 공지사항의 시작시간이 도래한 경우) */
     public void notifyGeneralNotice(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
         if (generalNotices.isEmpty()) return;
-        NotificationEvent notificationEvent = buildNoticeNotificationEvent(generalNotices);
+        NotificationEvent notificationEvent = notificationEventAssembler.buildNoticeEvent(generalNotices);
         log.info("알림 이벤트 전송 - 새로운 공지 사항 {}건 게시 (event={})", generalNotices.size(), notificationEvent);
         applicationEventPublisher.publishEvent(notificationEvent);
-    }
-
-    private NotificationEvent buildNoticeNotificationEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
-        if (generalNotices.size() == 1) {
-            return buildSingleNoticeNotificationEvent(generalNotices.get(0));
-        } else {
-            return buildMultiNoticeNotificationEvent(generalNotices);
-        }
-    }
-
-    private NotificationEvent buildMultiNoticeNotificationEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
-        return new NotificationEvent(
-                allMemberIds(),
-                "새로운 공지 " + generalNotices.size() + "건이 등록되었어요",
-                buildMultiNoticeNotificationContent(generalNotices),
-                null
-        );
-    }
-
-    private String buildMultiNoticeNotificationContent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
-        StringBuilder contentBuilder = new StringBuilder();
-        for(var notice: generalNotices) {
-            contentBuilder.append("- ").append(notice.title()).append("\n");
-        }
-        return contentBuilder.toString().trim();
-    }
-
-    private NotificationEvent buildSingleNoticeNotificationEvent(NoticeActivatedEvent.NoticeRecord notice) {
-        return new NotificationEvent(
-                allMemberIds(),
-                "새로운 공지가 등록되었어요.",
-                notice.title(),
-                null
-        );
     }
 
     /** 새로운 이벤트 공지사항이 게시된 경우 (즉, 이벤트 공지사항의 시작시간이 도래한 경우) */
     public void notifyEventNotice(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
         if (eventNotices.isEmpty()) return;
-        NotificationEvent notificationEvent = buildEventNotificationEvent(eventNotices);
+        NotificationEvent notificationEvent = notificationEventAssembler.buildEventNoticeEvent(eventNotices);
         log.info("알림 이벤트 전송 - 새로운 이벤트 공지 {}건 게시 (event={})", eventNotices.size(), notificationEvent);
         applicationEventPublisher.publishEvent(notificationEvent);
     }
 
-    private NotificationEvent buildEventNotificationEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
-        if (eventNotices.size() == 1) {
-            return buildSingleEventNotificationEvent(eventNotices);
-        } else {
-            return buildMultiEventNotificationEvent(eventNotices);
-        }
-    }
-
-    private NotificationEvent buildMultiEventNotificationEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
-        return new NotificationEvent(
-                allMemberIds(),
-                "새로운 이벤트 " + eventNotices.size() + "건이 등록되었어요",
-                buildMultiNoticeNotificationContent(eventNotices),
-                null
-        );
-    }
-
-    private NotificationEvent buildSingleEventNotificationEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
-        var notice = eventNotices.get(0);
-        return new NotificationEvent(
-                allMemberIds(),
-                "새로운 이벤트 공지가 등록되었어요.",
-                notice.title(),
-                null
-        );
-    }
-
-    private List<Long> allMemberIds() {
-        return memberService.findAllMemberIds();
-    }
-
-    /** courseName이 '~코스'로 끝나지 않는다면 뒤에 코스를 붙인다. */
-    private String determineCourseName(String courseName) {
-        if (courseName.endsWith("코스")) {
-            return courseName;
-        } else {
-            return courseName + " 코스";
-        }
+    /** 페이스메이커가 생성된 경우 */
+    @TransactionalEventListener
+    public void handlePacemakerCreationEvent(PacemakerCreatedEvent event) {
+        Member member = memberService.findMemberByUuid(event.memberUuid());
+        Course course = courseService.findCourseById(event.courseId());
+        NotificationEvent notificationEvent = notificationEventAssembler.buildPacemakerCreatedEvent(member, course);
+        log.info("알림 이벤트 전송 - 회원 '{}'에 코스 '{}'에 페이스메이커 '{}' 생성 완료 (event={})",
+                member.getId(), course.getId(), event.pacemakerId(), notificationEvent);
+        applicationEventPublisher.publishEvent(notificationEvent);
     }
 
 }

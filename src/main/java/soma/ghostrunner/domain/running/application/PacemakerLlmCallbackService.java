@@ -1,10 +1,12 @@
 package soma.ghostrunner.domain.running.application;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
 import soma.ghostrunner.domain.running.domain.Pacemaker.Status;
 import soma.ghostrunner.domain.running.domain.PacemakerSet;
@@ -23,6 +25,9 @@ import static soma.ghostrunner.domain.running.domain.Pacemaker.Status.*;
 @RequiredArgsConstructor
 public class PacemakerLlmCallbackService {
 
+    private final ApplicationEventPublisher eventPublisher;
+    private final RunningApplicationMapper mapper;
+
     private final PacemakerRepository pacemakerRepository;
     private final PacemakerSetRepository pacemakerSetRepository;
     private final RedisRunningRepository redisRunningRepository;
@@ -37,6 +42,7 @@ public class PacemakerLlmCallbackService {
 
         List<PacemakerSet> sets = PacemakerSet.createPacemakerSets(workoutDto.getSets(), pacemaker);
         pacemakerSetRepository.saveAll(sets);
+        eventPublisher.publishEvent(mapper.toPacemakerCreatedEvent(pacemaker));
     }
 
     private Pacemaker findPacemaker(Long pacemakerId) {
