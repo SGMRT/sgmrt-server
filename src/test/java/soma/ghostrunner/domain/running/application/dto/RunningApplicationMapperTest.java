@@ -11,10 +11,7 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
-import soma.ghostrunner.domain.running.domain.Pacemaker;
-import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.RunningMode;
-import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.domain.running.domain.*;
 import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.path.Telemetry;
@@ -199,7 +196,7 @@ class RunningApplicationMapperTest {
     @Test
     void toPacemakerCreatedEvent() {
         // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 500d, 1L, "uuid");
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 500d, 1L, RunningType.E, "uuid");
         setPacemakerId(pacemaker, 100L);
 
         // when
