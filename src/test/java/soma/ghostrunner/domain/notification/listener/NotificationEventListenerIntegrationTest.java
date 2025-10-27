@@ -7,11 +7,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.event.ApplicationEvents;
-import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import soma.ghostrunner.DatabaseCleanserExtension;
@@ -38,12 +38,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(DatabaseCleanserExtension.class)
-@RecordApplicationEvents
 class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
-
-    @Autowired ApplicationEvents applicationEvents;
 
     @Autowired MemberRepository memberRepository;
     @Autowired RunningRepository runningRepository;
@@ -59,7 +57,7 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
 
     @BeforeEach
     void setUp() {
-        applicationEvents.clear();
+        Mockito.reset(notificationService);
         defaultMember = createMember("햄부기");
         transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
@@ -96,16 +94,12 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         });
 
         // then
-        // NotificationEvent 이벤트가 발생 여부 검증
-        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
-                event -> event.title().equals("누군가 내 코스를 달렸어요!"))
-                .toList();
-        assertThat(events.size()).isEqualTo(1);
-        // 이벤트 내용 검증
-        NotificationCommand event = events.get(0);
-        assertThat(event.userIds()).hasSize(1).contains(defaultMember.getId());
-        assertThat(event.title()).isEqualTo("누군가 내 코스를 달렸어요!");
-        assertThat(event.body()).isEqualTo("맥도날드 님이 회원님의 테스트 코스를 완주했습니다.");
+        ArgumentCaptor<NotificationCommand> commandCaptor = ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService, times(1)).sendPushNotification(commandCaptor.capture());
+        NotificationCommand notiCommand = commandCaptor.getValue();
+        assertThat(notiCommand.userIds()).hasSize(1).contains(defaultMember.getId());
+        assertThat(notiCommand.title()).isEqualTo("누군가 내 코스를 달렸어요!");
+        assertThat(notiCommand.body()).isEqualTo("맥도날드 님이 회원님의 테스트 코스를 완주했습니다.");
     }
 
     @DisplayName("코스에서 본인의 기존 신기록을 갱신한 경우 올바른 알림 이벤트를 발행한다.")
@@ -142,15 +136,15 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         });
 
         // then
-        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
-                event -> event.title().equals("개인 기록 갱신!"))
-                .toList();
-        assertThat(events).hasSize(1);
-        // 이벤트 내용 검증
-        NotificationCommand event = events.get(0);
-        assertThat(event.userIds()).hasSize(1).contains(runner.getId());
-        assertThat(event.title()).isEqualTo("개인 기록 갱신!");
-        assertThat(event.body()).isEqualTo("축하해요! 테스트 코스에서 개인 최고 기록을 갱신했어요!");
+        ArgumentCaptor<NotificationCommand> commandCaptor = ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService, atLeastOnce()).sendPushNotification(commandCaptor.capture());
+        NotificationCommand notiCommand = commandCaptor.getAllValues().stream()
+                .filter(cmd -> cmd.title().equals("개인 기록 갱신!"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("개인 기록 갱신 알림이 전송되지 않았습니다."));
+        assertThat(notiCommand.userIds()).hasSize(1).contains(runner.getId());
+        assertThat(notiCommand.title()).isEqualTo("개인 기록 갱신!");
+        assertThat(notiCommand.body()).isEqualTo("축하해요! 테스트 코스에서 개인 최고 기록을 갱신했어요!");
     }
 
     @DisplayName("공지사항 활성화 이벤트를 수신하면 공지사항 유형에 따라 올바른 알림 이벤트를 전송한다.")
@@ -181,14 +175,12 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         // then
         String expectedTitle = notice.getType() == NoticeType.GENERAL_V2 ?
                 "새로운 공지가 등록되었어요." : "새로운 이벤트 공지가 등록되었어요.";
-        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
-                event -> event.title().equals(expectedTitle))
-                .toList();
-        assertThat(events).hasSize(1);
-        var event = events.get(0);
-        assertThat(event.userIds()).contains(member1.getId(), member2.getId());
-        assertThat(event.title()).isEqualTo(expectedTitle);
-        assertThat(event.body()).isEqualTo(notice.getTitle());
+        ArgumentCaptor<NotificationCommand> commandCaptor = ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService, times(1)).sendPushNotification(commandCaptor.capture());
+        NotificationCommand notiCommand = commandCaptor.getValue();
+        assertThat(notiCommand.userIds()).contains(member1.getId(), member2.getId());
+        assertThat(notiCommand.title()).isEqualTo(expectedTitle);
+        assertThat(notiCommand.body()).isEqualTo(notice.getTitle());
     }
 
     private static Stream<Arguments> singleNoticeEventTestCases() {
@@ -225,14 +217,12 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         });
 
         // then
-        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
-                event -> event.title().equals(expectedTitle))
-                .toList();
-        assertThat(events).hasSize(1);
-        var event = events.get(0);
-        assertThat(event.userIds()).contains(member1.getId(), member2.getId());
-        assertThat(event.title()).isEqualTo(expectedTitle);
-        assertThat(event.body()).isEqualTo(notices.stream().map(Notice::getTitle)
+        ArgumentCaptor<NotificationCommand> commandCaptor = ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService, times(1)).sendPushNotification(commandCaptor.capture());
+        NotificationCommand notiCommand = commandCaptor.getValue();
+        assertThat(notiCommand.userIds()).contains(member1.getId(), member2.getId());
+        assertThat(notiCommand.title()).isEqualTo(expectedTitle);
+        assertThat(notiCommand.body()).isEqualTo(notices.stream().map(Notice::getTitle)
                 .map(title -> "- " + title)
                 .collect(Collectors.joining("\n")));
     }
@@ -281,14 +271,12 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         });
 
         // then
-        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
-                event -> event.title().equals("고스티가 완성됐어요"))
-                .toList();
-        assertThat(events).hasSize(1);
-        var event = events.get(0);
-        assertThat(event.userIds()).contains(member1.getId());
-        assertThat(event.title()).isEqualTo("고스티가 완성됐어요");
-        assertThat(event.body()).isEqualTo(course.getName() + "에 고스티가 생성됐어요!");
+        ArgumentCaptor<NotificationCommand> commandCaptor = ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService, times(1)).sendPushNotification(commandCaptor.capture());
+        NotificationCommand notiCommand = commandCaptor.getValue();
+        assertThat(notiCommand.userIds()).contains(member1.getId());
+        assertThat(notiCommand.title()).isEqualTo("고스티가 완성됐어요");
+        assertThat(notiCommand.body()).isEqualTo(course.getName() + "에 고스티가 생성됐어요!");
     }
 
 
