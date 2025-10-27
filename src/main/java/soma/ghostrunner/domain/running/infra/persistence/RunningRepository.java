@@ -171,4 +171,12 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     @Query("select r from Running r where r.course.id = :courseId and r.member.uuid = :memberUuid order by r.startedAt desc, r.id desc limit :limit")
     List<Running> findLatestRunsByCourseIdAndMemberId(Long courseId, String memberUuid, int limit);
 
+    @Query("select r from Running r " +
+            "where r.course.id = :courseId " +
+            "and r.member.uuid = :memberUuid " +
+            "and r.startedAt < :runStartedAt " +
+            "order by r.runningRecord.duration asc, r.id asc " +
+            "limit 1")
+    Optional<Running> findBestRunByCourseIdAndMemberUuidBefore(Long courseId, String memberUuid, Long runStartedAt);
+
 }

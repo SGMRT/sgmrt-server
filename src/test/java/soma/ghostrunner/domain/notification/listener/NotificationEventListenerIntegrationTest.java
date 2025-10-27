@@ -108,8 +108,8 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         // given
         Course course = createCourse(defaultMember);
         Member runner = createMember("버거킹");
-        Running prevRunning = createRunningWithDuration(runner, course, 3600L);
-        Running newRunning = createRunningWithDuration(runner, course, 1000L);
+        Running prevRunning = createRunningWithDurationAndStartedAt(runner, course, 3600L, 12345L);
+        Running newRunning = createRunningWithDurationAndStartedAt(runner, course, 1000L, 23456L);
         transactionTemplate.execute(status -> {
             // 새 트랜잭션에서 데이터 저장 eventListener에서 볼 수 있게 하기 위함 (notifyCourseTopPersonalRecordUpdate의 트랜잭션 전파 속성은 REQUIRES_NEW임)
             courseRepository.save(course);
@@ -307,8 +307,8 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         return course;
     }
 
-    private static Running createRunningWithDuration(Member runner, Course course, Long duration) {
-        return Running.of("러닝이에용", RunningMode.SOLO, 2L, createRunningRecord(duration), 1750729987181L,
+    private static Running createRunningWithDurationAndStartedAt(Member runner, Course course, Long duration, Long startedAt) {
+        return Running.of("러닝이에용", RunningMode.SOLO, 2L, createRunningRecord(duration), startedAt,
                 true, false, "URL", "URL", "URL", runner, course);
     }
 

@@ -242,4 +242,9 @@ public class RunningQueryService {
         return ret;
     }
 
+    /** 회원의 러닝 중 :runStartedAt 이전의 가장 좋은 기록을 가지고 온다. */
+    public Optional<Running> findMemberBestRunBefore(Long courseId, String memberUuid, Long runStartedAt) {
+        return runningRepository.findBestRunByCourseIdAndMemberUuidBefore(courseId, memberUuid, runStartedAt);
+    }
+
 }

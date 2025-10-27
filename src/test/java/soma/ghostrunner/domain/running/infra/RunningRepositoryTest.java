@@ -697,6 +697,11 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Assertions.assertThat(nullCourseInfoCount).isEqualTo(runningWithPrivateCourseCount);
     }
 
+    private Running createRunningWithDuration(Course course, Member member, Long duration, Long startedAt) {
+        return Running.of("러닝 제목", RunningMode.SOLO, null, createRunningRecord(duration), startedAt,
+                true, false, "시계열 URL", "시계열 URL", "시계열 URL", member, course);
+    }
+
     private Running createRunning(String runningName, Course course, Member member, Long startedAt, RunningMode runningMode) {
         if (runningMode.equals(RunningMode.SOLO)) {
             return Running.of(runningName, runningMode, null, createRunningRecord(), startedAt,
@@ -1405,6 +1410,34 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         assertThat(latestRunningOpt).hasSize(2);
         assertThat(latestRunningOpt.get(0).getStartedAt()).isEqualTo(5000L);
         assertThat(latestRunningOpt.get(1).getStartedAt()).isEqualTo(4000L);
+    }
+
+    @DisplayName("코스 ID와 멤버 UUID를 기반으로 사용자가 해당 코스에서 특정 시각 이전에 뛴 베스트 러닝 기록을 조회한다.")
+    @Test
+    void findBestRunByCourseIdAndMemberUuidBefore() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse(member, "이복둥 러닝 코스");
+        course.setIsPublic(true);
+        courseRepository.save(course);
+
+        List<Running> runnings = new ArrayList<>();
+        long ts = 0L;
+        for (int i = 0; i < 5; i++) {
+            ts += 1000L;
+            runnings.add(createRunningWithDuration(course, member, ts, ts));
+        }
+        runningRepository.saveAll(runnings);
+
+        // when
+        Optional<Running> bestRunningOpt = runningRepository.findBestRunByCourseIdAndMemberUuidBefore(course.getId(), member.getUuid(), 4500L);
+
+        // then
+        assertThat(bestRunningOpt).isPresent();
+        Running bestRunning = bestRunningOpt.get();
+        assertThat(bestRunning.getStartedAt()).isEqualTo(1000L);
     }
   
 }

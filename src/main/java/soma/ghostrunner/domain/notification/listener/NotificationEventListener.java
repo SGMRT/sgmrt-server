@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.notification.listener;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +20,7 @@ import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 
 import java.util.List;
+import java.util.Optional;
 
 
 /** 외부 이벤트를 리스닝하여 NotificationService를 호출하는 클래스 */
@@ -57,28 +57,28 @@ public class NotificationEventListener {
         // 본인의 이전 기록을 조회한다
         Member member = memberService.findMemberById(runEvent.runnerId());
         // 동시성 해결 방식
-//        Optional<Running> previousBestRun = runningQueryService.findBestRunBefore(runEvent.courseId(), member.getUuid(), runEvent.runStartedAt());
-//        // 이번 기록이 첫 기록인 경우 알림을 보내지 않는다
-//        if(previousBestRun.isEmpty()) return;
-//        if(topRecordUpdated(previousBestRun.get().getRunningRecord().getDuration(), runEvent.runDuration())) {
-//            // 기록이 개선된 경우 알림을 전송한다
-//            NotificationEvent notificationEvent = notificationEventAssembler.buildTopRecordUpdatedEvent(runEvent);
-//            log.info("알림 이벤트 전송 - 회원 '{}'가 코스 '{}'에서 개인 기록 갱신 (event={})",
-//                    runEvent.runnerId(), runEvent.courseId(), notificationEvent);
-//            applicationEventPublisher.publishEvent(notificationEvent);
-//        }
-
-        // ------------------------------------------------------------
-        List<Running> runHistory = runningQueryService.findLatestRunningsByMember(runEvent.courseId(), member.getUuid(), 2);
+        Optional<Running> previousBestRun = runningQueryService.findMemberBestRunBefore(runEvent.courseId(), member.getUuid(), runEvent.runStartedAt());
         // 이번 기록이 첫 기록인 경우 알림을 보내지 않는다
-        if(runHistory.size() < 2) {
-            return;
+        if(previousBestRun.isEmpty()) return;
+        if(topRecordUpdated(previousBestRun, runEvent.runDuration())) {
+            // 기록이 개선된 경우 알림을 전송한다
+            NotificationCommand command = notificationCommandAssembler.buildTopRecordUpdatedEvent(runEvent);
+            log.info("알림 이벤트 전송 - 회원 '{}'가 코스 '{}'에서 개인 기록 갱신 (event={})",
+                    runEvent.runnerId(), runEvent.courseId(), command);
+            notificationService.sendPushNotification(command);
         }
-        sendNotificationIfTopRecordUpdated(runEvent, runHistory.get(0), runHistory.get(1));
+//
+//        // ------------------------------------------------------------
+//        List<Running> runHistory = runningQueryService.findLatestRunningsByMember(runEvent.courseId(), member.getUuid(), 2);
+//        // 이번 기록이 첫 기록인 경우 알림을 보내지 않는다
+//        if(runHistory.size() < 2) {
+//            return;
+//        }
+//        sendNotificationIfTopRecordUpdated(runEvent, runHistory.get(0), runHistory.get(1));
     }
 
-    private boolean topRecordUpdated(Long prevBestDuration, Long newDuration) {
-        return false; // todo
+    private boolean topRecordUpdated(Optional<Running> prevRunning, Long newDuration) {
+        return prevRunning.orElseThrow().getRunningRecord().getDuration() > newDuration;
     }
 
     private void sendNotificationIfTopRecordUpdated(CourseRunEvent runEvent, Running currentRun, Running previousRun) {
