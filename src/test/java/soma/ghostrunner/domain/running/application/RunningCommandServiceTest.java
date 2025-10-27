@@ -181,7 +181,7 @@ class RunningCommandServiceTest {
 
         Running running = mock(Running.class);
         when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
-        when(runningRepository.save(running)).thenReturn(running);
+        when(runningRepository.save(any())).thenReturn(running);
         when(running.getId()).thenReturn(100L);
 
         // when
@@ -217,7 +217,7 @@ class RunningCommandServiceTest {
         // 러닝 저장 흐름
         Running running = mock(Running.class);
         when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
-        when(runningRepository.save(running)).thenReturn(running);
+        when(runningRepository.save(any())).thenReturn(running);
         when(running.getId()).thenReturn(200L);
 
         // when
