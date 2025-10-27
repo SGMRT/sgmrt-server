@@ -36,12 +36,6 @@ public class PacemakerResponse {
         this.timeTable = timeTable;
     }
 
-    @Builder
-    public PacemakerResponse(Long id, List<PacemakerSetResponse> sets) {
-        this.id = id;
-        this.pace = calculateMinPace(sets);
-    }
-
     private double calculateMinPace(List<PacemakerSetResponse> sets) {
         double minPace = Double.MAX_VALUE;
         for (PacemakerSetResponse setResponse : sets) {
