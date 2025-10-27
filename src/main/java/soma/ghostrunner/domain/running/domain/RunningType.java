@@ -23,6 +23,16 @@ public enum RunningType {
         };
     }
 
+    public String toWorkoutWord() {
+        return switch (this) {
+            case E -> "RECOVERY_JOGGING";
+            case I -> "STAMINA";
+            case R -> "SPEED";
+            case M -> "MARATHON";
+            case T -> "FREE";
+        };
+    }
+
     public static RunningType toRunningType(WorkoutType workoutType) {
         return RunningType.valueOf(workoutType.name());
     }

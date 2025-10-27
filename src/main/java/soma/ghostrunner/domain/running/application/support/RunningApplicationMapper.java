@@ -102,8 +102,9 @@ public interface RunningApplicationMapper {
     @Mapping(source = "course.id", target = "courseId")
     CreateCourseAndRunResponse toPacemakerPollingResponse(Running running, Course course);
 
-    default Pacemaker toPacemaker(Pacemaker.Norm norm, CreatePacemakerCommand command, Long courseId, Member member) {
-        return Pacemaker.of(norm, command.getTargetDistance(), courseId, member.getUuid());
+    default Pacemaker toPacemaker(Pacemaker.Norm norm, CreatePacemakerCommand command, Long courseId,
+                                  RunningType runningType, Member member) {
+        return Pacemaker.of(norm, command.getTargetDistance(), courseId, runningType, member.getUuid());
     }
 
     default PacemakerPollingResponse toPacemakerPollingResponse(Pacemaker p) {
@@ -112,7 +113,7 @@ public interface RunningApplicationMapper {
                 .build();
     }
 
-    default PacemakerPollingResponse toPacemakerPollingResponse(Pacemaker p, List<PacemakerSet> sets) {
+    default PacemakerPollingResponse toPacemakerPollingResponse(Pacemaker p, List<PacemakerSet> sets, String runningTip) {
 
         List<PacemakerSetResponse> setResponses = sets.stream()
                 .map(s -> PacemakerSetResponse.builder()
@@ -128,13 +129,16 @@ public interface RunningApplicationMapper {
 
         PacemakerResponse pacemakerResponse = PacemakerResponse.builder()
                 .id(p.getId())
-                .norm(p.getNorm())
+                .runningType(p.getRunningType().toWorkoutWord())
+                .norm(p.getNorm().name())
+                .norm(p.getNorm().name())
                 .summary(p.getSummary())
                 .goalKm(p.getGoalDistance())
                 .expectedMinutes(p.getExpectedTime())
                 .initialMessage(p.getInitialMessage())
                 .sets(setResponses)
                 .timeTable(timeTable)
+                .runningTip(runningTip)
                 .build();
 
         return PacemakerPollingResponse.builder()
@@ -190,6 +194,7 @@ public interface RunningApplicationMapper {
 
         PacemakerSummaryResponse pacemakerSummaryResponse = PacemakerSummaryResponse.builder()
                 .id(p.getId())
+                .pacemaker(p)
                 .sets(setResponses)
                 .build();
 

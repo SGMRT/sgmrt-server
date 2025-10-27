@@ -1,10 +1,8 @@
 package soma.ghostrunner.domain.running.api.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import soma.ghostrunner.domain.running.domain.Pacemaker;
 
 import java.util.List;
 
@@ -13,7 +11,8 @@ import java.util.List;
 public class PacemakerResponse {
 
     private Long id;
-    private Pacemaker.Norm norm;
+    private String runningType;
+    private String norm;
     private String summary;
     private Double goalKm;
     private Integer expectedMinutes;
@@ -21,11 +20,14 @@ public class PacemakerResponse {
     private String initialMessage;
     private List<PacemakerSetResponse> sets;
     private PacemakerTimeTableResponse timeTable;
+    private String runningTip;
 
     @Builder
-    public PacemakerResponse(Long id, Pacemaker.Norm norm, String summary, Double goalKm, Integer expectedMinutes,
-                             String initialMessage, List<PacemakerSetResponse> sets, PacemakerTimeTableResponse timeTable) {
+    public PacemakerResponse(Long id, String runningType, String norm, String summary,
+                             Double goalKm, Integer expectedMinutes, String initialMessage,
+                             List<PacemakerSetResponse> sets, PacemakerTimeTableResponse timeTable, String runningTip) {
         this.id = id;
+        this.runningType = runningType;
         this.norm = norm;
         this.summary = summary;
         this.goalKm = goalKm;
@@ -34,12 +36,7 @@ public class PacemakerResponse {
         this.initialMessage = initialMessage;
         this.sets = sets;
         this.timeTable = timeTable;
-    }
-
-    @Builder
-    public PacemakerResponse(Long id, List<PacemakerSetResponse> sets) {
-        this.id = id;
-        this.pace = calculateMinPace(sets);
+        this.runningTip = runningTip;
     }
 
     private double calculateMinPace(List<PacemakerSetResponse> sets) {

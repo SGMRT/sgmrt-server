@@ -18,6 +18,7 @@ import soma.ghostrunner.domain.running.domain.Pacemaker;
 import soma.ghostrunner.domain.running.domain.PacemakerSet;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningType;
+import soma.ghostrunner.domain.running.domain.formula.RunningTipsProvider;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
@@ -37,6 +38,8 @@ import static soma.ghostrunner.global.error.ErrorCode.*;
 @Service
 @RequiredArgsConstructor
 public class PacemakerService {
+
+    private final RunningTipsProvider runningTipsProvider;
 
     private final PacemakerRepository pacemakerRepository;
     private final PacemakerSetRepository pacemakerSetRepository;
@@ -69,7 +72,7 @@ public class PacemakerService {
 
         String rateLimitKey = handleApiRateLimit(memberUuid, command.getLocalDate());
 
-        Pacemaker pacemaker = savePacemaker(command, command.getCourseId(), member);
+        Pacemaker pacemaker = savePacemaker(command, command.getCourseId(), runningType, member);
         requestLlmToCreatePacemaker(command, member, workoutDto, vdot, pacemaker, rateLimitKey);
         return pacemaker.getId();
     }
@@ -97,10 +100,10 @@ public class PacemakerService {
             throw new RuntimeException("Redis 스크립트 실행 오류가 발생했습니다.");
         }
 
-        if (currentCount == -1) {
-            log.warn("사용자 ID '{}'가 일일 사용량({})을 초과했습니다.", memberUuid, DAILY_LIMIT);
-            throw new InvalidRunningException(TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다.");
-        }
+//        if (currentCount == -1) {
+//            log.warn("사용자 ID '{}'가 일일 사용량({})을 초과했습니다.", memberUuid, DAILY_LIMIT);
+//            throw new InvalidRunningException(TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다.");
+//        }
 
         return rateLimitKey;
     }
@@ -109,8 +112,8 @@ public class PacemakerService {
         return PACEMAKER_API_RATE_LIMIT_KEY_PREFIX + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
     }
 
-    private Pacemaker savePacemaker(CreatePacemakerCommand command, Long courseId, Member member) {
-        return pacemakerRepository.save(mapper.toPacemaker(Pacemaker.Norm.DISTANCE, command, courseId, member));
+    private Pacemaker savePacemaker(CreatePacemakerCommand command, Long courseId, RunningType runningType, Member member) {
+        return pacemakerRepository.save(mapper.toPacemaker(Pacemaker.Norm.DISTANCE, command, courseId, runningType, member));
     }
 
     private void requestLlmToCreatePacemaker(CreatePacemakerCommand command, Member member,
@@ -133,7 +136,7 @@ public class PacemakerService {
         }
 
         List<PacemakerSet> pacemakerSets = pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId);
-        return mapper.toPacemakerPollingResponse(pacemaker, pacemakerSets);
+        return mapper.toPacemakerPollingResponse(pacemaker, pacemakerSets, runningTipsProvider.getRandomTip());
     }
 
     private Pacemaker findPacemaker(Long pacemakerId) {
