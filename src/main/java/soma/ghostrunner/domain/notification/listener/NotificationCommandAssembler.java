@@ -6,19 +6,19 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
-import soma.ghostrunner.domain.notification.domain.event.NotificationEvent;
+import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 
 import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class NotificationEventAssembler {
+public class NotificationCommandAssembler {
 
     private final MemberService memberService;
 
-    public NotificationEvent buildCourseRunEvent(CourseRunEvent runEvent) {
-        return new NotificationEvent(
+    public NotificationCommand buildCourseRunEvent(CourseRunEvent runEvent) {
+        return new NotificationCommand(
                 List.of(runEvent.courseOwnerId()),
                 "누군가 내 코스를 달렸어요!",
                 runEvent.runnerNickname() + " 님이 회원님의 " + determineCourseName(runEvent.courseName()) + "를 완주했습니다.",
@@ -26,8 +26,8 @@ public class NotificationEventAssembler {
         );
     }
 
-    public NotificationEvent buildPacemakerCreatedEvent(Member member, Course course) {
-        return new NotificationEvent(
+    public NotificationCommand buildPacemakerCreatedEvent(Member member, Course course) {
+        return new NotificationCommand(
                 List.of(member.getId()),
                 "고스티가 완성됐어요",
                 determineCourseName(course.getName()) + "에 고스티가 생성됐어요!",
@@ -35,9 +35,9 @@ public class NotificationEventAssembler {
         );
     }
 
-    public NotificationEvent buildSingleEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
+    public NotificationCommand buildSingleEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
         var notice = eventNotices.get(0);
-        return new NotificationEvent(
+        return new NotificationCommand(
                 allMemberIds(),
                 "새로운 이벤트 공지가 등록되었어요.",
                 notice.title(),
@@ -45,8 +45,8 @@ public class NotificationEventAssembler {
         );
     }
 
-    public NotificationEvent buildMultiEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
-        return new NotificationEvent(
+    public NotificationCommand buildMultiEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
+        return new NotificationCommand(
                 allMemberIds(),
                 "새로운 이벤트 " + eventNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(eventNotices),
@@ -54,8 +54,8 @@ public class NotificationEventAssembler {
         );
     }
 
-    public NotificationEvent buildSingleNoticeEvent(NoticeActivatedEvent.NoticeRecord notice) {
-        return new NotificationEvent(
+    public NotificationCommand buildSingleNoticeEvent(NoticeActivatedEvent.NoticeRecord notice) {
+        return new NotificationCommand(
                 allMemberIds(),
                 "새로운 공지가 등록되었어요.",
                 notice.title(),
@@ -63,7 +63,7 @@ public class NotificationEventAssembler {
         );
     }
 
-    public NotificationEvent buildNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
+    public NotificationCommand buildNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
         if (generalNotices.size() == 1) {
             return buildSingleNoticeEvent(generalNotices.get(0));
         } else {
@@ -71,8 +71,8 @@ public class NotificationEventAssembler {
         }
     }
 
-    public NotificationEvent buildMultiNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
-        return new NotificationEvent(
+    public NotificationCommand buildMultiNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
+        return new NotificationCommand(
                 allMemberIds(),
                 "새로운 공지 " + generalNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(generalNotices),
@@ -80,7 +80,7 @@ public class NotificationEventAssembler {
         );
     }
 
-    public NotificationEvent buildEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
+    public NotificationCommand buildEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
         if (eventNotices.size() == 1) {
             return buildSingleEventNoticeEvent(eventNotices);
         } else {
@@ -96,8 +96,8 @@ public class NotificationEventAssembler {
         return contentBuilder.toString().trim();
     }
 
-    public NotificationEvent buildTopRecordUpdatedEvent(CourseRunEvent runEvent) {
-        return new NotificationEvent(
+    public NotificationCommand buildTopRecordUpdatedEvent(CourseRunEvent runEvent) {
+        return new NotificationCommand(
                 List.of(runEvent.runnerId()),
                 "개인 기록 갱신!",
                 "축하해요! " + determineCourseName(runEvent.courseName()) + "에서 개인 최고 기록을 갱신했어요!",

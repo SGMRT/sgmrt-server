@@ -24,7 +24,7 @@ import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
 import soma.ghostrunner.domain.notification.application.NotificationService;
-import soma.ghostrunner.domain.notification.domain.event.NotificationEvent;
+import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
@@ -97,12 +97,12 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
 
         // then
         // NotificationEvent 이벤트가 발생 여부 검증
-        List<NotificationEvent> events = applicationEvents.stream(NotificationEvent.class).filter(
+        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
                 event -> event.title().equals("누군가 내 코스를 달렸어요!"))
                 .toList();
         assertThat(events.size()).isEqualTo(1);
         // 이벤트 내용 검증
-        NotificationEvent event = events.get(0);
+        NotificationCommand event = events.get(0);
         assertThat(event.userIds()).hasSize(1).contains(defaultMember.getId());
         assertThat(event.title()).isEqualTo("누군가 내 코스를 달렸어요!");
         assertThat(event.body()).isEqualTo("맥도날드 님이 회원님의 테스트 코스를 완주했습니다.");
@@ -142,12 +142,12 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         });
 
         // then
-        List<NotificationEvent> events = applicationEvents.stream(NotificationEvent.class).filter(
+        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
                 event -> event.title().equals("개인 기록 갱신!"))
                 .toList();
         assertThat(events).hasSize(1);
         // 이벤트 내용 검증
-        NotificationEvent event = events.get(0);
+        NotificationCommand event = events.get(0);
         assertThat(event.userIds()).hasSize(1).contains(runner.getId());
         assertThat(event.title()).isEqualTo("개인 기록 갱신!");
         assertThat(event.body()).isEqualTo("축하해요! 테스트 코스에서 개인 최고 기록을 갱신했어요!");
@@ -181,7 +181,7 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         // then
         String expectedTitle = notice.getType() == NoticeType.GENERAL_V2 ?
                 "새로운 공지가 등록되었어요." : "새로운 이벤트 공지가 등록되었어요.";
-        List<NotificationEvent> events = applicationEvents.stream(NotificationEvent.class).filter(
+        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
                 event -> event.title().equals(expectedTitle))
                 .toList();
         assertThat(events).hasSize(1);
@@ -225,7 +225,7 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         });
 
         // then
-        List<NotificationEvent> events = applicationEvents.stream(NotificationEvent.class).filter(
+        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
                 event -> event.title().equals(expectedTitle))
                 .toList();
         assertThat(events).hasSize(1);
@@ -281,7 +281,7 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         });
 
         // then
-        List<NotificationEvent> events = applicationEvents.stream(NotificationEvent.class).filter(
+        List<NotificationCommand> events = applicationEvents.stream(NotificationCommand.class).filter(
                 event -> event.title().equals("고스티가 완성됐어요"))
                 .toList();
         assertThat(events).hasSize(1);

@@ -13,7 +13,8 @@ import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
-import soma.ghostrunner.domain.notification.domain.event.NotificationEvent;
+import soma.ghostrunner.domain.notification.application.NotificationService;
+import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
@@ -22,18 +23,18 @@ import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 import java.util.List;
 
 
-/** 외부 이벤트를 리스닝하여 NotificationEvent로 변환해주는 클래스 */
+/** 외부 이벤트를 리스닝하여 NotificationService를 호출하는 클래스 */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class NotificationEventListener {
 
+    private final NotificationService notificationService;
+    private final NotificationCommandAssembler notificationCommandAssembler;
+
     private final MemberService memberService;
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
-
-    private final NotificationEventAssembler notificationEventAssembler;
-    private final ApplicationEventPublisher applicationEventPublisher;
 
     /** 본인 코스를 다른 러너가 달린 경우 */
     @TransactionalEventListener
@@ -42,10 +43,10 @@ public class NotificationEventListener {
         if (runEvent.courseOwnerId().equals(runEvent.runnerId())) {
             return;
         }
-        NotificationEvent notificationEvent = notificationEventAssembler.buildCourseRunEvent(runEvent);
+        NotificationCommand notificationCommand = notificationCommandAssembler.buildCourseRunEvent(runEvent);
         log.info("알림 이벤트 전송 - 회원 '{}'가 회원 '{}'의 코스 '{}'를 달림 (event={})",
-                runEvent.runnerId(), runEvent.courseOwnerId(), runEvent.courseId(), notificationEvent);
-        applicationEventPublisher.publishEvent(notificationEvent);
+                runEvent.runnerId(), runEvent.courseOwnerId(), runEvent.courseId(), notificationCommand);
+        notificationService.sendPushNotification(notificationCommand);
     }
 
     /** 코스의 본인 최고 기록을 갱신한 경우 */
@@ -83,10 +84,10 @@ public class NotificationEventListener {
     private void sendNotificationIfTopRecordUpdated(CourseRunEvent runEvent, Running currentRun, Running previousRun) {
         if(currentRun.getRunningRecord().getDuration() < previousRun.getRunningRecord().getDuration()) {
             // 기록이 개선된 경우 알림을 전송한다
-            NotificationEvent notificationEvent = notificationEventAssembler.buildTopRecordUpdatedEvent(runEvent);
+            NotificationCommand notificationCommand = notificationCommandAssembler.buildTopRecordUpdatedEvent(runEvent);
             log.info("알림 이벤트 전송 - 회원 '{}'가 코스 '{}'에서 개인 기록 갱신 (event={})",
-                    runEvent.runnerId(), runEvent.courseId(), notificationEvent);
-            applicationEventPublisher.publishEvent(notificationEvent);
+                    runEvent.runnerId(), runEvent.courseId(), notificationCommand);
+            notificationService.sendPushNotification(notificationCommand);
         }
     }
 
@@ -114,17 +115,17 @@ public class NotificationEventListener {
     /** 새로운 일반 공지사항이 게시된 경우 (즉, 일반 공지사항의 시작시간이 도래한 경우) */
     public void notifyGeneralNotice(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
         if (generalNotices.isEmpty()) return;
-        NotificationEvent notificationEvent = notificationEventAssembler.buildNoticeEvent(generalNotices);
-        log.info("알림 이벤트 전송 - 새로운 공지 사항 {}건 게시 (event={})", generalNotices.size(), notificationEvent);
-        applicationEventPublisher.publishEvent(notificationEvent);
+        NotificationCommand notificationCommand = notificationCommandAssembler.buildNoticeEvent(generalNotices);
+        log.info("알림 이벤트 전송 - 새로운 공지 사항 {}건 게시 (event={})", generalNotices.size(), notificationCommand);
+        notificationService.sendPushNotification(notificationCommand);
     }
 
     /** 새로운 이벤트 공지사항이 게시된 경우 (즉, 이벤트 공지사항의 시작시간이 도래한 경우) */
     public void notifyEventNotice(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
         if (eventNotices.isEmpty()) return;
-        NotificationEvent notificationEvent = notificationEventAssembler.buildEventNoticeEvent(eventNotices);
-        log.info("알림 이벤트 전송 - 새로운 이벤트 공지 {}건 게시 (event={})", eventNotices.size(), notificationEvent);
-        applicationEventPublisher.publishEvent(notificationEvent);
+        NotificationCommand notificationCommand = notificationCommandAssembler.buildEventNoticeEvent(eventNotices);
+        log.info("알림 이벤트 전송 - 새로운 이벤트 공지 {}건 게시 (event={})", eventNotices.size(), notificationCommand);
+        notificationService.sendPushNotification(notificationCommand);
     }
 
     /** 페이스메이커가 생성된 경우 */
@@ -132,10 +133,10 @@ public class NotificationEventListener {
     public void handlePacemakerCreationEvent(PacemakerCreatedEvent event) {
         Member member = memberService.findMemberByUuid(event.memberUuid());
         Course course = courseService.findCourseById(event.courseId());
-        NotificationEvent notificationEvent = notificationEventAssembler.buildPacemakerCreatedEvent(member, course);
+        NotificationCommand notificationCommand = notificationCommandAssembler.buildPacemakerCreatedEvent(member, course);
         log.info("알림 이벤트 전송 - 회원 '{}'에 코스 '{}'에 페이스메이커 '{}' 생성 완료 (event={})",
-                member.getId(), course.getId(), event.pacemakerId(), notificationEvent);
-        applicationEventPublisher.publishEvent(notificationEvent);
+                member.getId(), course.getId(), event.pacemakerId(), notificationCommand);
+        notificationService.sendPushNotification(notificationCommand);
     }
 
 }
