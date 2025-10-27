@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.redisson.api.RLock;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -21,7 +20,7 @@ import soma.ghostrunner.domain.running.application.support.RunningApplicationMap
 import soma.ghostrunner.domain.running.domain.Pacemaker;
 import soma.ghostrunner.domain.running.domain.PacemakerSet;
 import soma.ghostrunner.domain.running.domain.RunningType;
-import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+import soma.ghostrunner.domain.running.domain.formula.RunningTipsProvider;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;
@@ -38,6 +37,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PacemakerServiceTest {
 
+    @Mock
+    RunningTipsProvider runningTipsProvider;
     @Mock
     PacemakerRepository pacemakerRepository;
     @Mock
@@ -64,6 +65,7 @@ class PacemakerServiceTest {
     @BeforeEach
     void setUp() {
         pacemakerService = new PacemakerService(
+                runningTipsProvider,
                 pacemakerRepository,
                 pacemakerSetRepository,
                 redisRunningRepository,
@@ -103,8 +105,8 @@ class PacemakerServiceTest {
         when(redisRunningRepository.incrementRateLimitCounter(anyString(), anyLong(), anyInt()))
                 .thenReturn(1L);
 
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, uuid);
-        when(mapper.toPacemaker(eq(Pacemaker.Norm.DISTANCE), eq(cmd), eq(courseId), eq(member)))
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.M, uuid);
+        when(mapper.toPacemaker(eq(Pacemaker.Norm.DISTANCE), eq(cmd), eq(courseId), eq(RunningType.M), eq(member)))
                 .thenReturn(pacemaker);
         when(pacemakerRepository.save(any())).thenReturn(pacemaker);
 
@@ -164,7 +166,7 @@ class PacemakerServiceTest {
         String owner = "owner-uuid";
         Long id = 100L;
 
-        Pacemaker completed = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, owner);
+        Pacemaker completed = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
         // 도메인에서 완료 상태로 전이
         completed.updateSucceedPacemaker("요약", 10.0, 50, "메세지");
 
@@ -173,9 +175,10 @@ class PacemakerServiceTest {
                 PacemakerSet.of(2, "메세지1", null, null, null, null)
         );
         PacemakerPollingResponse expected = new PacemakerPollingResponse(); // 실제 타입에 맞게
+        when(runningTipsProvider.getRandomTip()).thenReturn("Mock Tip");
         when(pacemakerRepository.findById(id)).thenReturn(Optional.of(completed));
         when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(id)).thenReturn(sets);
-        when(mapper.toPacemakerPollingResponse(completed, sets)).thenReturn(expected);
+        when(mapper.toPacemakerPollingResponse(completed, sets, "Mock Tip")).thenReturn(expected);
 
         // when
         PacemakerPollingResponse actual = pacemakerService.getPacemaker(id, owner);
@@ -186,7 +189,7 @@ class PacemakerServiceTest {
         InOrder inOrder = inOrder(pacemakerRepository, pacemakerSetRepository, mapper);
         inOrder.verify(pacemakerRepository).findById(id);
         inOrder.verify(pacemakerSetRepository).findByPacemakerIdOrderBySetNumAsc(id);
-        inOrder.verify(mapper).toPacemakerPollingResponse(completed, sets);
+        inOrder.verify(mapper).toPacemakerPollingResponse(completed, sets, "Mock Tip");
 
         // 진행상태용 mapper는 호출되지 않아야 함
         verify(mapper, never()).toPacemakerPollingResponse(completed);
@@ -201,7 +204,7 @@ class PacemakerServiceTest {
         String owner = "owner-uuid";
         Long id = 101L;
 
-        Pacemaker processing = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, owner);
+        Pacemaker processing = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
         // 기본 상태가 진행중이라 가정(또는 명시적으로 실패/진행 상태로 전이하는 메서드 호출)
 
         // 도메인이 돌려줄 status (예: "PROCEEDING" 또는 "FAILED")
@@ -219,7 +222,7 @@ class PacemakerServiceTest {
 
         // 세트 조회/완료용 mapper 호출은 없어야 함
         verify(pacemakerSetRepository, never()).findByPacemakerIdOrderBySetNumAsc(anyLong());
-        verify(mapper, never()).toPacemakerPollingResponse(eq(processing), anyList());
+        verify(mapper, never()).toPacemakerPollingResponse(eq(processing), anyList(), anyString());
 
         InOrder inOrder = inOrder(pacemakerRepository, mapper);
         inOrder.verify(pacemakerRepository).findById(id);
@@ -237,7 +240,7 @@ class PacemakerServiceTest {
         String other = "other-uuid";
         Long id = 102L;
 
-        Pacemaker entity = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, owner);
+        Pacemaker entity = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
         when(pacemakerRepository.findById(id)).thenReturn(Optional.of(entity));
 
         // when/then
@@ -248,7 +251,7 @@ class PacemakerServiceTest {
         // 세트조회/매퍼 호출 없어야 함
         verify(pacemakerSetRepository, never()).findByPacemakerIdOrderBySetNumAsc(anyLong());
         verify(mapper, never()).toPacemakerPollingResponse(entity);
-        verify(mapper, never()).toPacemakerPollingResponse(any(Pacemaker.class), anyList());
+        verify(mapper, never()).toPacemakerPollingResponse(any(Pacemaker.class), anyList(), anyString());
     }
 
     @Test

@@ -24,6 +24,10 @@ public class Pacemaker extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "running_type")
+    @Enumerated(EnumType.STRING)
+    private RunningType runningType;
+
     @Column(name = "norm")
     @Enumerated(EnumType.STRING)
     private Norm norm;
@@ -60,9 +64,10 @@ public class Pacemaker extends BaseTimeEntity {
     private String memberUuid;
 
     @Builder(access = AccessLevel.PRIVATE)
-    public Pacemaker(Norm norm, String summary,
+    public Pacemaker(RunningType runningType, Norm norm, String summary,
                      Double goalDistance, Integer expectedTime, String initialMessage,
                      Long runningId, Long courseId, String memberUuid) {
+        this.runningType = runningType;
         this.norm = norm;
         this.summary = summary;
         this.goalDistance = goalDistance;
@@ -75,11 +80,12 @@ public class Pacemaker extends BaseTimeEntity {
         this.memberUuid = memberUuid;
     }
 
-    public static Pacemaker of(Norm norm, Double goalDistance, Long courseId, String memberUuid) {
+    public static Pacemaker of(Norm norm, Double goalDistance, Long courseId, RunningType runningType, String memberUuid) {
         return Pacemaker.builder()
                 .norm(norm)
                 .goalDistance(goalDistance)
                 .courseId(courseId)
+                .runningType(runningType)
                 .memberUuid(memberUuid)
                 .build();
     }

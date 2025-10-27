@@ -11,20 +11,21 @@ class PacemakerTest {
     @Test
     void updateStatus() {
         // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, "멤버 UUID");
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
 
         // when
         pacemaker.updateStatus(Pacemaker.Status.COMPLETED);
 
         // then
         Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.COMPLETED);
+        Assertions.assertThat(pacemaker.getRunningType()).isEqualTo(RunningType.R);
     }
 
     @DisplayName("페이스메이커의 주인인지 검증한다.")
     @Test
     void verifyMember() {
         // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, "이복둥의 UUID");
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "이복둥의 UUID");
 
         // when // then
         Assertions.assertThatThrownBy(() -> pacemaker.verifyMember("이진의 UUID"))
@@ -36,7 +37,7 @@ class PacemakerTest {
     @Test
     void updateAfterRunning() {
         // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, "멤버 UUID");
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
 
         // when
         pacemaker.updateAfterRunning(3L);
@@ -50,7 +51,7 @@ class PacemakerTest {
     @Test
     void throwExceptionWhenRunWithAlreadyDone() {
         // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, "멤버 UUID");
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
         pacemaker.updateAfterRunning(3L);
 
         // when // then
