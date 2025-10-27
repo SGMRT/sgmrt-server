@@ -67,30 +67,13 @@ public class NotificationEventListener {
                     runEvent.runnerId(), runEvent.courseId(), command);
             notificationService.sendPushNotification(command);
         }
-//
-//        // ------------------------------------------------------------
-//        List<Running> runHistory = runningQueryService.findLatestRunningsByMember(runEvent.courseId(), member.getUuid(), 2);
-//        // 이번 기록이 첫 기록인 경우 알림을 보내지 않는다
-//        if(runHistory.size() < 2) {
-//            return;
-//        }
-//        sendNotificationIfTopRecordUpdated(runEvent, runHistory.get(0), runHistory.get(1));
     }
 
     private boolean topRecordUpdated(Optional<Running> prevRunning, Long newDuration) {
         return prevRunning.orElseThrow().getRunningRecord().getDuration() > newDuration;
     }
 
-    private void sendNotificationIfTopRecordUpdated(CourseRunEvent runEvent, Running currentRun, Running previousRun) {
-        if(currentRun.getRunningRecord().getDuration() < previousRun.getRunningRecord().getDuration()) {
-            // 기록이 개선된 경우 알림을 전송한다
-            NotificationCommand notificationCommand = notificationCommandAssembler.buildTopRecordUpdatedEvent(runEvent);
-            log.info("알림 이벤트 전송 - 회원 '{}'가 코스 '{}'에서 개인 기록 갱신 (event={})",
-                    runEvent.runnerId(), runEvent.courseId(), notificationCommand);
-            notificationService.sendPushNotification(notificationCommand);
-        }
-    }
-
+    /** 새로운 공지사항이 공개된 경우 */
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleNoticeActivatedEvent(NoticeActivatedEvent event) {
