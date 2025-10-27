@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
 import soma.ghostrunner.domain.running.domain.PacemakerSet;
+import soma.ghostrunner.domain.running.domain.RunningType;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;
 
@@ -47,7 +48,7 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
      }
 
     private Pacemaker createPacemaker() {
-        return Pacemaker.of(Pacemaker.Norm.DISTANCE, 15.0, 1L, "MEMBER UUID");
+        return Pacemaker.of(Pacemaker.Norm.DISTANCE, 15.0, 1L, RunningType.T, "MEMBER UUID");
     }
 
     private List<PacemakerSet> createPacemakerSets(Pacemaker pacemaker) {
@@ -66,7 +67,7 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         Long courseId = 100L;
 
         // 오래된 것
-        Pacemaker p1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker p1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.T, member);
         pacemakerRepository.save(p1);
         em.flush(); em.clear();
 
@@ -74,7 +75,7 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         Thread.sleep(5);
 
         // 최신 것
-        Pacemaker p2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 15.0, courseId, member);
+        Pacemaker p2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 15.0, courseId, RunningType.T, member);
         pacemakerRepository.save(p2);
         em.flush(); em.clear();
 
@@ -83,6 +84,7 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
 
         // then: 최신(p2)을 반환해야 함
         assertThat(found).isPresent();
+        assertThat(found.get().getRunningType()).isEqualTo(RunningType.T);
         assertThat(found.get().getId()).isEqualTo(p2.getId());
     }
 
@@ -93,13 +95,13 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         String member = "MEMBER-A";
         Long courseId = 200L;
 
-        Pacemaker oldValid = Pacemaker.of(Pacemaker.Norm.DISTANCE, 8.0, courseId, member);
+        Pacemaker oldValid = Pacemaker.of(Pacemaker.Norm.DISTANCE, 8.0, courseId, RunningType.T, member);
         pacemakerRepository.save(oldValid);
         em.flush(); em.clear();
 
         Thread.sleep(5);
 
-        Pacemaker latestButRan = Pacemaker.of(Pacemaker.Norm.DISTANCE, 12.0, courseId, member);
+        Pacemaker latestButRan = Pacemaker.of(Pacemaker.Norm.DISTANCE, 12.0, courseId, RunningType.T, member);
         latestButRan.updateAfterRunning(1L);
         pacemakerRepository.save(latestButRan);
 
@@ -116,7 +118,7 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
     void notReturnOtherMember() {
         // given
         Long courseId = 300L;
-        pacemakerRepository.save(Pacemaker.of(Pacemaker.Norm.DISTANCE, 5.0, courseId, "MEMBER-A"));
+        pacemakerRepository.save(Pacemaker.of(Pacemaker.Norm.DISTANCE, 5.0, courseId, RunningType.T, "MEMBER-A"));
 
         // when
         Optional<Pacemaker> found = pacemakerRepository.findByCourseId(courseId, "MEMBER-B");
@@ -130,7 +132,7 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
     void notReturnOtherCourse() {
         // given
         String member = "MEMBER-A";
-        pacemakerRepository.save(Pacemaker.of(Pacemaker.Norm.DISTANCE, 5.0, 400L, member));
+        pacemakerRepository.save(Pacemaker.of(Pacemaker.Norm.DISTANCE, 5.0, 400L, RunningType.R, member));
 
         // when
         Optional<Pacemaker> found = pacemakerRepository.findByCourseId(401L, member);
@@ -145,7 +147,7 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         // given
         String member = "MEMBER-A";
         Long courseId = 500L;
-        Pacemaker p = pacemakerRepository.save(Pacemaker.of(Pacemaker.Norm.DISTANCE, 7.0, courseId, member));
+        Pacemaker p = pacemakerRepository.save(Pacemaker.of(Pacemaker.Norm.DISTANCE, 7.0, courseId, RunningType.R, member));
         em.flush(); em.clear();
 
         // 소프트 삭제
@@ -166,9 +168,9 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         String member = "MEMBER-A";
         Long courseId = 600L;
 
-        Pacemaker failedRun = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker failedRun = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         failedRun.updateStatus(Pacemaker.Status.FAILED);
-        Pacemaker ran = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker ran = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         ran.updateAfterRunning(1L);
         pacemakerRepository.saveAll(List.of(failedRun, ran));
 
@@ -186,18 +188,18 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         String member = "MEMBER-A";
         Long courseId = 600L;
 
-        Pacemaker ran1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker ran1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         ran1.updateAfterRunning(1L);
-        Pacemaker ran2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker ran2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         ran2.updateAfterRunning(1L);
         pacemakerRepository.saveAll(List.of(ran1, ran2));
 
-        Pacemaker notYetRun1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker notYetRun1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         pacemakerRepository.save(notYetRun1);
 
         Thread.sleep(5);
 
-        Pacemaker notYetRun2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker notYetRun2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         pacemakerRepository.save(notYetRun2);
 
         // when
@@ -214,18 +216,18 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         String member = "MEMBER-A";
         Long courseId = 600L;
 
-        Pacemaker ran1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker ran1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         ran1.updateAfterRunning(1L);
-        Pacemaker ran2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker ran2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         ran2.updateAfterRunning(1L);
         pacemakerRepository.saveAll(List.of(ran1, ran2));
 
-        Pacemaker succeedPacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker succeedPacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         pacemakerRepository.save(succeedPacemaker);
 
         Thread.sleep(5);
 
-        Pacemaker failedRun = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, member);
+        Pacemaker failedRun = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
         failedRun.updateStatus(Pacemaker.Status.FAILED);
         pacemakerRepository.save(failedRun);
 
