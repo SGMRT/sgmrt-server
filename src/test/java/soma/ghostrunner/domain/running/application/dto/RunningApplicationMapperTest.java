@@ -189,6 +189,8 @@ class RunningApplicationMapperTest {
         assertThat(event.courseName()).isEqualTo(course.getName());
         assertThat(event.courseOwnerId()).isEqualTo(courseOwner.getId());
         assertThat(event.runningId()).isEqualTo(running.getId());
+        assertThat(event.runStartedAt()).isEqualTo(running.getStartedAt());
+        assertThat(event.runDuration()).isEqualTo(running.getRunningRecord().getDuration());
         assertThat(event.runnerId()).isEqualTo(runner.getId());
         assertThat(event.runnerNickname()).isEqualTo(runner.getNickname());
     }

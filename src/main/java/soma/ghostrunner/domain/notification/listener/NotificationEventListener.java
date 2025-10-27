@@ -55,13 +55,29 @@ public class NotificationEventListener {
         // todo: 만약 러닝 이벤트 제출 이후 이 트랜잭션이 시작되기 직전에 새로운 기록이 추가된다면 문제 발생 가능. (단, 현실적으로 거의 불가능한 시나리오)
         // 본인의 이전 기록을 조회한다
         Member member = memberService.findMemberById(runEvent.runnerId());
+        // 동시성 해결 방식
+//        Optional<Running> previousBestRun = runningQueryService.findBestRunBefore(runEvent.courseId(), member.getUuid(), runEvent.runStartedAt());
+//        // 이번 기록이 첫 기록인 경우 알림을 보내지 않는다
+//        if(previousBestRun.isEmpty()) return;
+//        if(topRecordUpdated(previousBestRun.get().getRunningRecord().getDuration(), runEvent.runDuration())) {
+//            // 기록이 개선된 경우 알림을 전송한다
+//            NotificationEvent notificationEvent = notificationEventAssembler.buildTopRecordUpdatedEvent(runEvent);
+//            log.info("알림 이벤트 전송 - 회원 '{}'가 코스 '{}'에서 개인 기록 갱신 (event={})",
+//                    runEvent.runnerId(), runEvent.courseId(), notificationEvent);
+//            applicationEventPublisher.publishEvent(notificationEvent);
+//        }
+
+        // ------------------------------------------------------------
         List<Running> runHistory = runningQueryService.findLatestRunningsByMember(runEvent.courseId(), member.getUuid(), 2);
         // 이번 기록이 첫 기록인 경우 알림을 보내지 않는다
         if(runHistory.size() < 2) {
             return;
         }
-        runHistory.sort((a, b) -> Long.compare(b.getStartedAt(), a.getStartedAt()));
         sendNotificationIfTopRecordUpdated(runEvent, runHistory.get(0), runHistory.get(1));
+    }
+
+    private boolean topRecordUpdated(Long prevBestDuration, Long newDuration) {
+        return false; // todo
     }
 
     private void sendNotificationIfTopRecordUpdated(CourseRunEvent runEvent, Running currentRun, Running previousRun) {
@@ -75,6 +91,7 @@ public class NotificationEventListener {
     }
 
     @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleNoticeActivatedEvent(NoticeActivatedEvent event) {
         // 공지사항 타입에 따라 일반 공지사항 or 이벤트 공지사항 푸시 알람으로 분기
         List<NoticeActivatedEvent.NoticeRecord> generalNotices = filterNoticeRecords(event, List.of(NoticeType.GENERAL_V2, NoticeType.GENERAL));

@@ -5,6 +5,8 @@ public record CourseRunEvent (
         String courseName,
         Long courseOwnerId,
         Long runningId,
+        Long runStartedAt,
+        Long runDuration,
         Long runnerId,
         String runnerNickname
 ) {}

@@ -203,6 +203,8 @@ public interface RunningApplicationMapper {
     @Mapping(source = "course.name", target = "courseName")
     @Mapping(source = "course.member.id", target = "courseOwnerId")
     @Mapping(source = "running.id", target = "runningId")
+    @Mapping(source = "running.startedAt", target = "runStartedAt")
+    @Mapping(source = "running.runningRecord.duration", target = "runDuration")
     @Mapping(source = "member.id", target = "runnerId")
     @Mapping(source = "member.nickname", target = "runnerNickname")
     CourseRunEvent toCourseRunEvent(Running running, Course course, Member member);
