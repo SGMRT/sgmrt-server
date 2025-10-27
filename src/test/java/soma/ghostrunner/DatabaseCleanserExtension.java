@@ -1,7 +1,7 @@
 package soma.ghostrunner;
 
 import jakarta.persistence.EntityManager;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -9,10 +9,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 
-public class DatabaseCleanserExtension implements BeforeEachCallback {
+public class DatabaseCleanserExtension implements AfterEachCallback {
 
     @Override
-    public void beforeEach(ExtensionContext extensionContext) throws Exception {
+    public void afterEach(ExtensionContext extensionContext) throws Exception {
         ApplicationContext context = SpringExtension.getApplicationContext(extensionContext);
         cleanup(context);
     }
