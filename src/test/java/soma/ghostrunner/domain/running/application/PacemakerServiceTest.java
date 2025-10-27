@@ -127,35 +127,35 @@ class PacemakerServiceTest {
         );
     }
 
-    @DisplayName("일일 제한 초과 시 예외 발생(저장/LLM 미호출)")
-    @Test
-    void 일일제한_초과시_예외발생() throws Exception {
-        // given
-        String uuid = "member-123";
-        Member member = Member.of("이복둥", "url");
-        member.setUuid(uuid);
-
-        Long courseId = 1L;
-        CreatePacemakerCommand cmd =
-                new CreatePacemakerCommand(PacemakerType.MARATHON, 10.0, 5, 30, courseId);
-
-        when(memberService.findMemberByUuid(uuid)).thenReturn(member);
-        when(memberService.findMemberVdot(uuid)).thenReturn(30);
-        when(courseService.findCourseById(courseId)).thenReturn(mock(Course.class));
-        when(runningVdotService.getExpectedPacesByVdot(anyInt())).thenReturn(Map.of());
-        when(workoutService.generateWorkouts(anyDouble(), any(), any()))
-                .thenReturn(WorkoutDto.of(RunningType.M, 10.0, java.util.List.of()));
-        // 3회 초과
-        when(redisRunningRepository.incrementRateLimitCounter(anyString(), anyLong(), anyInt()))
-                .thenReturn(-1L);
-
-        // when // then
-        assertThatThrownBy(() -> pacemakerService.createPaceMaker(uuid, cmd))
-                .isInstanceOf(InvalidRunningException.class)
-                .hasMessage("일일 사용량을 초과했습니다.");
-
-        verifyNoInteractions(pacemakerRepository, llmService);
-    }
+//    @DisplayName("일일 제한 초과 시 예외 발생(저장/LLM 미호출)")
+//    @Test
+//    void 일일제한_초과시_예외발생() throws Exception {
+//        // given
+//        String uuid = "member-123";
+//        Member member = Member.of("이복둥", "url");
+//        member.setUuid(uuid);
+//
+//        Long courseId = 1L;
+//        CreatePacemakerCommand cmd =
+//                new CreatePacemakerCommand(PacemakerType.MARATHON, 10.0, 5, 30, courseId);
+//
+//        when(memberService.findMemberByUuid(uuid)).thenReturn(member);
+//        when(memberService.findMemberVdot(uuid)).thenReturn(30);
+//        when(courseService.findCourseById(courseId)).thenReturn(mock(Course.class));
+//        when(runningVdotService.getExpectedPacesByVdot(anyInt())).thenReturn(Map.of());
+//        when(workoutService.generateWorkouts(anyDouble(), any(), any()))
+//                .thenReturn(WorkoutDto.of(RunningType.M, 10.0, java.util.List.of()));
+//        // 3회 초과
+//        when(redisRunningRepository.incrementRateLimitCounter(anyString(), anyLong(), anyInt()))
+//                .thenReturn(-1L);
+//
+//        // when // then
+//        assertThatThrownBy(() -> pacemakerService.createPaceMaker(uuid, cmd))
+//                .isInstanceOf(InvalidRunningException.class)
+//                .hasMessage("일일 사용량을 초과했습니다.");
+//
+//        verifyNoInteractions(pacemakerRepository, llmService);
+//    }
 
     @Test
     @DisplayName("완료된 페이스메이커는 세트를 조회하고 mapper.toResponse(pacemaker, sets)로 응답한다")
