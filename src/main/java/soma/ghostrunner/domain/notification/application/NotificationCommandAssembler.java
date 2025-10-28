@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification.listener;
+package soma.ghostrunner.domain.notification.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -10,19 +10,21 @@ import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 public class NotificationCommandAssembler {
 
     private final MemberService memberService;
+    private static final String DEEPLINK_ITEM_KEY = "urls";
 
     public NotificationCommand buildCourseRunEvent(CourseRunEvent runEvent) {
         return new NotificationCommand(
                 List.of(runEvent.courseOwnerId()),
                 "누군가 내 코스를 달렸어요!",
                 runEvent.runnerNickname() + " 님이 회원님의 " + determineCourseName(runEvent.courseName()) + "를 완주했습니다.",
-                null
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.courseRunEventUrlItems(runEvent.courseId()))
         );
     }
 
@@ -31,7 +33,16 @@ public class NotificationCommandAssembler {
                 List.of(member.getId()),
                 "고스티가 완성됐어요",
                 determineCourseName(course.getName()) + "에 고스티가 생성됐어요!",
-                null
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.pacemakerCreatedEventUrlItems(course.getId()))
+        );
+    }
+
+    public NotificationCommand buildTopRecordUpdatedEvent(CourseRunEvent runEvent) {
+        return new NotificationCommand(
+                List.of(runEvent.runnerId()),
+                "개인 기록 갱신!",
+                "축하해요! " + determineCourseName(runEvent.courseName()) + "에서 개인 최고 기록을 갱신했어요!",
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.topRecordUpdatedEventUrlItems(runEvent.courseId()))
         );
     }
 
@@ -39,9 +50,9 @@ public class NotificationCommandAssembler {
         var notice = eventNotices.get(0);
         return new NotificationCommand(
                 allMemberIds(),
-                "새로운 이벤트 공지가 등록되었어요.",
+                "새로운 이벤트 공지가 등록되었어요",
                 notice.title(),
-                null
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.eventNoticeEventUrlItems(notice.noticeId()))
         );
     }
 
@@ -50,16 +61,16 @@ public class NotificationCommandAssembler {
                 allMemberIds(),
                 "새로운 이벤트 " + eventNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(eventNotices),
-                null
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.multiNoticeEventUrlItems())
         );
     }
 
     public NotificationCommand buildSingleNoticeEvent(NoticeActivatedEvent.NoticeRecord notice) {
         return new NotificationCommand(
                 allMemberIds(),
-                "새로운 공지가 등록되었어요.",
+                "새로운 공지가 등록되었어요",
                 notice.title(),
-                null
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.generalNoticeEventUrlItems(notice.noticeId()))
         );
     }
 
@@ -71,7 +82,7 @@ public class NotificationCommandAssembler {
         }
     }
 
-    public NotificationCommand buildMultiNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
+    private NotificationCommand buildMultiNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
         return new NotificationCommand(
                 allMemberIds(),
                 "새로운 공지 " + generalNotices.size() + "건이 등록되었어요",
@@ -88,23 +99,13 @@ public class NotificationCommandAssembler {
         }
     }
 
-    public String buildMultiNoticeNotificationContent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
+    private String buildMultiNoticeNotificationContent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
         StringBuilder contentBuilder = new StringBuilder();
         for(var notice: generalNotices) {
             contentBuilder.append("- ").append(notice.title()).append("\n");
         }
         return contentBuilder.toString().trim();
     }
-
-    public NotificationCommand buildTopRecordUpdatedEvent(CourseRunEvent runEvent) {
-        return new NotificationCommand(
-                List.of(runEvent.runnerId()),
-                "개인 기록 갱신!",
-                "축하해요! " + determineCourseName(runEvent.courseName()) + "에서 개인 최고 기록을 갱신했어요!",
-                null
-        );
-    }
-
 
     // --- 헬퍼 메소드 ---
 

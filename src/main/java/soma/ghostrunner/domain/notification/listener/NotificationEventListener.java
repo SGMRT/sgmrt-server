@@ -12,6 +12,7 @@ import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
+import soma.ghostrunner.domain.notification.application.NotificationCommandAssembler;
 import soma.ghostrunner.domain.notification.application.NotificationService;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
