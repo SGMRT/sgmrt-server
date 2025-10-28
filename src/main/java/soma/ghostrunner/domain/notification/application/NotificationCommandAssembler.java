@@ -6,6 +6,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
+import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrlItems;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 
