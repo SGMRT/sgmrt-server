@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.notice.exceptions.NoticeTypeDeprecatedException;
+import soma.ghostrunner.domain.notice.exception.NoticeTypeDeprecatedException;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -27,7 +27,7 @@ import soma.ghostrunner.domain.notice.dao.NoticeRepository;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
-import soma.ghostrunner.domain.notice.exceptions.NoticeNotFoundException;
+import soma.ghostrunner.domain.notice.exception.NoticeNotFoundException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

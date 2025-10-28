@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.util.Assert;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
-import soma.ghostrunner.domain.notice.exceptions.NoticeAlreadyActivatedException;
+import soma.ghostrunner.domain.notice.exception.NoticeAlreadyActivatedException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 import java.net.URL;
