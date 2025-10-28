@@ -22,42 +22,42 @@ public class DeepLinkUrlItems {
      * */
 
     /** 타 러너가 본인 코스 완주한 경우 */
-    public static List<DeepLinkUrlItem> courseRunEventUrlItems(Long courseId) {
+    public static List<DeepLinkUrlItem> courseRunUrlItems(Long courseId) {
         return List.of(
                 new DeepLinkUrlItem(ALL_VERSIONS, "/profile/" + courseId + "/detail") // 코스 상세 페이지
         );
     }
 
     /** 본인 최고 기록 갱신한 경우 */
-    public static List<DeepLinkUrlItem> topRecordUpdatedEventUrlItems(Long courseId) {
+    public static List<DeepLinkUrlItem> topRecordUpdateUrlItems(Long courseId) {
         return List.of(
                 new DeepLinkUrlItem(ALL_VERSIONS, EMPTY_URL) // 딥링크 없음 (추후 개발)
         );
     }
 
     /** 페이스메이커가 생성된 경우 */
-    public static List<DeepLinkUrlItem> pacemakerCreatedEventUrlItems(Long courseId) {
+    public static List<DeepLinkUrlItem> pacemakerCreationUrlItems(Long courseId) {
         return List.of(
                 new DeepLinkUrlItem(ALL_VERSIONS, "/profile/" + courseId + "/ghosty") // 고스티 상세 페이지
         );
     }
 
     /** 공지사항이 공개된 경우 */
-    public static List<DeepLinkUrlItem> generalNoticeEventUrlItems(Long noticeId) {
+    public static List<DeepLinkUrlItem> generalNoticeUrlItems(Long noticeId) {
         return List.of(
                 new DeepLinkUrlItem(ALL_VERSIONS, "/profile/notice" + noticeId) // 공지사항 상세 페이지
         );
     }
 
     /** 이벤트 공지사항이 공개된 경우 */
-    public static List<DeepLinkUrlItem> eventNoticeEventUrlItems(Long noticeId) {
+    public static List<DeepLinkUrlItem> eventNoticeUrlItems(Long noticeId) {
         return List.of(
                 new DeepLinkUrlItem(ALL_VERSIONS, "/profile/notice/" + noticeId) // 공지사항 상세 페이지
         );
     }
 
     /** 다수의 공지사항이 공개된 경우 */
-    public static List<DeepLinkUrlItem> multiNoticeEventUrlItems() {
+    public static List<DeepLinkUrlItem> multiNoticeUrlItems() {
         return List.of(
                 new DeepLinkUrlItem(ALL_VERSIONS, "/profile/notice") // 공지사항 목록 페이지
         );

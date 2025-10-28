@@ -20,12 +20,13 @@ public class NotificationCommandAssembler {
     private final MemberService memberService;
     private static final String DEEPLINK_ITEM_KEY = "urls";
 
+    /** 본인 코스를 다른 러너가 달린 경우 */
     public NotificationCommand buildCourseRunEvent(CourseRunEvent runEvent) {
         return new NotificationCommand(
                 List.of(runEvent.courseOwnerId()),
                 "누군가 내 코스를 달렸어요!",
                 runEvent.runnerNickname() + " 님이 회원님의 " + determineCourseName(runEvent.courseName()) + "를 완주했습니다.",
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.courseRunEventUrlItems(runEvent.courseId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.courseRunUrlItems(runEvent.courseId()))
         );
     }
 
@@ -34,44 +35,58 @@ public class NotificationCommandAssembler {
                 List.of(member.getId()),
                 "고스티가 완성됐어요",
                 determineCourseName(course.getName()) + "에 고스티가 생성됐어요!",
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.pacemakerCreatedEventUrlItems(course.getId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.pacemakerCreationUrlItems(course.getId()))
         );
     }
 
+    /** 코스의 본인 최고 기록을 갱신한 경우 */
     public NotificationCommand buildTopRecordUpdatedEvent(CourseRunEvent runEvent) {
         return new NotificationCommand(
                 List.of(runEvent.runnerId()),
                 "개인 기록 갱신!",
                 "축하해요! " + determineCourseName(runEvent.courseName()) + "에서 개인 최고 기록을 갱신했어요!",
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.topRecordUpdatedEventUrlItems(runEvent.courseId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.topRecordUpdateUrlItems(runEvent.courseId()))
         );
     }
 
+    /** 새로운 이벤트가 공개된 경우 (1개) */
     public NotificationCommand buildSingleEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
         var notice = eventNotices.get(0);
         return new NotificationCommand(
                 allMemberIds(),
                 "새로운 이벤트 공지가 등록되었어요",
                 notice.title(),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.eventNoticeEventUrlItems(notice.noticeId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.eventNoticeUrlItems(notice.noticeId()))
         );
     }
 
+    /** 새로운 이벤트가 공개된 경우 (2개 이상) */
     public NotificationCommand buildMultiEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
         return new NotificationCommand(
                 allMemberIds(),
                 "새로운 이벤트 " + eventNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(eventNotices),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.multiNoticeEventUrlItems())
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.multiNoticeUrlItems())
         );
     }
 
+    /** 새로운 공지사항이 공개된 경우 (1개) */
     public NotificationCommand buildSingleNoticeEvent(NoticeActivatedEvent.NoticeRecord notice) {
         return new NotificationCommand(
                 allMemberIds(),
                 "새로운 공지가 등록되었어요",
                 notice.title(),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.generalNoticeEventUrlItems(notice.noticeId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.generalNoticeUrlItems(notice.noticeId()))
+        );
+    }
+
+    /** 새로운 공지사항이 공개된 경우 (2개 이상) */
+    public NotificationCommand buildMultiNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
+        return new NotificationCommand(
+                allMemberIds(),
+                "새로운 공지 " + generalNotices.size() + "건이 등록되었어요",
+                buildMultiNoticeNotificationContent(generalNotices),
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.multiNoticeUrlItems())
         );
     }
 
@@ -83,15 +98,6 @@ public class NotificationCommandAssembler {
         }
     }
 
-    private NotificationCommand buildMultiNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
-        return new NotificationCommand(
-                allMemberIds(),
-                "새로운 공지 " + generalNotices.size() + "건이 등록되었어요",
-                buildMultiNoticeNotificationContent(generalNotices),
-                null
-        );
-    }
-
     public NotificationCommand buildEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
         if (eventNotices.size() == 1) {
             return buildSingleEventNoticeEvent(eventNotices);
@@ -100,6 +106,8 @@ public class NotificationCommandAssembler {
         }
     }
 
+    // --- 헬퍼 메소드 ---
+
     private String buildMultiNoticeNotificationContent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
         StringBuilder contentBuilder = new StringBuilder();
         for(var notice: generalNotices) {
@@ -107,8 +115,6 @@ public class NotificationCommandAssembler {
         }
         return contentBuilder.toString().trim();
     }
-
-    // --- 헬퍼 메소드 ---
 
     /** courseName이 '~코스'로 끝나지 않는다면 뒤에 코스를 붙인다. */
     private static String determineCourseName(String courseName) {
