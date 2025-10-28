@@ -11,8 +11,8 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
-import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.domain.running.domain.*;
+import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
@@ -168,5 +168,68 @@ class RunningApplicationMapperTest {
         assertThat(response.isPublic()).isEqualTo(courseRunDto.isPublic());
         assertThat(response.startedAt()).isEqualTo(now);
      }
+
+    @DisplayName("러닝, 코스, 회원 엔티티를 CourseRunEvent로 변환한다.")
+    @Test
+    void toCourseRunEvent() {
+        // given
+        Member runner = Member.of("손흥민", "profile-url-1");
+        Member courseOwner = Member.of("코스 주인", "profile-url-2");
+        Course course = createCourse(courseOwner);
+        Running running = createPublicSoloRunning(runner, course);
+
+        // when
+        var event = mapper.toCourseRunEvent(running, course, runner);
+
+        // then
+        assertThat(event.courseId()).isEqualTo(course.getId());
+        assertThat(event.courseName()).isEqualTo(course.getName());
+        assertThat(event.courseOwnerId()).isEqualTo(courseOwner.getId());
+        assertThat(event.runningId()).isEqualTo(running.getId());
+        assertThat(event.runStartedAt()).isEqualTo(running.getStartedAt());
+        assertThat(event.runDuration()).isEqualTo(running.getRunningRecord().getDuration());
+        assertThat(event.runnerId()).isEqualTo(runner.getId());
+        assertThat(event.runnerNickname()).isEqualTo(runner.getNickname());
+    }
+
+    @DisplayName("페이스메이커 엔티티를 PacemakerCreatedEvent로 변환한다.")
+    @Test
+    void toPacemakerCreatedEvent() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 500d, 1L, RunningType.E, "uuid");
+        setPacemakerId(pacemaker, 100L);
+
+        // when
+        PacemakerCreatedEvent event = mapper.toPacemakerCreatedEvent(pacemaker);
+        // then
+        assertThat(event.pacemakerId()).isEqualTo(pacemaker.getId());
+        assertThat(event.courseId()).isEqualTo(pacemaker.getCourseId());
+        assertThat(event.memberUuid()).isEqualTo(pacemaker.getMemberUuid());
+    }
+
+    private void setPacemakerId(Pacemaker pacemaker, long id) {
+        try {
+            java.lang.reflect.Field idField = Pacemaker.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(pacemaker, id);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private Running createPublicSoloRunning(Member member, Course course) {
+        return Running.of(
+                "테스트 러닝",
+                RunningMode.SOLO,
+                null,
+                RunningRecord.of(5.5, 100.0, 100.0, 23D,
+                        5.4, 100D, 100D, 100L, 100, 180, 180),
+                1234567L,
+                true, false,
+                "RAW_URL", "INTERPOLATED_URL", "SCREENSHOT_URL",
+                member,
+                course
+        );
+    }
 
 }

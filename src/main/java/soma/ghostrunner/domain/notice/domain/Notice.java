@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.util.Assert;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
+import soma.ghostrunner.domain.notice.exception.NoticeAlreadyActivatedException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 import java.net.URL;
@@ -116,6 +117,9 @@ public class Notice extends BaseTimeEntity {
     public void activate(LocalDateTime startAt, LocalDateTime endAt) {
         if (startAt == null || endAt == null) {
             throw new IllegalArgumentException("노출 시작 시각 혹은 종료 시각은 null일 수 없습니다.");
+        }
+        if (this.startAt != null && this.endAt != null) {
+            throw new NoticeAlreadyActivatedException("공지사항 id " + id + "는 이미 활성화 상태입니다.");
         }
         if (startAt.isAfter(endAt)) {
             throw new IllegalArgumentException("공지 노출 시작기간은 종료기간보다 앞이어야 합니다.");

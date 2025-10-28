@@ -403,4 +403,23 @@ class RunningQueryServiceTest {
         verify(runningRepository).findPublicRunnerCountsByCourseIds(courseIds);
     }
 
+    @DisplayName("findMemberBestRunBefore: 특정 시간 이전의 회원 베스트 러닝 기록 조회")
+    @Test
+    void findMemberBestRunBefore() {
+        // given
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(11L);
+        String memberUuid = "uuid-11";
+        Long courseId = 20L;
+        Long beforeStartedAt = 1_600_000L;
+        Running bestRun = mock(Running.class);
+        when(runningRepository.findBestRunByCourseIdAndMemberUuidBefore(courseId, memberUuid, beforeStartedAt))
+                .thenReturn(Optional.of(bestRun));
+        // when
+        Optional<Running> result = sut.findMemberBestRunBefore(courseId, memberUuid, beforeStartedAt);
+        // then
+        assertThat(result).contains(bestRun);
+        verify(runningRepository).findBestRunByCourseIdAndMemberUuidBefore(courseId, memberUuid, beforeStartedAt);
+    }
+
 }

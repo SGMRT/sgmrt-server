@@ -10,7 +10,6 @@ import org.springframework.data.domain.Pageable;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
-import soma.ghostrunner.domain.course.dto.response.CourseDetailedResponse;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -20,6 +19,7 @@ import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -133,8 +133,32 @@ class CourseRepositoryTest extends IntegrationTestSupport {
         assertThat(results.get(0).getName()).isEqualTo("course1");
     }
 
+    @DisplayName("코스를 ID로 조회할 때 코스 주인 정보를 함께 조회한다")
+    @Test
+    void findCourseByIdFetchJoinMember() {
+        // given
+        Course course = createCourse(member1, "course1", true);
+        courseRepository.save(course);
 
-    // 헬퍼 메소드
+        // when
+        Optional<Course> optionalCourse = courseRepository.findByIdFetchJoinMember(course.getId());
+
+        // then
+        assertThat(optionalCourse).isPresent();
+        Course fetchedCourse = optionalCourse.get();
+        assertThat(fetchedCourse.getId()).isEqualTo(course.getId());
+        assertThat(fetchedCourse.getName()).isEqualTo(course.getName());
+        // 코스 주인 정보 검증
+        assertThat(fetchedCourse.getMember()).isNotNull();
+        assertThat(fetchedCourse.getMember().getId()).isEqualTo(member1.getId());
+        assertThat(fetchedCourse.getMember().getUuid()).isEqualTo(member1.getUuid());
+        assertThat(fetchedCourse.getMember().getNickname()).isEqualTo(member1.getNickname());
+        assertThat(fetchedCourse.getMember().getProfilePictureUrl()).isEqualTo(member1.getProfilePictureUrl());
+        assertThat(fetchedCourse.getMember().getBioInfo()).isEqualTo(member1.getBioInfo());
+    }
+
+
+    // --- 헬퍼 메소드 ---
 
     private Course createCourse(Member member, String name, boolean isPublic) {
         return createCourse(member, name, isPublic, 37.0, 129.0, 1000, 100);

@@ -37,6 +37,11 @@ public class CourseService {
                 .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
     }
 
+    public Course findCourseByIdFetchJoinMember(Long id) {
+        return courseRepository.findByIdFetchJoinMember(id)
+                .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
+    }
+
     public List<CoursePreviewDto> findNearbyCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                     CourseSearchFilterDto filters) {
         // 코스 검색할 직사각형 반경 계산
