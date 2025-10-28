@@ -44,4 +44,10 @@ public class NoticeUpdateRequest {
         END_AT
     }
 
+    @Override
+    public String toString() {
+        return String.format("updateAttrs=%s, title=%s, content=%s, priority=%s, image=%s, startAt=%s, endAt=%s",
+                updateAttrs, title, content, priority, image, startAt, endAt);
+    }
+
 }

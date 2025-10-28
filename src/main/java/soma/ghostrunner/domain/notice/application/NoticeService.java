@@ -1,6 +1,7 @@
 package soma.ghostrunner.domain.notice.application;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -12,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
 import soma.ghostrunner.domain.notice.exceptions.NoticeTypeDeprecatedException;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.application.MemberService;
@@ -34,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NoticeService {
@@ -142,6 +143,7 @@ public class NoticeService {
     @Transactional
     public void updateNotice(Long noticeId, NoticeUpdateRequest request) {
         Notice notice = findNoticeById(noticeId);
+        log.info("Updating notice with id {}, request = {}", noticeId, request);
         for(NoticeUpdateRequest.UpdateAttrs attr : request.getUpdateAttrs()) {
             switch (attr) {
                 case TITLE -> notice.updateTitle(request.getTitle());

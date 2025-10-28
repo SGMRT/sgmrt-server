@@ -46,6 +46,7 @@ public enum ErrorCode {
 
     // Notice
     DEPRECATED_NOTICE_TYPE("N-001", BAD_REQUEST, "더 이상 지원되지 않는 공지 타입입니다."),
+    NOTICE_ALREADY_ACTIVATED("N-002", BAD_REQUEST, "이미 활성화된 공지입니다. 종료시각을 변경하려면 공지 비활성화 / 공지 수정 API를 활용하세요.")
     ;
 
     private final String code;
