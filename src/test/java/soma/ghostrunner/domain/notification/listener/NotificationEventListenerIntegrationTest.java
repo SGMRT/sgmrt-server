@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.notification.listener;
 
+import org.assertj.core.api.ListAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,8 @@ import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
 import soma.ghostrunner.domain.notification.application.NotificationService;
+import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrlItem;
+import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrls;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -34,6 +37,7 @@ import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -100,6 +104,8 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         assertThat(notiCommand.userIds()).hasSize(1).contains(defaultMember.getId());
         assertThat(notiCommand.title()).isEqualTo("누군가 내 코스를 달렸어요!");
         assertThat(notiCommand.body()).isEqualTo("맥도날드 님이 회원님의 테스트 코스를 완주했습니다.");
+        assertNotificaionDeepLink(notiCommand.data())
+                .containsExactly(DeepLinkUrls.courseRunUrlItems(course.getId()).get(0));
     }
 
     @DisplayName("코스에서 본인의 기존 신기록을 갱신한 경우 올바른 알림 이벤트를 발행한다.")
@@ -145,6 +151,8 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         assertThat(notiCommand.userIds()).hasSize(1).contains(runner.getId());
         assertThat(notiCommand.title()).isEqualTo("개인 기록 갱신!");
         assertThat(notiCommand.body()).isEqualTo("축하해요! 테스트 코스에서 개인 최고 기록을 갱신했어요!");
+        assertNotificaionDeepLink(notiCommand.data())
+                .containsExactly(DeepLinkUrls.topRecordUpdateUrlItems(course.getId()).get(0));
     }
 
     @DisplayName("공지사항 활성화 이벤트를 수신하면 공지사항 유형에 따라 올바른 알림 이벤트를 전송한다.")
@@ -174,13 +182,19 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
 
         // then
         String expectedTitle = notice.getType() == NoticeType.GENERAL_V2 ?
-                "새로운 공지가 등록되었어요." : "새로운 이벤트 공지가 등록되었어요.";
+                "새로운 공지가 등록되었어요" : "새로운 이벤트 공지가 등록되었어요";
         ArgumentCaptor<NotificationCommand> commandCaptor = ArgumentCaptor.forClass(NotificationCommand.class);
         verify(notificationService, times(1)).sendPushNotification(commandCaptor.capture());
         NotificationCommand notiCommand = commandCaptor.getValue();
         assertThat(notiCommand.userIds()).contains(member1.getId(), member2.getId());
         assertThat(notiCommand.title()).isEqualTo(expectedTitle);
         assertThat(notiCommand.body()).isEqualTo(notice.getTitle());
+        assertNotificaionDeepLink(notiCommand.data())
+                .containsExactly(
+                        notice.getType() == NoticeType.GENERAL_V2 ?
+                                DeepLinkUrls.generalNoticeUrlItems(notice.getId()).get(0) :
+                                DeepLinkUrls.eventNoticeUrlItems(notice.getId()).get(0)
+                );
     }
 
     private static Stream<Arguments> singleNoticeEventTestCases() {
@@ -225,6 +239,8 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         assertThat(notiCommand.body()).isEqualTo(notices.stream().map(Notice::getTitle)
                 .map(title -> "- " + title)
                 .collect(Collectors.joining("\n")));
+        assertNotificaionDeepLink(notiCommand.data())
+                .containsExactly(DeepLinkUrls.multiNoticeUrlItems().get(0));
     }
 
     private static Stream<Arguments> multipleNoticeEventTestCases() {
@@ -277,10 +293,22 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         assertThat(notiCommand.userIds()).contains(member1.getId());
         assertThat(notiCommand.title()).isEqualTo("고스티가 완성됐어요");
         assertThat(notiCommand.body()).isEqualTo(course.getName() + "에 고스티가 생성됐어요!");
+        assertNotificaionDeepLink(notiCommand.data())
+                .containsExactly(DeepLinkUrls.pacemakerCreationUrlItems(course.getId()).get(0));
     }
 
 
     // --- 헬퍼 메소드 ---
+
+    private ListAssert<DeepLinkUrlItem> assertNotificaionDeepLink(Map<String, Object> data) {
+        final String DEEPLINK_ITEM_KEY = "urls";
+        assertThat(data).isNotNull();
+        assertThat(data).containsKey(DEEPLINK_ITEM_KEY);
+        assertThat(data.get(DEEPLINK_ITEM_KEY)).isInstanceOf(List.class);
+        @SuppressWarnings("unchecked")
+        List<DeepLinkUrlItem> items = (List<DeepLinkUrlItem>) data.get(DEEPLINK_ITEM_KEY);
+        return assertThat(items);
+    }
 
     private static Notice createGeneralNotice(String title) {
         final LocalDateTime NOW = LocalDateTime.of(2025, 8, 8, 10, 0);

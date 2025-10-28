@@ -12,6 +12,7 @@ import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
+import soma.ghostrunner.domain.notification.application.NotificationCommandAssembler;
 import soma.ghostrunner.domain.notification.application.NotificationService;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
@@ -62,7 +63,7 @@ public class NotificationEventListener {
         if(previousBestRun.isEmpty()) return;
         if(topRecordUpdated(previousBestRun, runEvent.runDuration())) {
             // 기록이 개선된 경우 알림을 전송한다
-            NotificationCommand command = notificationCommandAssembler.buildTopRecordUpdatedEvent(runEvent);
+            NotificationCommand command = notificationCommandAssembler. buildTopRecordUpdatedEvent(runEvent);
             log.info("알림 이벤트 전송 - 회원 '{}'가 코스 '{}'에서 개인 기록 갱신 (event={})",
                     runEvent.runnerId(), runEvent.courseId(), command);
             notificationService.sendPushNotification(command);
