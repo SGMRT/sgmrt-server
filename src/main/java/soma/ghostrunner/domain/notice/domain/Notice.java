@@ -118,7 +118,7 @@ public class Notice extends BaseTimeEntity {
         if (startAt == null || endAt == null) {
             throw new IllegalArgumentException("노출 시작 시각 혹은 종료 시각은 null일 수 없습니다.");
         }
-        if (startAt != null && endAt != null) {
+        if (this.startAt != null && this.endAt != null) {
             throw new NoticeAlreadyActivatedException("공지사항 id " + id + "는 이미 활성화 상태입니다.");
         }
         if (startAt.isAfter(endAt)) {
