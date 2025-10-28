@@ -6,7 +6,7 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
-import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrlItems;
+import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrls;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 
@@ -26,7 +26,7 @@ public class NotificationCommandAssembler {
                 List.of(runEvent.courseOwnerId()),
                 "누군가 내 코스를 달렸어요!",
                 runEvent.runnerNickname() + " 님이 회원님의 " + determineCourseName(runEvent.courseName()) + "를 완주했습니다.",
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.courseRunUrlItems(runEvent.courseId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.courseRunUrlItems(runEvent.courseId()))
         );
     }
 
@@ -35,7 +35,7 @@ public class NotificationCommandAssembler {
                 List.of(member.getId()),
                 "고스티가 완성됐어요",
                 determineCourseName(course.getName()) + "에 고스티가 생성됐어요!",
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.pacemakerCreationUrlItems(course.getId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.pacemakerCreationUrlItems(course.getId()))
         );
     }
 
@@ -45,7 +45,7 @@ public class NotificationCommandAssembler {
                 List.of(runEvent.runnerId()),
                 "개인 기록 갱신!",
                 "축하해요! " + determineCourseName(runEvent.courseName()) + "에서 개인 최고 기록을 갱신했어요!",
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.topRecordUpdateUrlItems(runEvent.courseId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.topRecordUpdateUrlItems(runEvent.courseId()))
         );
     }
 
@@ -56,7 +56,7 @@ public class NotificationCommandAssembler {
                 allMemberIds(),
                 "새로운 이벤트 공지가 등록되었어요",
                 notice.title(),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.eventNoticeUrlItems(notice.noticeId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.eventNoticeUrlItems(notice.noticeId()))
         );
     }
 
@@ -66,7 +66,7 @@ public class NotificationCommandAssembler {
                 allMemberIds(),
                 "새로운 이벤트 " + eventNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(eventNotices),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.multiNoticeUrlItems())
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.multiNoticeUrlItems())
         );
     }
 
@@ -76,7 +76,7 @@ public class NotificationCommandAssembler {
                 allMemberIds(),
                 "새로운 공지가 등록되었어요",
                 notice.title(),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.generalNoticeUrlItems(notice.noticeId()))
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.generalNoticeUrlItems(notice.noticeId()))
         );
     }
 
@@ -86,7 +86,7 @@ public class NotificationCommandAssembler {
                 allMemberIds(),
                 "새로운 공지 " + generalNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(generalNotices),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrlItems.multiNoticeUrlItems())
+                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.multiNoticeUrlItems())
         );
     }
 

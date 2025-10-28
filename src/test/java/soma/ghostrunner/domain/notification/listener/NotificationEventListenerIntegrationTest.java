@@ -26,7 +26,7 @@ import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
 import soma.ghostrunner.domain.notification.application.NotificationService;
 import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrlItem;
-import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrlItems;
+import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrls;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
@@ -105,7 +105,7 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         assertThat(notiCommand.title()).isEqualTo("누군가 내 코스를 달렸어요!");
         assertThat(notiCommand.body()).isEqualTo("맥도날드 님이 회원님의 테스트 코스를 완주했습니다.");
         assertNotificaionDeepLink(notiCommand.data())
-                .containsExactly(DeepLinkUrlItems.courseRunUrlItems(course.getId()).get(0));
+                .containsExactly(DeepLinkUrls.courseRunUrlItems(course.getId()).get(0));
     }
 
     @DisplayName("코스에서 본인의 기존 신기록을 갱신한 경우 올바른 알림 이벤트를 발행한다.")
@@ -152,7 +152,7 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         assertThat(notiCommand.title()).isEqualTo("개인 기록 갱신!");
         assertThat(notiCommand.body()).isEqualTo("축하해요! 테스트 코스에서 개인 최고 기록을 갱신했어요!");
         assertNotificaionDeepLink(notiCommand.data())
-                .containsExactly(DeepLinkUrlItems.topRecordUpdateUrlItems(course.getId()).get(0));
+                .containsExactly(DeepLinkUrls.topRecordUpdateUrlItems(course.getId()).get(0));
     }
 
     @DisplayName("공지사항 활성화 이벤트를 수신하면 공지사항 유형에 따라 올바른 알림 이벤트를 전송한다.")
@@ -192,8 +192,8 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         assertNotificaionDeepLink(notiCommand.data())
                 .containsExactly(
                         notice.getType() == NoticeType.GENERAL_V2 ?
-                                DeepLinkUrlItems.generalNoticeUrlItems(notice.getId()).get(0) :
-                                DeepLinkUrlItems.eventNoticeUrlItems(notice.getId()).get(0)
+                                DeepLinkUrls.generalNoticeUrlItems(notice.getId()).get(0) :
+                                DeepLinkUrls.eventNoticeUrlItems(notice.getId()).get(0)
                 );
     }
 
@@ -240,7 +240,7 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
                 .map(title -> "- " + title)
                 .collect(Collectors.joining("\n")));
         assertNotificaionDeepLink(notiCommand.data())
-                .containsExactly(DeepLinkUrlItems.multiNoticeUrlItems().get(0));
+                .containsExactly(DeepLinkUrls.multiNoticeUrlItems().get(0));
     }
 
     private static Stream<Arguments> multipleNoticeEventTestCases() {
@@ -294,7 +294,7 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
         assertThat(notiCommand.title()).isEqualTo("고스티가 완성됐어요");
         assertThat(notiCommand.body()).isEqualTo(course.getName() + "에 고스티가 생성됐어요!");
         assertNotificaionDeepLink(notiCommand.data())
-                .containsExactly(DeepLinkUrlItems.pacemakerCreationUrlItems(course.getId()).get(0));
+                .containsExactly(DeepLinkUrls.pacemakerCreationUrlItems(course.getId()).get(0));
     }
 
 

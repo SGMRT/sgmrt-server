@@ -4,7 +4,7 @@ import java.util.List;
 import static soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrlItem.*;
 
 /** 푸시 알림 별 딥링크 URL 데이터 모음 */
-public class DeepLinkUrlItems {
+public class DeepLinkUrls {
 
     /**
      * 사용법
