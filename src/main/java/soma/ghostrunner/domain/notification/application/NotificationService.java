@@ -54,30 +54,14 @@ public class NotificationService {
                 })
                 .exceptionally(ex -> {
                     // 푸쉬 실패 (네트워크 장애, 잘못된 요청 형식 등)
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("exception while sending push notification: {}")
-                            .append(ex.getMessage()).append("\n");
-                    Arrays.stream(ex.getStackTrace()).limit(30)
-                            .forEach(st -> sb.append("  at ").append(st.toString()).append("\n"));
-                    log.error(sb.toString());
+                    log.error("푸시 알람 전송에 실패했습니다. %nException: {} %nRequest: {}", ex.getMessage(), request, ex);
                     return new NotificationBatchResult(request.getTargetPushTokens().size(), 0, request.getTargetPushTokens().size(), List.of(), List.of());
                 });
     }
 
     private void handleNotificationResult(List<NotificationSendResult> results) {
-        // todo 고도화: DB 접근 최적화 (성공한 애들 모아서 한 번에 SENT / 실패한 애들 모아서 한 번에 RETRYING)
-        // Map<Id, Notification>으로 메모리에 있는 엔티티 컬렉션 재활용
-//        Map<Long, Notification> notificationMap = notifications.stream()
-//                .collect(Collectors.toMap(Notification::getId, Function.identity()));
-//        List<Long> successIds = new ArrayList<>(), failureIds = new ArrayList<>();
-
         for (NotificationSendResult result : results) {
-//            Notification noti = notificationMap.get(result.notificationId());
-//            if (noti == null) continue;
-
             if (result.isSuccess()) {
-//                noti.markAsSent(result.ticketId());
-//                successIds.add(result.notificationId());
                 log.info("NotificationService: Notification {} marked as SENT", result.pushToken());
             } else {
                 // 재시도 필요
@@ -87,13 +71,8 @@ public class NotificationService {
                     log.info("{} << 존재하지 않으니까 DB에서 삭제해야 됨", result);
                     continue;
                 }
-
-//                failureIds.add(result.notificationId());
-//                noti.markAsFailed();  // TODO FAILED 대신 RETRYING 으로 변경 후 재시도 로직 구현
             }
         }
-
-//        notificationRepository.saveAll(notifications); // 상태 일괄 변경
     }
 
     private static NotificationBatchResult createNotificationBatchResult(List<NotificationSendResult> results) {

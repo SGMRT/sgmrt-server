@@ -5,12 +5,10 @@ import com.niamedtech.expo.exposerversdk.request.PushNotification;
 import com.niamedtech.expo.exposerversdk.response.TicketResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -33,7 +31,6 @@ public class ExpoPushClient {
                     List<TicketResponse.Ticket> tickets = pushClient.sendPushNotifications(List.of(notification));
                     return mapToNotificationSendResults(request, tickets);
                 } catch (Exception e) {
-                    log.error("ExpoPushClient: Expo push failed with exception for request {}: {}", request, e.getMessage(), e);
                     throw new CompletionException(e);
                 }
             }, pushTaskExecutor);

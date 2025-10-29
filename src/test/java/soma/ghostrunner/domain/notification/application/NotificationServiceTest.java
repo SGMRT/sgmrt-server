@@ -1,6 +1,6 @@
 package soma.ghostrunner.domain.notification.application;
 
-import org.junit.jupiter.api.AfterEach;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,10 +10,16 @@ import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
+import soma.ghostrunner.domain.notification.application.dto.NotificationBatchResult;
 import soma.ghostrunner.domain.notification.client.ExpoPushClient;
-import soma.ghostrunner.domain.notification.dao.NotificationRepository;
 import soma.ghostrunner.domain.notification.dao.PushTokenRepository;
 import soma.ghostrunner.domain.notification.domain.PushToken;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
