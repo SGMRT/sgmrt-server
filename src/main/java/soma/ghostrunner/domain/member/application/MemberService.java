@@ -24,6 +24,7 @@ import soma.ghostrunner.global.error.ErrorCode;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -44,10 +45,18 @@ public class MemberService {
     private final MemberVdotRepository memberVdotRepository;
     private final CourseRepository courseRepository;
 
-    @Transactional(readOnly = true)
     public Member findMemberByUuid(String uuid) {
         return memberRepository.findByUuid(uuid)
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find member uuid: " + uuid));
+    }
+
+    public Member findMemberById(Long id) {
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find member id: " + id));
+    }
+
+    public List<Long> findAllMemberIds() {
+        return memberRepository.findAllMemberIds();
     }
 
     public String findUuidByAuthUid(String authUid) {

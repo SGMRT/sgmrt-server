@@ -90,6 +90,12 @@ public class RunningQueryService {
                 .toList();
     }
 
+    public List<Running> findLatestRunningsByMember(Long courseId, String memberUuid, int limit) {
+        return runningRepository.findLatestRunsByCourseIdAndMemberId(courseId, memberUuid, limit)
+                .stream()
+                .toList();
+    }
+
     /** 코스 ID 별로 상위 랭킹 :limit위까지의 러닝 기록을 리스트로 매핑하여 반환한다. (러너 별로 최대 하나의 기록만 포함된다) (Key = 코스 ID, Value = 랭킹 내의 러닝 기록 리스트)*/
     public Map<Long, List<CourseRunDto>> findTopRankingDistinctGhostsByCourseIds(
             List<Long> cachedMissedCourseIds, int limit) {
@@ -234,6 +240,11 @@ public class RunningQueryService {
             ret.put(count.getFirst(), count.getSecond());
         }
         return ret;
+    }
+
+    /** 회원의 러닝 중 :runStartedAt 이전의 가장 좋은 기록을 가지고 온다. */
+    public Optional<Running> findMemberBestRunBefore(Long courseId, String memberUuid, Long runStartedAt) {
+        return runningRepository.findBestRunByCourseIdAndMemberUuidBefore(courseId, memberUuid, runStartedAt);
     }
 
 }

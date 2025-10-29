@@ -1,7 +1,9 @@
 package soma.ghostrunner.domain.notice.application;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -11,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.notice.exceptions.NoticeTypeDeprecatedException;
+import soma.ghostrunner.domain.notice.exception.NoticeTypeDeprecatedException;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -25,13 +27,14 @@ import soma.ghostrunner.domain.notice.dao.NoticeRepository;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
-import soma.ghostrunner.domain.notice.exceptions.NoticeNotFoundException;
+import soma.ghostrunner.domain.notice.exception.NoticeNotFoundException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NoticeService {
@@ -40,10 +43,12 @@ public class NoticeService {
     private String noticeDirectory;
 
     private final MemberService memberService;
+    private final ApplicationEventPublisher eventPublisher;
     private final GhostRunnerS3Client s3Client;
+    private final NoticeMapper noticeMapper;
+
     private final NoticeRepository noticeRepository;
     private final NoticeDismissalRepository noticeDismissalRepository;
-    private final NoticeMapper noticeMapper;
 
     @Transactional(readOnly = true)
     public Notice findNoticeById(Long id) {
@@ -83,6 +88,7 @@ public class NoticeService {
         for(Notice notice : notices) {
             notice.activate(startAt, endAt);
         }
+        eventPublisher.publishEvent(noticeMapper.toNoticeActivatedEvent(notices));
         return notices.stream().map(Notice::getId).toList();
     }
 
@@ -137,6 +143,7 @@ public class NoticeService {
     @Transactional
     public void updateNotice(Long noticeId, NoticeUpdateRequest request) {
         Notice notice = findNoticeById(noticeId);
+        log.info("Updating notice with id {}, request = {}", noticeId, request);
         for(NoticeUpdateRequest.UpdateAttrs attr : request.getUpdateAttrs()) {
             switch (attr) {
                 case TITLE -> notice.updateTitle(request.getTitle());

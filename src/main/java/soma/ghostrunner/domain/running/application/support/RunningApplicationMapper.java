@@ -10,6 +10,8 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.*;
 import soma.ghostrunner.domain.running.application.dto.response.DayRunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
+import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
+import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreatePacemakerCommand;
@@ -201,5 +203,20 @@ public interface RunningApplicationMapper {
                 .pacemakerSummaryResponse(pacemakerSummaryResponse)
                 .build();
     }
-  
+
+    @Mapping(source = "course.id", target = "courseId")
+    @Mapping(source = "course.name", target = "courseName")
+    @Mapping(source = "course.member.id", target = "courseOwnerId")
+    @Mapping(source = "running.id", target = "runningId")
+    @Mapping(source = "running.startedAt", target = "runStartedAt")
+    @Mapping(source = "running.runningRecord.duration", target = "runDuration")
+    @Mapping(source = "member.id", target = "runnerId")
+    @Mapping(source = "member.nickname", target = "runnerNickname")
+    CourseRunEvent toCourseRunEvent(Running running, Course course, Member member);
+
+    @Mapping(source = "id", target = "pacemakerId")
+    @Mapping(source = "courseId", target = "courseId")
+    @Mapping(source = "memberUuid", target = "memberUuid")
+    PacemakerCreatedEvent toPacemakerCreatedEvent(Pacemaker pacemaker);
+
 }

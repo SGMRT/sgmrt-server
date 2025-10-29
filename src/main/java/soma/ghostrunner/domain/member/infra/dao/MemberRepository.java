@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.member.api.dto.response.MemberResponse;
 import soma.ghostrunner.domain.member.domain.Member;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -32,5 +33,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findSoftDeletedMemberByUuid(String uuid);
 
     boolean existsByUuid(String memberUuid);
+
+    @Query("SELECT m.id FROM Member m")
+    List<Long> findAllMemberIds();
 
 }
