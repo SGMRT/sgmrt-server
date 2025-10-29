@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.notice.api;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -119,6 +120,7 @@ public class NoticeApi {
      *  Deprecated API  *
      * * * * * * * * * **/
 
+    @Hidden
     @Deprecated(since = "클라 v1.0.3 이하 호환을 위해 남겨둠")
     @GetMapping("/v1/notices")
     public PagedModel<NoticeDetailedResponse> getAllNoticesV1(
@@ -128,6 +130,7 @@ public class NoticeApi {
         return new PagedModel<>(Page.empty()); // 빈 페이지 반환
     }
 
+    @Hidden
     @Deprecated(since = "클라 v1.0.3 이하 호환을 위해 남겨둠")
     @GetMapping("/v1/notices/active")
     public List<NoticeDetailedResponse> getActiveNoticesV1(
@@ -136,6 +139,7 @@ public class NoticeApi {
         return Collections.emptyList(); // 빈 리스트 반환
     }
 
+    @Hidden
     @Deprecated(since = "클라 v1.0.3 이하 호환을 위해 남겨둠")
     @GetMapping("/v1/notices/{noticeId}")
     public NoticeDetailedResponse getNoticeV1(@PathVariable("noticeId") Long id) {
@@ -152,6 +156,7 @@ public class NoticeApi {
         );
     }
 
+    @Hidden
     @Deprecated(since = "클라 v1.0.3 이하 호환을 위해 남겨둠")
     @PostMapping("/v1/notices/{noticeId}/dismissal")
     public void dismissV1(@PathVariable("noticeId") Long id,
