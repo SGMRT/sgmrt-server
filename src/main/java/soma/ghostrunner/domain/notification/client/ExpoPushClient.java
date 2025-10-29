@@ -29,6 +29,7 @@ public class ExpoPushClient {
             return CompletableFuture.supplyAsync(() -> {
                 try {
                     PushNotification notification = createPushNotification(request);
+                    log.info("ExpoPushClient: Sending Expo push notification {}", notification);
                     List<TicketResponse.Ticket> tickets = pushClient.sendPushNotifications(List.of(notification));
                     return mapToNotificationSendResults(request, tickets);
                 } catch (Exception e) {
@@ -41,17 +42,17 @@ public class ExpoPushClient {
     private static List<NotificationSendResult> mapToNotificationSendResults(NotificationRequest request,
                                                                              List<TicketResponse.Ticket> tickets) {
         List<NotificationSendResult> results = new ArrayList<>();
-        if(tickets.size() != request.getIds().size()) {
-            throw new RuntimeException("Ticket size and request size do not match - tickets: " + tickets.size() + ", request: " + request.getIds().size());
+        if(tickets.size() != request.getTargetPushTokens().size()) {
+            throw new RuntimeException("Ticket size and request size do not match - tickets: " + tickets.size() + ", request: " + request.getTargetPushTokens().size());
         }
 
         int i = 0;
         for(var ticket : tickets) {
             switch (ticket.getStatus()) {
                 case OK -> results.add(NotificationSendResult
-                            .ofSuccess(request.getIds().get(i).getNotificationId(), ticket.getId()));
+                            .ofSuccess(request.getTargetPushTokens().get(i), ticket.getId()));
                 case ERROR -> results.add(NotificationSendResult
-                            .ofFailure(request.getIds().get(i).getNotificationId(), ticket.getMessage()));
+                            .ofFailure(request.getTargetPushTokens().get(i), ticket.getMessage()));
             }
             i++;
         }
@@ -63,9 +64,7 @@ public class ExpoPushClient {
         notification.setTitle(request.getTitle());
         notification.setBody(request.getBody());
         notification.setData(request.getData());
-        notification.setTo(request.getIds().stream()
-                .map(NotificationRequest.NotificationIds::getPushTokenId)
-                .toList());
+        notification.setTo(request.getTargetPushTokens());
         return notification;
     }
 
