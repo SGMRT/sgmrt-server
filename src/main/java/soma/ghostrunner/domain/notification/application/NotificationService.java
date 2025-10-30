@@ -26,11 +26,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NotificationService {
 
-    private final ExpoPushClient expoPushClient;
-    private final SqsPushMessagePublisher messagePublisher;
+    private final PushNotificationSqsSender sqsSender;
     private final PushTokenRepository pushTokenRepository;
     private final MemberRepository memberRepository;
-    private final ThreadPoolTaskExecutor pushTaskExecutor;
 
     public void sendPushNotification(NotificationCommand command) {
         sendPushNotification(
@@ -44,11 +42,10 @@ public class NotificationService {
     @SentrySpan
     public void sendPushNotification(List<Long> userIds, String title, String body, Map<String, Object> data) {
         List<PushToken> pushTokens = pushTokenRepository.findByMemberIdIn(userIds);
-
         List<PushMessageDto> pushMessages = pushTokens.stream()
                 .map(token -> new PushMessageDto(token.getToken(), title, body, data, null))
                 .toList();
-        messagePublisher.sendMany(pushMessages);
+        sqsSender.sendMany(pushMessages);
 
 //        if (pushTokens.isEmpty()) return CompletableFuture.completedFuture(NotificationBatchResult.ofEmpty());
 //

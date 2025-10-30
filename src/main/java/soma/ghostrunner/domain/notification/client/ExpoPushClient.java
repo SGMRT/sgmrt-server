@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -23,13 +24,17 @@ public class ExpoPushClient {
     private final ExpoPushNotificationClient pushClient;
     private final Executor pushTaskExecutor;
 
+    public List<NotificationSendResult> push(NotificationRequest request) throws IOException {
+        PushNotification notification = createPushNotification(request);
+        log.info("ExpoPushClient: Sending Expo push notification {}", notification);
+        List<TicketResponse.Ticket> tickets = pushClient.sendPushNotifications(List.of(notification));
+        return mapToNotificationSendResults(request, tickets);
+    }
+
     public CompletableFuture<List<NotificationSendResult>> pushAsync(NotificationRequest request) {
             return CompletableFuture.supplyAsync(() -> {
                 try {
-                    PushNotification notification = createPushNotification(request);
-                    log.info("ExpoPushClient: Sending Expo push notification {}", notification);
-                    List<TicketResponse.Ticket> tickets = pushClient.sendPushNotifications(List.of(notification));
-                    return mapToNotificationSendResults(request, tickets);
+                    return push(request);
                 } catch (Exception e) {
                     throw new CompletionException(e);
                 }

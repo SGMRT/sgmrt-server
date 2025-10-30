@@ -17,7 +17,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @SentrySpan
-public class SqsPushMessagePublisher implements PushMessagePublisher {
+public class PushNotificationSqsSender {
 
     @Value("${cloud.aws.sqs.push-queue-name}")
     private String queueName;
@@ -25,7 +25,6 @@ public class SqsPushMessagePublisher implements PushMessagePublisher {
     private final SqsTemplate sqsTemplate;
     private static final int SQS_BATCH_MAX_SIZE = 10;
 
-    @Override
     public void send(final PushMessageDto message) {
         SendResult<PushMessageDto> result = sqsTemplate.send(to -> to
                 .queue(queueName)
