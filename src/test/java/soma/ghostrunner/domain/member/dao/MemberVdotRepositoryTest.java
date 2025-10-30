@@ -32,7 +32,7 @@ class MemberVdotRepositoryTest extends IntegrationTestSupport {
         memberVdotRepository.save(memberVdot);
 
         // when // then
-        assertThat(memberVdotRepository.findByMemberId(member.getId()).get().getVdot()).isEqualTo(30);
+        assertThat(memberVdotRepository.findByMemberUuid(member.getUuid()).get().getVdot()).isEqualTo(30);
      }
 
     private Member createMember(String name) {
@@ -41,6 +41,17 @@ class MemberVdotRepositoryTest extends IntegrationTestSupport {
 
     private MemberVdot createMemberVdot(Member member, int vdot) {
         return MemberVdot.of(vdot, member);
+    }
+
+    @DisplayName("MemberVdot가 없다면 NULL을 응답한다.")
+    @Test
+    void findNoneVdotThenReturnNull() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        // when // then
+        assertThat(memberVdotRepository.findByMemberUuid(member.getUuid())).isEmpty();
     }
 
 }

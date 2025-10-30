@@ -193,4 +193,21 @@ public class Running extends BaseTimeEntity {
         return oneMilePace.doubleValue();
     }
 
+    public static double calculatePaceFromRunningLevel(String runningLevel) {
+        switch (runningLevel) {
+            case "입문자" -> {
+                return calculateOneMilePace(8.0);
+            }
+            case "중급자" -> {
+                return calculateOneMilePace(6.0);
+            }
+            case "상급자" -> {
+                return calculateOneMilePace(5.0);
+            }
+            default -> {
+                throw new IllegalArgumentException("올바르지 않은 러닝 레벨입니다.");
+            }
+        }
+    }
+
 }

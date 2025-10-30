@@ -14,7 +14,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.api.AssertionsForClassTypes.tuple;
 
-@SpringBootTest
 class VdotPaceProviderTest extends IntegrationTestSupport {
 
     @Autowired

@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.member.application.dto.MemberMapper;
+import soma.ghostrunner.domain.running.application.RunningVdotService;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
@@ -22,6 +24,7 @@ import soma.ghostrunner.global.error.ErrorCode;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -31,6 +34,10 @@ import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 @RequiredArgsConstructor
 public class MemberService {
 
+    private final RunningVdotService runningVdotService;
+
+    private final MemberMapper mapper;
+
     private final MemberRepository memberRepository;
     private final TermsAgreementRepository termsAgreementRepository;
     private final MemberAuthInfoRepository memberAuthInfoRepository;
@@ -38,10 +45,18 @@ public class MemberService {
     private final MemberVdotRepository memberVdotRepository;
     private final CourseRepository courseRepository;
 
-    @Transactional(readOnly = true)
     public Member findMemberByUuid(String uuid) {
         return memberRepository.findByUuid(uuid)
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find member uuid: " + uuid));
+    }
+
+    public Member findMemberById(Long id) {
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find member id: " + id));
+    }
+
+    public List<Long> findAllMemberIds() {
+        return memberRepository.findAllMemberIds();
     }
 
     public String findUuidByAuthUid(String authUid) {
@@ -216,9 +231,24 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public MemberVdot findMemberVdot(Member member) {
-        return memberVdotRepository.findByMemberId(member.getId())
-                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND, "cannot find vdot, memberUuid: " + member.getUuid()));
+    public Integer findMemberVdot(String memberUuid) {
+        return memberVdotRepository.findByMemberUuid(memberUuid)
+                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.VDOT_NOT_FOUND, "cannot find vdot, memberUuid: " + memberUuid))
+                .getVdot();
+    }
+
+    @Transactional
+    public void calculateAndSaveVdot(String memberUuid, String level) {
+        Member member = findMemberByUuid(memberUuid);
+        cannotSaveIfAlreadyVdotExist(memberUuid);
+        int vdot = runningVdotService.calculateVdotFromRunningLevel(level);
+        memberVdotRepository.save(mapper.toMemberVdot(member, vdot));
+    }
+
+    private void cannotSaveIfAlreadyVdotExist(String memberUuid) {
+        if (memberVdotRepository.existsByMemberUuid(memberUuid)) {
+            throw new InvalidMemberException(ErrorCode.VDOT_ALREADY_EXIST, "이미 VDOT가 저장되어 있음.");
+        }
     }
 
 }

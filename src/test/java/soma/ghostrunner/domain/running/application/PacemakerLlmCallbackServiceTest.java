@@ -6,10 +6,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.running.application.dto.WorkoutSetDto;
+import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Pacemaker;
 import soma.ghostrunner.domain.running.domain.PacemakerSet;
+import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.running.infra.persistence.PacemakerSetRepository;
 import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
@@ -35,6 +38,12 @@ class PacemakerLlmCallbackServiceTest {
     @Mock
     private RedisRunningRepository redisRunningRepository;
 
+    @Mock
+    private RunningApplicationMapper mapper;
+
+    @Mock
+    private ApplicationEventPublisher publisher;
+
     @Test
     void handleSuccess_shouldUpdateEntitiesAndRedis() {
         // given
@@ -50,6 +59,9 @@ class PacemakerLlmCallbackServiceTest {
 
         PacemakerSet setEntity = mock(PacemakerSet.class);
         List<PacemakerSet> sets = List.of(setEntity);
+        PacemakerCreatedEvent event = mock(PacemakerCreatedEvent.class);
+        when(mapper.toPacemakerCreatedEvent(any())).thenReturn(event);
+        doNothing().when(publisher).publishEvent(event);
 
         try (MockedStatic<WorkoutDto> workoutDtoStatic = mockStatic(WorkoutDto.class);
              MockedStatic<PacemakerSet> pacemakerSetStatic = mockStatic(PacemakerSet.class)) {

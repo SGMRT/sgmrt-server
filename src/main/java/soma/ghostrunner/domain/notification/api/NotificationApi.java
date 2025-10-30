@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.notification.api;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 public class NotificationApi {
     private final NotificationService notificationService;
 
+    @Operation(summary = "푸시알람 전송 (어드민 전용)")
     @AdminOnly
     @PostMapping("/v1/admin/notifications")
     public NotificationBatchResult sendNotification(@RequestBody NotificationSendRequest request) throws Exception {

@@ -20,7 +20,7 @@ public class PacemakerPromptGenerator {
                 컨디션은 '매우 안좋음, 안좋음, 보통, 좋음, 매우 좋음' 중 하나로 주어진다. 
                                 
                 각 구간은 setNum 필드를 통해 구분되며, 세트 재구성이 필요하다면 json 규격에 맞게 재구성할 수 있다.
-                쉬는 구간은 pace_min/km 필드값을 0:00 으로 통일한다.
+                첫 번째 세트와 마지막 세트는 웜업(Warm-Up)과 쿨 다운(Cool-Down) 세트임을 인지하고 최적화한다.
                                 
                 ---
                                 
@@ -181,7 +181,6 @@ public class PacemakerPromptGenerator {
                 컨디션은 '매우 안좋음, 안좋음, 보통, 좋음, 매우 좋음' 중 하나로 주어진다.
                 
                 각 구간은 setNum 필드를 통해 구분되며, 세트 재구성이 필요하다면 json 규격에 맞게 재구성할 수 있다.
-                쉬는 구간은 pace_min/km 필드값을 0:00 으로 통일한다.
                                 
                 ---
                                 
@@ -190,9 +189,10 @@ public class PacemakerPromptGenerator {
                 훈련표는 json 형태로 규격에 맞게 구성되어있다. 넌 workout 필드 중 Null 값인 summary, initial_message, message 필드에 채워넣으면 된다.
                 나머지 필드는 그대로 두고 workout만 출력 형식에 맞게 출력해라.
                 
-                summary는 간단 명료하게 2문장 이내로 훈련표룰 소개 및 요약한다.
-                initial_message와 message는 사용자에게 TTS로 바로 안내할 수 있도록 대화형이며 사용자 친화적으로 용어를 구성한다.
+                summary는 간단 명료하게 1문장 이내로 오늘 러닝에 대한 요약을 제공한다.
+                이때, 형식은 (600m*6.1페이스 + 300m*8.0페이스)x5와 같이 수치를 바탕으로 사람들이 한 눈에 알 수 있도록 하고 웜업과 쿨다운 부분은 제외하고 메인 러닝 부분만 요약한다. 
                 
+                initial_message와 message는 사용자에게 TTS로 바로 안내할 수 있도록 대화형이며 사용자 친화적으로 용어를 구성한다.
                 summary, initial_message, message는 입문자도 바로 알 수 있도록 러닝 전문용어는 지양한다.
                 
                 전문가가 피드백해주었다는 사실은 요약(summary)과 음성 메세지(initial_message, message)에 포함시키지 않는다.

@@ -5,11 +5,16 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.Where;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 import static soma.ghostrunner.domain.running.domain.Pacemaker.Status.COMPLETED;
 
+@SQLDelete(sql = "UPDATE pacemaker SET deleted = true WHERE id=?")
+@Where(clause = "deleted = false")
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -18,6 +23,10 @@ public class Pacemaker extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "running_type")
+    @Enumerated(EnumType.STRING)
+    private RunningType runningType;
 
     @Column(name = "norm")
     @Enumerated(EnumType.STRING)
@@ -39,30 +48,44 @@ public class Pacemaker extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private Status status;
 
+    @Column(name = "has_run_with")
+    private Boolean hasRunWith;
+
+    @Column(nullable = false)
+    private boolean deleted = false;
+
     @Column(name = "running_id")
     private Long runningId;
+
+    @Column(name = "course_id")
+    private Long courseId;
 
     @Column(name = "member_uuid")
     private String memberUuid;
 
     @Builder(access = AccessLevel.PRIVATE)
-    public Pacemaker(Norm norm, String summary,
+    public Pacemaker(RunningType runningType, Norm norm, String summary,
                      Double goalDistance, Integer expectedTime, String initialMessage,
-                     Long runningId, String memberUuid) {
+                     Long runningId, Long courseId, String memberUuid) {
+        this.runningType = runningType;
         this.norm = norm;
         this.summary = summary;
         this.goalDistance = goalDistance;
         this.expectedTime = expectedTime;
         this.initialMessage = initialMessage;
         this.runningId = runningId;
+        this.courseId = courseId;
         this.status = Status.PROCEEDING;
+        this.hasRunWith = false;
         this.memberUuid = memberUuid;
     }
 
-    public static Pacemaker of(Norm norm, Double goalDistance, String memberUuid) {
+    public static Pacemaker of(Norm norm, Double goalDistance, Long courseId, RunningType runningType, String memberUuid) {
         return Pacemaker.builder()
                 .norm(norm)
                 .goalDistance(goalDistance)
+                .courseId(courseId)
+                .runningType(runningType)
                 .memberUuid(memberUuid)
                 .build();
     }
@@ -95,6 +118,18 @@ public class Pacemaker extends BaseTimeEntity {
 
     public boolean isNotCompleted() {
         return !status.equals(COMPLETED);
+    }
+
+    public void updateAfterRunning(Long runningId) {
+        verifyAlreadyHasRunWith();
+        this.runningId = runningId;
+        this.hasRunWith = true;
+    }
+
+    private void verifyAlreadyHasRunWith() {
+        if (hasRunWith) {
+            throw new IllegalArgumentException("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
+        }
     }
 
 }

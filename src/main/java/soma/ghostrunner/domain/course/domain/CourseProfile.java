@@ -3,13 +3,11 @@ package soma.ghostrunner.domain.course.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.validation.constraints.NotEmpty;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Getter
 @Embeddable @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EqualsAndHashCode
 public class CourseProfile {
 
     @Column(name = "distance_km", nullable = false)

@@ -35,7 +35,6 @@ public class RunningApi {
 
     private final RunningQueryService runningQueryService;
     private final RunningCommandService runningCommandService;
-    private final PacemakerService paceMakerService;
 
     @GetMapping("/")
     public String hello() {
@@ -166,36 +165,6 @@ public class RunningApi {
             @RequestParam @Min(1) @Max(12) Integer month) {
         String memberUuid = userDetails.getUserId();
         return runningQueryService.findMonthlyDayRunStatus(year, month, memberUuid);
-    }
-
-    @PostMapping("/v1/runs/pacemaker")
-    public Long createPacemaker(
-            @AuthenticationPrincipal JwtUserDetails userDetails,
-            @RequestBody @Valid CreatePacemakerRequest request) throws InterruptedException {
-        String memberUuid = userDetails.getUserId();
-        return paceMakerService.createPaceMaker(memberUuid, mapper.toCommand(request));
-    }
-
-    @GetMapping("/v1/runs/pacemaker/{pacemakerId}")
-    public PacemakerPollingResponse getPacemaker(
-            @AuthenticationPrincipal JwtUserDetails userDetails,
-            @PathVariable Long pacemakerId) {
-        String memberUuid = userDetails.getUserId();
-        return paceMakerService.getPacemaker(pacemakerId, memberUuid);
-    }
-
-    @GetMapping("/v1/kill")
-    public String killServer(@AuthenticationPrincipal JwtUserDetails userDetails) {
-        new Thread(() -> {
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            System.exit(0);
-        }).start();
-
-        return "서버 종료 명령을 수신했습니다. 0.5초 후 서버가 종료됩니다.";
     }
 
 }

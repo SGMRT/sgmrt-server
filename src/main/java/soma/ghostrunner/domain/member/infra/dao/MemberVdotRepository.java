@@ -8,7 +8,9 @@ import java.util.Optional;
 
 public interface MemberVdotRepository extends JpaRepository<MemberVdot, Long> {
 
-    @Query("select mv from MemberVdot mv where mv.member.id = :memberId")
-    Optional<MemberVdot> findByMemberId(Long memberId);
+    @Query("select mv from MemberVdot mv inner join Member m on mv.member.uuid = :memberUuid")
+    Optional<MemberVdot> findByMemberUuid(String memberUuid);
+
+    Boolean existsByMemberUuid(String memberUuid);
 
 }

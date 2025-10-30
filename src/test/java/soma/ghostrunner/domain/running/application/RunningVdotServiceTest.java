@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,11 +29,11 @@ class RunningVdotServiceTest {
     @Mock
     VdotPaceProvider vdotPaceProvider;
 
-    RunningVdotService sut;
+    RunningVdotService runningVdotService;
 
     @BeforeEach
     void setUp() {
-        sut = new RunningVdotService(vdotCalculator, vdotPaceProvider);
+        runningVdotService = new RunningVdotService(vdotCalculator, vdotPaceProvider);
     }
 
     @Test
@@ -48,7 +50,7 @@ class RunningVdotServiceTest {
             when(vdotCalculator.calculateFromPace(oneMilePace)).thenReturn(41);
 
             // when
-            int vdot = sut.calculateVdot(averagePacePerKm);
+            int vdot = runningVdotService.calculateVdot(averagePacePerKm);
 
             // then
             assertThat(vdot).isEqualTo(41);
@@ -75,7 +77,7 @@ class RunningVdotServiceTest {
         when(vdotPaceProvider.getVdotPaceByVdot(vdot)).thenReturn(list);
 
         // when
-        Map<RunningType, Double> map = sut.getExpectedPacesByVdot(vdot);
+        Map<RunningType, Double> map = runningVdotService.getExpectedPacesByVdot(vdot);
 
         // then
         assertThat(map).hasSize(5);
@@ -87,6 +89,33 @@ class RunningVdotServiceTest {
 
         verify(vdotPaceProvider).getVdotPaceByVdot(vdot);
         verifyNoMoreInteractions(vdotPaceProvider);
+    }
+
+    @DisplayName("러닝 레벨에 따라 1마일 페이스를 계산하고 VDOT를 반환한다")
+    @Test
+    void calculateVdotFromRunningLevel_success() {
+        // given
+        String runningLevel = "중급자";
+        given(vdotCalculator.calculateFromPace(anyDouble())).willReturn(45);
+
+        // when
+        int vdot = runningVdotService.calculateVdotFromRunningLevel(runningLevel);
+
+        // then
+        assertThat(vdot).isEqualTo(45);
+        verify(vdotCalculator).calculateFromPace(9.6);
+    }
+
+    @DisplayName("잘못된 러닝 레벨일 경우 Running 에서 예외가 발생한다.")
+    @Test
+    void calculateVdotFromRunningLevel_invalidLevel() {
+        // given
+        String invalidLevel = "초고수";
+
+        // when // then
+        assertThatThrownBy(() -> runningVdotService.calculateVdotFromRunningLevel(invalidLevel))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("올바르지 않은 러닝 레벨입니다.");
     }
 
 }

@@ -33,6 +33,8 @@ public enum ErrorCode {
     MEMBER_ALREADY_EXISTED("M-002", CONFLICT, "이미 존재하는 회원"),
     NICKNAME_ALREADY_EXIST("M-003", CONFLICT, "이미 존재하는 닉네임"),
     TERMS_AGREEMENT_NOT_CHANGED("M-004", CONFLICT, "기존 약관 동의와 동일함"),
+    VDOT_NOT_FOUND("M-005", NOT_FOUND, "회원의 VDOT가 존재하지 않음"),
+    VDOT_ALREADY_EXIST("M-006", CONFLICT, "이미 VDOT가 존재하는 경우"),
 
     // Course
     COURSE_NOT_FOUND("C-001", NOT_FOUND, "존재하지 않는 코스"),
@@ -41,13 +43,10 @@ public enum ErrorCode {
     COURSE_RUN_NOT_FOUND("C-004", BAD_REQUEST, "해당 코스를 달린 기록이 없음"),
 
     // Running
-    INVALID_PACEMAKER_DISTANCE("R-001", BAD_REQUEST, "3K 이하의 거리는 페이스메이커를 생성할 수 없습니다."),
-    VDOT_NOT_FOUND("R-002", NOT_FOUND, "VDOT가 기록되어 있지 않아, 평균 페이스가 필요합니다."),
-    PROCESSING_PACEMAKER("R-003", BAD_REQUEST, "페이스메이커가 아직 생성되지 않았습니다."),
-    FAILED_PACEMAKER("R-004", HttpStatus.SERVICE_UNAVAILABLE, "페이스메이커를 생성하는데 실패했습니다."),
 
     // Notice
     DEPRECATED_NOTICE_TYPE("N-001", BAD_REQUEST, "더 이상 지원되지 않는 공지 타입입니다."),
+    NOTICE_ALREADY_ACTIVATED("N-002", BAD_REQUEST, "이미 활성화된 공지입니다. 종료시각을 변경하려면 공지 비활성화 / 공지 수정 API를 활용하세요.")
     ;
 
     private final String code;

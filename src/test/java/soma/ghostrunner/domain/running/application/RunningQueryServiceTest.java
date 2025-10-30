@@ -269,7 +269,7 @@ class RunningQueryServiceTest {
                 .thenReturn(List.of());
 
         // mapper도 빈 리스트를 그대로 빈으로 매핑하도록 목 설정
-        when(mapper.toResponse(List.of())).thenReturn(List.of());
+        when(mapper.toPacemakerPollingResponse(List.of())).thenReturn(List.of());
 
         // when
         List<RunInfo> result = sut.findRunnings(courseId, memberUuid);
@@ -279,7 +279,7 @@ class RunningQueryServiceTest {
 
         verify(memberService).findMemberByUuid(memberUuid);
         verify(runningRepository).findRunningsByCourseIdAndMemberId(courseId, 1L);
-        verify(mapper).toResponse(List.of());
+        verify(mapper).toPacemakerPollingResponse(List.of());
         verifyNoMoreInteractions(memberService, runningRepository, mapper);
     }
 
@@ -300,7 +300,7 @@ class RunningQueryServiceTest {
                 .thenReturn(repoResult);
 
         List<RunInfo> mapped = List.of(mock(RunInfo.class), mock(RunInfo.class));
-        when(mapper.toResponse(repoResult)).thenReturn(mapped);
+        when(mapper.toPacemakerPollingResponse(repoResult)).thenReturn(mapped);
 
         // when
         List<RunInfo> result = sut.findRunnings(courseId, memberUuid);
@@ -309,7 +309,7 @@ class RunningQueryServiceTest {
         assertThat(result).isEqualTo(mapped);
         verify(memberService).findMemberByUuid(memberUuid);
         verify(runningRepository).findRunningsByCourseIdAndMemberId(courseId, 1L);
-        verify(mapper).toResponse(repoResult);
+        verify(mapper).toPacemakerPollingResponse(repoResult);
     }
 
     @Test
@@ -401,6 +401,25 @@ class RunningQueryServiceTest {
         );
         assertThat(result).isEqualTo(expected);
         verify(runningRepository).findPublicRunnerCountsByCourseIds(courseIds);
+    }
+
+    @DisplayName("findMemberBestRunBefore: 특정 시간 이전의 회원 베스트 러닝 기록 조회")
+    @Test
+    void findMemberBestRunBefore() {
+        // given
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(11L);
+        String memberUuid = "uuid-11";
+        Long courseId = 20L;
+        Long beforeStartedAt = 1_600_000L;
+        Running bestRun = mock(Running.class);
+        when(runningRepository.findBestRunByCourseIdAndMemberUuidBefore(courseId, memberUuid, beforeStartedAt))
+                .thenReturn(Optional.of(bestRun));
+        // when
+        Optional<Running> result = sut.findMemberBestRunBefore(courseId, memberUuid, beforeStartedAt);
+        // then
+        assertThat(result).contains(bestRun);
+        verify(runningRepository).findBestRunByCourseIdAndMemberUuidBefore(courseId, memberUuid, beforeStartedAt);
     }
 
 }

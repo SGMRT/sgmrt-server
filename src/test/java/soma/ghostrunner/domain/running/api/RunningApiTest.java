@@ -5,17 +5,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import soma.ghostrunner.ApiTestSupport;
 import soma.ghostrunner.domain.running.api.dto.request.*;
-import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 import java.time.LocalDate;
@@ -595,88 +592,6 @@ class RunningApiTest extends ApiTestSupport {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(runningQueryService);
-    }
-
-    @DisplayName("페이스메이커를 생성한다.")
-    @Test
-    void createPacemaker() throws Exception {
-        // given
-        CreatePacemakerRequest request = createPacemakerRequestBody(
-                "목적", 5.0, 3,
-                36, 5.2, LocalDate.now());
-
-        // when // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/pacemaker")
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                )
-                .andDo(print())
-                .andExpect(status().isOk())
-        ;
-    }
-
-    private CreatePacemakerRequest createPacemakerRequestBody(String purpose, Double targetDistance, Integer condition,
-                                                          Integer temperature, Double pacePerKm, LocalDate localDate) {
-        return new CreatePacemakerRequest(purpose, targetDistance, condition, temperature, pacePerKm, localDate);
-    }
-
-    @DisplayName("페이스메이커를 생성할 때 Empty/Null 조건을 검증한다.")
-    @Test
-    void createPacemakerWithNullRequests() throws Exception{
-        // given
-        CreatePacemakerRequest request = createPacemakerRequestBody(
-                "", 5.0, 3,
-                36, 5.2, null);
-
-        // when // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/pacemaker")
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                )
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-        ;
-    }
-
-    @DisplayName("페이스메이커를 생성할 때 양수인 값을 검증한다.")
-    @Test
-    void createPacemakerWithNegativeRequests() throws Exception{
-        // given
-        CreatePacemakerRequest request = createPacemakerRequestBody(
-                "목적", -5.0, 3,
-                36, 5.2, LocalDate.now());
-
-        // when // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/pacemaker")
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                )
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-        ;
-    }
-
-    @DisplayName("페이스메이커를 생성할 때 온도는 -50 이상 50 이하이다.")
-    @Test
-    void createPacemakerWithInvalidTemperatureRequests() throws Exception{
-        // given
-        CreatePacemakerRequest request = createPacemakerRequestBody(
-                "목적", 5.0, 3,
-                136, 5.2, LocalDate.now());
-
-        // when // then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/runs/pacemaker")
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                )
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrorInfos[0].field").value("temperature"));
-        ;
     }
 
 }

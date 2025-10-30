@@ -26,4 +26,16 @@ class RunningTypeTest {
                 .hasMessage("Unknown running purpose: " + "INVALID_PURPOSE");
     }
 
+    @DisplayName("러닝 타입에 따라 운동 용어로 변환한다.")
+    @Test
+    void toWorkoutWord() {
+        // given // when
+        RunningType runningType1 = RunningType.toRunningType("RECOVERY_JOGGING");
+        RunningType runningType2 = RunningType.toRunningType("MARATHON");
+
+        // then
+        Assertions.assertThat(runningType1.toWorkoutWord()).isEqualTo("RECOVERY_JOGGING");
+        Assertions.assertThat(runningType2.toWorkoutWord()).isEqualTo("MARATHON");
+    }
+
 }

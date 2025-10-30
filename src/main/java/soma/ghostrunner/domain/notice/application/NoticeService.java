@@ -1,7 +1,9 @@
 package soma.ghostrunner.domain.notice.application;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -11,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.notice.exceptions.NoticeTypeDeprecatedException;
+import soma.ghostrunner.domain.notice.exception.NoticeTypeDeprecatedException;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3Client;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -25,13 +27,14 @@ import soma.ghostrunner.domain.notice.dao.NoticeRepository;
 import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.NoticeDismissal;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
-import soma.ghostrunner.domain.notice.exceptions.NoticeNotFoundException;
+import soma.ghostrunner.domain.notice.exception.NoticeNotFoundException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NoticeService {
@@ -40,10 +43,12 @@ public class NoticeService {
     private String noticeDirectory;
 
     private final MemberService memberService;
+    private final ApplicationEventPublisher eventPublisher;
     private final GhostRunnerS3Client s3Client;
+    private final NoticeMapper noticeMapper;
+
     private final NoticeRepository noticeRepository;
     private final NoticeDismissalRepository noticeDismissalRepository;
-    private final NoticeMapper noticeMapper;
 
     @Transactional(readOnly = true)
     public Notice findNoticeById(Long id) {
@@ -60,8 +65,8 @@ public class NoticeService {
                 request.getType(),
                 null,
                 request.getPriority(),
-                request.getStartAt(),
-                request.getEndAt()
+                null,
+                null
                 );
         Notice savedNotice = noticeRepository.save(notice);
         Long noticeId =  savedNotice.getId();
@@ -77,12 +82,21 @@ public class NoticeService {
         return noticeId;
     }
 
-    private void throwIfNoticeTypeDeprecated(NoticeType type) {
-        if (type == null) return;
-        var deprecatedTypes = NoticeType.getDeprecatedTypes();
-        if(deprecatedTypes.contains(type)) {
-            throw new NoticeTypeDeprecatedException();
+    @Transactional
+    public List<Long> activateNotices(List<Long> noticeIds, LocalDateTime startAt, LocalDateTime endAt) {
+        List<Notice> notices = noticeRepository.findAllById(noticeIds);
+        for(Notice notice : notices) {
+            notice.activate(startAt, endAt);
         }
+        eventPublisher.publishEvent(noticeMapper.toNoticeActivatedEvent(notices));
+        return notices.stream().map(Notice::getId).toList();
+    }
+
+    @Transactional
+    public List<Long> deactivateNotices(List<Long> noticeIds) {
+        List<Notice> notices = noticeRepository.findAllById(noticeIds);
+        notices.forEach(Notice::deactivate);
+        return notices.stream().map(Notice::getId).toList();
     }
 
     @Transactional(readOnly = true)
@@ -90,6 +104,13 @@ public class NoticeService {
         // 노출 기간 내의 공지사항을 숨김 처리 여부와 공지 타입으로 필터링하여 조회
         List<Notice> filteredNotices = noticeRepository.findActiveNoticesForMember(queryTime, memberUuid, noticeType);
         return filteredNotices.stream().map(noticeMapper::toDetailedResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<NoticeDetailedResponse> findDeactivatedNotices() {
+        // startAt과 endAt이 모두 null인 공지사항 조회
+        List<Notice> deactivatedNotices = noticeRepository.findDeactivatedNotices();
+        return deactivatedNotices.stream().map(noticeMapper::toDetailedResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -122,6 +143,7 @@ public class NoticeService {
     @Transactional
     public void updateNotice(Long noticeId, NoticeUpdateRequest request) {
         Notice notice = findNoticeById(noticeId);
+        log.info("Updating notice with id {}, request = {}", noticeId, request);
         for(NoticeUpdateRequest.UpdateAttrs attr : request.getUpdateAttrs()) {
             switch (attr) {
                 case TITLE -> notice.updateTitle(request.getTitle());
@@ -164,6 +186,14 @@ public class NoticeService {
         String ext = StringUtils.getFilenameExtension(file.getOriginalFilename());
         if(ext == null || !allowedExtensions.contains(ext)) {
             throw new IllegalArgumentException("'" + ext + "'는 허용되지 않은 확장자입니다.");
+        }
+    }
+
+    private void throwIfNoticeTypeDeprecated(NoticeType type) {
+        if (type == null) return;
+        var deprecatedTypes = NoticeType.getDeprecatedTypes();
+        if(deprecatedTypes.contains(type)) {
+            throw new NoticeTypeDeprecatedException();
         }
     }
 

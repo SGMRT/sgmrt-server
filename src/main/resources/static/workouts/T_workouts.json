@@ -19,7 +19,7 @@
       },
       {
         "setNum": 1,
-        "type": "X",
+        "type": "E",
         "duration": 2
       },
       {
@@ -29,7 +29,7 @@
       },
       {
         "setNum": 2,
-        "type": "X",
+        "type": "E",
         "duration": 2
       },
       {
@@ -39,7 +39,7 @@
       },
       {
         "setNum": 3,
-        "type": "X",
+        "type": "E",
         "duration": 2
       }
     ]
@@ -54,7 +54,7 @@
       },
       {
         "setNum": 1,
-        "type": "X",
+        "type": "E",
         "duration": 3
       },
       {
@@ -64,7 +64,7 @@
       },
       {
         "setNum": 2,
-        "type": "X",
+        "type": "E",
         "duration": 3
       }
     ]
@@ -79,7 +79,7 @@
       },
       {
         "setNum": 1,
-        "type": "X",
+        "type": "E",
         "duration": 2
       },
       {
@@ -89,7 +89,7 @@
       },
       {
         "setNum": 2,
-        "type": "X",
+        "type": "E",
         "duration": 2
       },
       {
@@ -99,7 +99,7 @@
       },
       {
         "setNum": 3,
-        "type": "X",
+        "type": "E",
         "duration": 2
       },
       {
@@ -109,7 +109,7 @@
       },
       {
         "setNum": 4,
-        "type": "X",
+        "type": "E",
         "duration": 2
       }
     ]
@@ -124,7 +124,7 @@
       },
       {
         "setNum": 1,
-        "type": "X",
+        "type": "E",
         "duration": 3
       },
       {
@@ -134,7 +134,7 @@
       },
       {
         "setNum": 2,
-        "type": "X",
+        "type": "E",
         "duration": 3
       },
       {
@@ -144,7 +144,7 @@
       },
       {
         "setNum": 3,
-        "type": "X",
+        "type": "E",
         "duration": 3
       },
       {
@@ -154,7 +154,7 @@
       },
       {
         "setNum": 4,
-        "type": "X",
+        "type": "E",
         "duration": 3
       }
     ]
@@ -169,7 +169,7 @@
       },
       {
         "setNum": 1,
-        "type": "X",
+        "type": "E",
         "duration": 4
       },
       {
@@ -179,7 +179,7 @@
       },
       {
         "setNum": 2,
-        "type": "X",
+        "type": "E",
         "duration": 4
       },
       {
@@ -189,7 +189,7 @@
       },
       {
         "setNum": 3,
-        "type": "X",
+        "type": "E",
         "duration": 4
       }
     ]
