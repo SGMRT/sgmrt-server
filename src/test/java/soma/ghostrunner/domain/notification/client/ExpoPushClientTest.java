@@ -60,7 +60,7 @@ class ExpoPushClientTest {
         assertThat(results).hasSize(1);
         NotificationSendResult result = results.get(0);
         assertThat(result.isSuccess()).isTrue();
-        assertThat(result.pushToken()).isEqualTo(1L);
+        assertThat(result.pushToken()).isEqualTo("test-token");
         assertThat(result.ticketId()).isEqualTo("ticket-id-1");
     }
 
@@ -78,7 +78,7 @@ class ExpoPushClientTest {
         // then
         assertThat(results).hasSize(1);
         NotificationSendResult result = results.get(0);
-        assertThat(result.pushToken()).isEqualTo(1L);
+        assertThat(result.pushToken()).isEqualTo("invalid-token");
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.errorMessage()).isEqualTo("실패해부렸으");
     }
@@ -100,12 +100,12 @@ class ExpoPushClientTest {
         assertThat(results).hasSize(2);
         NotificationSendResult successResult = results.get(0);
         assertThat(successResult.isSuccess()).isTrue();
-        assertThat(successResult.pushToken()).isEqualTo(1L);
+        assertThat(successResult.pushToken()).isEqualTo("valid-token");
         assertThat(successResult.ticketId()).isEqualTo("success-ticket");
 
         NotificationSendResult failureResult = results.get(1);
         assertThat(failureResult.isSuccess()).isFalse();
-        assertThat(failureResult.pushToken()).isEqualTo(2L);
+        assertThat(failureResult.pushToken()).isEqualTo("invalid-token");
         assertThat(failureResult.errorMessage()).isEqualTo("이거 아니에유");
     }
 

@@ -41,6 +41,3 @@ logging:
   level:
     org.hibernate.tool.schema: DEBUG
 
-discord:
-  webhook:
-    url: https://discord.com/api/webhooks/1433522839553577092/quJzjC3szVG8qlL7PR5EsmjNeLmUMxlBeDZGVrNBgXnGPWOO81KxhZC975AM_1RYoRkk

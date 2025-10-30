@@ -13,7 +13,9 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
+import software.amazon.awssdk.services.sqs.SqsAsyncClientBuilder;
 
+import java.net.URI;
 import java.time.Duration;
 
 @Configuration
@@ -27,6 +29,9 @@ public class AwsConfig {
 
     @Value("${cloud.aws.region.static}")
     private String region;
+
+    @Value("${cloud.aws.sqs.endpoint:#{null}}")
+    private String sqsEndpoint;
 
     @Bean
     public S3Client s3Client() {
@@ -51,11 +56,14 @@ public class AwsConfig {
     @Bean
     public SqsAsyncClient sqsAsyncClient() {
         AwsBasicCredentials awsCredentials = AwsBasicCredentials.create(accessKey, secretKey);
-
-        return SqsAsyncClient.builder()
+        SqsAsyncClientBuilder builder = SqsAsyncClient.builder()
                 .region(Region.of(region))
-                .credentialsProvider(StaticCredentialsProvider.create(awsCredentials))
-                .build();
+                .credentialsProvider(StaticCredentialsProvider.create(awsCredentials));
+        // yml에 sqsEndpoint가 존재한다면 (= 테스트 환경이라면) 엔드포인트를 LocalStack 주소로 덮어쓴다.
+        if (sqsEndpoint != null) {
+            builder.endpointOverride(URI.create(sqsEndpoint));
+        }
+        return builder.build();
     }
 
     @Bean
