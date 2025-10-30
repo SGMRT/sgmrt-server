@@ -24,14 +24,12 @@ public class PushNotificationSqsWorker {
     private final ExpoPushClient expoPushClient;
     private final DiscordWebhookClient discordWebhookClient;
     private final SqsWorkerInternalService internalService;
-    private final PushTokenRepository pushTokenRepository;
 
     @SqsListener(value = "${cloud.aws.sqs.push-queue-name}")
     public void handlePushMessage(final PushMessageDto pushMessageDto) throws IOException {
         if (pushMessageDto.pushToken() == null || pushMessageDto.pushToken().isEmpty()) {
             return;
         }
-
         try {
             List<NotificationSendResult> sendResult = expoPushClient.push(createNotificationRequest(pushMessageDto));
             validateSendResult(sendResult);

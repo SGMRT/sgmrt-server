@@ -26,7 +26,6 @@ public class ExpoPushClient {
 
     public List<NotificationSendResult> push(NotificationRequest request) throws IOException {
         PushNotification notification = createPushNotification(request);
-        log.info("ExpoPushClient: Sending Expo push notification {}", notification);
         List<TicketResponse.Ticket> tickets = pushClient.sendPushNotifications(List.of(notification));
         return mapToNotificationSendResults(request, tickets);
     }
