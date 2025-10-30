@@ -71,7 +71,7 @@ public class AwsConfig {
                         .acknowledgementMode(AcknowledgementMode.ON_SUCCESS)
                         .maxConcurrentMessages(10)
                         .maxMessagesPerPoll(10)
-                        .pollTimeout(Duration.ofSeconds(5))
+                        .pollTimeout(Duration.ofSeconds(20))
                         .acknowledgementOrdering(AcknowledgementOrdering.ORDERED)
                 )
                 .build();

@@ -16,7 +16,6 @@ import soma.ghostrunner.domain.notification.domain.PushToken;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.global.error.ErrorCode;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -27,12 +26,13 @@ import java.util.concurrent.CompletableFuture;
 public class NotificationService {
 
     private final ExpoPushClient expoPushClient;
+    private final PushMessagePublisher messagePublisher;
     private final PushTokenRepository pushTokenRepository;
     private final MemberRepository memberRepository;
 
     public void sendPushNotification(NotificationCommand command) {
         sendPushNotificationAsync(
-                command.userIds(),
+                command.memberIds(),
                 command.title(),
                 command.body(),
                 command.data()

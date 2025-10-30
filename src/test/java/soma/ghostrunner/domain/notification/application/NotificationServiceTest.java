@@ -61,7 +61,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
 //    @Test
 //    void sendPushNotifications_success() {
 //        // given
-//        List<Long> userIds = List.of(member.getId());
+//        List<Long> memberIds = List.of(member.getId());
 //
 //        AtomicReference<Long> notificationId = new AtomicReference<>(1L);
 //        given(expoPushClient.pushAsync(any(NotificationRequest.class)))
@@ -76,7 +76,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
 //                });
 //
 //        // when
-//        NotificationBatchResult result = notificationService.sendPushNotificationAsync(userIds, "알림 제목", "알림 본문", Collections.emptyMap())
+//        NotificationBatchResult result = notificationService.sendPushNotificationAsync(memberIds, "알림 제목", "알림 본문", Collections.emptyMap())
 //                .join();
 //
 //        // then
@@ -94,7 +94,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
 //    @Test
 //    void sendPushNotifications_failed() {
 //        // given
-//        List<Long> userIds = List.of(member.getId());
+//        List<Long> memberIds = List.of(member.getId());
 //
 //        given(expoPushClient.pushAsync(any(NotificationRequest.class)))
 //                .willAnswer(invocation -> {
@@ -106,7 +106,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
 //                });
 //
 //        // when
-//        NotificationBatchResult result = notificationService.sendPushNotificationAsync(userIds, "알림 제목", "알림 본문", Collections.emptyMap())
+//        NotificationBatchResult result = notificationService.sendPushNotificationAsync(memberIds, "알림 제목", "알림 본문", Collections.emptyMap())
 //                .join();
 //
 //        // then
@@ -127,7 +127,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
 //        PushToken pushToken2 = new PushToken(member2, "expo-test-token-2");
 //        pushTokenRepository.save(pushToken2);
 //
-//        List<Long> userIds = List.of(member.getId(), member2.getId());
+//        List<Long> memberIds = List.of(member.getId(), member2.getId());
 //
 //        given(expoPushClient.pushAsync(any(NotificationRequest.class)))
 //                .willAnswer(invocation -> {
@@ -139,7 +139,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
 //                });
 //
 //        // when
-//        NotificationBatchResult result = notificationService.sendPushNotificationAsync(userIds, "title", "body", Collections.emptyMap())
+//        NotificationBatchResult result = notificationService.sendPushNotificationAsync(memberIds, "title", "body", Collections.emptyMap())
 //                .join();
 //
 //        // then
