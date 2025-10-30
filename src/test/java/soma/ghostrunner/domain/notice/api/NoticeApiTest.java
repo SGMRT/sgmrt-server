@@ -43,7 +43,7 @@ class NoticeApiTest extends ApiTestSupport {
                 .willReturn(new PageImpl<>(List.of(), pageRequest, 0));
 
         // when & then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/notices")
+        mockMvc.perform(MockMvcRequestBuilders.get("/v2/notices")
                         .param("page", "0")
                         .param("size", "10"))
                 .andDo(print())
@@ -66,7 +66,7 @@ class NoticeApiTest extends ApiTestSupport {
         );
 
         // when & then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/notices/active")
+        mockMvc.perform(MockMvcRequestBuilders.get("/v2/notices/active")
                         .with(authentication(authentication))
                         .with(SecurityMockMvcRequestPostProcessors.csrf()))
                 .andDo(print())
@@ -83,7 +83,7 @@ class NoticeApiTest extends ApiTestSupport {
         given(noticeService.findNotice(noticeId)).willReturn(response);
 
         // when & then
-        mockMvc.perform(MockMvcRequestBuilders.get("/v1/notices/{noticeId}", noticeId))
+        mockMvc.perform(MockMvcRequestBuilders.get("/v2/notices/{noticeId}", noticeId))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(noticeId))
@@ -114,6 +114,10 @@ class NoticeApiTest extends ApiTestSupport {
                 .andDo(print())
                 .andExpect(status().isOk());
     }
+
+    /* * * * * * * * * *
+     * Admin API Tests *
+     * * * * * * * * * */
 
     @DisplayName("새로운 공지사항을 생성한다.")
     @Test
@@ -219,5 +223,95 @@ class NoticeApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$[1]").value(2))
                 .andExpect(jsonPath("$[2]").value(3));
     }
+
+    /* * * * * * * * * * * * *
+     * Deprecated API Tests  *
+     * * * * * * * * * * * * */
+
+    @Deprecated
+    @DisplayName("전체 공지사항 목록을 페이지네이션하여 조회한다. (v1)")
+    @Test
+    void getAllNotices_success_V1() throws Exception {
+        // given
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("createdAt").descending());
+        given(noticeService.findAllNotices(0, 10, null))
+                .willReturn(new PageImpl<>(List.of(), pageRequest, 0));
+
+        // when & then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/notices")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andDo(print())
+                .andExpect(status().isOk());
+    }
+
+    @Deprecated
+    @DisplayName("활성 공지사항 목록을 조회한다. (v1)")
+    @Test
+    void getActiveNotices_success_V1() throws Exception {
+        // given
+        String userId = UUID.randomUUID().toString();
+        given(authService.isOwner(any(), any())).willReturn(true);
+        given(noticeService.findActiveNotices(userId, NOW, NoticeType.GENERAL_V2)).willReturn(List.of());
+
+        JwtUserDetails userDetails = new JwtUserDetails(userId);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        // when & then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/notices/active")
+                        .with(authentication(authentication))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf()))
+                .andDo(print())
+                .andExpect(status().isOk());
+    }
+
+    @Deprecated
+    @DisplayName("특정 공지사항을 ID로 조회한다. (v1)")
+    @Test
+    void getNotice_success_V1() throws Exception {
+        // given
+        Long noticeId = 1L;
+        NoticeDetailedResponse response = new NoticeDetailedResponse(noticeId, "제목", NoticeType.GENERAL_V2, "내용", null,
+                null, NOW, null);
+        given(noticeService.findNotice(noticeId)).willReturn(response);
+
+        // when & then
+        mockMvc.perform(MockMvcRequestBuilders.get("/v1/notices/{noticeId}", noticeId))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(noticeId))
+                .andExpect(jsonPath("$.title").value("앱을 업데이트해주세요!"));
+    }
+
+    @Deprecated
+    @DisplayName("특정 공지사항을 숨김 처리한다. (v1)")
+    @Test
+    void dismissNotice_success_V1() throws Exception {
+        // given
+        Long noticeId = 1L;
+        String userId = UUID.randomUUID().toString();
+        NoticeDismissRequest request = new NoticeDismissRequest(1);
+
+        JwtUserDetails userDetails = new JwtUserDetails(userId);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        // when & then
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/notices/{noticeId}/dismissal", noticeId)
+                        .with(authentication(authentication))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(String.valueOf(MediaType.APPLICATION_JSON))
+                        .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isOk());
+    }
+
 
 }
