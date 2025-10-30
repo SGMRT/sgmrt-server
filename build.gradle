@@ -76,6 +76,10 @@ dependencies {
 	implementation platform('software.amazon.awssdk:bom:2.20.45')
 	implementation 'software.amazon.awssdk:s3'
 
+	// AWS SQS
+	implementation platform("io.awspring.cloud:spring-cloud-aws-dependencies:3.0.1")
+	implementation 'io.awspring.cloud:spring-cloud-aws-starter-sqs'
+
 	// JAVA Casting Warn Solution
 	implementation 'javax.xml.bind:jaxb-api:2.3.0'
 
