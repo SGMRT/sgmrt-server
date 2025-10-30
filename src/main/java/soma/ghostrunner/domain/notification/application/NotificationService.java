@@ -1,15 +1,17 @@
 package soma.ghostrunner.domain.notification.application;
 
+import io.sentry.spring.jakarta.tracing.SentrySpan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notification.application.dto.NotificationBatchResult;
-import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
+import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
 import soma.ghostrunner.domain.notification.client.ExpoPushClient;
 import soma.ghostrunner.domain.notification.dao.PushTokenRepository;
 import soma.ghostrunner.domain.notification.domain.PushToken;
@@ -18,7 +20,6 @@ import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -26,12 +27,13 @@ import java.util.concurrent.CompletableFuture;
 public class NotificationService {
 
     private final ExpoPushClient expoPushClient;
-    private final PushMessagePublisher messagePublisher;
+    private final SqsPushMessagePublisher messagePublisher;
     private final PushTokenRepository pushTokenRepository;
     private final MemberRepository memberRepository;
+    private final ThreadPoolTaskExecutor pushTaskExecutor;
 
     public void sendPushNotification(NotificationCommand command) {
-        sendPushNotificationAsync(
+        sendPushNotification(
                 command.memberIds(),
                 command.title(),
                 command.body(),
@@ -39,24 +41,31 @@ public class NotificationService {
         );
     }
 
-    public CompletableFuture<NotificationBatchResult> sendPushNotificationAsync(List<Long> userIds, String title, String body, Map<String, Object> data) {
+    @SentrySpan
+    public void sendPushNotification(List<Long> userIds, String title, String body, Map<String, Object> data) {
         List<PushToken> pushTokens = pushTokenRepository.findByMemberIdIn(userIds);
-        if (pushTokens.isEmpty()) return CompletableFuture.completedFuture(NotificationBatchResult.ofEmpty());
 
-        // Expo Push API 비동기 호출
-        NotificationRequest request = NotificationRequest.of(title, body, data,
-                pushTokens.stream().map(PushToken::getToken).toList());
-        CompletableFuture<List<NotificationSendResult>> clientFuture = expoPushClient.pushAsync(request);
-        return clientFuture.thenApply(results -> {
-                    // 실패한 알림 처리
-                    handleNotificationResult(results);
-                    return createNotificationBatchResult(results);
-                })
-                .exceptionally(ex -> {
-                    // 푸쉬 실패 (네트워크 장애, 잘못된 요청 형식 등)
-                    log.error("푸시 알람 전송에 실패했습니다. %nException: {} %nRequest: {}", ex.getMessage(), request, ex);
-                    return new NotificationBatchResult(request.getTargetPushTokens().size(), 0, request.getTargetPushTokens().size(), List.of(), List.of());
-                });
+        List<PushMessageDto> pushMessages = pushTokens.stream()
+                .map(token -> new PushMessageDto(token.getToken(), title, body, data, null))
+                .toList();
+        messagePublisher.sendMany(pushMessages);
+
+//        if (pushTokens.isEmpty()) return CompletableFuture.completedFuture(NotificationBatchResult.ofEmpty());
+//
+//        // Expo Push API 비동기 호출
+//        NotificationRequest request = NotificationRequest.of(title, body, data,
+//                pushTokens.stream().map(PushToken::getToken).toList());
+//        CompletableFuture<List<NotificationSendResult>> clientFuture = expoPushClient.pushAsync(request);
+//        return clientFuture.thenApply(results -> {
+//                    // 실패한 알림 처리
+//                    handleNotificationResult(results);
+//                    return createNotificationBatchResult(results);
+//                })
+//                .exceptionally(ex -> {
+//                    // 푸쉬 실패 (네트워크 장애, 잘못된 요청 형식 등)
+//                    log.error("푸시 알람 전송에 실패했습니다. %nException: {} %nRequest: {}", ex.getMessage(), request, ex);
+//                    return new NotificationBatchResult(request.getTargetPushTokens().size(), 0, request.getTargetPushTokens().size(), List.of(), List.of());
+//                });
     }
 
     private void handleNotificationResult(List<NotificationSendResult> results) {
