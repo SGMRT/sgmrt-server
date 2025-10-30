@@ -45,7 +45,7 @@ public class DeepLinkUrls {
     /** 공지사항이 공개된 경우 */
     public static List<DeepLinkUrlItem> generalNoticeUrlItems(Long noticeId) {
         return List.of(
-                new DeepLinkUrlItem(ALL_VERSIONS, "/profile/notice" + noticeId) // 공지사항 상세 페이지
+                new DeepLinkUrlItem(ALL_VERSIONS, "/profile/notice/" + noticeId) // 공지사항 상세 페이지
         );
     }
 
