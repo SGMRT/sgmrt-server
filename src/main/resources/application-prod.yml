@@ -38,6 +38,8 @@ cloud:
       secret-key: ${AWS_SECRET_KEY}
     stack:
       auto: false
+    sqs:
+      push-queue-name: ${AWS_PUSH_QUEUE_NAME}
 
 s3:
   bucket: ${AWS_BUCKET}
