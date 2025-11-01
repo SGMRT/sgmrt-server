@@ -25,8 +25,8 @@ public class PushNotificationSqsWorker {
     private final ExpoPushClient expoPushClient;
     private final DiscordWebhookClient discordWebhookClient;
     private final SqsWorkerInternalService internalService;
-    private static final int MIN_BACKOFF_MILLIS = 100;
-    private static final int MAX_BACKOFF_MILLIS = 1600;
+    private static final int MIN_BACKOFF_MILLIS = 125;
+    private static final int MAX_BACKOFF_MILLIS = 1000;
     private final AtomicInteger backoffMillis = new AtomicInteger(MIN_BACKOFF_MILLIS);
 
     @SqsListener(value = "${cloud.aws.sqs.push-queue-name}")
