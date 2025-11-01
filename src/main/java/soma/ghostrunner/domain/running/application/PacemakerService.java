@@ -100,10 +100,10 @@ public class PacemakerService {
             throw new RuntimeException("Redis 스크립트 실행 오류가 발생했습니다.");
         }
 
-//        if (currentCount == -1) {
-//            log.warn("사용자 ID '{}'가 일일 사용량({})을 초과했습니다.", memberUuid, DAILY_LIMIT);
-//            throw new InvalidRunningException(TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다.");
-//        }
+        if (currentCount == -1) {
+            log.warn("사용자 ID '{}'가 일일 사용량({})을 초과했습니다.", memberUuid, DAILY_LIMIT);
+            throw new InvalidRunningException(TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다.");
+        }
 
         return rateLimitKey;
     }

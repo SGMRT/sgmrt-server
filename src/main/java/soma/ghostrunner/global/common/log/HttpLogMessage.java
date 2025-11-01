@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class HttpLogMessage {
 
-    private static final List<String> LOGGABLE_URIS = List.of("/v1/runs", "/v1/courses", "/v1/members", "/v1/auth", "/v1/notices");
+    private static final List<String> LOGGABLE_URIS = List.of("/v1/runs", "/v1/courses", "/v1/members", "/v1/auth", "/v1/notices", "/v1/pacemaker");
     private static final List<String> LOGGABLE_HEADERS = List.of("Host", "X-Forwarded-For", "Origin", "Content-Type", "Referer", "User-Agent");
     private static final int MAX_BODY_SIZE = 4096;
 

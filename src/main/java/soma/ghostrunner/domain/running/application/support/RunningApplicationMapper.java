@@ -100,7 +100,7 @@ public interface RunningApplicationMapper {
 
     @Mapping(source = "running.id", target = "runningId")
     @Mapping(source = "course.id", target = "courseId")
-    CreateCourseAndRunResponse toPacemakerPollingResponse(Running running, Course course);
+    CreateCourseAndRunResponse toResponse(Running running, Course course);
 
     default Pacemaker toPacemaker(Pacemaker.Norm norm, CreatePacemakerCommand command, Long courseId,
                                   RunningType runningType, Member member) {
@@ -162,7 +162,7 @@ public interface RunningApplicationMapper {
             expression = "java(java.time.LocalDateTime.ofEpochSecond(runDto.startedAt(), 0, java.time.ZoneOffset.UTC))")
     CourseGhostResponse toGhostResponse(CourseRunDto runDto);
 
-    default List<RunInfo> toPacemakerPollingResponse(List<Running> runnings) {
+    default List<RunInfo> toResponse(List<Running> runnings) {
         return runnings.stream()
                 .map(RunInfo::new)
                 .toList();

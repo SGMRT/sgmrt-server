@@ -123,7 +123,7 @@ class RunningCommandServiceTest {
         when(runningRepository.save(running)).thenReturn(running);
 
         CreateCourseAndRunResponse response = new CreateCourseAndRunResponse(null, null);
-        when(mapper.toPacemakerPollingResponse(running, course)).thenReturn(response);
+        when(mapper.toResponse(running, course)).thenReturn(response);
 
         // when
         CreateCourseAndRunResponse result =
@@ -149,7 +149,7 @@ class RunningCommandServiceTest {
         inOrder.verify(courseService).save(course);
         inOrder.verify(mapper).toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course));
         inOrder.verify(runningRepository).save(running);
-        inOrder.verify(mapper).toPacemakerPollingResponse(running, course);
+        inOrder.verify(mapper).toResponse(running, course);
 
         verifyNoMoreInteractions(memberService, telemetryProcessor, pathSimplificationService,
                 runningFileUploader, courseService, runningRepository, mapper);
