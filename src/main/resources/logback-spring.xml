@@ -92,5 +92,12 @@
         </root>
     </springProfile>
 
+    <!-- 테스트 환경 -->
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="LOCAL_CONSOLE_APPENDER"/>
+        </root>
+    </springProfile>
+
 
 </configuration>

@@ -2,21 +2,21 @@ package soma.ghostrunner.domain.notification.application.dto;
 
 
 public record NotificationSendResult (
-    Long notificationId,
-    String ticketId,
-    SendStatus status,
-    String errorMessage
+        String pushToken,
+        String ticketId,
+        SendStatus status,
+        String errorMessage
 ) {
     public enum SendStatus {
         SUCCESS, FAILURE
     }
 
-    public static NotificationSendResult ofSuccess(Long notificationId, String ticketId) {
-        return new NotificationSendResult(notificationId, ticketId, SendStatus.SUCCESS, null);
+    public static NotificationSendResult ofSuccess(String pushToken, String ticketId) {
+        return new NotificationSendResult(pushToken, ticketId, SendStatus.SUCCESS, null);
     }
 
-    public static NotificationSendResult ofFailure(Long notificationId, String errorMessage) {
-        return new NotificationSendResult(notificationId, null, SendStatus.FAILURE, errorMessage);
+    public static NotificationSendResult ofFailure(String pushToken, String errorMessage) {
+        return new NotificationSendResult(pushToken, null, SendStatus.FAILURE, errorMessage);
     }
 
     public boolean isSuccess() {

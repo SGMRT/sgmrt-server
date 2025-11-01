@@ -9,6 +9,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.*;
 
+@Deprecated(since = "푸시 알림 전송 내역 DB 저장은 보류. 향후 필요 시 구현 예정")
 class NotificationTest {
 
     @DisplayName("Notification을 정적 팩토리 메서드 of()로 생성할 수 있다.")

@@ -7,8 +7,8 @@ public record NotificationBatchResult(
         int successCount,
         int failureCount,
 
-        List<Long> successNotificationIds,
-        List<Long> failureNotificationIds
+        List<String> successPushTokens,
+        List<String> failurePushTokens
 ) {
     public static NotificationBatchResult ofEmpty() {
         return new NotificationBatchResult(0, 0, 0, List.of(), List.of());

@@ -117,6 +117,7 @@ public class NotificationEventListener {
     public void handlePacemakerCreationEvent(PacemakerCreatedEvent event) {
         Member member = memberService.findMemberByUuid(event.memberUuid());
         Course course = courseService.findCourseById(event.courseId());
+        if (course.getName() == null) return; // 이름 없는 코스인 경우 알림을 보내지 않음 (공개 코스 (= 이름 설정 필수)에만 페이스메이커 생성 가능하므로 사실 발생할 일은 거의 없음)
         NotificationCommand notificationCommand = notificationCommandAssembler.buildPacemakerCreatedEvent(member, course);
         log.info("알림 이벤트 전송 - 회원 '{}'에 코스 '{}'에 페이스메이커 '{}' 생성 완료 (event={})",
                 member.getId(), course.getId(), event.pacemakerId(), notificationCommand);
