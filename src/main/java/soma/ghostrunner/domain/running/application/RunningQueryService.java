@@ -215,7 +215,7 @@ public class RunningQueryService {
     public List<RunInfo> findRunnings(Long courseId, String memberUuid) {
         Member member = findMember(memberUuid);
         List<Running> runnings = runningRepository.findRunningsByCourseIdAndMemberId(courseId, member.getId());
-        return mapper.toPacemakerPollingResponse(runnings);
+        return mapper.toResponse(runnings);
     }
 
     public long findPublicRunnersCount(Long courseId) {
