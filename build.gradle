@@ -49,6 +49,8 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testCompileOnly 'org.junit.jupiter:junit-jupiter-params:5.9.2'
 	testImplementation 'org.springframework.security:spring-security-test'
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
 
 	// RDB
 	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
