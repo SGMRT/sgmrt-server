@@ -15,6 +15,7 @@ import soma.ghostrunner.global.clients.discord.DiscordWebhookClient;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -24,6 +25,9 @@ public class PushNotificationSqsWorker {
     private final ExpoPushClient expoPushClient;
     private final DiscordWebhookClient discordWebhookClient;
     private final SqsWorkerInternalService internalService;
+    private static final int MIN_BACKOFF_MILLIS = 100;
+    private static final int MAX_BACKOFF_MILLIS = 1600;
+    private final AtomicInteger backoffMillis = new AtomicInteger(MIN_BACKOFF_MILLIS);
 
     @SqsListener(value = "${cloud.aws.sqs.push-queue-name}")
     public void handlePushMessage(final PushMessageDto pushMessageDto) throws IOException {
@@ -33,11 +37,13 @@ public class PushNotificationSqsWorker {
         try {
             List<NotificationSendResult> sendResult = expoPushClient.push(createNotificationRequest(pushMessageDto));
             validateSendResult(sendResult);
+            backoffMillis.set(MIN_BACKOFF_MILLIS);
         } catch (ExpoDeviceNotRegisteredException ex) {
-            log.warn("유효하지 않은 푸쉬토큰 삭제: {}", pushMessageDto.pushToken());
+            log.warn("유효하지 않은 푸쉬 토큰 삭제: {}", pushMessageDto.pushToken());
             deletePushToken(pushMessageDto.pushToken());
         } catch (Exception ex) {
             log.error("푸쉬 알림 전송 실패: {}", pushMessageDto, ex);
+            doExponentialBackoff();
             throw ex;
         }
     }
@@ -81,6 +87,18 @@ public class PushNotificationSqsWorker {
                     throw new RuntimeException("푸시 알림 전송 실패: " + errorMessage);
                 }
             }
+        }
+    }
+
+    private void doExponentialBackoff() {
+        try {
+            int sleepMillis = backoffMillis.get();
+            log.info("푸쉬 알림 재시도 전 대기: {}ms", sleepMillis);
+            Thread.sleep(sleepMillis);
+            int nextBackoff = Math.min(sleepMillis * 2, MAX_BACKOFF_MILLIS);
+            backoffMillis.set(nextBackoff);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
     }
 
