@@ -21,12 +21,13 @@ public class WebClientConfig {
     public WebClient openAiWebClient(
             @Value("${openai.api.key}") String apiKey) {
 
+        final int TIMEOUT_SECONDS = 180;
+
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
-                .responseTimeout(Duration.ofSeconds(180))
                 .doOnConnected(conn -> conn
-                        .addHandlerLast(new ReadTimeoutHandler(180, TimeUnit.SECONDS))
-                        .addHandlerLast(new WriteTimeoutHandler(180, TimeUnit.SECONDS))
+                        .addHandlerLast(new ReadTimeoutHandler(TIMEOUT_SECONDS, TimeUnit.SECONDS))
+                        .addHandlerLast(new WriteTimeoutHandler(TIMEOUT_SECONDS, TimeUnit.SECONDS))
                 );
 
         return WebClient.builder()
