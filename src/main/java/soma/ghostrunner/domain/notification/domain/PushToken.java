@@ -25,9 +25,6 @@ public class PushToken extends BaseTimeEntity {
     @Column(unique = true, nullable = false)
     private String token;
 
-    @OneToMany(mappedBy = "pushToken", cascade = CascadeType.ALL)
-    List<Notification> notifications;
-
     public PushToken(Member member, String token) {
         this.member = member;
         this.token = token;

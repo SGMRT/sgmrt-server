@@ -39,6 +39,9 @@ cloud:
       secret-key: ${AWS_SECRET_KEY}
     stack:
       auto: false
+    sqs:
+      push-queue-name: ${AWS_PUSH_QUEUE_NAME}
+      push-dlq-name: ${AWS_PUSH_DLQ_NAME}
 
 s3:
   bucket: ${AWS_BUCKET}
@@ -74,3 +77,7 @@ management:
 openai:
   api:
     key: ${OPENAI_API_KEY}
+
+discord:
+  webhook:
+    url: ${DISCORD_WEBHOOK_URL}

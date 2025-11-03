@@ -16,6 +16,9 @@ cloud:
       secret-key: TEST_AWS_SECRET_KEY
     stack:
       auto: false
+    sqs:
+      push-queue-name: TEST_QUEUE_NAME
+      push-dlq-name: TEST_DLQ_NAME
 
 s3:
   bucket: ghostrunner-test-bucket
@@ -37,3 +40,8 @@ openai:
 logging:
   level:
     org.hibernate.tool.schema: DEBUG
+
+discord:
+  webhook:
+    url: https://discord.com/api/webhooks/dummy
+
