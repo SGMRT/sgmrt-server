@@ -27,7 +27,7 @@ class NotificationTest {
 
         // then
         assertNotNull(notification);
-        assertThat(notification.getDevice()).isEqualTo(device);
+        assertThat(notification.getDeviceId()).isEqualTo(device.getId());
         assertThat(notification.getTitle()).isEqualTo(title);
         assertThat(notification.getBody()).isEqualTo(body);
         assertThat(notification.getData()).isEqualTo(data);
