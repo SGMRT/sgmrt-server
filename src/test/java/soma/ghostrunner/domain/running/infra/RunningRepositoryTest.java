@@ -1439,5 +1439,124 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Running bestRunning = bestRunningOpt.get();
         assertThat(bestRunning.getStartedAt()).isEqualTo(1000L);
     }
+
+    @DisplayName("단일 코스에서 정지하지 않은 기록 중 가장 잘 뛴 기록을 조회한다.")
+    @Test
+    void findBestPublicRunByCourseIdAndMemberId() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse(member, "이복둥 러닝 코스");
+        course.setIsPublic(true);
+        courseRepository.save(course);
+
+        List<Running> runnings = new ArrayList<>(List.of(
+                createRunning("중지 러닝1", course, member, 123L, 200L, true),
+                createRunning("중지 러닝2", course, member, 124L, 201L, true),
+                createRunning("중지 러닝3", course, member, 125L, 202L, true),
+                createRunning("중지 러닝4", course, member, 126L, 203L, true),
+                createRunning("쭉 러닝1", course, member, 130L, 300L, false),
+                createRunning("쭉 러닝2", course, member, 140L, 202L, false),
+                createRunning("쭉 러닝3", course, member, 150L, 230L, false)
+        ));
+        runningRepository.saveAll(runnings);
+
+        Running fastestRunning = createRunning("쭉 + 가장 빠른 러닝", course, member, 127L, 301L, false);
+        runningRepository.save(fastestRunning);
+
+        // when
+        Running savedFastedRunning = runningRepository.findBestPublicRunByCourseIdAndMemberId(course.getId(), member.getUuid()).get();
+
+        // then
+        Assertions.assertThat(savedFastedRunning.getId()).isEqualTo(fastestRunning.getId());
+        Assertions.assertThat(savedFastedRunning.getRunningRecord().getDuration()).isEqualTo(fastestRunning.getRunningRecord().getDuration());
+    }
+
+    private Running createRunning(String runningName, Course course, Member member, Long duration, Long startedAt, Boolean hasPaused) {
+        return Running.of(runningName, RunningMode.SOLO, null, createRunningRecord(duration), startedAt,
+                !hasPaused, hasPaused, "시계열 URL", "시계열 URL",
+                "시계열 URL", member, course);
+    }
+
+    @DisplayName("여러 코스에서 각 코스별 정지하지 않은 러닝 중 가장 좋은 기록을 조회한다")
+    @Test
+    void findBestUnpausedRunsByMemberAndCourseIds() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course courseA = createCourse(member, "코스 A"); courseA.setIsPublic(true);
+        Course courseB = createCourse(member, "코스 B"); courseB.setIsPublic(true);
+        Course courseC = createCourse(member, "코스 C"); courseC.setIsPublic(true);
+        courseRepository.saveAll(List.of(courseA, courseB, courseC));
+
+        // 코스 A: 정지 O(더 빠름), 정지 X(조금 느림) -> 정지하지 않은 것 중 최소(duration=140L)가 정답
+        runningRepository.saveAll(List.of(
+                createRunning("A-정지-빠름",   courseA, member, 120L, 1_000L, true),
+                createRunning("A-쭉-조금느림", courseA, member, 140L, 1_100L, false),
+                createRunning("A-쭉-느림",     courseA, member, 180L, 1_200L, false)
+        ));
+
+        // 코스 B: 모두 정지 X -> 최소(duration=90L)가 정답
+        Running expectedB = runningRepository.save(
+                createRunning("B-쭉-가장빠름", courseB, member, 90L, 2_000L, false)
+        );
+        runningRepository.saveAll(List.of(
+                createRunning("B-쭉-보통", courseB, member, 110L, 2_100L, false),
+                createRunning("B-쭉-느림", courseB, member, 150L, 2_200L, false)
+        ));
+
+        // 코스 C: 전부 정지 O -> 결과에서 제외되어야 함
+        runningRepository.saveAll(List.of(
+                createRunning("C-정지-1", courseC, member, 70L, 3_000L, true),
+                createRunning("C-정지-2", courseC, member, 60L, 3_100L, true)
+        ));
+
+        List<Long> courseIds = List.of(courseA.getId(), courseB.getId(), courseC.getId());
+
+        // when
+        List<Running> result = runningRepository
+                .findBestRunningRecordsByMemberIdAndCourseIds(member.getUuid(), courseIds);
+
+        // then
+        // 정지하지 않은 러닝이 있는 코스만 반환 -> A, B 두 개만
+        Assertions.assertThat(result).hasSize(2);
+
+        // 코스별로 정렬 후 검증(반환 순서가 보장되지 않을 수 있으므로)
+        result.sort(Comparator.comparing(r -> r.getCourse().getId()));
+        List<Long> courseIdOrder = result.stream().map(r -> r.getCourse().getId()).toList();
+        Assertions.assertThat(courseIdOrder).containsExactly(courseA.getId(), courseB.getId());
+
+        // 코스 A: "정지하지 않은" 중 최소 duration = 140
+        Assertions.assertThat(result.get(0).getRunningRecord().getDuration()).isEqualTo(140L);
+
+        // 코스 B: 최소 duration = 90, expectedB와 동일해야 함
+        Assertions.assertThat(result.get(1).getId()).isEqualTo(expectedB.getId());
+        Assertions.assertThat(result.get(1).getRunningRecord().getDuration()).isEqualTo(90L);
+    }
+
+    @DisplayName("요청한 코스 목록 중 정지하지 않은 러닝이 전혀 없는 코스는 결과에서 제외된다")
+    @Test
+    void excludeCoursesWithOnlyPausedRuns() {
+        // given
+        Member member = createMember("진이");
+        memberRepository.save(member);
+
+        Course onlyPaused = createCourse(member, "정지만 있는 코스"); onlyPaused.setIsPublic(true);
+        courseRepository.save(onlyPaused);
+
+        runningRepository.saveAll(List.of(
+                createRunning("정지1", onlyPaused, member, 80L, 10_000L, true),
+                createRunning("정지2", onlyPaused, member, 70L, 10_100L, true)
+        ));
+
+        // when
+        List<Running> result = runningRepository
+                .findBestRunningRecordsByMemberIdAndCourseIds(member.getUuid(), List.of(onlyPaused.getId()));
+
+        // then
+        Assertions.assertThat(result).isEmpty();
+    }
   
 }

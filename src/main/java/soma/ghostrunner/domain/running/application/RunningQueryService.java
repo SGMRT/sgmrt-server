@@ -163,13 +163,17 @@ public class RunningQueryService {
 
     /** 코스 ID 별로 사용자의 최고기록을 매핑하여 반환한다. (Key: 코스 ID, Value: 최고 러닝 (nullable)) */
     public Map<Long, Running> findBestRunningRecordsForCourses(List<Long> courseIds, String memberUuid) {
+
+        Comparator<Running> runningComparator = Comparator.comparingLong(Running::getId);
+
         // IN 절로 한 번에 조회한 후 courseId 별로 맵핑
         Map<Long, Running> bestRunsByCourseId = runningRepository.findBestRunningRecordsByMemberIdAndCourseIds(memberUuid, courseIds)
                 .stream()
                 .collect(Collectors.toMap(
-                        run -> run.getCourse().getId(),
-                        Function.identity()
-                ));
+                        r -> r.getCourse().getId(),
+                        Function.identity(),
+                        (a, b) -> runningComparator.compare(a, b) <= 0 ? a : b)
+                );
 
         Map<Long, Running> result = new HashMap<>();
         for (Long courseId : courseIds) {

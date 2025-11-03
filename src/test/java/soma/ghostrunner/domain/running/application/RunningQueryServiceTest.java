@@ -11,6 +11,9 @@ import org.springframework.data.domain.*;
 import org.springframework.data.util.Pair;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import soma.ghostrunner.domain.course.domain.Coordinate;
+import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -18,6 +21,8 @@ import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse
 import soma.ghostrunner.domain.running.application.dto.response.*;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
+import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
@@ -420,6 +425,53 @@ class RunningQueryServiceTest {
         // then
         assertThat(result).contains(bestRun);
         verify(runningRepository).findBestRunByCourseIdAndMemberUuidBefore(courseId, memberUuid, beforeStartedAt);
+    }
+
+    @Test
+    @DisplayName("서비스에서 duration->id 기준으로 코스별 1건만 남긴다 (중복 들어와도 정제)")
+    void findBestRunningRecordsForCourses_serviceDedup() {
+        // given
+        List<Long> courseIds = List.of(1L, 2L, 3L);
+        String memberUuid = "멤버 UUID";
+
+        Running r1 = mock(Running.class);         // course=1, dur=140, id=10
+        Running r2 = mock(Running.class);         // course=2, dur=95 , id=20
+        Running r3 = mock(Running.class);         // course=2, dur=90 , id=30  -> 더 좋음(선정)
+        // course=3은 레코드 없음 → null 기대
+
+        Course c1 = mock(Course.class);
+        Course c2 = mock(Course.class);
+
+        when(c1.getId()).thenReturn(1L);
+        when(c2.getId()).thenReturn(2L);
+
+        when(r1.getCourse()).thenReturn(c1);
+        when(r2.getCourse()).thenReturn(c2);
+        when(r3.getCourse()).thenReturn(c2);
+
+        RunningRecord rr1 = mock(RunningRecord.class);
+        RunningRecord rr2 = mock(RunningRecord.class);
+        RunningRecord rr3 = mock(RunningRecord.class);
+        when(r1.getRunningRecord()).thenReturn(rr1);
+        when(r2.getRunningRecord()).thenReturn(rr2);
+        when(r3.getRunningRecord()).thenReturn(rr3);
+
+        when(r1.getId()).thenReturn(10L);
+        when(r2.getId()).thenReturn(20L);
+        when(r3.getId()).thenReturn(30L);
+
+        when(runningRepository.findBestRunningRecordsByMemberIdAndCourseIds(memberUuid, courseIds))
+                .thenReturn(List.of(r1, r2, r3));
+
+        // when
+        Map<Long, Running> map = sut.findBestRunningRecordsForCourses(courseIds, memberUuid);
+
+        // then
+        assertThat(map).hasSize(3);
+        assertThat(map.get(1L)).isSameAs(r1);
+        assertThat(map.get(2L)).isSameAs(r2);
+        assertThat(map.get(3L)).isNull();       // 해당 코스 레코드 없음 → null
+        verify(runningRepository).findBestRunningRecordsByMemberIdAndCourseIds(memberUuid, courseIds);
     }
 
 }
