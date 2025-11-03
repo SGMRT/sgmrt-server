@@ -36,7 +36,7 @@ public class NotificationRequest {
         request.body = notifications.get(0).getBody();
         request.data = notifications.get(0).getData();
         request.ids = notifications.stream()
-                .map(noti -> new NotificationIds(noti.getId(), noti.getPushToken().getToken()))
+                .map(noti -> new NotificationIds(noti.getId(), noti.getDevice().getToken()))
                 .toList();
         return request;
     }

@@ -6,9 +6,9 @@ import soma.ghostrunner.domain.member.domain.Member;
 
 import static org.assertj.core.api.Assertions.*;
 
-class PushTokenTest {
+class DeviceTest {
 
-    @DisplayName("PushToken을 성공적으로 생성할 수 있다.")
+    @DisplayName("Device 객체를 성공적으로 생성할 수 있다.")
     @Test
     void createPushToken() {
         // given
@@ -16,10 +16,10 @@ class PushTokenTest {
         String token = "test-token";
 
         // when
-        PushToken pushToken = new PushToken(member, token);
+        Device device = new Device(member, token);
 
         // then
-        assertThat(pushToken.getToken()).isEqualTo(token);
-        assertThat(member.getNickname()).isEqualTo(pushToken.getMember().getNickname());
+        assertThat(device.getToken()).isEqualTo(token);
+        assertThat(member.getNickname()).isEqualTo(device.getMember().getNickname());
     }
 }

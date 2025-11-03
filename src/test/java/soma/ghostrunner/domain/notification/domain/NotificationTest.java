@@ -16,17 +16,17 @@ class NotificationTest {
     void createNotification() {
         // given
         Member member = Member.of("흰둥이", "test-url");
-        PushToken pushToken = new PushToken(member, "test-token");
+        Device device = new Device(member, "test-token");
         String title = "알림 제목";
         String body = "알림 본문";
         Map<String, Object> data = Map.of("key", "value");
 
         // when
-        Notification notification = Notification.of(pushToken, title, body, data);
+        Notification notification = Notification.of(device, title, body, data);
 
         // then
         assertNotNull(notification);
-        assertThat(notification.getPushToken()).isEqualTo(pushToken);
+        assertThat(notification.getDevice()).isEqualTo(device);
         assertThat(notification.getTitle()).isEqualTo(title);
         assertThat(notification.getBody()).isEqualTo(body);
         assertThat(notification.getData()).isEqualTo(data);
@@ -38,10 +38,10 @@ class NotificationTest {
     void createNotificationWithNullTitleAndBody() {
         // given
         Member member = Member.of("흰둥이", "test-url");
-        PushToken pushToken = new PushToken(member, "test-token");
+        Device device = new Device(member, "test-token");
 
         // when & then
-        assertThatThrownBy(() -> Notification.of(pushToken, null, null, Map.of()))
+        assertThatThrownBy(() -> Notification.of(device, null, null, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("제목과 본문이 동시에 null일 수 없음");
     }
@@ -51,8 +51,8 @@ class NotificationTest {
     void markAsSent() {
         // given
         Member member = Member.of("짱구", "test-url");
-        PushToken pushToken = new PushToken(member, "push-token");
-        Notification notification = Notification.of(pushToken, "제목", "본문", Map.of());
+        Device device = new Device(member, "push-token");
+        Notification notification = Notification.of(device, "제목", "본문", Map.of());
         String ticketId = "expo-ticket-id";
 
         // when
@@ -104,8 +104,8 @@ class NotificationTest {
 
     private Notification createSentNotification() {
         Member member = Member.of("신형만", "test-url");
-        PushToken pushToken = new PushToken(member, "push-token");
-        Notification notification = Notification.of(pushToken, "알림 제목", "알림 본문", Map.of());
+        Device device = new Device(member, "push-token");
+        Notification notification = Notification.of(device, "알림 제목", "알림 본문", Map.of());
         notification.markAsSent("expo-ticket-id");
         return notification;
     }

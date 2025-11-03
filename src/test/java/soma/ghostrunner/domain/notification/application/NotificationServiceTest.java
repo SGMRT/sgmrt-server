@@ -15,10 +15,10 @@ import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
 import soma.ghostrunner.domain.notification.client.ExpoPushClient;
 import soma.ghostrunner.domain.notification.dao.NotificationRepository;
-import soma.ghostrunner.domain.notification.dao.PushTokenRepository;
+import soma.ghostrunner.domain.notification.dao.DeviceRepository;
+import soma.ghostrunner.domain.notification.domain.Device;
 import soma.ghostrunner.domain.notification.domain.Notification;
 import soma.ghostrunner.domain.notification.domain.NotificationStatus;
-import soma.ghostrunner.domain.notification.domain.PushToken;
 
 import java.util.Collections;
 import java.util.List;
@@ -45,23 +45,23 @@ class NotificationServiceTest extends IntegrationTestSupport {
     private NotificationRepository notificationRepository;
 
     @Autowired
-    private PushTokenRepository pushTokenRepository;
+    private DeviceRepository deviceRepository;
 
     private Member member;
-    private PushToken pushToken;
+    private Device device;
 
     @BeforeEach
     void setUp() {
         member = Member.of("카리나", "profile-url");
         memberRepository.save(member);
-        pushToken = new PushToken(member, "ExponentPushToken[xxxx]");
-        pushTokenRepository.save(pushToken);
+        device = new Device(member, "ExponentPushToken[xxxx]");
+        deviceRepository.save(device);
     }
 
     @AfterEach
     void cleanUp() {
         notificationRepository.deleteAllInBatch();
-        pushTokenRepository.deleteAllInBatch();
+        deviceRepository.deleteAllInBatch();
         memberRepository.deleteAllInBatch();
     }
 
@@ -132,8 +132,8 @@ class NotificationServiceTest extends IntegrationTestSupport {
         // given
         Member member2 = Member.of("윈터", "profile-url");
         memberRepository.save(member2);
-        PushToken pushToken2 = new PushToken(member2, "expo-test-token-2");
-        pushTokenRepository.save(pushToken2);
+        Device device2 = new Device(member2, "expo-test-token-2");
+        deviceRepository.save(device2);
 
         List<Long> userIds = List.of(member.getId(), member2.getId());
 
@@ -174,7 +174,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
         notificationService.saveMemberPushToken(member.getUuid(), newPushToken);
 
         // then
-        boolean exists = pushTokenRepository.existsByMemberIdAndToken(member.getId(), newPushToken);
+        boolean exists = deviceRepository.existsByMemberIdAndToken(member.getId(), newPushToken);
         assertThat(exists).isTrue();
     }
 
@@ -182,14 +182,14 @@ class NotificationServiceTest extends IntegrationTestSupport {
     @Test
     void saveMemberPushToken_duplicateToken() {
         // given
-        String existingPushToken = pushToken.getToken();
-        long initialCount = pushTokenRepository.count();
+        String existingPushToken = device.getToken();
+        long initialCount = deviceRepository.count();
 
         // when
         notificationService.saveMemberPushToken(member.getUuid(), existingPushToken);
 
         // then
-        long afterCount = pushTokenRepository.count();
+        long afterCount = deviceRepository.count();
         assertThat(afterCount).isEqualTo(initialCount);
     }
 

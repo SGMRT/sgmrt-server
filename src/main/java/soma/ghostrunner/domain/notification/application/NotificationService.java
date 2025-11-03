@@ -11,10 +11,10 @@ import soma.ghostrunner.domain.notification.application.dto.NotificationBatchRes
 import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
 import soma.ghostrunner.domain.notification.client.ExpoPushClient;
-import soma.ghostrunner.domain.notification.dao.PushTokenRepository;
+import soma.ghostrunner.domain.notification.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.dao.NotificationRepository;
+import soma.ghostrunner.domain.notification.domain.Device;
 import soma.ghostrunner.domain.notification.domain.Notification;
-import soma.ghostrunner.domain.notification.domain.PushToken;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.global.error.ErrorCode;
 
@@ -32,7 +32,7 @@ public class NotificationService {
 
     private final ExpoPushClient expoPushClient;
     private final NotificationRepository notificationRepository;
-    private final PushTokenRepository pushTokenRepository;
+    private final DeviceRepository deviceRepository;
     private final MemberRepository memberRepository;
 
     public void sendPushNotification(NotificationCommand command) {
@@ -45,11 +45,11 @@ public class NotificationService {
     }
 
     public CompletableFuture<NotificationBatchResult> sendPushNotificationAsync(List<Long> userIds, String title, String body, Map<String, Object> data) {
-        List<PushToken> pushTokens = pushTokenRepository.findByMemberIdIn(userIds);
-        if (pushTokens.isEmpty()) return CompletableFuture.completedFuture(NotificationBatchResult.ofEmpty());
+        List<Device> devices = deviceRepository.findByMemberIdIn(userIds);
+        if (devices.isEmpty()) return CompletableFuture.completedFuture(NotificationBatchResult.ofEmpty());
 
         // 알림 전송 전에 Notification 엔티티 먼저 생성 및 저장
-        List<Notification> notifications = pushTokens.stream()
+        List<Notification> notifications = devices.stream()
                 .map(token -> Notification.of(token, title, body, data))
                 .toList();
         notificationRepository.saveAll(notifications);
@@ -115,11 +115,11 @@ public class NotificationService {
         Member member = memberRepository.findByUuid(memberUuid)
                 .orElseThrow(() -> new MemberNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
         validatePushTokenFormat(pushToken);
-        boolean exists = pushTokenRepository.existsByMemberIdAndToken(member.getId(), pushToken);
+        boolean exists = deviceRepository.existsByMemberIdAndToken(member.getId(), pushToken);
         if (!exists) {
             log.info("NotificationService: Saving push token {} for member uuid {}", pushToken, memberUuid);
-            PushToken token = new PushToken(member, pushToken);
-            pushTokenRepository.save(token);
+            Device device = new Device(member, pushToken);
+            deviceRepository.save(device);
         }
     }
 

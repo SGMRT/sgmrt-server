@@ -8,8 +8,8 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
-import soma.ghostrunner.domain.notification.dao.PushTokenRepository;
-import soma.ghostrunner.domain.notification.domain.PushToken;
+import soma.ghostrunner.domain.notification.dao.DeviceRepository;
+import soma.ghostrunner.domain.notification.domain.Device;
 import soma.ghostrunner.global.error.ErrorCode;
 
 @Slf4j
@@ -18,7 +18,7 @@ import soma.ghostrunner.global.error.ErrorCode;
 public class DeviceService {
 
     private final MemberRepository memberRepository;
-    private final PushTokenRepository pushTokenRepository;
+    private final DeviceRepository deviceRepository;
 
     @Transactional
     public void registerDevice(String memberUuid, DeviceRegistrationRequest request) {
@@ -31,11 +31,11 @@ public class DeviceService {
     public void saveMemberPushToken(String memberUuid, String pushToken) {
         Member member = findMemberOrThrow(memberUuid);
         validatePushTokenFormat(pushToken);
-        boolean exists = pushTokenRepository.existsByMemberIdAndToken(member.getId(), pushToken);
+        boolean exists = deviceRepository.existsByMemberIdAndToken(member.getId(), pushToken);
         if (!exists) {
             log.info("NotificationService: Saving push token {} for member uuid {}", pushToken, memberUuid);
-            PushToken token = new PushToken(member, pushToken);
-            pushTokenRepository.save(token);
+            Device device = new Device(member, pushToken);
+            deviceRepository.save(device);
         }
     }
 
