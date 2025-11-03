@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.notification.application;
 
+import io.sentry.spring.jakarta.tracing.SentrySpan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -7,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
+import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
+import soma.ghostrunner.domain.notification.domain.PushToken;
 import soma.ghostrunner.domain.notification.application.dto.NotificationBatchResult;
 import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
@@ -18,96 +21,35 @@ import soma.ghostrunner.domain.notification.domain.Notification;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.global.error.ErrorCode;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
 
-    private final ExpoPushClient expoPushClient;
-    private final NotificationRepository notificationRepository;
+    private final PushNotificationSqsSender sqsSender;
     private final DeviceRepository deviceRepository;
     private final MemberRepository memberRepository;
 
     public void sendPushNotification(NotificationCommand command) {
-        sendPushNotificationAsync(
-                command.userIds(),
+        sendPushNotification(
+                command.memberIds(),
                 command.title(),
                 command.body(),
                 command.data()
         );
     }
 
-    public CompletableFuture<NotificationBatchResult> sendPushNotificationAsync(List<Long> userIds, String title, String body, Map<String, Object> data) {
+    @SentrySpan
+    public void sendPushNotification(List<Long> userIds, String title, String body, Map<String, Object> data) {
         List<Device> devices = deviceRepository.findByMemberIdIn(userIds);
-        if (devices.isEmpty()) return CompletableFuture.completedFuture(NotificationBatchResult.ofEmpty());
-
-        // 알림 전송 전에 Notification 엔티티 먼저 생성 및 저장
-        List<Notification> notifications = devices.stream()
-                .map(token -> Notification.of(token, title, body, data))
+        List<PushMessageDto> pushMessages = devices.stream()
+                .map(device -> new PushMessageDto(device.getToken(), title, body, data, null))
                 .toList();
-        notificationRepository.saveAll(notifications);
-
-        // Expo Push API 비동기 호출
-        NotificationRequest request = NotificationRequest.from(notifications);
-        CompletableFuture<List<NotificationSendResult>> clientFuture = expoPushClient.pushAsync(request);
-        return clientFuture.thenApply(results -> {
-                    // 전송 결과 DB에 반영 (Notification status 변경)
-                    updateNotificationStatus(results, notifications);
-                    return createNotificationBatchResult(results);
-                })
-                .exceptionally(ex -> {
-                    // 푸쉬 실패 (네트워크 장애 등)
-                    log.warn("NotificationService: exception while sending push notification: {}", ex.getMessage());
-                    notifications.forEach(Notification::markAsFailed);
-                    notificationRepository.saveAll(notifications);
-                    List<Long> failureIds = notifications.stream().map(Notification::getId).toList();
-                    return new NotificationBatchResult(notifications.size(), 0, notifications.size(), List.of(), failureIds);
-                });
-    }
-
-    private void updateNotificationStatus(List<NotificationSendResult> results, List<Notification> notifications) {
-        // todo 고도화: DB 접근 최적화 (성공한 애들 모아서 한 번에 SENT / 실패한 애들 모아서 한 번에 RETRYING)
-        // Map<Id, Notification>으로 메모리에 있는 엔티티 컬렉션 재활용
-        Map<Long, Notification> notificationMap = notifications.stream()
-                .collect(Collectors.toMap(Notification::getId, Function.identity()));
-        List<Long> successIds = new ArrayList<>(), failureIds = new ArrayList<>();
-
-        for (NotificationSendResult result : results) {
-            Notification noti = notificationMap.get(result.notificationId());
-            if (noti == null) continue;
-
-            if (result.isSuccess()) {
-                noti.markAsSent(result.ticketId());
-                successIds.add(result.notificationId());
-                log.info("NotificationService: Notification {} marked as SENT", noti.getId());
-            } else {
-                // 존재하지 않는 토큰인 경우 DB에서 삭제
-                if(result.errorMessage().contains("is not a valid Expo push token")) {
-                    log.info("- 이거는 존재하지 않으니까 DB에서 삭제해야 됨");
-                    continue;
-                }
-                failureIds.add(result.notificationId());
-                noti.markAsFailed();  // TODO FAILED 대신 RETRYING 으로 변경 후 재시도 로직 구현
-            }
-        }
-
-        notificationRepository.saveAll(notifications); // 상태 일괄 변경
-    }
-
-    private static NotificationBatchResult createNotificationBatchResult(List<NotificationSendResult> results) {
-        long success = results.stream().filter(NotificationSendResult::isSuccess).count();
-        int total = results.size();
-        int failure = total - (int) success;
-        List<Long> successIds = results.stream().filter(NotificationSendResult::isSuccess).map(NotificationSendResult::notificationId).toList();
-        List<Long> failureIds = results.stream().filter(NotificationSendResult::isFailure).map(NotificationSendResult::notificationId).toList();
-        return new NotificationBatchResult(total, (int) success, failure, successIds, failureIds);
+        sqsSender.sendMany(pushMessages);
+        log.info("{}개의 푸시 알림 대기열 등록 완료 (푸시 알림: title={}, body={}, data={})", pushMessages.size(), title, body, data);
     }
 
     @Transactional

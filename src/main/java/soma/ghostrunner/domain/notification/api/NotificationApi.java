@@ -30,10 +30,8 @@ public class NotificationApi {
     @Operation(summary = "푸시알람 전송 (어드민 전용)")
     @AdminOnly
     @PostMapping("/v1/admin/notifications")
-    public NotificationBatchResult sendNotification(@RequestBody NotificationSendRequest request) throws Exception {
-        CompletableFuture<NotificationBatchResult> notificationFuture = notificationService
-                .sendPushNotificationAsync(request.getUserIds(), request.getTitle(), request.getBody(), request.getData());
-        return notificationFuture.get(30, TimeUnit.SECONDS);
+    public void sendNotification(@RequestBody NotificationSendRequest request) {
+        notificationService.sendPushNotification(request.getUserIds(), request.getTitle(), request.getBody(), request.getData());
     }
 
     @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
