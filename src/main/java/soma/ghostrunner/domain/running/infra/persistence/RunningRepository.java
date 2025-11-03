@@ -34,19 +34,25 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
             + "WHERE r.course.id = :courseId AND r.isPublic = true")
     Page<Running> findByCourse_IdAndIsPublicTrue(Long courseId, Pageable pageable);
 
-    @Query("SELECT r FROM Running r JOIN FETCH r.member m WHERE r.course.id = :courseId AND r.isPublic = true "
+    @Query("SELECT r FROM Running r JOIN FETCH r.member m WHERE r.course.id = :courseId AND r.hasPaused = false "
             + "AND m.uuid = :memberUuid ORDER BY r.runningRecord.duration LIMIT 1")
     Optional<Running> findBestPublicRunByCourseIdAndMemberId(Long courseId, String memberUuid);
 
-    @Query("SELECT r FROM Running r " +
-            "JOIN FETCH r.course c " +
-            "JOIN r.member m " +
-            "WHERE m.uuid = :memberUuid AND r.course.id IN :courseIds " +
-            "AND r.runningRecord.duration = (" +
-            "  SELECT MIN(r2.runningRecord.duration) " +
-            "  FROM Running r2 " +
-            "  WHERE r2.member.uuid = :memberUuid AND r2.course.id = r.course.id" +
-            ")")
+    @Query("""
+        SELECT r
+        FROM Running r
+        JOIN r.member m
+        WHERE m.uuid = :memberUuid
+          AND r.course.id IN :courseIds
+          AND r.hasPaused = false
+          AND r.runningRecord.duration = (
+              SELECT MIN(r2.runningRecord.duration)
+              FROM Running r2
+              WHERE r2.member.uuid = :memberUuid
+                    AND r2.course.id = r.course.id
+                    AND r2.hasPaused = false
+          )
+    """)
     List<Running> findBestRunningRecordsByMemberIdAndCourseIds(String memberUuid, List<Long> courseIds);
 
     @Query("SELECT DISTINCT r.course.id FROM Running r JOIN r.member m " +
