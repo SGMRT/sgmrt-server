@@ -9,7 +9,7 @@ import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
 import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
 import soma.ghostrunner.domain.notification.client.ExpoPushClient;
-import soma.ghostrunner.domain.notification.dao.PushTokenRepository;
+import soma.ghostrunner.domain.notification.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.exception.ExpoDeviceNotRegisteredException;
 import soma.ghostrunner.global.clients.discord.DiscordWebhookClient;
 
@@ -108,11 +108,11 @@ public class PushNotificationSqsWorker {
 @RequiredArgsConstructor
 class SqsWorkerInternalService {
 
-    private final PushTokenRepository pushTokenRepository;
+    private final DeviceRepository deviceRepository;
 
     @Transactional
     void deletePushToken(String token) {
-        pushTokenRepository.deleteByToken(token);
+        deviceRepository.deleteByToken(token);
     }
 
 }

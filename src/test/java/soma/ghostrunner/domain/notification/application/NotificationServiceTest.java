@@ -43,7 +43,7 @@ class NotificationServiceTest extends IntegrationTestSupport {
     void setUp() {
         member = Member.of("카리나", "profile-url");
         memberRepository.save(member);
-        device = new Device(member, "ExponentPushToken[xxxx]");
+        device = Device.of(member, "ExponentPushToken[xxxx]");
         deviceRepository.save(device);
     }
 

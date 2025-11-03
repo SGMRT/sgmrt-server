@@ -17,7 +17,7 @@ class NotificationTest {
     void createNotification() {
         // given
         Member member = Member.of("흰둥이", "test-url");
-        Device device = new Device(member, "test-token");
+        Device device = Device.of(member, "test-token");
         String title = "알림 제목";
         String body = "알림 본문";
         Map<String, Object> data = Map.of("key", "value");
@@ -39,7 +39,7 @@ class NotificationTest {
     void createNotificationWithNullTitleAndBody() {
         // given
         Member member = Member.of("흰둥이", "test-url");
-        Device device = new Device(member, "test-token");
+        Device device = Device.of(member, "test-token");
 
         // when & then
         assertThatThrownBy(() -> Notification.of(device, null, null, Map.of()))
@@ -52,7 +52,7 @@ class NotificationTest {
     void markAsSent() {
         // given
         Member member = Member.of("짱구", "test-url");
-        Device device = new Device(member, "push-token");
+        Device device = Device.of(member, "push-token");
         Notification notification = Notification.of(device, "제목", "본문", Map.of());
         String ticketId = "expo-ticket-id";
 
@@ -105,7 +105,7 @@ class NotificationTest {
 
     private Notification createSentNotification() {
         Member member = Member.of("신형만", "test-url");
-        Device device = new Device(member, "push-token");
+        Device device = Device.of(member, "push-token");
         Notification notification = Notification.of(device, "알림 제목", "알림 본문", Map.of());
         notification.markAsSent("expo-ticket-id");
         return notification;

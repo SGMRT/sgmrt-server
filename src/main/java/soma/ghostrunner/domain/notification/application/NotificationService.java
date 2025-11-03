@@ -9,15 +9,8 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
-import soma.ghostrunner.domain.notification.domain.PushToken;
-import soma.ghostrunner.domain.notification.application.dto.NotificationBatchResult;
-import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
-import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
-import soma.ghostrunner.domain.notification.client.ExpoPushClient;
 import soma.ghostrunner.domain.notification.dao.DeviceRepository;
-import soma.ghostrunner.domain.notification.dao.NotificationRepository;
 import soma.ghostrunner.domain.notification.domain.Device;
-import soma.ghostrunner.domain.notification.domain.Notification;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.global.error.ErrorCode;
 
@@ -60,7 +53,7 @@ public class NotificationService {
         boolean exists = deviceRepository.existsByMemberIdAndToken(member.getId(), pushToken);
         if (!exists) {
             log.info("NotificationService: Saving push token {} for member uuid {}", pushToken, memberUuid);
-            Device device = new Device(member, pushToken);
+            Device device = Device.of(member, pushToken);
             deviceRepository.save(device);
         }
     }
