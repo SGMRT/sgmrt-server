@@ -18,9 +18,10 @@ public class Notification extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "push_token_id", nullable = false)
-    private Device device;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "push_token_id", nullable = false)
+    @Column(name = "push_token_id")
+    private Long deviceId;
 
     @Column
     private String title;
@@ -43,7 +44,7 @@ public class Notification extends BaseTimeEntity {
             throw new IllegalArgumentException("제목과 본문이 동시에 null일 수 없음");
         }
         Notification notification = new Notification();
-        notification.device = device;
+        notification.deviceId = device.getId();
         notification.title = title;
         notification.body = body;
         notification.data = data;
