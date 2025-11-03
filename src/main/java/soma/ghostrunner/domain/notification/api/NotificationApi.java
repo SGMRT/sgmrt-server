@@ -9,17 +9,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import soma.ghostrunner.domain.notification.DeviceService;
+import soma.ghostrunner.domain.notification.application.DeviceService;
 import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.domain.notification.api.dto.NotificationSendRequest;
 import soma.ghostrunner.domain.notification.api.dto.PushTokenSaveRequest;
 import soma.ghostrunner.domain.notification.application.NotificationService;
-import soma.ghostrunner.domain.notification.application.dto.NotificationBatchResult;
 import soma.ghostrunner.global.common.validator.auth.AdminOnly;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequiredArgsConstructor
@@ -48,7 +44,7 @@ public class NotificationApi {
     public void updatePushToken(@PathVariable("memberUuid") String memberUuid,
                                 @Valid @RequestBody PushTokenSaveRequest request,
                                 @AuthenticationPrincipal JwtUserDetails userDetails) {
-        notificationService.saveMemberPushToken(memberUuid, request.getPushToken());
+        deviceService.saveMemberPushToken(memberUuid, request.getPushToken());
     }
 
 }

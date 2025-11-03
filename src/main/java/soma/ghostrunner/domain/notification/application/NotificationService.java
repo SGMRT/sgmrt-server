@@ -24,7 +24,6 @@ public class NotificationService {
 
     private final PushNotificationSqsSender sqsSender;
     private final DeviceRepository deviceRepository;
-    private final MemberRepository memberRepository;
 
     public void sendPushNotification(NotificationCommand command) {
         sendPushNotification(
@@ -43,25 +42,6 @@ public class NotificationService {
                 .toList();
         sqsSender.sendMany(pushMessages);
         log.info("{}개의 푸시 알림 대기열 등록 완료 (푸시 알림: title={}, body={}, data={})", pushMessages.size(), title, body, data);
-    }
-
-    @Transactional
-    public void saveMemberPushToken(String memberUuid, String pushToken) {
-        Member member = memberRepository.findByUuid(memberUuid)
-                .orElseThrow(() -> new MemberNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
-        validatePushTokenFormat(pushToken);
-        boolean exists = deviceRepository.existsByMemberIdAndToken(member.getId(), pushToken);
-        if (!exists) {
-            log.info("NotificationService: Saving push token {} for member uuid {}", pushToken, memberUuid);
-            Device device = Device.of(member, pushToken);
-            deviceRepository.save(device);
-        }
-    }
-
-    private void validatePushTokenFormat(String pushToken) {
-        if (pushToken == null || !pushToken.startsWith("ExponentPushToken[")) {
-            throw new IllegalArgumentException("올바른 Push Token 방식이 아닙니다: " + pushToken);
-        }
     }
 
 }

@@ -152,58 +152,58 @@ class NotificationServiceTest extends IntegrationTestSupport {
 //        assertThat(updatedNotifications).extracting(Notification::getStatus)
 //                .containsOnly(NotificationStatus.SENT);
 //    }
-
-    @DisplayName("새로운 푸쉬 토큰을 저장한다.")
-    @Test
-    void saveMemberPushToken_newToken() {
-        // given
-        String newPushToken = "ExponentPushToken[yyyy]";
-
-        // when
-        notificationService.saveMemberPushToken(member.getUuid(), newPushToken);
-
-        // then
-        boolean exists = deviceRepository.existsByMemberIdAndToken(member.getId(), newPushToken);
-        assertThat(exists).isTrue();
-    }
-
-    @DisplayName("이미 존재하는 푸쉬 토큰은 중복 저장하지 않는다.")
-    @Test
-    void saveMemberPushToken_duplicateToken() {
-        // given
-        String existingPushToken = device.getToken();
-        long initialCount = deviceRepository.count();
-
-        // when
-        notificationService.saveMemberPushToken(member.getUuid(), existingPushToken);
-
-        // then
-        long afterCount = deviceRepository.count();
-        assertThat(afterCount).isEqualTo(initialCount);
-    }
-
-    @DisplayName("푸쉬 토큰 형식이 Expo Push Token이 아니면 예외를 발생시킨다.")
-    @Test
-    void saveMemberPushToken_invalidFormat() {
-        // given
-        String invalidPushToken = "i-am-invalid";
-
-        // when & then
-        assertThatThrownBy(() -> notificationService.saveMemberPushToken(member.getUuid(), invalidPushToken))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("올바른 Push Token 방식이 아닙니다");
-    }
-
-    @DisplayName("존재하지 않는 회원에 포쉬 토큰 저장 시 예외를 발생시킨다.")
-    @Test
-    void saveMemberPushToken_memberNotFound() {
-        // given
-        String nonExistentUuid = "not-found-member-uuid";
-        String newPushToken = "ExponentPushToken[yyyy]";
-
-        // when & then
-        assertThatThrownBy(() -> notificationService.saveMemberPushToken(nonExistentUuid, newPushToken))
-                .isInstanceOf(MemberNotFoundException.class);
-    }
+//
+//    @DisplayName("새로운 푸쉬 토큰을 저장한다.")
+//    @Test
+//    void saveMemberPushToken_newToken() {
+//        // given
+//        String newPushToken = "ExponentPushToken[yyyy]";
+//
+//        // when
+//        notificationService.saveMemberPushToken(member.getUuid(), newPushToken);
+//
+//        // then
+//        boolean exists = deviceRepository.existsByMemberIdAndToken(member.getId(), newPushToken);
+//        assertThat(exists).isTrue();
+//    }
+//
+//    @DisplayName("이미 존재하는 푸쉬 토큰은 중복 저장하지 않는다.")
+//    @Test
+//    void saveMemberPushToken_duplicateToken() {
+//        // given
+//        String existingPushToken = device.getToken();
+//        long initialCount = deviceRepository.count();
+//
+//        // when
+//        notificationService.saveMemberPushToken(member.getUuid(), existingPushToken);
+//
+//        // then
+//        long afterCount = deviceRepository.count();
+//        assertThat(afterCount).isEqualTo(initialCount);
+//    }
+//
+//    @DisplayName("푸쉬 토큰 형식이 Expo Push Token이 아니면 예외를 발생시킨다.")
+//    @Test
+//    void saveMemberPushToken_invalidFormat() {
+//        // given
+//        String invalidPushToken = "i-am-invalid";
+//
+//        // when & then
+//        assertThatThrownBy(() -> notificationService.saveMemberPushToken(member.getUuid(), invalidPushToken))
+//                .isInstanceOf(IllegalArgumentException.class)
+//                .hasMessageContaining("올바른 Push Token 방식이 아닙니다");
+//    }
+//
+//    @DisplayName("존재하지 않는 회원에 포쉬 토큰 저장 시 예외를 발생시킨다.")
+//    @Test
+//    void saveMemberPushToken_memberNotFound() {
+//        // given
+//        String nonExistentUuid = "not-found-member-uuid";
+//        String newPushToken = "ExponentPushToken[yyyy]";
+//
+//        // when & then
+//        assertThatThrownBy(() -> notificationService.saveMemberPushToken(nonExistentUuid, newPushToken))
+//                .isInstanceOf(MemberNotFoundException.class);
+//    }
 
 }

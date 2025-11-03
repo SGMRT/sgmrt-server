@@ -9,6 +9,7 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
+import soma.ghostrunner.domain.notification.application.DeviceService;
 import soma.ghostrunner.domain.notification.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.domain.Device;
 
@@ -20,7 +21,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("DeviceService 통합 테스트")
 class DeviceServiceTest extends IntegrationTestSupport {
 
-    @Autowired DeviceService deviceService;
+    @Autowired
+    DeviceService deviceService;
     @Autowired MemberRepository memberRepository;
     @Autowired DeviceRepository deviceRepository;
 

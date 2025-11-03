@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification;
+package soma.ghostrunner.domain.notification.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,10 +26,9 @@ public class DeviceService {
 
     @Transactional
     public void registerDevice(String memberUuid, DeviceRegistrationRequest request) {
+        Assert.notNull(request.getDeviceUuid(), "Device UUID는 필수입니다.");
         Member member = findMemberOrThrow(memberUuid);
         validatePushTokenFormat(request.getPushToken());
-        Assert.notNull(request.getDeviceUuid(), "Device UUID는 필수입니다.");
-
         Optional<Device> optionalDevice = deviceRepository.findByUuid(request.getDeviceUuid());
         if (optionalDevice.isPresent()) {
             // 주어진 uuid의 기기 정보가 존재하는 경우 기존 Device 정보 업데이트 (member_id 포함)
@@ -41,15 +40,8 @@ public class DeviceService {
             }
         } else {
             // 기기 정보가 존재하지 않는 경우 새로 저장
-            Device device = Device.of(
-                    member,
-                    request.getPushToken(),
-                    request.getDeviceUuid(),
-                    request.getAppVersion(),
-                    request.getOsName(),
-                    request.getOsVersion(),
-                    request.getModelName()
-            );
+            Device device = Device.of(member, request.getPushToken(), request.getDeviceUuid(), request.getAppVersion(),
+                    request.getOsName(), request.getOsVersion(), request.getModelName());
             deviceRepository.save(device);
             log.info("새로운 디바이스 정보 저장: 회원 uuid='{}', 기기 uuid='{}', 요청='{}'", memberUuid, request.getDeviceUuid(), request);
         }
