@@ -10,6 +10,7 @@ import soma.ghostrunner.domain.notification.domain.Device;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -28,7 +29,7 @@ class DeviceRepositoryTest extends IntegrationTestSupport {
 
     // 테스트용 Device 생성 헬퍼 메서드
     private Device createDevice(Member member, String token) {
-        return new Device(member, token);
+        return Device.of(member, token);
     }
 
     @DisplayName("특정 회원의 디바이스 정보가 존재하는지 확인한다.")
@@ -145,4 +146,98 @@ class DeviceRepositoryTest extends IntegrationTestSupport {
         // then
         assertThat(foundDevices).isEmpty();
     }
+
+    @DisplayName("디바이스 UUID로 디바이스를 조회한다.")
+    @Test
+    void findByUuid_success() {
+        // given
+        Member member = createMember("나훈아");
+        memberRepository.save(member);
+        Device device = createDevice(member, "테스트-uuid");
+        deviceRepository.save(device);
+
+        // when
+        Device foundDevice = deviceRepository.findByUuid(device.getUuid()).orElseThrow();
+
+        // then
+        assertThat(foundDevice.getToken()).isEqualTo("테스트-uuid");
+        assertThat(foundDevice.getMember().getNickname()).isEqualTo("나훈아");
+    }
+
+    @DisplayName("디바이스 UUID를 NULL로 디바이스를 조회한다.")
+    @Test
+    void findByUuid_findByNull() {
+        // given
+        Member member = createMember("나훈아");
+        memberRepository.save(member);
+        Device device = createDevice(member, "테스트-uuid");
+        deviceRepository.save(device);
+
+        // when
+        Device foundDevice = deviceRepository.findByUuid(device.getUuid()).orElseThrow();
+
+        // then
+        assertThat(foundDevice.getToken()).isEqualTo("테스트-uuid");
+        assertThat(foundDevice.getMember().getNickname()).isEqualTo("나훈아");
+    }
+
+    @DisplayName("존재하지 않는 디바이스 UUID로 조회하면 빈 Optional을 반환한다.")
+    @Test
+    void findByUuid_notExists() {
+        // given
+        String nonExistentUuid = "없는-uuid";
+
+        // when
+        Optional<Device> optionalDevice = deviceRepository.findByUuid(nonExistentUuid);
+
+        // then
+        assertThat(optionalDevice).isEmpty();
+    }
+
+    @DisplayName("특정 푸시 토큰이 존재하는지 확인한다.")
+    @Test
+    void existsByToken_success() {
+        // given
+        Member member = createMember("유리");
+        memberRepository.save(member);
+        Device device = createDevice(member, "unique-token");
+        deviceRepository.save(device);
+
+        // when
+        boolean exists = deviceRepository.existsByToken("unique-token");
+
+        // then
+        assertThat(exists).isTrue();
+    }
+
+    @DisplayName("존재하지 않는 푸시 토큰에 대해 존재 여부를 확인하면 false를 반환한다.")
+    @Test
+    void existsByToken_notExists() {
+        // given
+        String nonExistentToken = "없는-uuid";
+        // when
+        boolean exists = deviceRepository.existsByToken(nonExistentToken);
+        // then
+        assertThat(exists).isFalse();
+    }
+
+    @DisplayName("특정 푸시 토큰으로 디바이스 정보를 조회한다.")
+    @Test
+    void findByToken_success() {
+        // given
+        Member member = createMember("철수");
+        memberRepository.save(member);
+
+        Device device = createDevice(member, "push-token");
+        deviceRepository.save(device);
+
+        // when
+        Optional<Device> optionalDevice = deviceRepository.findByToken("push-token");
+
+        // then
+        assertThat(optionalDevice).isPresent();
+        assertThat(optionalDevice.get().getToken()).isEqualTo("push-token");
+        assertThat(optionalDevice.get().getMember().getNickname()).isEqualTo("철수");
+    }
+
 }
