@@ -31,14 +31,14 @@ public class NotificationApi {
     }
 
     @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
-    @PostMapping("/v1/{memberUuid}/devices")
+    @PostMapping("/v1/members/{memberUuid}/devices")
     public void registerDeviceInfo(@PathVariable String memberUuid,
                                    @Valid @RequestBody DeviceRegistrationRequest request,
                                    @AuthenticationPrincipal JwtUserDetails userDetails) {
         deviceService.registerDevice(memberUuid, request);
     }
 
-    @Deprecated(since = "POST /v1/{memberUuid}/devices 로 대체 (하위 버전 클라이언트 호환을 위해 남겨둠)")
+    @Deprecated(since = "POST /v1/members/{memberUuid}/devices 로 대체 (하위 버전 클라이언트 호환을 위해 남겨둠)")
     @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
     @PostMapping("/v1/member/{memberUuid}/push-token")
     public void updatePushToken(@PathVariable("memberUuid") String memberUuid,
