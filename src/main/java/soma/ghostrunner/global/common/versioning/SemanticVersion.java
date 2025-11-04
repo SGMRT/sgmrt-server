@@ -29,6 +29,9 @@ public class SemanticVersion implements Comparable<SemanticVersion>{
             int major = Integer.parseInt(parts[0]);
             int minor = Integer.parseInt(parts[1]);
             int patch = Integer.parseInt(parts[2]);
+            if (major < 0 || minor < 0 || patch < 0) {
+                throw new IllegalArgumentException("잘못된 버전 형식 (각 필드는 음수일 수 없음) : " + version);
+            }
             return new SemanticVersion(major, minor, patch);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("잘못된 버전 형식 (각 필드가 정수여야 함) : " + version, e);

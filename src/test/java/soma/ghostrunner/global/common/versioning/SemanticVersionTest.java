@@ -41,6 +41,9 @@ class SemanticVersionTest {
         return Stream.of(
                 Arguments.of("1.2"),            // 부분 버전 누락
                 Arguments.of("1.2.a"),          // 숫자 X
+                Arguments.of("-1.2.3"),         // 음수 포함
+                Arguments.of("1.-2.3"),         // 음수 포함
+                Arguments.of("1.2.-3"),         // 음수 포함
                 Arguments.of("1..3"),           // 중간 버전 누락
                 Arguments.of("1.2.3.4"),        // 너무 많은 온점
                 Arguments.of("abc.def.ghi"),    // 숫자 X
