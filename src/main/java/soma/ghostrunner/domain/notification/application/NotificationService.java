@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
 import soma.ghostrunner.domain.notification.domain.Device;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
+import soma.ghostrunner.global.common.versioning.VersionRange;
 
 import java.util.List;
 import java.util.Map;
@@ -24,13 +25,14 @@ public class NotificationService {
                 command.memberIds(),
                 command.title(),
                 command.body(),
-                command.data()
+                command.data(),
+                command.versionRange()
         );
     }
 
     @SentrySpan
-    public void sendPushNotification(List<Long> userIds, String title, String body, Map<String, Object> data) {
-        List<Device> devices = deviceService.findDevicesByMemberIds(userIds);
+    public void sendPushNotification(List<Long> userIds, String title, String body, Map<String, Object> data, VersionRange versionRange) {
+        List<Device> devices = deviceService.findDevicesByMemberIdsAndAppVersions(userIds, versionRange);
         List<PushMessageDto> pushMessages = devices.stream()
                 .map(device -> new PushMessageDto(device.getToken(), title, body, data, null))
                 .toList();

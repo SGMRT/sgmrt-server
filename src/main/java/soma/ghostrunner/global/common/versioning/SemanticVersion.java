@@ -38,6 +38,13 @@ public class SemanticVersion implements Comparable<SemanticVersion>{
         }
     }
 
+    public static SemanticVersion of(int major, int minor, int patch) {
+        if (major < 0 || minor < 0 || patch < 0) {
+            throw new IllegalArgumentException("잘못된 버전 형식 (각 필드는 음수일 수 없음)");
+        }
+        return new SemanticVersion(major, minor, patch);
+    }
+
     @Override
     public int compareTo(SemanticVersion other) {
         if (this.major != other.major) {

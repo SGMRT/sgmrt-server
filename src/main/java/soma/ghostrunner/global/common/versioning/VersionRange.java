@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor(staticName = "of")
 public class VersionRange {
-    enum Operator {
+    public enum Operator {
         EQUALS,
         GREATER_THAN,
         GREATER_THAN_OR_EQUALS,

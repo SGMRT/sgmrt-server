@@ -15,6 +15,7 @@ import soma.ghostrunner.domain.notification.api.dto.NotificationSendRequest;
 import soma.ghostrunner.domain.notification.api.dto.PushTokenSaveRequest;
 import soma.ghostrunner.domain.notification.application.NotificationService;
 import soma.ghostrunner.global.common.validator.auth.AdminOnly;
+import soma.ghostrunner.global.common.versioning.VersionRange;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 @RestController
@@ -27,7 +28,7 @@ public class NotificationApi {
     @AdminOnly
     @PostMapping("/v1/admin/notifications")
     public void sendNotification(@RequestBody NotificationSendRequest request) {
-        notificationService.sendPushNotification(request.getUserIds(), request.getTitle(), request.getBody(), request.getData());
+        notificationService.sendPushNotification(request.getUserIds(), request.getTitle(), request.getBody(), request.getData(), VersionRange.ALL_VERSIONS);
     }
 
     @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
