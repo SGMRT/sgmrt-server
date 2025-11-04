@@ -18,7 +18,9 @@ import java.util.UUID;
 
 @Getter
 @Entity
-@Table(name = "push_token")
+@Table(name = "push_token", indexes = {
+    @Index(name = "idx_push_token_member_versions", columnList = "member_id, app_version_major, app_version_minor, app_version_patch"),
+})
 @Builder(access = AccessLevel.PRIVATE)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SQLRestriction("deleted_at IS NULL")
@@ -42,6 +44,11 @@ public class Device extends BaseTimeEntity {
 
     @Builder.Default
     @Embedded
+    @AttributeOverrides({ // SemanticVersion 필드명에 "app_version" 접두어 추가
+            @AttributeOverride(name = "major", column = @Column(name = "app_version_major")),
+            @AttributeOverride(name = "minor", column = @Column(name = "app_version_minor")),
+            @AttributeOverride(name = "patch", column = @Column(name = "app_version_patch"))
+    })
     private SemanticVersion appVersion = DeviceConstants.APP_VERSION_DEFAULT;
 
     @Builder.Default
