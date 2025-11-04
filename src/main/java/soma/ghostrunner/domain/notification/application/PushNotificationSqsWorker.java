@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.notification.application;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
@@ -25,9 +26,13 @@ public class PushNotificationSqsWorker {
     private final ExpoPushClient expoPushClient;
     private final DiscordWebhookClient discordWebhookClient;
     private final SqsWorkerInternalService internalService;
+
     private static final int MIN_BACKOFF_MILLIS = 125;
     private static final int MAX_BACKOFF_MILLIS = 1000;
     private final AtomicInteger backoffMillis = new AtomicInteger(MIN_BACKOFF_MILLIS);
+
+    @Value("${spring.profiles.active:default}")
+    private String activeProfile;
 
     @SqsListener(value = "${cloud.aws.sqs.push-queue-name}")
     public void handlePushMessage(final PushMessageDto pushMessageDto) throws IOException {
@@ -56,12 +61,12 @@ public class PushNotificationSqsWorker {
 
     private String generateFailedPushNotificationMessage(PushMessageDto pushMessageDto) {
         return """
-                # 푸쉬 알림 전송 실패!
+                # 푸쉬 알림 전송 실패! (환경: %s)
                 여러 차례 재전송했음에도 실패한 푸쉬 알림 메시지에요.
                 ```
                 %s
                 ```
-                """.formatted(pushMessageDto);
+                """.formatted(activeProfile, pushMessageDto);
     }
 
     private NotificationRequest createNotificationRequest(PushMessageDto pushMessageDto) {

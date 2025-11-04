@@ -1,5 +1,6 @@
 package soma.ghostrunner.global.clients.discord;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -8,6 +9,7 @@ import org.springframework.web.client.RestClientException;
 import java.net.URI;
 import java.util.Map;
 
+@Slf4j
 @Component
 public class DiscordWebhookClient {
 
@@ -26,10 +28,10 @@ public class DiscordWebhookClient {
                     .retrieve()
                     .toBodilessEntity();
 
-            System.out.println("웹훅 전송 성공");
+            log.info("웹훅 전송 성공, 메시지: '{}'", message.replace("\n", " ").replace("`", ""));
 
         } catch (RestClientException e) {
-            System.err.println("웹훅 전송 실패: " + e.getMessage());
+            log.error("웹훅 전송 실패: ", e);
         }
     }
 
