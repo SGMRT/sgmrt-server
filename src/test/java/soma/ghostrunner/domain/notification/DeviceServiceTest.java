@@ -37,6 +37,35 @@ class DeviceServiceTest extends IntegrationTestSupport {
         deviceRepository.save(device);
     }
 
+    // findDevicesByMemberIds 테스트
+    @DisplayName("주어진 회원 ID 목록에 해당하는 디바이스 정보를 조회한다.")
+    @Test
+    void findDevicesByMemberIds_success() {
+        // given
+        Member anotherMember = Member.of("윈터", "another-profile-url");
+        memberRepository.save(anotherMember);
+        List<Long> memberIds = List.of(member.getId(), anotherMember.getId());
+
+        // when
+        List<Device> devices = deviceService.findDevicesByMemberIds(memberIds);
+
+        // then
+        assertThat(devices).isNotEmpty();
+        assertThat(devices).extracting("member.id")
+                .containsExactlyInAnyOrder(member.getId(), anotherMember.getId());
+    }
+
+    @DisplayName("주어진 회원 ID 목록에 해당하는 디바이스 정보가 없으면 빈 리스트를 반환한다.")
+    @Test
+    void findDevicesByMemberIds_noDevices() {
+        // given
+        List<Long> notFoundMemberIds = List.of(1000L, 1001L);
+        // when
+        List<Device> devices = deviceService.findDevicesByMemberIds(notFoundMemberIds);
+        // then
+        assertThat(devices).isEmpty();
+    }
+
     // registerDevice 테스트
     @DisplayName("새로운 디바이스 정보를 저장한다.")
     @Test

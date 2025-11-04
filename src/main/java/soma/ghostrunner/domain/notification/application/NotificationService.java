@@ -4,15 +4,9 @@ import io.sentry.spring.jakarta.tracing.SentrySpan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
-import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
-import soma.ghostrunner.domain.notification.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.domain.Device;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
-import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.List;
 import java.util.Map;
@@ -23,7 +17,7 @@ import java.util.Map;
 public class NotificationService {
 
     private final PushNotificationSqsSender sqsSender;
-    private final DeviceRepository deviceRepository;
+    private final DeviceService deviceService;
 
     public void sendPushNotification(NotificationCommand command) {
         sendPushNotification(
@@ -36,7 +30,7 @@ public class NotificationService {
 
     @SentrySpan
     public void sendPushNotification(List<Long> userIds, String title, String body, Map<String, Object> data) {
-        List<Device> devices = deviceRepository.findByMemberIdIn(userIds);
+        List<Device> devices = deviceService.findDevicesByMemberIds(userIds);
         List<PushMessageDto> pushMessages = devices.stream()
                 .map(device -> new PushMessageDto(device.getToken(), title, body, data, null))
                 .toList();

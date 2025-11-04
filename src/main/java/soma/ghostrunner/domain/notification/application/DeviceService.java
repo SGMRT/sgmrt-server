@@ -13,6 +13,7 @@ import soma.ghostrunner.domain.notification.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.domain.Device;
 import soma.ghostrunner.global.error.ErrorCode;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -24,6 +25,17 @@ public class DeviceService {
     private final MemberRepository memberRepository;
     private final DeviceRepository deviceRepository;
 
+    public List<Device> findDevicesByMemberIdsAndAppVersions(List<Long> memberIds, String versionRange) {
+        // todo - versionRange 파싱 및 범위에 따른 Device 필터링 로직
+        // - AppVesionRange 클래스 만들어서, versioRange 문자열 파싱 후 (1) 대상 버전, (2) 비교 연산자(이상, 이하, 일치 등) 보관
+        // - DB에 버전 자체는 문자열로 저장될텐데 어떻게 비교할지 고민 필요 (단순 사전식 비교로 할지, 버전 넘버 파싱해서 비교할지)
+        return deviceRepository.findByMemberIdIn(memberIds);
+    }
+
+    public List<Device> findDevicesByMemberIds(List<Long> memberIds) {
+        return deviceRepository.findByMemberIdIn(memberIds);
+    }
+
     @Transactional
     public void registerDevice(String memberUuid, DeviceRegistrationRequest request) {
         Assert.notNull(request.getDeviceUuid(), "Device UUID는 필수입니다.");
@@ -34,16 +46,24 @@ public class DeviceService {
             // 주어진 uuid의 기기 정보가 존재하는 경우 기존 Device 정보 업데이트 (member_id 포함)
             Device device = optionalDevice.get();
             Set<String> updatedFields = device.updateInfo(member, request);
-            if(!updatedFields.isEmpty()) {
-                log.info("다음 UUID 기기에 대한 디바이스 정보 변경. 변경된 필드={}, 회원 uuid='{}', 기기 uuid='{}', 요청='{}'",
-                        updatedFields, memberUuid, request.getDeviceUuid(), request);
-            }
+            logUpdatedFieldsIfUpdated(memberUuid, request, updatedFields);
         } else {
             // 기기 정보가 존재하지 않는 경우 새로 저장
-            Device device = Device.of(member, request.getPushToken(), request.getDeviceUuid(), request.getAppVersion(),
-                    request.getOsName(), request.getOsVersion(), request.getModelName());
-            deviceRepository.save(device);
+            createAndSaveDevice(request, member);
             log.info("새로운 디바이스 정보 저장: 회원 uuid='{}', 기기 uuid='{}', 요청='{}'", memberUuid, request.getDeviceUuid(), request);
+        }
+    }
+
+    private void createAndSaveDevice(DeviceRegistrationRequest request, Member member) {
+        Device device = Device.of(member, request.getPushToken(), request.getDeviceUuid(), request.getAppVersion(),
+                request.getOsName(), request.getOsVersion(), request.getModelName());
+        deviceRepository.save(device);
+    }
+
+    private static void logUpdatedFieldsIfUpdated(String memberUuid, DeviceRegistrationRequest request, Set<String> updatedFields) {
+        if(!updatedFields.isEmpty()) {
+            log.info("다음 UUID 기기에 대한 디바이스 정보 변경. 변경된 필드={}, 회원 uuid='{}', 기기 uuid='{}', 요청='{}'",
+                    updatedFields, memberUuid, request.getDeviceUuid(), request);
         }
     }
 
