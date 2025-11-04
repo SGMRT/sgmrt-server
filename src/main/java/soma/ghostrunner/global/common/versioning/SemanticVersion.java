@@ -11,13 +11,13 @@ import lombok.*;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class SemanticVersion implements Comparable<SemanticVersion>{
 
-    @Column(name = "version_major", nullable = false)
+    @Column(name = "version_major")
     private int major;
 
-    @Column(name = "version_minor", nullable = false)
+    @Column(name = "version_minor")
     private int minor;
 
-    @Column(name = "version_patch", nullable = false)
+    @Column(name = "version_patch")
     private int patch;
 
     public static SemanticVersion of(String version) {
