@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.domain.notification.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.global.common.versioning.SemanticVersion;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.List;
@@ -55,7 +56,7 @@ public class DeviceService {
     }
 
     private void createAndSaveDevice(DeviceRegistrationRequest request, Member member) {
-        Device device = Device.of(member, request.getPushToken(), request.getDeviceUuid(), request.getAppVersion(),
+        Device device = Device.of(member, request.getPushToken(), request.getDeviceUuid(), SemanticVersion.of(request.getAppVersion()),
                 request.getOsName(), request.getOsVersion(), request.getModelName());
         deviceRepository.save(device);
     }
