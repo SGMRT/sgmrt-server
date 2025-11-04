@@ -12,9 +12,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SemanticVersionTest {
 
-    @DisplayName("of()를 호출하면 버전 문자열을 파싱하여 객체를 생성한다.")
+    @DisplayName("of(String)를 호출하면 버전 문자열을 파싱하여 객체를 생성한다.")
     @Test
-    void of() {
+    void of_strings() {
         // given
         String versionStr = "1.2.3";
         // when
@@ -23,6 +23,31 @@ class SemanticVersionTest {
         assertEquals(1, version.getMajor());
         assertEquals(2, version.getMinor());
         assertEquals(3, version.getPatch());
+    }
+
+    @DisplayName("of(int, int, int)를 호출하면 버전 객체를 생성한다.")
+    @Test
+    void of_integers() {
+        // given
+        int major = 1;
+        int minor = 20;
+        int patch = 300;
+        // when
+        SemanticVersion version = SemanticVersion.of(major, minor, patch);
+        // then
+        assertEquals(1, version.getMajor());
+        assertEquals(20, version.getMinor());
+        assertEquals(300, version.getPatch());
+    }
+
+    @DisplayName("of()를 호출할 때 음수 버전 숫자를 전달하면 IllegalArgumentException이 발생한다.")
+    @Test
+    void of_negativeNumbers() {
+        // when & then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            SemanticVersion.of(-1, 0, 0);
+        });
+        assertEquals("잘못된 버전 형식 (각 필드는 음수일 수 없음)", exception.getMessage());
     }
 
     @DisplayName("of()를 호출할 때 잘못된 형식의 버전 문자열을 전달하면 IllegalArgumentException이 발생한다.")
@@ -34,7 +59,6 @@ class SemanticVersionTest {
             SemanticVersion.of(versionStr);
         });
         assertTrue(exception.getMessage().startsWith("잘못된 버전 형식"));
-
     }
 
     private static Stream<Arguments> invalidVersionStrings() {
