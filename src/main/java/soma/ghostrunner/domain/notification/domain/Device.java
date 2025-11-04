@@ -57,10 +57,6 @@ public class Device extends BaseTimeEntity {
     @Column(name = "model_name", nullable = true)
     private String modelName = DeviceConstants.OS_MODEL_DEFAULT;
 
-    @UpdateTimestamp
-    @Column(name = "last_login_at", nullable = true)
-    private LocalDateTime lastLoginAt;
-
     @Column(name = "deleted_at", nullable = true)
     private LocalDateTime deletedAt;
 
