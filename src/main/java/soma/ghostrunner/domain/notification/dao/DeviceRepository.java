@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface DeviceRepository extends JpaRepository<Device, Long> {
+public interface DeviceRepository extends JpaRepository<Device, Long>, CustomDeviceRepository {
 
     boolean existsByMemberIdAndToken(Long memberId, String token);
 
