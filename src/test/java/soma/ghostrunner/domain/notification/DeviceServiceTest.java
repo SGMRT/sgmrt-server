@@ -44,6 +44,8 @@ class DeviceServiceTest extends IntegrationTestSupport {
         // given
         Member anotherMember = Member.of("윈터", "another-profile-url");
         memberRepository.save(anotherMember);
+        Device anotherDevice = Device.of(anotherMember, "ExponentPushToken[zzzz]");
+        deviceRepository.save(anotherDevice);
         List<Long> memberIds = List.of(member.getId(), anotherMember.getId());
 
         // when
