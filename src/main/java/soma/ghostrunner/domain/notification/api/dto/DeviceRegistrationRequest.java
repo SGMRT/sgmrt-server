@@ -2,10 +2,12 @@ package soma.ghostrunner.domain.notification.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 
 @Getter
+@Builder
 @AllArgsConstructor
 @ToString
 public class DeviceRegistrationRequest {
@@ -18,13 +20,10 @@ public class DeviceRegistrationRequest {
     @NotBlank
     private String pushToken;
 
-    @NotBlank
     private String osName;
 
-    @NotBlank
     private String osVersion;
 
-    @NotBlank
     private String modelName;
 
 }

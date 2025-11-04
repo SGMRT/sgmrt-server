@@ -69,14 +69,15 @@ public class Device extends BaseTimeEntity {
 
     public static Device of(Member member, String token, String uuid, String appVersion,
                             String osName, String osVersion, String modelName) {
+        validatedEssentialFields(token, uuid);
         return Device.builder()
                 .member(member)
                 .token(token)
                 .uuid(uuid)
-                .appVersion(appVersion)
-                .osName(osName)
-                .osVersion(osVersion)
-                .modelName(modelName)
+                .appVersion(appVersion != null ? appVersion : DeviceConstants.APP_VERSION_DEFAULT)
+                .osName(osName != null ? osName : DeviceConstants.OS_NAME_DEFAULT)
+                .osVersion(osVersion != null ? osVersion : DeviceConstants.OS_VERSION_DEFAULT)
+                .modelName(modelName != null ? modelName : DeviceConstants.OS_MODEL_DEFAULT)
                 .build();
     }
 
@@ -109,6 +110,11 @@ public class Device extends BaseTimeEntity {
         if( !( pushToken.startsWith("ExponentPushToken[") && pushToken.endsWith("]") )) {
             throw new IllegalArgumentException("올바른 푸쉬 토큰 방식이 아닙니다: " + pushToken);
         }
+    }
+
+    private static void validatedEssentialFields(String token, String uuid) {
+        validatePushTokenFormat(token);
+        Assert.notNull(uuid, "Device UUID는 null일 수 없습니다.");
     }
 
     private boolean updateMember(Member member) {
