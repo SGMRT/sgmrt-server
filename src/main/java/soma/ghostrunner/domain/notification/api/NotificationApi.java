@@ -3,12 +3,11 @@ package soma.ghostrunner.domain.notification.api;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.notification.api.dto.NotificationBroadcastRequest;
 import soma.ghostrunner.domain.notification.application.DeviceService;
 import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
@@ -17,9 +16,12 @@ import soma.ghostrunner.domain.notification.api.dto.PushTokenSaveRequest;
 import soma.ghostrunner.domain.notification.application.NotificationService;
 import soma.ghostrunner.domain.notification.exception.IllegalNotificationBroadcastException;
 import soma.ghostrunner.global.common.validator.auth.AdminOnly;
+import soma.ghostrunner.global.common.versioning.SemanticVersion;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
+
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -58,20 +60,27 @@ public class NotificationApi {
 
     @Operation(summary = "푸시알림 브로드캐스트 (어드민 전용)")
     @AdminOnly
-    @PostMapping("/v1/admin/notifications/broadcast")
-    public void broadcastNotification(@RequestBody NotificationBroadcastRequest request) {
-        VersionRange versionRange = determineVersionRange(request);
-        notificationService.broadcastPushNotification(request.getTitle(), request.getBody(), request.getData(), versionRange);
+    @PostMapping(value = "/v1/admin/notifications/broadcast", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public String broadcastNotification(@ModelAttribute NotificationBroadcastRequest request) {
+        try {
+            VersionRange versionRange = determineVersionRange(request);
+            Map<String, Object> dataMap = request.dataMap();
+            int count = notificationService.broadcastPushNotification(request.getTitle(), request.getBody(), request.dataMap(), versionRange);
+            return "Sent " + count + " push notifications.";
+        } catch (Exception e) {
+            throw new IllegalNotificationBroadcastException(ErrorCode.ILLEGAL_NOTIFICATION_BROADCAST);
+        }
     }
 
     private VersionRange determineVersionRange(NotificationBroadcastRequest request) {
+        SemanticVersion.of(request.getVersion()); // version 포맷 검증
         if (request.getVersionRange() == NotificationBroadcastRequest.RangeType.ALL_VERSIONS) {
-            if (request.getVersion() != null) {
+            if (StringUtils.hasText(request.getVersion())) {
                 throw new IllegalNotificationBroadcastException(ErrorCode.VERSION_NOT_REQUIRED_FOR_BROADCAST);
             }
             return VersionRange.ALL_VERSIONS;
         }
-        if (request.getVersion() == null) {
+        if (!StringUtils.hasText(request.getVersion())) {
             throw new IllegalNotificationBroadcastException(ErrorCode.VERSION_REQUIRED_FOR_BROADCAST);
         }
         return switch (request.getVersionRange()) {
