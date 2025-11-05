@@ -12,6 +12,7 @@ import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.domain.notification.application.DeviceService;
 import soma.ghostrunner.domain.notification.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.global.common.versioning.SemanticVersion;
 
 import java.util.List;
 
@@ -85,7 +86,7 @@ class DeviceServiceTest extends IntegrationTestSupport {
         assertThat(device.getMember().getUuid()).isEqualTo(member.getUuid());
         assertThat(device.getUuid()).isEqualTo("device-uuid");
         assertThat(device.getToken()).isEqualTo(pushToken);
-        assertThat(device.getAppVersion()).isEqualTo(request.getAppVersion());
+        assertThat(device.getAppVersion().toString()).isEqualTo(request.getAppVersion());
         assertThat(device.getOsName()).isEqualTo(request.getOsName());
         assertThat(device.getOsVersion()).isEqualTo(request.getOsVersion());
         assertThat(device.getModelName()).isEqualTo(request.getModelName());
@@ -109,7 +110,7 @@ class DeviceServiceTest extends IntegrationTestSupport {
     void registerDevice_updateDevice() {
         // given
         String pushToken = "ExponentPushToken[update-me]";
-        Device device = Device.of(member, pushToken, "device-uuid", "0.0.1", "Android", "21", "Samsung Galaxy S25");
+        Device device = Device.of(member, pushToken, "device-uuid", SemanticVersion.of("0.0.1"), "Android", "21", "Samsung Galaxy S25");
         deviceRepository.save(device);
         Member newMember = Member.of("지젤", "new-profile-url");
         memberRepository.save(newMember);
@@ -124,7 +125,7 @@ class DeviceServiceTest extends IntegrationTestSupport {
         assertThat(afterCount).isEqualTo(beforeCount);
         Device updatedDevice = deviceRepository.findByToken(pushToken).orElseThrow();
         assertThat(updatedDevice.getUuid()).isEqualTo("device-uuid");
-        assertThat(updatedDevice.getAppVersion()).isEqualTo(request.getAppVersion());
+        assertThat(updatedDevice.getAppVersion().toString()).isEqualTo(request.getAppVersion());
         assertThat(updatedDevice.getOsName()).isEqualTo(request.getOsName());
         assertThat(updatedDevice.getOsVersion()).isEqualTo(request.getOsVersion());
         assertThat(updatedDevice.getModelName()).isEqualTo(request.getModelName());

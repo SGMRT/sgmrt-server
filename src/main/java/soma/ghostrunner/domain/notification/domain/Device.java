@@ -2,15 +2,14 @@ package soma.ghostrunner.domain.notification.domain;
 
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.util.Assert;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.global.common.BaseTimeEntity;
+import soma.ghostrunner.global.common.versioning.SemanticVersion;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -19,7 +18,9 @@ import java.util.UUID;
 
 @Getter
 @Entity
-@Table(name = "push_token")
+@Table(name = "push_token", indexes = {
+    @Index(name = "idx_push_token_member_versions", columnList = "member_id, app_version_major, app_version_minor, app_version_patch"),
+})
 @Builder(access = AccessLevel.PRIVATE)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SQLRestriction("deleted_at IS NULL")
@@ -42,8 +43,13 @@ public class Device extends BaseTimeEntity {
     private String uuid = UUID.randomUUID().toString();
 
     @Builder.Default
-    @Column(name = "app_version", nullable = true) // 클라 하위호환성을 위해 nullable하게 설정
-    private String appVersion = DeviceConstants.APP_VERSION_DEFAULT;
+    @Embedded
+    @AttributeOverrides({ // SemanticVersion 필드명에 "app_version" 접두어 추가
+            @AttributeOverride(name = "major", column = @Column(name = "app_version_major")),
+            @AttributeOverride(name = "minor", column = @Column(name = "app_version_minor")),
+            @AttributeOverride(name = "patch", column = @Column(name = "app_version_patch"))
+    })
+    private SemanticVersion appVersion = DeviceConstants.APP_VERSION_DEFAULT;
 
     @Builder.Default
     @Column(name = "os_name", nullable = true)
@@ -67,7 +73,7 @@ public class Device extends BaseTimeEntity {
                 .build();
     }
 
-    public static Device of(Member member, String token, String uuid, String appVersion,
+    public static Device of(Member member, String token, String uuid, SemanticVersion appVersion,
                             String osName, String osVersion, String modelName) {
         validatedEssentialFields(token, uuid);
         return Device.builder()
@@ -89,7 +95,7 @@ public class Device extends BaseTimeEntity {
         if (updateToken(request.getPushToken())) {
             updatedFields.add("token");
         }
-        if (updateAppVersion(request.getAppVersion())) {
+        if (updateAppVersion(SemanticVersion.of(request.getAppVersion()))) {
             updatedFields.add("appVersion");
         }
         if (updateOsName(request.getOsName())) {
@@ -137,7 +143,7 @@ public class Device extends BaseTimeEntity {
         return true;
     }
 
-    private boolean updateAppVersion(String appVersion) {
+    private boolean updateAppVersion(SemanticVersion appVersion) {
         if (this.appVersion.equals(appVersion)) {
             return false;
         }

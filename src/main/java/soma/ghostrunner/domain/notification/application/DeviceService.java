@@ -11,6 +11,8 @@ import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.domain.notification.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.global.common.versioning.SemanticVersion;
+import soma.ghostrunner.global.common.versioning.VersionRange;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.List;
@@ -25,11 +27,8 @@ public class DeviceService {
     private final MemberRepository memberRepository;
     private final DeviceRepository deviceRepository;
 
-    public List<Device> findDevicesByMemberIdsAndAppVersions(List<Long> memberIds, String versionRange) {
-        // todo - versionRange 파싱 및 범위에 따른 Device 필터링 로직
-        // - AppVesionRange 클래스 만들어서, versioRange 문자열 파싱 후 (1) 대상 버전, (2) 비교 연산자(이상, 이하, 일치 등) 보관
-        // - DB에 버전 자체는 문자열로 저장될텐데 어떻게 비교할지 고민 필요 (단순 사전식 비교로 할지, 버전 넘버 파싱해서 비교할지)
-        return deviceRepository.findByMemberIdIn(memberIds);
+    public List<Device> findDevicesByMemberIdsAndAppVersions(List<Long> memberIds, VersionRange versionRange) {
+        return deviceRepository.findAllByMemberIdsAndAppVersionRange(memberIds, versionRange);
     }
 
     public List<Device> findDevicesByMemberIds(List<Long> memberIds) {
@@ -55,7 +54,7 @@ public class DeviceService {
     }
 
     private void createAndSaveDevice(DeviceRegistrationRequest request, Member member) {
-        Device device = Device.of(member, request.getPushToken(), request.getDeviceUuid(), request.getAppVersion(),
+        Device device = Device.of(member, request.getPushToken(), request.getDeviceUuid(), SemanticVersion.of(request.getAppVersion()),
                 request.getOsName(), request.getOsVersion(), request.getModelName());
         deviceRepository.save(device);
     }
