@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.notification.domain;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.global.common.versioning.SemanticVersion;
 
 import java.lang.reflect.Method;
 
@@ -23,7 +24,7 @@ class DeviceTest {
         // then
         assertThat(device.getToken()).isEqualTo(token);
         assertThat(member.getNickname()).isEqualTo(device.getMember().getNickname());
-        assertThat(device.getAppVersion()).isEqualTo("1.0.0");
+        assertThat(device.getAppVersion()).isEqualTo(SemanticVersion.of("1.0.0"));
         assertThat(device.getOsName()).isEqualTo("unknown");
         assertThat(device.getOsVersion()).isEqualTo("unknown");
         assertThat(device.getModelName()).isEqualTo("unknown");
@@ -49,7 +50,7 @@ class DeviceTest {
             // then
             assertThat(device.getToken()).isEqualTo(token);
             assertThat(device.getMember()).isNull();
-            assertThat(device.getAppVersion()).isEqualTo("1.0.0");
+            assertThat(device.getAppVersion()).isEqualTo(SemanticVersion.of("1.0.0"));
             assertThat(device.getOsName()).isEqualTo("unknown");
             assertThat(device.getOsVersion()).isEqualTo("unknown");
             assertThat(device.getModelName()).isEqualTo("unknown");

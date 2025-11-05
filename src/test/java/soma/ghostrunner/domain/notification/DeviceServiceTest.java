@@ -86,7 +86,7 @@ class DeviceServiceTest extends IntegrationTestSupport {
         assertThat(device.getMember().getUuid()).isEqualTo(member.getUuid());
         assertThat(device.getUuid()).isEqualTo("device-uuid");
         assertThat(device.getToken()).isEqualTo(pushToken);
-        assertThat(device.getAppVersion()).isEqualTo(request.getAppVersion());
+        assertThat(device.getAppVersion().toString()).isEqualTo(request.getAppVersion());
         assertThat(device.getOsName()).isEqualTo(request.getOsName());
         assertThat(device.getOsVersion()).isEqualTo(request.getOsVersion());
         assertThat(device.getModelName()).isEqualTo(request.getModelName());
@@ -125,7 +125,7 @@ class DeviceServiceTest extends IntegrationTestSupport {
         assertThat(afterCount).isEqualTo(beforeCount);
         Device updatedDevice = deviceRepository.findByToken(pushToken).orElseThrow();
         assertThat(updatedDevice.getUuid()).isEqualTo("device-uuid");
-        assertThat(updatedDevice.getAppVersion()).isEqualTo(request.getAppVersion());
+        assertThat(updatedDevice.getAppVersion().toString()).isEqualTo(request.getAppVersion());
         assertThat(updatedDevice.getOsName()).isEqualTo(request.getOsName());
         assertThat(updatedDevice.getOsVersion()).isEqualTo(request.getOsVersion());
         assertThat(updatedDevice.getModelName()).isEqualTo(request.getModelName());
