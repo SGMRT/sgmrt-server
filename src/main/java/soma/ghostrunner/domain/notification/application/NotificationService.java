@@ -33,6 +33,16 @@ public class NotificationService {
     @SentrySpan
     public void sendPushNotification(List<Long> userIds, String title, String body, Map<String, Object> data, VersionRange versionRange) {
         List<Device> devices = deviceService.findDevicesByMemberIdsAndAppVersions(userIds, versionRange);
+        push(title, body, data, devices);
+    }
+
+    @SentrySpan
+    public void broadcastPushNotification(String title, String body, Map<String, Object> data, VersionRange versionRange) {
+        List<Device> devices = deviceService.findDevicesByAppVersions(versionRange);
+        push(title, body, data, devices);
+    }
+
+    private void push(String title, String body, Map<String, Object> data, List<Device> devices) {
         List<PushMessageDto> pushMessages = devices.stream()
                 .map(device -> new PushMessageDto(device.getToken(), title, body, data, null))
                 .toList();

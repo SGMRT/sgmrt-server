@@ -23,6 +23,10 @@ public class VersionRange {
         return VersionRange.of(version, Operator.EQUALS);
     }
 
+    public static VersionRange exactly(String version) {
+        return VersionRange.of(SemanticVersion.of(version), Operator.EQUALS);
+    }
+
     /** 해당 버전 이상을 포함하는 버전 범위 생성 */
     public static VersionRange atLeast(SemanticVersion version) {
         return VersionRange.of(version, Operator.GREATER_THAN_OR_EQUALS);
@@ -35,6 +39,10 @@ public class VersionRange {
     /** 해당 버전 이하를 포함하는 버전 범위 생성 */
     public static VersionRange atMost(SemanticVersion version) {
         return VersionRange.of(version, Operator.LESS_THAN_OR_EQUALS);
+    }
+
+    public static VersionRange atMost(String version) {
+        return VersionRange.of(SemanticVersion.of(version), Operator.LESS_THAN_OR_EQUALS);
     }
 
     /** 문자열로부터 버전 범위를 파싱 (X.Y.Z[^|v| ] 형식) */

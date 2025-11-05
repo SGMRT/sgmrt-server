@@ -9,13 +9,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import soma.ghostrunner.domain.notification.api.dto.NotificationBroadcastRequest;
 import soma.ghostrunner.domain.notification.application.DeviceService;
 import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.domain.notification.api.dto.NotificationSendRequest;
 import soma.ghostrunner.domain.notification.api.dto.PushTokenSaveRequest;
 import soma.ghostrunner.domain.notification.application.NotificationService;
+import soma.ghostrunner.domain.notification.exception.IllegalNotificationBroadcastException;
 import soma.ghostrunner.global.common.validator.auth.AdminOnly;
 import soma.ghostrunner.global.common.versioning.VersionRange;
+import soma.ghostrunner.global.error.ErrorCode;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 @RestController
@@ -24,11 +27,19 @@ public class NotificationApi {
     private final NotificationService notificationService;
     private final DeviceService deviceService;
 
-    @Operation(summary = "푸시알람 전송 (어드민 전용)")
+    @Operation(summary = "푸시알림 전송 (어드민 전용)")
     @AdminOnly
     @PostMapping("/v1/admin/notifications")
     public void sendNotification(@RequestBody NotificationSendRequest request) {
         notificationService.sendPushNotification(request.getUserIds(), request.getTitle(), request.getBody(), request.getData(), VersionRange.ALL_VERSIONS);
+    }
+
+    @Operation(summary = "푸시알림 브로드캐스트 (어드민 전용)")
+    @AdminOnly
+    @PostMapping("/v1/admin/notifications/broadcast")
+    public void broadcastNotification(@RequestBody NotificationBroadcastRequest request) {
+        VersionRange versionRange = determineVersionRange(request);
+        notificationService.broadcastPushNotification(request.getTitle(), request.getBody(), request.getData(), versionRange);
     }
 
     @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
@@ -48,4 +59,21 @@ public class NotificationApi {
         deviceService.saveMemberPushToken(memberUuid, request.getPushToken());
     }
 
+    private VersionRange determineVersionRange(NotificationBroadcastRequest request) {
+        if (request.getVersionRange() == NotificationBroadcastRequest.RangeType.ALL_VERSIONS) {
+            if (request.getVersion() != null) {
+                throw new IllegalNotificationBroadcastException(ErrorCode.VERSION_NOT_REQUIRED_FOR_BROADCAST);
+            }
+            return VersionRange.ALL_VERSIONS;
+        }
+        if (request.getVersion() == null) {
+            throw new IllegalNotificationBroadcastException(ErrorCode.VERSION_REQUIRED_FOR_BROADCAST);
+        }
+        return switch (request.getVersionRange()) {
+            case AT_LEAST -> VersionRange.atLeast(request.getVersion());
+            case EXACTLY -> VersionRange.exactly(request.getVersion());
+            case AT_MOST -> VersionRange.atMost(request.getVersion());
+            default -> throw new IllegalNotificationBroadcastException(ErrorCode.ILLEGAL_NOTIFICATION_BROADCAST);
+        };
+    }
 }
