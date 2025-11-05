@@ -34,6 +34,8 @@ import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
+import soma.ghostrunner.global.common.versioning.SemanticVersion;
+import soma.ghostrunner.global.common.versioning.VersionRange;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -195,6 +197,8 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
                                 DeepLinkUrls.generalNoticeUrlItems(notice.getId()).get(0) :
                                 DeepLinkUrls.eventNoticeUrlItems(notice.getId()).get(0)
                 );
+//        assertThat(notiCommand.versionRange()).isEqualTo(VersionRange.atLeast("1.0.3"));
+        assertThat(notiCommand.versionRange()).isEqualTo(VersionRange.ALL_VERSIONS);
     }
 
     private static Stream<Arguments> singleNoticeEventTestCases() {
@@ -241,6 +245,8 @@ class NotificationEventListenerIntegrationTest extends IntegrationTestSupport {
                 .collect(Collectors.joining("\n")));
         assertNotificaionDeepLink(notiCommand.data())
                 .containsExactly(DeepLinkUrls.multiNoticeUrlItems().get(0));
+//        assertThat(notiCommand.versionRange()).isEqualTo(VersionRange.atLeast("1.0.3"));
+        assertThat(notiCommand.versionRange()).isEqualTo(VersionRange.ALL_VERSIONS);
     }
 
     private static Stream<Arguments> multipleNoticeEventTestCases() {
