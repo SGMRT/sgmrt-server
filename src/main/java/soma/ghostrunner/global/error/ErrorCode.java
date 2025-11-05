@@ -49,7 +49,10 @@ public enum ErrorCode {
     NOTICE_ALREADY_ACTIVATED("N-002", BAD_REQUEST, "이미 활성화된 공지입니다. 종료시각을 변경하려면 공지 비활성화 / 공지 수정 API를 활용하세요."),
 
     // Notification
-    EXPO_DEVICE_NOT_REGISTERED("P-001", BAD_REQUEST, "유효하지 않은 Expo Push Token입니다.");
+    EXPO_DEVICE_NOT_REGISTERED("P-001", BAD_REQUEST, "유효하지 않은 Expo Push Token입니다."),
+    ILLEGAL_NOTIFICATION_BROADCAST("P-002", BAD_REQUEST, "푸시 알림 전달 대상 혹은 버전 조건이 올바르지 않습니다."),
+    VERSION_NOT_REQUIRED_FOR_BROADCAST("P-002", BAD_REQUEST, "ALL_VERSIONS 대상 푸시 알림 전달에는 버전 조건을 설정하지 않아도 됩니다."),
+    VERSION_REQUIRED_FOR_BROADCAST("P-003", BAD_REQUEST, "특정 버전 대상 푸시 알림 전달에는 버전 조건을 설정해야 합니다."),;
 
     private final String code;
     private final HttpStatus status;
