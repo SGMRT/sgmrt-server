@@ -18,6 +18,26 @@ public class VersionRange {
     private final SemanticVersion version;
     private final Operator operator;
 
+    /** 정확히 해당 버전만 포함하는 버전 범위 생성 */
+    public static VersionRange exactly(SemanticVersion version) {
+        return VersionRange.of(version, Operator.EQUALS);
+    }
+
+    /** 해당 버전 이상을 포함하는 버전 범위 생성 */
+    public static VersionRange atLeast(SemanticVersion version) {
+        return VersionRange.of(version, Operator.GREATER_THAN_OR_EQUALS);
+    }
+
+    public static VersionRange atLeast(String version) {
+        return VersionRange.of(SemanticVersion.of(version), Operator.GREATER_THAN_OR_EQUALS);
+    }
+
+    /** 해당 버전 이하를 포함하는 버전 범위 생성 */
+    public static VersionRange atMost(SemanticVersion version) {
+        return VersionRange.of(version, Operator.LESS_THAN_OR_EQUALS);
+    }
+
+    /** 문자열로부터 버전 범위를 파싱 (X.Y.Z[^|v| ] 형식) */
     public static VersionRange parse(String versionRangeStr) {
         versionRangeStr = versionRangeStr.trim();
         String versionStr = versionRangeStr.substring(0, versionRangeStr.length() - 1).trim();
@@ -30,6 +50,7 @@ public class VersionRange {
         }
     }
 
+    /** otherVersion이 이 버전 범위에 포함되는지 여부를 반환 */
     public boolean includes(SemanticVersion otherVersion) {
         int comparison = otherVersion.compareTo(this.version);
         return switch (this.operator) {
