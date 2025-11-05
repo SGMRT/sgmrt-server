@@ -21,10 +21,11 @@ public class NotificationCommandAssembler {
 
     private final MemberService memberService;
     private static final String DEEPLINK_ITEM_KEY = "urls";
-    private static final VersionRange NOTICE_AVAILABLE_VERSION_RANGE = VersionRange.of(
-            // 공지사항 관련 푸쉬는 앱 버전 1.0.3 이상만 전송
-            SemanticVersion.of("1.0.3"),
-            VersionRange.Operator.GREATER_THAN_OR_EQUALS);
+    private static final VersionRange NOTICE_AVAILABLE_VERSION_RANGE = VersionRange.ALL_VERSIONS; // 임시 허용
+//    private static final VersionRange NOTICE_AVAILABLE_VERSION_RANGE = VersionRange.of(
+//            // 공지사항 관련 푸쉬는 앱 버전 1.0.3 이상만 전송
+//            SemanticVersion.of("1.0.3"),
+//            VersionRange.Operator.GREATER_THAN_OR_EQUALS);
 
     /** 본인 코스를 다른 러너가 달린 경우 */
     public NotificationCommand buildCourseRunEvent(CourseRunEvent runEvent) {
