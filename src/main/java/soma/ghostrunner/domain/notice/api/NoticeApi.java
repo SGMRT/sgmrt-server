@@ -6,6 +6,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -127,7 +129,14 @@ public class NoticeApi {
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "10") Integer size,
             @RequestParam(value = "type", required = false) String type) {
-        return new PagedModel<>(Page.empty()); // 빈 페이지 반환
+        return dummyNoticePage(page, size);
+    }
+
+    private PagedModel<NoticeDetailedResponse> dummyNoticePage(int page, int size) {
+        // 고정된 공지사항 페이지 반환
+        List<NoticeDetailedResponse> noticeList = Collections.singletonList(dummyNoticeDetailedResponse());
+        Page<NoticeDetailedResponse> noticePage = new PageImpl<>(noticeList, PageRequest.of(page, size), 1);
+        return new PagedModel<>(noticePage);
     }
 
     @Hidden
@@ -136,7 +145,12 @@ public class NoticeApi {
     public List<NoticeDetailedResponse> getActiveNoticesV1(
             @AuthenticationPrincipal JwtUserDetails userDetails,
             @RequestParam(value = "type", required = false) String type) {
-        return Collections.emptyList(); // 빈 리스트 반환
+        return dummyActiveNoticeList();
+    }
+
+    private List<NoticeDetailedResponse> dummyActiveNoticeList() {
+        // 고정된 공지사항 리스트 반환
+        return Collections.singletonList(dummyNoticeDetailedResponse());
     }
 
     @Hidden
@@ -144,16 +158,7 @@ public class NoticeApi {
     @GetMapping("/v1/notices/{noticeId}")
     public NoticeDetailedResponse getNoticeV1(@PathVariable("noticeId") Long id) {
         // 고정된 공지사항 반환
-        return new NoticeDetailedResponse(
-                id,
-                "앱을 업데이트해주세요!",
-                NoticeType.GENERAL,
-                null,
-                "애플리케이션 업데이트가 필요합니다. 앱스토어에서 최신 버전 업데이트 후 이용해주세요!",
-                0,
-                null,
-                null
-        );
+        return dummyNoticeDetailedResponse();
     }
 
     @Hidden
@@ -163,6 +168,19 @@ public class NoticeApi {
                           @RequestBody NoticeDismissRequest request,
                           @AuthenticationPrincipal JwtUserDetails userDetails) {
         // 아무 일도 하지 않음
+    }
+
+    private NoticeDetailedResponse dummyNoticeDetailedResponse() {
+        return new NoticeDetailedResponse(
+                1L,
+                "앱을 업데이트해주세요!",
+                NoticeType.GENERAL,
+                "https://placehold.co/600x200/black/white?text=Ghost+Runner",
+                "고스트러너 업데이트가 필요합니다. 앱스토어에서 최신 버전 업데이트 후 이용해주세요!",
+                0,
+                null,
+                null
+        );
     }
 
 }
