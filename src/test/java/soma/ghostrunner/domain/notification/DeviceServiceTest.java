@@ -195,6 +195,20 @@ class DeviceServiceTest extends IntegrationTestSupport {
         assertThat(updatedDevice.getToken()).isEqualTo(existingPushToken);
     }
 
+    @DisplayName("기존에 동일한 회원-토큰 조합의 디바이스 정보가 존재한다면 새로 덮어씌우지 않고 종료한다.")
+    @Deprecated(since = "v1.0.4 PushToken 저장 방식 변경으로 인한 사용 중단; registerDevice 활용 (클라이언트 하위호환을 위해 남겨둠)")
+    @Test
+    void saveMemberPushToken_existingMemberTokenPair() {
+        // given
+        String existingPushToken = device.getToken();
+        long initialCount = deviceRepository.count();
+        // when
+        deviceService.saveMemberPushToken(member.getUuid(), existingPushToken);
+        // then
+        long afterCount = deviceRepository.count();
+        assertThat(afterCount).isEqualTo(initialCount);
+    }
+
     @DisplayName("푸쉬 토큰 형식이 Expo Push Token이 아니면 예외를 발생시킨다.")
     @Deprecated(since = "v1.0.4 PushToken 저장 방식 변경으로 인한 사용 중단; registerDevice 활용 (클라이언트 하위호환을 위해 남겨둠)")
     @Test

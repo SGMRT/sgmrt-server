@@ -72,14 +72,18 @@ public class DeviceService {
         // todo 분산락으로 동일 토큰에 대한 따닥 접근 처리 고려
         Member member = findMemberOrThrow(memberUuid);
         validatePushTokenFormat(pushToken);
-        boolean tokenExists = deviceRepository.existsByToken(pushToken);
-        if (!tokenExists) {
+        Optional<Device> existingDeviceOpt = deviceRepository.findByToken(pushToken);
+        if (existingDeviceOpt.isEmpty()) {
             // 토큰이 존재하지 않는다면 Device 저장
             deviceRepository.save(Device.of(member, pushToken));
             log.info("새로운 푸쉬 토큰 저장: 회원 uuid={}, 토큰={}", memberUuid, pushToken);
         } else {
             // 푸쉬 토큰이 이미 존재한다면 기존 Device 정보 삭제 후 저장 (Expo 기준 동일한 기기 == 동일한 푸쉬토큰이므로 동일한 기기에서 회원 전환한 경우임)
-            Device oldDevice = deviceRepository.findByToken(pushToken).orElseThrow();
+            Device oldDevice = existingDeviceOpt.get();
+            if (oldDevice.getMember() != null && oldDevice.getMember().getId().equals(member.getId())) {
+                // 동일 회원이 동일 토큰을 재저장하는 경우라면 별도 처리 없음
+                return;
+            }
             deviceRepository.deleteById(oldDevice.getId());
             deviceRepository.save(Device.of(member, pushToken));
             log.info("푸쉬 토큰이 이미 존재하여 회원 변경 처리: 기존 회원 uuid={}, 새로운 회원 uuid={}, 토큰={}",
