@@ -27,21 +27,6 @@ public class NotificationApi {
     private final NotificationService notificationService;
     private final DeviceService deviceService;
 
-    @Operation(summary = "푸시알림 전송 (어드민 전용)")
-    @AdminOnly
-    @PostMapping("/v1/admin/notifications")
-    public void sendNotification(@RequestBody NotificationSendRequest request) {
-        notificationService.sendPushNotification(request.getUserIds(), request.getTitle(), request.getBody(), request.getData(), VersionRange.ALL_VERSIONS);
-    }
-
-    @Operation(summary = "푸시알림 브로드캐스트 (어드민 전용)")
-    @AdminOnly
-    @PostMapping("/v1/admin/notifications/broadcast")
-    public void broadcastNotification(@RequestBody NotificationBroadcastRequest request) {
-        VersionRange versionRange = determineVersionRange(request);
-        notificationService.broadcastPushNotification(request.getTitle(), request.getBody(), request.getData(), versionRange);
-    }
-
     @PreAuthorize("@authService.isOwner(#memberUuid, #userDetails)")
     @PostMapping("/v1/members/{memberUuid}/devices")
     public void registerDeviceInfo(@PathVariable String memberUuid,
@@ -57,6 +42,26 @@ public class NotificationApi {
                                 @Valid @RequestBody PushTokenSaveRequest request,
                                 @AuthenticationPrincipal JwtUserDetails userDetails) {
         deviceService.saveMemberPushToken(memberUuid, request.getPushToken());
+    }
+
+
+    /* * * * * * * **
+     *  어드민용 API  *
+     * * * * * * * **/
+
+    @Operation(summary = "푸시알림 전송 (어드민 전용)")
+    @AdminOnly
+    @PostMapping("/v1/admin/notifications")
+    public void sendNotification(@RequestBody NotificationSendRequest request) {
+        notificationService.sendPushNotification(request.getUserIds(), request.getTitle(), request.getBody(), request.getData(), VersionRange.ALL_VERSIONS);
+    }
+
+    @Operation(summary = "푸시알림 브로드캐스트 (어드민 전용)")
+    @AdminOnly
+    @PostMapping("/v1/admin/notifications/broadcast")
+    public void broadcastNotification(@RequestBody NotificationBroadcastRequest request) {
+        VersionRange versionRange = determineVersionRange(request);
+        notificationService.broadcastPushNotification(request.getTitle(), request.getBody(), request.getData(), versionRange);
     }
 
     private VersionRange determineVersionRange(NotificationBroadcastRequest request) {
