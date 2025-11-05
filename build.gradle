@@ -49,6 +49,8 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testCompileOnly 'org.junit.jupiter:junit-jupiter-params:5.9.2'
 	testImplementation 'org.springframework.security:spring-security-test'
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
 
 	// RDB
 	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
@@ -76,6 +78,10 @@ dependencies {
 	implementation platform('software.amazon.awssdk:bom:2.20.45')
 	implementation 'software.amazon.awssdk:s3'
 
+	// AWS SQS
+	implementation platform("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.1")
+	implementation 'io.awspring.cloud:spring-cloud-aws-starter-sqs'
+
 	// JAVA Casting Warn Solution
 	implementation 'javax.xml.bind:jaxb-api:2.3.0'
 
@@ -97,9 +103,10 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
 	// Test Container
-	testImplementation "org.testcontainers:testcontainers:1.19.0"
+	testImplementation "org.testcontainers:testcontainers:2.0.1"
 	testImplementation 'org.testcontainers:mysql:1.16.0'
 	testImplementation "com.redis.testcontainers:testcontainers-redis-junit:1.6.4"
+	testImplementation "org.testcontainers:localstack"
 
 	// Prometheus
 	runtimeOnly "io.micrometer:micrometer-registry-prometheus"
