@@ -31,6 +31,10 @@ public class DeviceService {
         return deviceRepository.findAllByMemberIdsAndAppVersionRange(memberIds, versionRange);
     }
 
+    public List<Device> findDevicesByAppVersions(VersionRange versionRange) {
+        return deviceRepository.findAllByAppVersionRange(versionRange);
+    }
+
     public List<Device> findDevicesByMemberIds(List<Long> memberIds) {
         return deviceRepository.findByMemberIdIn(memberIds);
     }
