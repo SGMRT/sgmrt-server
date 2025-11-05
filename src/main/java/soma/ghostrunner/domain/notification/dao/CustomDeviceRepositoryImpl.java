@@ -25,6 +25,13 @@ public class CustomDeviceRepositoryImpl implements CustomDeviceRepository {
                 .fetch();
     }
 
+    @Override
+    public List<Device> findAllByAppVersionRange(VersionRange versionRange) {
+        return queryFactory.selectFrom(device)
+                .where(appVersionWithinRange(versionRange))
+                .fetch();
+    }
+
     private Predicate appVersionWithinRange(VersionRange versionRange) {
         if (versionRange == null) return null;
         var version = versionRange.getVersion();
