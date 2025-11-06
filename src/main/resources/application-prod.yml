@@ -4,6 +4,15 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+    hikari:
+      pool-name: "GhostRunnerPool"
+      register-mbeans: true
+      maximum-pool-size: 10
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
   servlet:
     multipart:
       max-file-size: 50MB
@@ -71,11 +80,16 @@ management:
   endpoints:
     web:
       exposure:
-        include: "prometheus"
+        include: "prometheus,health,metrics"
   metrics:
+    enable:
+      hikaricp: true
     distribution:
       percentiles-histogram:
         http.server.requests: true
+        hikaricp.connections.acquire: true
+        hikaricp.connections.usage: true
+        hikaricp.connections.creation: true
 
 openai:
   api:
