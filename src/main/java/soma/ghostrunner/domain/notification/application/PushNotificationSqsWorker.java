@@ -10,7 +10,7 @@ import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
 import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
 import soma.ghostrunner.domain.notification.client.ExpoPushClient;
-import soma.ghostrunner.domain.notification.dao.DeviceRepository;
+import soma.ghostrunner.domain.device.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.exception.ExpoDeviceNotRegisteredException;
 import soma.ghostrunner.global.clients.discord.DiscordWebhookClient;
 
@@ -37,6 +37,7 @@ public class PushNotificationSqsWorker {
     @SqsListener(value = "${cloud.aws.sqs.push-queue-name}")
     public void handlePushMessage(final PushMessageDto pushMessageDto) throws IOException {
         if (pushMessageDto.pushToken() == null || pushMessageDto.pushToken().isEmpty()) {
+            log.warn("푸쉬 토큰이 없으므로 건너뜀: {}", pushMessageDto);
             return;
         }
         try {

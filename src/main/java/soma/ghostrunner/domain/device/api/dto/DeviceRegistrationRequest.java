@@ -1,15 +1,13 @@
-package soma.ghostrunner.domain.notification.api.dto;
+package soma.ghostrunner.domain.device.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 @Getter
 @Builder
 @AllArgsConstructor
 @ToString
+@EqualsAndHashCode
 public class DeviceRegistrationRequest {
     @NotBlank
     private String deviceUuid;
@@ -17,7 +15,6 @@ public class DeviceRegistrationRequest {
     @NotBlank
     private String appVersion;
 
-    @NotBlank
     private String pushToken;
 
     private String osName;

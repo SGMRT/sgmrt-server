@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification.domain;
+package soma.ghostrunner.domain.device.domain;
 
 
 import jakarta.persistence.*;
@@ -7,12 +7,13 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.springframework.util.Assert;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
+import soma.ghostrunner.domain.device.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,7 +36,7 @@ public class Device extends BaseTimeEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    @Column(unique = false, nullable = false) // soft delete로 인해 unique=false 불가. 로직으로 중복 제거 필요
+    @Column(unique = false, nullable = true) // soft delete로 인해 unique=false 불가. 로직으로 중복 제거 필요
     private String token;
 
     @Builder.Default
@@ -61,7 +62,7 @@ public class Device extends BaseTimeEntity {
 
     @Builder.Default
     @Column(name = "model_name", nullable = true)
-    private String modelName = DeviceConstants.OS_MODEL_DEFAULT;
+    private String modelName = DeviceConstants.MODEL_NAME_DEFAULT;
 
     @Column(name = "deleted_at", nullable = true)
     private LocalDateTime deletedAt;
@@ -83,7 +84,7 @@ public class Device extends BaseTimeEntity {
                 .appVersion(appVersion != null ? appVersion : DeviceConstants.APP_VERSION_DEFAULT)
                 .osName(osName != null ? osName : DeviceConstants.OS_NAME_DEFAULT)
                 .osVersion(osVersion != null ? osVersion : DeviceConstants.OS_VERSION_DEFAULT)
-                .modelName(modelName != null ? modelName : DeviceConstants.OS_MODEL_DEFAULT)
+                .modelName(modelName != null ? modelName : DeviceConstants.MODEL_NAME_DEFAULT)
                 .build();
     }
 
@@ -119,8 +120,15 @@ public class Device extends BaseTimeEntity {
     }
 
     private static void validatedEssentialFields(String token, String uuid) {
-        validatePushTokenFormat(token);
+        // 푸쉬 토큰은  null 가능, 단 UUID는 필수
+        validatePushTokenFormatIfNotNull(token);
         Assert.notNull(uuid, "Device UUID는 null일 수 없습니다.");
+    }
+
+    private static void validatePushTokenFormatIfNotNull(String token) {
+        if(token != null) {
+            validatePushTokenFormat(token);
+        }
     }
 
     private boolean updateMember(Member member) {
@@ -135,10 +143,10 @@ public class Device extends BaseTimeEntity {
     }
 
     private boolean updateToken(String token) {
-        if (this.token.equals(token)) {
+        if (Objects.equals(this.token, token)) {
             return false;
         }
-        validatePushTokenFormat(token);
+        validatePushTokenFormatIfNotNull(token);
         this.token = token;
         return true;
     }
