@@ -52,6 +52,53 @@ class DeviceApiTest extends ApiTestSupport {
         verify(deviceService).registerDevice(memberUuid, request);
     }
 
+    @DisplayName("디바이스 정보 등록 시 token이 null이어도 허용한다.")
+    @Test
+    void registerDeviceInfo_allowNullToken() throws Exception {
+        // given
+        String memberUuid = UUID.randomUUID().toString();
+        DeviceRegistrationRequest request = new DeviceRegistrationRequest("device-uuid", "1.0.0", null, "iOS", "26", "iPhone 16 Pro");
+        given(authService.isOwner(any(), any())).willReturn(true);
+        JwtUserDetails userDetails = new JwtUserDetails(memberUuid);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+        // when & then
+        mockMvc.perform(post("/v1/members/{memberUuid}/devices", memberUuid)
+                        .with(authentication(authentication))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isOk());
+        verify(deviceService).registerDevice(memberUuid, request);
+    }
+
+    @DisplayName("디바이스 정보 등록 시 uuid가 null이면 불허한다.")
+    @Test
+    void registerDeviceInfo_disallowNullUuid() throws Exception {
+        // given
+        String memberUuid = UUID.randomUUID().toString();
+        DeviceRegistrationRequest request = new DeviceRegistrationRequest(null, "1.0.0", "push-token", "iOS", "26", "iPhone 16 Pro");
+        given(authService.isOwner(any(), any())).willReturn(true);
+        JwtUserDetails userDetails = new JwtUserDetails(memberUuid);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+        // when & then
+        mockMvc.perform(post("/v1/members/{memberUuid}/devices", memberUuid)
+                        .with(authentication(authentication))
+                        .with(SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+    }
+
     @DisplayName("푸시 토큰을 저장한다.")
     @Test
     void updatePushToken() throws Exception {

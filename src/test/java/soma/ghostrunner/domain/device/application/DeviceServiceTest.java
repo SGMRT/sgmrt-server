@@ -37,7 +37,8 @@ class DeviceServiceTest extends IntegrationTestSupport {
         deviceRepository.save(device);
     }
 
-    // findDevicesByMemberIds 테스트
+    /* findDevicesByMemberIds 테스트 */
+
     @DisplayName("주어진 회원 ID 목록에 해당하는 디바이스 정보를 조회한다.")
     @Test
     void findDevicesByMemberIds_success() {
@@ -68,7 +69,8 @@ class DeviceServiceTest extends IntegrationTestSupport {
         assertThat(devices).isEmpty();
     }
 
-    // registerDevice 테스트
+    /* registerDevice 테스트 */
+
     @DisplayName("새로운 디바이스 정보를 저장한다.")
     @Test
     void registerDevice_success() {
@@ -156,7 +158,45 @@ class DeviceServiceTest extends IntegrationTestSupport {
                 .hasMessageContaining("Device UUID는 필수입니다.");
     }
 
-    // saveMemberToken 테스트 (deprecated 메서드)
+    @DisplayName("OS 정보와 모델명이 null인 경우 기본값으로 저장된다.")
+    @Test
+    void registerDevice_nullOsAndModel() {
+        // given
+        String pushToken = "ExponentPushToken[yyyy]";
+        DeviceRegistrationRequest request = new DeviceRegistrationRequest(
+                "device-uuid",
+                "1.0.0",
+                pushToken,
+                null,
+                null,
+                null
+        );
+
+        // when
+        deviceService.registerDevice(member.getUuid(), request);
+
+        // then
+        Device device = deviceRepository.findByUuid("device-uuid").orElseThrow();
+        assertThat(device.getOsName()).isEqualTo("unknown");
+        assertThat(device.getOsVersion()).isEqualTo("unknown");
+        assertThat(device.getModelName()).isEqualTo("unknown");
+    }
+
+    @DisplayName("푸쉬토큰이 null인 경우에도 디바이스 정보가 저장된다.")
+    @Test
+    void registerDevice_nullPushToken() {
+        // given
+        DeviceRegistrationRequest request = createDeviceRequest("device-uuid", null);
+
+        // when
+        deviceService.registerDevice(member.getUuid(), request);
+
+        // then
+        Device device = deviceRepository.findByUuid("device-uuid").orElseThrow();
+        assertThat(device.getToken()).isNull();
+    }
+
+    /* saveMemberToken 테스트 (deprecated 메서드) */
 
     @DisplayName("새로운 푸쉬 토큰을 저장한다.")
     @Deprecated(since = "v1.0.4 PushToken 저장 방식 변경으로 인한 사용 중단; registerDevice 활용 (클라이언트 하위호환을 위해 남겨둠)")
