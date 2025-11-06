@@ -122,7 +122,7 @@ public class NoticeApi {
      *  Deprecated API  *
      * * * * * * * * * **/
 
-    @Hidden
+//    @Hidden
     @Deprecated(since = "클라 v1.0.3 이하 호환을 위해 남겨둠")
     @GetMapping("/v1/notices")
     public PagedModel<NoticeDetailedResponse> getAllNoticesV1(
@@ -139,7 +139,7 @@ public class NoticeApi {
         return new PagedModel<>(noticePage);
     }
 
-    @Hidden
+//    @Hidden
     @Deprecated(since = "클라 v1.0.3 이하 호환을 위해 남겨둠")
     @GetMapping("/v1/notices/active")
     public List<NoticeDetailedResponse> getActiveNoticesV1(
@@ -153,12 +153,12 @@ public class NoticeApi {
         return Collections.singletonList(dummyNoticeDetailedResponse());
     }
 
-    @Hidden
+//    @Hidden
     @Deprecated(since = "클라 v1.0.3 이하 호환을 위해 남겨둠")
     @GetMapping("/v1/notices/{noticeId}")
     public NoticeDetailedResponse getNoticeV1(@PathVariable("noticeId") Long id) {
         // 고정된 공지사항 반환
-        return dummyNoticeDetailedResponse();
+        return dummyNoticeDetailedResponse(id);
     }
 
     @Hidden
@@ -171,8 +171,12 @@ public class NoticeApi {
     }
 
     private NoticeDetailedResponse dummyNoticeDetailedResponse() {
+        return dummyNoticeDetailedResponse(1L);
+    }
+
+    private NoticeDetailedResponse dummyNoticeDetailedResponse(long id) {
         return new NoticeDetailedResponse(
-                1L,
+                id,
                 "앱을 업데이트해주세요!",
                 NoticeType.GENERAL,
                 null,
