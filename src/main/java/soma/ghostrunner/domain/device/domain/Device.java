@@ -36,7 +36,7 @@ public class Device extends BaseTimeEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    @Column(unique = false, nullable = false) // soft delete로 인해 unique=false 불가. 로직으로 중복 제거 필요
+    @Column(unique = false, nullable = true) // soft delete로 인해 unique=false 불가. 로직으로 중복 제거 필요
     private String token;
 
     @Builder.Default
@@ -121,7 +121,14 @@ public class Device extends BaseTimeEntity {
 
     private static void validatedEssentialFields(String token, String uuid) {
         // 푸쉬 토큰은  null 가능, 단 UUID는 필수
+        validatePushTokenFormatIfNotNull(token);
         Assert.notNull(uuid, "Device UUID는 null일 수 없습니다.");
+    }
+
+    private static void validatePushTokenFormatIfNotNull(String token) {
+        if(token != null) {
+            validatePushTokenFormat(token);
+        }
     }
 
     private boolean updateMember(Member member) {
@@ -139,10 +146,7 @@ public class Device extends BaseTimeEntity {
         if (Objects.equals(this.token, token)) {
             return false;
         }
-        if (token != null) {
-            // 토큰 null로 변경 가능
-            validatePushTokenFormat(token);
-        }
+        validatePushTokenFormatIfNotNull(token);
         this.token = token;
         return true;
     }

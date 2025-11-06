@@ -103,7 +103,7 @@ class DeviceServiceTest extends IntegrationTestSupport {
         // when & then
         assertThatThrownBy(() -> deviceService.registerDevice(member.getUuid(), request))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("올바른 Push Token 방식이 아닙니다");
+                .hasMessageContaining("올바른 푸쉬 토큰 방식이 아닙니다");
     }
 
     @DisplayName("동일한 기기 UUID의 디바이스 정보가 존재한다면 기존 정보를 업데이트한다.")
