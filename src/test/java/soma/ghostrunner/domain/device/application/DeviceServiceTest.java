@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification;
+package soma.ghostrunner.domain.device.application;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -8,10 +8,9 @@ import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
-import soma.ghostrunner.domain.notification.application.DeviceService;
-import soma.ghostrunner.domain.notification.dao.DeviceRepository;
-import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.domain.device.api.dto.DeviceRegistrationRequest;
+import soma.ghostrunner.domain.device.dao.DeviceRepository;
+import soma.ghostrunner.domain.device.domain.Device;
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
 
 import java.util.List;

@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification.dao;
+package soma.ghostrunner.domain.device.dao;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.domain.device.domain.Device;
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 

@@ -1,7 +1,8 @@
-package soma.ghostrunner.domain.notification.domain;
+package soma.ghostrunner.domain.device.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import soma.ghostrunner.domain.device.domain.Device;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
 

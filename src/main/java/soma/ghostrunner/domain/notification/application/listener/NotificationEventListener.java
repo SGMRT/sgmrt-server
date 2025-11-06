@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification.listener;
+package soma.ghostrunner.domain.notification.application.listener;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

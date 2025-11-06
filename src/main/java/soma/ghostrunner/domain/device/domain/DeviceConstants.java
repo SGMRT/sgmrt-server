@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification.domain;
+package soma.ghostrunner.domain.device.domain;
 
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
 

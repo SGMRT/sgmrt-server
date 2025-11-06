@@ -10,7 +10,7 @@ import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
 import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
 import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
 import soma.ghostrunner.domain.notification.client.ExpoPushClient;
-import soma.ghostrunner.domain.notification.dao.DeviceRepository;
+import soma.ghostrunner.domain.device.dao.DeviceRepository;
 import soma.ghostrunner.domain.notification.exception.ExpoDeviceNotRegisteredException;
 import soma.ghostrunner.global.clients.discord.DiscordWebhookClient;
 

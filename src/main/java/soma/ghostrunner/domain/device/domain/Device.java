@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification.domain;
+package soma.ghostrunner.domain.device.domain;
 
 
 import jakarta.persistence.*;
@@ -7,7 +7,7 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.springframework.util.Assert;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
+import soma.ghostrunner.domain.device.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
 

@@ -1,25 +1,15 @@
 package soma.ghostrunner.domain.notification.application;
 
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.notification.application.dto.NotificationBatchResult;
 import soma.ghostrunner.domain.notification.client.ExpoPushClient;
-import soma.ghostrunner.domain.notification.dao.NotificationRepository;
-import soma.ghostrunner.domain.notification.dao.DeviceRepository;
-import soma.ghostrunner.domain.notification.domain.Device;
-
-
-
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.BDDMockito.*;
+import soma.ghostrunner.domain.device.dao.DeviceRepository;
+import soma.ghostrunner.domain.device.domain.Device;
 
 @DisplayName("NotificationService 통합 테스트")
 class NotificationServiceTest extends IntegrationTestSupport {

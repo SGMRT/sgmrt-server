@@ -1,16 +1,16 @@
-package soma.ghostrunner.domain.notification.application;
+package soma.ghostrunner.domain.device.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
+import soma.ghostrunner.domain.device.dao.DeviceRepository;
+import soma.ghostrunner.domain.device.domain.Device;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
-import soma.ghostrunner.domain.notification.dao.DeviceRepository;
-import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.domain.device.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 import soma.ghostrunner.global.error.ErrorCode;

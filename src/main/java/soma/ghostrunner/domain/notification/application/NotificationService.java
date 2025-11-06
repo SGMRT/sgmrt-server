@@ -4,8 +4,9 @@ import io.sentry.spring.jakarta.tracing.SentrySpan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import soma.ghostrunner.domain.device.application.DeviceService;
 import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
-import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.domain.device.domain.Device;
 import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 

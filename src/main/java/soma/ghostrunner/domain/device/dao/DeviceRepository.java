@@ -1,8 +1,8 @@
-package soma.ghostrunner.domain.notification.dao;
+package soma.ghostrunner.domain.device.dao;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.domain.device.domain.Device;
 
 import java.util.List;
 import java.util.Optional;
