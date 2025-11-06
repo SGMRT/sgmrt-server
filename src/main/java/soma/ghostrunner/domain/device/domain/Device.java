@@ -62,7 +62,7 @@ public class Device extends BaseTimeEntity {
 
     @Builder.Default
     @Column(name = "model_name", nullable = true)
-    private String modelName = DeviceConstants.OS_MODEL_DEFAULT;
+    private String modelName = DeviceConstants.MODEL_NAME_DEFAULT;
 
     @Column(name = "deleted_at", nullable = true)
     private LocalDateTime deletedAt;
@@ -84,7 +84,7 @@ public class Device extends BaseTimeEntity {
                 .appVersion(appVersion != null ? appVersion : DeviceConstants.APP_VERSION_DEFAULT)
                 .osName(osName != null ? osName : DeviceConstants.OS_NAME_DEFAULT)
                 .osVersion(osVersion != null ? osVersion : DeviceConstants.OS_VERSION_DEFAULT)
-                .modelName(modelName != null ? modelName : DeviceConstants.OS_MODEL_DEFAULT)
+                .modelName(modelName != null ? modelName : DeviceConstants.MODEL_NAME_DEFAULT)
                 .build();
     }
 
