@@ -175,7 +175,7 @@ public class NoticeApi {
                 1L,
                 "앱을 업데이트해주세요!",
                 NoticeType.GENERAL,
-                "https://placehold.co/600x200/black/white?text=Ghost+Runner",
+                null,
                 "고스트러너 업데이트가 필요합니다. 앱스토어에서 최신 버전 업데이트 후 이용해주세요!",
                 0,
                 null,
