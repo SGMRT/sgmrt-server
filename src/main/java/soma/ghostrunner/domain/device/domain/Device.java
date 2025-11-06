@@ -13,6 +13,7 @@ import soma.ghostrunner.global.common.versioning.SemanticVersion;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -119,7 +120,7 @@ public class Device extends BaseTimeEntity {
     }
 
     private static void validatedEssentialFields(String token, String uuid) {
-        validatePushTokenFormat(token);
+        // 푸쉬 토큰은  null 가능, 단 UUID는 필수
         Assert.notNull(uuid, "Device UUID는 null일 수 없습니다.");
     }
 
@@ -135,10 +136,13 @@ public class Device extends BaseTimeEntity {
     }
 
     private boolean updateToken(String token) {
-        if (this.token.equals(token)) {
+        if (Objects.equals(this.token, token)) {
             return false;
         }
-        validatePushTokenFormat(token);
+        if (token != null) {
+            // 토큰 null로 변경 가능
+            validatePushTokenFormat(token);
+        }
         this.token = token;
         return true;
     }

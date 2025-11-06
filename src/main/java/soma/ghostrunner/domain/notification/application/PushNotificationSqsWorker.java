@@ -37,6 +37,7 @@ public class PushNotificationSqsWorker {
     @SqsListener(value = "${cloud.aws.sqs.push-queue-name}")
     public void handlePushMessage(final PushMessageDto pushMessageDto) throws IOException {
         if (pushMessageDto.pushToken() == null || pushMessageDto.pushToken().isEmpty()) {
+            log.warn("푸쉬 토큰이 없으므로 건너뜀: {}", pushMessageDto);
             return;
         }
         try {

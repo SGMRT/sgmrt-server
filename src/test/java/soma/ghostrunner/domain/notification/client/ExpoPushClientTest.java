@@ -44,7 +44,6 @@ class ExpoPushClientTest {
         ReflectionTestUtils.setField(expoPushClient, "pushTaskExecutor", pushTaskExecutor);
     }
 
-
     @DisplayName("Expo 서버로부터 성공 응답을 받으면 성공 결과를 반환한다.")
     @Test
     void pushAsync_success() throws Exception {

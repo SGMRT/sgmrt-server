@@ -44,12 +44,19 @@ public class NotificationService {
     }
 
     private int push(String title, String body, Map<String, Object> data, List<Device> devices) {
-        List<PushMessageDto> pushMessages = devices.stream()
+        List<Device> pushAllowedDevices = filterPushAllowedDevices(devices);
+        List<PushMessageDto> pushMessages = pushAllowedDevices.stream()
                 .map(device -> new PushMessageDto(device.getToken(), title, body, data, null))
                 .toList();
         sqsSender.sendMany(pushMessages);
         log.info("{}개의 푸시 알림 대기열 등록 완료 (푸시 알림: title={}, body={}, data={})", pushMessages.size(), title, body, data);
         return pushMessages.size();
+    }
+
+    private List<Device> filterPushAllowedDevices(List<Device> devices) {
+        return devices.stream()
+                .filter(device -> device.getToken() != null && !device.getToken().isBlank())
+                .toList();
     }
 
 }
