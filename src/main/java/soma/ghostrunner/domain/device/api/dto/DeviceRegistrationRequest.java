@@ -15,7 +15,6 @@ public class DeviceRegistrationRequest {
     @NotBlank
     private String appVersion;
 
-    @NotBlank
     private String pushToken;
 
     private String osName;
