@@ -16,6 +16,7 @@ import soma.ghostrunner.domain.notification.exception.PushHistoryNotFound;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -33,9 +34,13 @@ public class PushService {
                 .filter(this::isPushAllowed)
                 .toList();
         if(pushableDevices.isEmpty()) return 0;
-        PushHistory history = pushHistoryRepository.save(PushHistory.of(recipientId, content.title(), content.body(), content.data()));
-        content.data().put("id", history.getId());
-        return publishPushMessage(content.title(), content.body(), content.data(), pushableDevices);
+        PushHistory history = createAndSavePushHistory(recipientId, content);
+        content.data().put("messageUuid", history.getUuid());
+        return publishPushMessage(content.title(), content.body(), content.data(), pushableDevices, history.getUuid());
+    }
+
+    private PushHistory createAndSavePushHistory(Long recipientId, PushContent content) {
+        return pushHistoryRepository.save(PushHistory.of(recipientId, content.title(), content.body(), content.data()));
     }
 
     @SentrySpan
@@ -44,18 +49,19 @@ public class PushService {
         List<Device> pushableDevices = deviceService.findDevicesByAppVersions(content.versionRange()).stream()
                 .filter(this::isPushAllowed)
                 .toList();
-        return publishPushMessage(content.title(), content.body(), content.data(), pushableDevices);
+        var messageUuid = UUID.randomUUID().toString();
+        return publishPushMessage(content.title(), content.body(), content.data(), pushableDevices, messageUuid);
     }
 
     @Transactional
-    public void markAsRead(Long pushId) {
-        PushHistory history = pushHistoryRepository.findById(pushId).orElseThrow(PushHistoryNotFound::new);
+    public void markAsRead(String messageUuid) {
+        PushHistory history = pushHistoryRepository.findByUuid(messageUuid).orElseThrow(PushHistoryNotFound::new);
         history.markAsRead(LocalDateTime.now());
     }
 
-    private int publishPushMessage(String title, String body, Map<String, Object> data, List<Device> devices) {
+    private int publishPushMessage(String title, String body, Map<String, Object> data, List<Device> devices, String messageUuid) {
         List<PushMessage> pushMessages = devices.stream()
-                .map(device -> new PushMessage(List.of(device.getToken()), title, body, data))
+                .map(device -> new PushMessage(List.of(device.getToken()), title, body, data, messageUuid))
                 .toList();
         sqsSender.sendMany(pushMessages);
         log.info("{}개의 푸시 알림 대기열 등록 완료 (푸시 알림: title={}, body={}, data={})", pushMessages.size(), title, body, data);

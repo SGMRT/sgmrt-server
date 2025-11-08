@@ -87,9 +87,12 @@ class PushServiceTest extends IntegrationTestSupport {
         assertThat(capturedMessages).hasSize(1);
         assertThat(capturedMessages.get(0).pushTokens()).contains("ExponentPushToken[1]");
 
-        // SQS로 전송된 data에 history ID 포함 검증
+        // SQS로 전송된 메시지 data에 history ID 포함 검증
         assertThat(capturedMessages.get(0).data())
-                .containsEntry("id", savedHistory.getId());
+                .containsEntry("messageUuid", savedHistory.getUuid());
+        // SQS 전송 메시지에 messageUuid 포함 검증
+        assertThat(capturedMessages).extracting("messageUuid")
+                .containsOnly(savedHistory.getUuid());
     }
 
     @DisplayName("수신자에게 푸시 허용 기기가 없는 경우 PushHistory 저장 없이 종료한다.")
@@ -145,7 +148,10 @@ class PushServiceTest extends IntegrationTestSupport {
 
         // SQS로 전송된 data에 history ID 포함 검증
         assertThat(capturedMessages.get(0).data())
-                .containsEntry("id", savedHistory.getId());
+                .containsEntry("messageUuid", savedHistory.getUuid());
+        // SQS 전송 메시지에 messageUuid 포함 검증
+        assertThat(capturedMessages).extracting("messageUuid")
+                .containsOnly(savedHistory.getUuid());
     }
 
     /* broadcast() 테스트 */
@@ -195,7 +201,7 @@ class PushServiceTest extends IntegrationTestSupport {
         pushHistoryRepository.save(history);
 
         // when
-        pushService.markAsRead(history.getId());
+        pushService.markAsRead(history.getUuid());
 
         // then
         PushHistory savedHistory = pushHistoryRepository.findById(history.getId()).orElseThrow();
@@ -206,7 +212,7 @@ class PushServiceTest extends IntegrationTestSupport {
     @Test
     void markAsRead_pushHistoryNotFound() {
         // when, then
-        assertThatThrownBy(() -> pushService.markAsRead(999L))
+        assertThatThrownBy(() -> pushService.markAsRead("uuid"))
                 .isInstanceOf(PushHistoryNotFound.class);
     }
 

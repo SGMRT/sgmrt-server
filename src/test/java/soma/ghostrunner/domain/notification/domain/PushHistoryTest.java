@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,6 +27,7 @@ class PushHistoryTest {
 
         // then
         assertThat(history).isNotNull();
+        assertThat(history.getUuid()).isNotBlank();
         assertThat(history.getMemberId()).isEqualTo(memberId);
         assertThat(history.getStatus()).isEqualTo(NotificationStatus.CREATED);
         assertThat(history.getTitle()).isEqualTo(title);
@@ -58,5 +60,18 @@ class PushHistoryTest {
         assertThat(history.getStatus()).isEqualTo(NotificationStatus.DELIVERED);
     }
 
-}
+    @DisplayName("uuid는 of 생성 시 자동 생성되며 형식이 유효하다")
+    @Test
+    void uuid_is_generated_and_valid_format() {
+        // when
+        PushHistory history = PushHistory.of(1L, "t", "b", new HashMap<>());
 
+        // then
+        String uuid = history.getUuid();
+        assertThat(uuid).isNotBlank();
+        assertThat(uuid.length()).isEqualTo(36); // 8-4-4-4-12
+        UUID parsed = UUID.fromString(uuid);
+        assertThat(parsed).isNotNull();
+    }
+
+}

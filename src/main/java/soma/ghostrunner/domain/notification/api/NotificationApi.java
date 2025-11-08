@@ -20,9 +20,9 @@ import soma.ghostrunner.global.error.ErrorCode;
 public class NotificationApi {
     private final PushService pushService;
 
-    @PostMapping("/v1/push/{pushId}")
-    public void markPushNotificationAsRead(@PathVariable("pushId") Long pushId) {
-        pushService.markAsRead(pushId);
+    @PostMapping("/v1/push/{messageUuid}")
+    public void markPushNotificationAsRead(@PathVariable("messageUuid") String messageUuid) {
+        pushService.markAsRead(messageUuid);
     }
 
     @Operation(summary = "푸시알림 전송 (어드민 전용)")

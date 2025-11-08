@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -121,11 +122,11 @@ class ExpoPushClientTest {
 
     // --- helper methods ---
     private PushMessage createPushMessage(String pushToken) {
-        return new PushMessage(List.of(pushToken), "알림 제목", "알림 본문", Collections.emptyMap());
+        return new PushMessage(List.of(pushToken), "알림 제목", "알림 본문", Collections.emptyMap(), UUID.randomUUID().toString());
     }
 
     private PushMessage createPushMessage(List<String> pushTokens) {
-        return new PushMessage(pushTokens, "알림 제목", "알림 본문", Collections.emptyMap());
+        return new PushMessage(pushTokens, "알림 제목", "알림 본문", Collections.emptyMap(), UUID.randomUUID().toString());
     }
 
     private List<TicketResponse.Ticket> createSuccessTickets(String ticketId) {

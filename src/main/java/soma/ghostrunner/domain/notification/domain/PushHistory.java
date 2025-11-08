@@ -8,6 +8,7 @@ import soma.ghostrunner.global.common.converter.JsonToMapConverter;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 @Getter
 @Entity
@@ -19,6 +20,10 @@ public class PushHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, unique = true, length = 36, updatable = false)
+    @Builder.Default
+    private String uuid = UUID.randomUUID().toString();
 
     @Column(nullable = false)
     private Long memberId;

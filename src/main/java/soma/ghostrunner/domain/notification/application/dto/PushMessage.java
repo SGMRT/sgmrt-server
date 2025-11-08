@@ -7,9 +7,11 @@ public record PushMessage(
         List<String> pushTokens,
         String title,
         String body,
-        Map<String, Object> data
-) {
-    public static PushMessage of (List<String> pushTokens, String title, String body, Map<String, Object> data) {
-        return new PushMessage(pushTokens, title, body, data);
+        Map<String, Object> data,
+        String messageUuid) {
+
+    public static PushMessage of (List<String> pushTokens, String title, String body, Map<String, Object> data, String messageUuid) {
+        return new PushMessage(pushTokens, title, body, data, messageUuid);
     }
+
 }

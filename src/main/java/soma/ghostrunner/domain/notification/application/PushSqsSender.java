@@ -31,6 +31,7 @@ public class PushSqsSender {
                 .payload(message));
     }
 
+    /** SQS 배치 발행 (최대 10건씩 나누어 발행) */
     public void sendMany(final List<PushMessage> messages) {
         List<Message<PushMessage>> sqsMessages = messages.stream()
                 .map(m -> MessageBuilder.withPayload(m).build())

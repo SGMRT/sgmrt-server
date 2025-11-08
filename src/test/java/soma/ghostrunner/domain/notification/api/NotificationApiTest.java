@@ -15,10 +15,10 @@ class NotificationApiTest extends ApiTestSupport {
     @Test
     void markPushNotificationAsRead_success() throws Exception {
         // given
-        Long pushId = 1L;
+        var pushId = "uuid";
 
         // when & then
-        mockMvc.perform(MockMvcRequestBuilders.post("/v1/push/{pushId}", pushId))
+        mockMvc.perform(MockMvcRequestBuilders.post("/v1/push/{pushUuid}", pushId))
                 .andDo(print())
                 .andExpect(status().isOk());
 
