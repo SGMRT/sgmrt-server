@@ -13,6 +13,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import soma.ghostrunner.DatabaseCleanserExtension;
@@ -25,6 +26,7 @@ import soma.ghostrunner.domain.notice.domain.Notice;
 import soma.ghostrunner.domain.notice.domain.enums.NoticeType;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
 import soma.ghostrunner.domain.notification.application.PushService;
+import soma.ghostrunner.domain.notification.application.PushSqsSender;
 import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrlItem;
 import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrls;
 import soma.ghostrunner.domain.notification.application.dto.PushContent;
@@ -52,7 +54,8 @@ class PushEventListenerIntegrationTest extends IntegrationTestSupport {
     @Autowired RunningRepository runningRepository;
     @Autowired CourseRepository courseRepository;
 
-    @MockitoBean PushService pushService; // 외부 전송 막기 위해 목으로 대체
+    @MockitoSpyBean PushService pushService; // 실제 빈에 스파이 적용
+    @MockitoBean PushSqsSender pushSqsSender; // SQS 연동은 모킹
 
     @Autowired ApplicationEventPublisher eventPublisher;
     @Autowired PlatformTransactionManager transactionManager;

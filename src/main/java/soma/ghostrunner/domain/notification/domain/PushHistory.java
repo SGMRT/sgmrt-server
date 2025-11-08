@@ -4,7 +4,8 @@ package soma.ghostrunner.domain.notification.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import soma.ghostrunner.global.common.converter.JsonToMapConverter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -15,6 +16,9 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "push_history", indexes = {
+        @Index(name = "idx_push_history_member_id", columnList = "memberId"),
+})
 public class PushHistory {
 
     @Id
@@ -39,13 +43,12 @@ public class PushHistory {
     @Column
     private String body;
 
-    @Convert(converter = JsonToMapConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> data;
 
-    @Builder.Default
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
     @Column
     private LocalDateTime readAt;

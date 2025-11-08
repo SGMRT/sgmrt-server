@@ -33,7 +33,6 @@ class PushHistoryTest {
         assertThat(history.getTitle()).isEqualTo(title);
         assertThat(history.getBody()).isEqualTo(body);
         assertThat(history.getData()).containsEntry("k", "v");
-        assertThat(history.getCreatedAt()).isNotNull();
         assertThat(history.getReadAt()).isNull();
     }
 
