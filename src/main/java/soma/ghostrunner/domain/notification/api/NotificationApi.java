@@ -7,7 +7,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import soma.ghostrunner.domain.notification.api.dto.NotificationBroadcastRequest;
 import soma.ghostrunner.domain.notification.api.dto.NotificationSendRequest;
-import soma.ghostrunner.domain.notification.application.NotificationService;
+import soma.ghostrunner.domain.notification.application.PushService;
 import soma.ghostrunner.domain.notification.exception.IllegalNotificationBroadcastException;
 import soma.ghostrunner.global.common.validator.auth.AdminOnly;
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
@@ -17,13 +17,13 @@ import soma.ghostrunner.global.error.ErrorCode;
 @RestController
 @RequiredArgsConstructor
 public class NotificationApi {
-    private final NotificationService notificationService;
+    private final PushService pushService;
 
     @Operation(summary = "푸시알림 전송 (어드민 전용)")
     @AdminOnly
     @PostMapping("/v1/admin/notifications")
     public void sendNotification(@RequestBody NotificationSendRequest request) {
-        notificationService.sendPushNotification(request.getUserIds(), request.getTitle(), request.getBody(), request.getData(), VersionRange.ALL_VERSIONS);
+        pushService.sendPushNotification(request.getUserIds(), request.getTitle(), request.getBody(), request.getData(), VersionRange.ALL_VERSIONS);
     }
 
     @Operation(summary = "푸시알림 브로드캐스트 (어드민 전용)")
@@ -32,7 +32,7 @@ public class NotificationApi {
     public String broadcastNotification(@ModelAttribute NotificationBroadcastRequest request) {
         try {
             VersionRange versionRange = determineVersionRange(request);
-            int count = notificationService.broadcastPushNotification(request.getTitle(), request.getBody(), request.dataMap(), versionRange);
+            int count = pushService.broadcastPushNotification(request.getTitle(), request.getBody(), request.dataMap(), versionRange);
             return "Sent " + count + " push notifications.";
         } catch (Exception e) {
             throw new IllegalNotificationBroadcastException(ErrorCode.ILLEGAL_NOTIFICATION_BROADCAST);

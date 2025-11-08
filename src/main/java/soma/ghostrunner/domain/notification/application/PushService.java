@@ -5,9 +5,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import soma.ghostrunner.domain.device.application.DeviceService;
-import soma.ghostrunner.domain.notification.application.dto.PushMessageDto;
+import soma.ghostrunner.domain.notification.application.dto.PushMessage;
 import soma.ghostrunner.domain.device.domain.Device;
-import soma.ghostrunner.domain.notification.domain.event.NotificationCommand;
+import soma.ghostrunner.domain.notification.application.dto.PushCommand;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 
 import java.util.List;
@@ -16,12 +16,12 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class NotificationService {
+public class PushService {
 
-    private final PushNotificationSqsSender sqsSender;
+    private final PushSqsSender sqsSender;
     private final DeviceService deviceService;
 
-    public void sendPushNotification(NotificationCommand command) {
+    public void sendPushNotification(PushCommand command) {
         sendPushNotification(
                 command.memberIds(),
                 command.title(),
@@ -45,8 +45,8 @@ public class NotificationService {
 
     private int push(String title, String body, Map<String, Object> data, List<Device> devices) {
         List<Device> pushAllowedDevices = filterPushAllowedDevices(devices);
-        List<PushMessageDto> pushMessages = pushAllowedDevices.stream()
-                .map(device -> new PushMessageDto(device.getToken(), title, body, data, null))
+        List<PushMessage> pushMessages = pushAllowedDevices.stream()
+                .map(device -> new PushMessage(List.of(device.getToken()), title, body, data))
                 .toList();
         sqsSender.sendMany(pushMessages);
         log.info("{}개의 푸시 알림 대기열 등록 완료 (푸시 알림: title={}, body={}, data={})", pushMessages.size(), title, body, data);

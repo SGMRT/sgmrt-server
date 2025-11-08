@@ -12,10 +12,10 @@ import soma.ghostrunner.domain.device.dao.DeviceRepository;
 import soma.ghostrunner.domain.device.domain.Device;
 
 @DisplayName("NotificationService 통합 테스트")
-class NotificationServiceTest extends IntegrationTestSupport {
+class PushServiceTest extends IntegrationTestSupport {
 
     @Autowired
-    private NotificationService notificationService;
+    private PushService pushService;
 
     @MockitoBean
     private ExpoPushClient expoPushClient;

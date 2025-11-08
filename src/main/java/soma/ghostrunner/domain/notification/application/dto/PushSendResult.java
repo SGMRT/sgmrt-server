@@ -1,7 +1,7 @@
 package soma.ghostrunner.domain.notification.application.dto;
 
 
-public record NotificationSendResult (
+public record PushSendResult(
         String pushToken,
         String ticketId,
         SendStatus status,
@@ -11,12 +11,12 @@ public record NotificationSendResult (
         SUCCESS, FAILURE
     }
 
-    public static NotificationSendResult ofSuccess(String pushToken, String ticketId) {
-        return new NotificationSendResult(pushToken, ticketId, SendStatus.SUCCESS, null);
+    public static PushSendResult ofSuccess(String pushToken, String ticketId) {
+        return new PushSendResult(pushToken, ticketId, SendStatus.SUCCESS, null);
     }
 
-    public static NotificationSendResult ofFailure(String pushToken, String errorMessage) {
-        return new NotificationSendResult(pushToken, null, SendStatus.FAILURE, errorMessage);
+    public static PushSendResult ofFailure(String pushToken, String errorMessage) {
+        return new PushSendResult(pushToken, null, SendStatus.FAILURE, errorMessage);
     }
 
     public boolean isSuccess() {
