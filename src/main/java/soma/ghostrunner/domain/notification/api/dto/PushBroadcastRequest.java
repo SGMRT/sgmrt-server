@@ -10,7 +10,7 @@ import java.util.Map;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class NotificationBroadcastRequest {
+public class PushBroadcastRequest {
     private String title;
     private String body;
     private String data;

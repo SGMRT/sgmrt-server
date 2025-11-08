@@ -8,7 +8,7 @@ import java.util.Map;
 
 @Getter
 @AllArgsConstructor
-public class NotificationSendRequest {
+public class PushSendRequest {
     private List<Long> userIds;
     private String title;
     private String body;

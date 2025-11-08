@@ -10,7 +10,7 @@ import soma.ghostrunner.global.common.converter.JsonToMapConverter;
 
 import java.util.Map;
 
-@Deprecated(since = "푸시 알림 전송 내역 DB 저장은 보류. 향후 필요 시 구현 예정")
+@Deprecated(since = "푸시 알림 전송 내역 DB 저장은 보류. 향후 필요 시 구현 예정", forRemoval = true)
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

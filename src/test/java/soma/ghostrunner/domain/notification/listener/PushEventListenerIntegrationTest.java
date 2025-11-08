@@ -52,8 +52,7 @@ class PushEventListenerIntegrationTest extends IntegrationTestSupport {
     @Autowired RunningRepository runningRepository;
     @Autowired CourseRepository courseRepository;
 
-    @MockitoBean
-    PushService pushService; // 외부 전송 막기 위해 목으로 대체
+    @MockitoBean PushService pushService; // 외부 전송 막기 위해 목으로 대체
 
     @Autowired ApplicationEventPublisher eventPublisher;
     @Autowired PlatformTransactionManager transactionManager;
