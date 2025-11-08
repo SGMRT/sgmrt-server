@@ -4,12 +4,16 @@ import io.sentry.spring.jakarta.tracing.SentrySpan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.device.application.DeviceService;
 import soma.ghostrunner.domain.notification.application.dto.PushMessage;
 import soma.ghostrunner.domain.device.domain.Device;
 import soma.ghostrunner.domain.notification.application.dto.PushContent;
-import soma.ghostrunner.global.common.versioning.VersionRange;
+import soma.ghostrunner.domain.notification.dao.PushHistoryRepository;
+import soma.ghostrunner.domain.notification.domain.PushHistory;
+import soma.ghostrunner.domain.notification.exception.PushHistoryNotFound;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -20,23 +24,33 @@ public class PushService {
 
     private final PushSqsSender sqsSender;
     private final DeviceService deviceService;
+    private final PushHistoryRepository pushHistoryRepository;
 
-    public void push(Long recipientId, PushContent content) {
-        push(List.of(recipientId), content.title(), content.body(), content.data(), content.versionRange());
+    @SentrySpan
+    public int push(Long recipientId, PushContent content) {
+        List<Device> pushableDevices = deviceService.findDevicesByMemberIdsAndAppVersions(List.of(recipientId), content.versionRange())
+                .stream()
+                .filter(this::isPushAllowed)
+                .toList();
+        if(pushableDevices.isEmpty()) return 0;
+        PushHistory history = pushHistoryRepository.save(PushHistory.of(recipientId, content.title(), content.body(), content.data()));
+        content.data().put("id", history.getId());
+        return publishPushMessage(content.title(), content.body(), content.data(), pushableDevices);
     }
 
     @SentrySpan
     public int broadcast(PushContent content) {
         // todo 회원 2천명인데 Device 페이징 조회해서 push 여러 번 호출해야겠지?
-        List<Device> devices = deviceService.findDevicesByAppVersions(content.versionRange());
-        return publishPushMessage(content.title(), content.body(), content.data(), devices);
+        List<Device> pushableDevices = deviceService.findDevicesByAppVersions(content.versionRange()).stream()
+                .filter(this::isPushAllowed)
+                .toList();
+        return publishPushMessage(content.title(), content.body(), content.data(), pushableDevices);
     }
 
-    @SentrySpan
-    public int push(List<Long> userIds, String title, String body, Map<String, Object> data, VersionRange versionRange) {
-        List<Device> devices = deviceService.findDevicesByMemberIdsAndAppVersions(userIds, versionRange);
-        List<Device> pushAllowedDevices = filterPushAllowedDevices(devices);
-        return publishPushMessage(title, body, data, pushAllowedDevices);
+    @Transactional
+    public void markAsRead(Long pushId) {
+        PushHistory history = pushHistoryRepository.findById(pushId).orElseThrow(PushHistoryNotFound::new);
+        history.markAsRead(LocalDateTime.now());
     }
 
     private int publishPushMessage(String title, String body, Map<String, Object> data, List<Device> devices) {
@@ -48,10 +62,8 @@ public class PushService {
         return pushMessages.size();
     }
 
-    private List<Device> filterPushAllowedDevices(List<Device> devices) {
-        return devices.stream()
-                .filter(device -> device.getToken() != null && !device.getToken().isBlank())
-                .toList();
+    private boolean isPushAllowed(Device device) {
+        return device.getToken() != null && !device.getToken().isBlank();
     }
 
 }

@@ -10,6 +10,7 @@ import soma.ghostrunner.domain.notification.application.dto.PushContent;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +31,7 @@ public class PushContentAssembler {
         return PushContent.of(
                 "누군가 내 코스를 달렸어요!",
                 runEvent.runnerNickname() + " 님이 회원님의 " + determineCourseName(runEvent.courseName()) + "를 완주했습니다.",
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.courseRunUrlItems(runEvent.courseId()))
+                new HashMap<>(Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.courseRunUrlItems(runEvent.courseId())))
         );
     }
 
@@ -38,7 +39,7 @@ public class PushContentAssembler {
         return PushContent.of(
                 "고스티가 완성됐어요",
                 determineCourseName(course.getName()) + "에 고스티가 생성됐어요!",
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.pacemakerCreationUrlItems(course.getId()))
+                new HashMap<>(Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.pacemakerCreationUrlItems(course.getId())))
         );
     }
 
@@ -47,7 +48,7 @@ public class PushContentAssembler {
         return PushContent.of(
                 "개인 기록 갱신!",
                 "축하해요! " + determineCourseName(runEvent.courseName()) + "에서 개인 최고 기록을 갱신했어요!",
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.topRecordUpdateUrlItems(runEvent.courseId()))
+                new HashMap<>(Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.topRecordUpdateUrlItems(runEvent.courseId())))
         );
     }
 
@@ -57,7 +58,7 @@ public class PushContentAssembler {
         return PushContent.of(
                 "새로운 이벤트 공지가 등록되었어요",
                 notice.title(),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.eventNoticeUrlItems(notice.noticeId())),
+                new HashMap<>(Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.eventNoticeUrlItems(notice.noticeId()))),
                 NOTICE_AVAILABLE_VERSION_RANGE
         );
     }
@@ -67,7 +68,7 @@ public class PushContentAssembler {
         return PushContent.of(
                 "새로운 이벤트 " + eventNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(eventNotices),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.multiNoticeUrlItems()),
+                new HashMap<>(Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.multiNoticeUrlItems())),
                 NOTICE_AVAILABLE_VERSION_RANGE
         );
     }
@@ -77,7 +78,7 @@ public class PushContentAssembler {
         return PushContent.of(
                 "새로운 공지가 등록되었어요",
                 notice.title(),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.generalNoticeUrlItems(notice.noticeId())),
+                new HashMap<>(Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.generalNoticeUrlItems(notice.noticeId()))),
                 NOTICE_AVAILABLE_VERSION_RANGE
         );
     }
@@ -87,7 +88,7 @@ public class PushContentAssembler {
         return PushContent.of(
                 "새로운 공지 " + generalNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(generalNotices),
-                Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.multiNoticeUrlItems()),
+                new HashMap<>(Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.multiNoticeUrlItems())),
                 NOTICE_AVAILABLE_VERSION_RANGE
         );
     }
