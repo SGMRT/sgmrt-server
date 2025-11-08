@@ -63,7 +63,7 @@ class PushServiceTest extends IntegrationTestSupport {
 //                });
 //
 //        // when
-//        NotificationBatchResult result = notificationService.sendPushNotification(memberIds, "알림 제목", "알림 본문", Collections.emptyMap())
+//        NotificationBatchResult result = notificationService.push(memberIds, "알림 제목", "알림 본문", Collections.emptyMap())
 //                .join();
 //
 //        // then
@@ -93,7 +93,7 @@ class PushServiceTest extends IntegrationTestSupport {
 //                });
 //
 //        // when
-//        NotificationBatchResult result = notificationService.sendPushNotification(memberIds, "알림 제목", "알림 본문", Collections.emptyMap())
+//        NotificationBatchResult result = notificationService.push(memberIds, "알림 제목", "알림 본문", Collections.emptyMap())
 //                .join();
 //
 //        // then
@@ -126,7 +126,7 @@ class PushServiceTest extends IntegrationTestSupport {
 //                });
 //
 //        // when
-//        NotificationBatchResult result = notificationService.sendPushNotification(memberIds, "title", "body", Collections.emptyMap())
+//        NotificationBatchResult result = notificationService.push(memberIds, "title", "body", Collections.emptyMap())
 //                .join();
 //
 //        // then

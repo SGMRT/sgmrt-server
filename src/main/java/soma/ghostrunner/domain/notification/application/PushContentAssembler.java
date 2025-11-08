@@ -4,10 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
-import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
 import soma.ghostrunner.domain.notification.domain.deeplink.DeepLinkUrls;
-import soma.ghostrunner.domain.notification.application.dto.PushCommand;
+import soma.ghostrunner.domain.notification.application.dto.PushContent;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 
@@ -16,7 +15,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-public class PushCommandAssembler {
+public class PushContentAssembler {
 
     private final MemberService memberService;
     private static final String DEEPLINK_ITEM_KEY = "urls";
@@ -27,18 +26,16 @@ public class PushCommandAssembler {
 //            VersionRange.Operator.GREATER_THAN_OR_EQUALS);
 
     /** 본인 코스를 다른 러너가 달린 경우 */
-    public PushCommand buildCourseRunEvent(CourseRunEvent runEvent) {
-        return PushCommand.of(
-                List.of(runEvent.courseOwnerId()),
+    public PushContent buildCourseRunEvent(CourseRunEvent runEvent) {
+        return PushContent.of(
                 "누군가 내 코스를 달렸어요!",
                 runEvent.runnerNickname() + " 님이 회원님의 " + determineCourseName(runEvent.courseName()) + "를 완주했습니다.",
                 Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.courseRunUrlItems(runEvent.courseId()))
         );
     }
 
-    public PushCommand buildPacemakerCreatedEvent(Member member, Course course) {
-        return PushCommand.of(
-                List.of(member.getId()),
+    public PushContent buildPacemakerCreatedEvent(Course course) {
+        return PushContent.of(
                 "고스티가 완성됐어요",
                 determineCourseName(course.getName()) + "에 고스티가 생성됐어요!",
                 Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.pacemakerCreationUrlItems(course.getId()))
@@ -46,9 +43,8 @@ public class PushCommandAssembler {
     }
 
     /** 코스의 본인 최고 기록을 갱신한 경우 */
-    public PushCommand buildTopRecordUpdatedEvent(CourseRunEvent runEvent) {
-        return PushCommand.of(
-                List.of(runEvent.runnerId()),
+    public PushContent buildTopRecordUpdatedEvent(CourseRunEvent runEvent) {
+        return PushContent.of(
                 "개인 기록 갱신!",
                 "축하해요! " + determineCourseName(runEvent.courseName()) + "에서 개인 최고 기록을 갱신했어요!",
                 Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.topRecordUpdateUrlItems(runEvent.courseId()))
@@ -56,10 +52,9 @@ public class PushCommandAssembler {
     }
 
     /** 새로운 이벤트가 공개된 경우 (1개) */
-    public PushCommand buildSingleEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
+    public PushContent buildSingleEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
         var notice = eventNotices.get(0);
-        return PushCommand.of(
-                allMemberIds(),
+        return PushContent.of(
                 "새로운 이벤트 공지가 등록되었어요",
                 notice.title(),
                 Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.eventNoticeUrlItems(notice.noticeId())),
@@ -68,9 +63,8 @@ public class PushCommandAssembler {
     }
 
     /** 새로운 이벤트가 공개된 경우 (2개 이상) */
-    public PushCommand buildMultiEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
-        return PushCommand.of(
-                allMemberIds(),
+    public PushContent buildMultiEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
+        return PushContent.of(
                 "새로운 이벤트 " + eventNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(eventNotices),
                 Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.multiNoticeUrlItems()),
@@ -79,9 +73,8 @@ public class PushCommandAssembler {
     }
 
     /** 새로운 공지사항이 공개된 경우 (1개) */
-    public PushCommand buildSingleNoticeEvent(NoticeActivatedEvent.NoticeRecord notice) {
-        return PushCommand.of(
-                allMemberIds(),
+    public PushContent buildSingleNoticeEvent(NoticeActivatedEvent.NoticeRecord notice) {
+        return PushContent.of(
                 "새로운 공지가 등록되었어요",
                 notice.title(),
                 Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.generalNoticeUrlItems(notice.noticeId())),
@@ -90,9 +83,8 @@ public class PushCommandAssembler {
     }
 
     /** 새로운 공지사항이 공개된 경우 (2개 이상) */
-    public PushCommand buildMultiNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
-        return PushCommand.of(
-                allMemberIds(),
+    public PushContent buildMultiNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
+        return PushContent.of(
                 "새로운 공지 " + generalNotices.size() + "건이 등록되었어요",
                 buildMultiNoticeNotificationContent(generalNotices),
                 Map.of(DEEPLINK_ITEM_KEY, DeepLinkUrls.multiNoticeUrlItems()),
@@ -100,7 +92,7 @@ public class PushCommandAssembler {
         );
     }
 
-    public PushCommand buildNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
+    public PushContent buildNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> generalNotices) {
         if (generalNotices.size() == 1) {
             return buildSingleNoticeEvent(generalNotices.get(0));
         } else {
@@ -108,7 +100,7 @@ public class PushCommandAssembler {
         }
     }
 
-    public PushCommand buildEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
+    public PushContent buildEventNoticeEvent(List<NoticeActivatedEvent.NoticeRecord> eventNotices) {
         if (eventNotices.size() == 1) {
             return buildSingleEventNoticeEvent(eventNotices);
         } else {
