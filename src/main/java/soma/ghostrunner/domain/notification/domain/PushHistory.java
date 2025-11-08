@@ -24,6 +24,11 @@ public class PushHistory {
     private Long memberId;
 
     @Column
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private NotificationStatus status = NotificationStatus.CREATED;
+
+    @Column
     private String title;
 
     @Column
@@ -32,9 +37,10 @@ public class PushHistory {
     @Convert(converter = JsonToMapConverter.class)
     private Map<String, Object> data;
 
+    @Builder.Default
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column
     private LocalDateTime readAt;
@@ -50,6 +56,7 @@ public class PushHistory {
 
     public void markAsRead(LocalDateTime readAt) {
         if (this.readAt == null) {
+            this.status = NotificationStatus.DELIVERED;
             this.readAt = readAt;
         }
     }

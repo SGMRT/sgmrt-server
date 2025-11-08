@@ -11,9 +11,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PushHistoryTest {
 
-    @DisplayName("PushHistory.of로 객체를 생성할 수 있고 필드가 정상 설정된다")
+    @DisplayName("PushHistory.of로 객체를 생성하면 필드가 정상 설정된다")
     @Test
-    void of_createsPushHistory() {
+    void of() {
         // given
         Long memberId = 123L;
         String title = "제목";
@@ -27,6 +27,7 @@ class PushHistoryTest {
         // then
         assertThat(history).isNotNull();
         assertThat(history.getMemberId()).isEqualTo(memberId);
+        assertThat(history.getStatus()).isEqualTo(NotificationStatus.CREATED);
         assertThat(history.getTitle()).isEqualTo(title);
         assertThat(history.getBody()).isEqualTo(body);
         assertThat(history.getData()).containsEntry("k", "v");
@@ -46,6 +47,7 @@ class PushHistoryTest {
 
         // then
         assertThat(history.getReadAt()).isEqualTo(first);
+        assertThat(history.getStatus()).isEqualTo(NotificationStatus.DELIVERED);
 
         // when - 두번째 호출은 기존 값 유지
         LocalDateTime second = LocalDateTime.of(2025, 2, 2, 12, 0);
@@ -53,6 +55,7 @@ class PushHistoryTest {
 
         // then
         assertThat(history.getReadAt()).isEqualTo(first);
+        assertThat(history.getStatus()).isEqualTo(NotificationStatus.DELIVERED);
     }
 
 }
