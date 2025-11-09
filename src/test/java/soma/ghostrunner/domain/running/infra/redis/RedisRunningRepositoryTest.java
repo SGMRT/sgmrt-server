@@ -16,6 +16,8 @@ import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -164,6 +166,55 @@ class RedisRunningRepositoryTest extends IntegrationTestSupport {
         memberRepository.deleteAllInBatch();
         redisTemplate.keys("ratelimit:*").forEach(redisTemplate::delete);
         redisTemplate.keys("pacemaker_api_lock:*").forEach(redisTemplate::delete);
+    }
+
+
+
+    @Test
+    @DisplayName("동시에 100 개의 스레드에서 요청했을 때 3번의 차감과 나머지는 -1이 나와야한다.")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void incrementInConcurrencyCases2() throws InterruptedException {
+        // given
+        Member member = createMember();
+        String memberUuid = member.getUuid();
+        memberRepository.save(member);
+
+        MemberVdot memberVdot = createMemberVdot(member, 30);
+        memberVdotRepository.save(memberVdot);
+
+        int threadCount = 100;
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+
+        LocalDate localDate = LocalDate.of(2024, 8, 26);
+        String rateLimitKey = "ratelimit:" + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        // when
+        List<Long> resultCounts = new ArrayList<>();
+        for (int i = 0; i < threadCount; i++) {
+            executorService.submit(() -> {
+                Long count = repository.incrementRateLimitCounter(rateLimitKey, 3, 86400);
+                resultCounts.add(count);
+                latch.countDown();
+            });
+        }
+        latch.await();
+
+        // then
+        // 3회만 깎였는지 확인
+        Assertions.assertThat(redisRunningRepository.get(rateLimitKey)).isEqualTo("3");
+
+        // -1이 97번 나왔는지 확인
+        int minusOneCount = 0;
+        for ( int i = 0 ; i < resultCounts.size() ; i++ ) {
+            Long count = resultCounts.get(i);
+            if (count == -1) {
+                minusOneCount++;
+            }
+        }
+        Assertions.assertThat(minusOneCount).isEqualTo(97);
+
+        deleteData();
     }
 
     @Test
