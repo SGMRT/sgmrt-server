@@ -55,9 +55,7 @@ public class RunningQueryService {
     public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId, String memberUuid) {
         GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunInfoByRunningId(myRunningId, memberUuid);
         verifyGhostRunningId(ghostRunningId, myGhostRunDetailInfo);
-
-        MemberAndRunRecordInfo ghostMemberAndRunRecordInfo = findGhostMemberAndRunInfoByRunningId(ghostRunningId);
-        myGhostRunDetailInfo.setGhostRunInfo(ghostMemberAndRunRecordInfo);
+        myGhostRunDetailInfo.setGhostRunInfo(findGhostMemberAndRunInfoByRunningId(ghostRunningId));
         return myGhostRunDetailInfo;
     }
 
