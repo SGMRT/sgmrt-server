@@ -39,9 +39,8 @@ class RunningApplicationMapperTest {
 
         List<Telemetry> relativeTelemetries = createTelemetryDtos();
         Coordinates startPointCoordinates = new Coordinates(37.2, 37.5);
-        List<Coordinates> coordinates = createCoordinateDtos();
         TelemetryStatistics telemetryStatistics =
-                createProcessedTelemetriesDto(relativeTelemetries, startPointCoordinates, coordinates);
+                createProcessedTelemetriesDto(relativeTelemetries, startPointCoordinates, 5.0);
 
         // when
         Running running = mapper.toRunning(
@@ -66,17 +65,8 @@ class RunningApplicationMapperTest {
     }
 
     private TelemetryStatistics createProcessedTelemetriesDto(
-            List<Telemetry> relativeTelemetries, Coordinates startPointCoordinates, List<Coordinates> coordinates) {
-        return new TelemetryStatistics(relativeTelemetries, startPointCoordinates, 6.5, 5.2, 120.2, 5.0);
-    }
-
-    private List<Coordinates> createCoordinateDtos() {
-        return List.of(
-                new Coordinates(37.2, 37.5),
-                new Coordinates(37.3, 37.6),
-                new Coordinates(37.4, 37.7),
-                new Coordinates(37.5, 37.8)
-        );
+            List<Telemetry> relativeTelemetries, Coordinates startPointCoordinates, Double distance) {
+        return new TelemetryStatistics(relativeTelemetries, startPointCoordinates, 6.5, 5.2, 120.2, distance);
     }
 
     private @NotNull List<Telemetry> createTelemetryDtos() {
@@ -120,9 +110,8 @@ class RunningApplicationMapperTest {
 
         List<Telemetry> relativeTelemetries = createTelemetryDtos();
         Coordinates startPointCoordinates = new Coordinates(37.2, 37.5);
-        List<Coordinates> coordinates = createCoordinateDtos();
         TelemetryStatistics telemetryStatistics =
-                createProcessedTelemetriesDto(relativeTelemetries, startPointCoordinates, coordinates);
+                createProcessedTelemetriesDto(relativeTelemetries, startPointCoordinates, 5.0);
 
         RunningDataUrlsDto runningDataUrlsDto = new RunningDataUrlsDto(
                 "RAW URL", "INTERPOLATED URL",
@@ -134,7 +123,7 @@ class RunningApplicationMapperTest {
         // then
         assertThat(course.getName()).isNull();
         assertThat(course.getCourseProfile().getElevationAverage()).isEqualTo(telemetryStatistics.avgElevation());
-        assertThat(course.getCourseProfile().getDistance()).isEqualTo(runRecordCommand.getDistance());
+        assertThat(course.getCourseProfile().getDistance()).isEqualTo(5.0);
         assertThat(course.getCourseProfile().getElevationLoss()).isEqualTo(runRecordCommand.getElevationLoss());
         assertThat(course.getStartCoordinate().getLatitude()).isEqualTo(37.2);
         assertThat(course.getCourseDataUrls().getRouteUrl()).isEqualTo("PATH_DATA_URL");
