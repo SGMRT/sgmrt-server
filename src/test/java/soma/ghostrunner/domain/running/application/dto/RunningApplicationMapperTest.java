@@ -67,7 +67,7 @@ class RunningApplicationMapperTest {
 
     private TelemetryStatistics createProcessedTelemetriesDto(
             List<Telemetry> relativeTelemetries, Coordinates startPointCoordinates, List<Coordinates> coordinates) {
-        return new TelemetryStatistics(relativeTelemetries, startPointCoordinates, 6.5, 5.2, 120.2);
+        return new TelemetryStatistics(relativeTelemetries, startPointCoordinates, 6.5, 5.2, 120.2, 5.0);
     }
 
     private List<Coordinates> createCoordinateDtos() {
