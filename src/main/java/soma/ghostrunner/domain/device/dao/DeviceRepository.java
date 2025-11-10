@@ -22,4 +22,6 @@ public interface DeviceRepository extends JpaRepository<Device, Long>, CustomDev
 
     void deleteByToken(String token);
 
+    void deleteAllByTokenIn(List<String> token);
+
 }
