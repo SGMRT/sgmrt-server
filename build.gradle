@@ -6,11 +6,18 @@ plugins {
 }
 
 sentry {
+
 	includeSourceContext = true
 
 	org = "sogogimaratang"
 	projectName = "ghostrunner-dev-backend"
 	authToken = System.getenv("SENTRY_AUTH_TOKEN")
+
+	autoInstallation {
+		enabled = true
+		sentryVersion = "7.18.1"
+	}
+
 }
 
 group = 'soma'
@@ -32,6 +39,13 @@ repositories {
 	mavenCentral()
 	maven { url 'https://jitpack.io' }
 }
+
+dependencyManagement {
+	imports {
+		mavenBom 'io.sentry:sentry-bom:7.18.1'
+	}
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -124,8 +138,12 @@ dependencies {
 	// UTM
 	implementation 'org.locationtech.proj4j:proj4j:1.4.1'
 	implementation 'org.locationtech.proj4j:proj4j-epsg:1.4.1'
-}
 
+	// Sentry
+	implementation 'io.sentry:sentry-spring-boot-starter-jakarta'
+	implementation 'io.sentry:sentry-logback'
+
+}
 
 tasks.named('test') {
 	useJUnitPlatform()

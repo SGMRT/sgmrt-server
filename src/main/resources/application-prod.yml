@@ -37,6 +37,7 @@ logging:
     root: info
     org.hibernate.SQL: off
     org.springframework.web: warn
+    io.sentry: warn
 
 cloud:
   aws:
