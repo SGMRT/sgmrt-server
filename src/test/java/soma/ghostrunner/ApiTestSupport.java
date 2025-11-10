@@ -7,15 +7,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import soma.ghostrunner.domain.member.api.MemberApi;
-import soma.ghostrunner.domain.member.application.MemberService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 import soma.ghostrunner.domain.auth.api.AuthApi;
 import soma.ghostrunner.domain.auth.application.AuthService;
 import soma.ghostrunner.domain.device.api.DeviceApi;
@@ -24,6 +15,8 @@ import soma.ghostrunner.domain.member.api.MemberApi;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.notice.api.NoticeApi;
 import soma.ghostrunner.domain.notice.application.NoticeService;
+import soma.ghostrunner.domain.notification.api.NotificationApi;
+import soma.ghostrunner.domain.notification.application.PushService;
 import soma.ghostrunner.domain.running.api.PacemakerApi;
 import soma.ghostrunner.domain.running.api.RunningApi;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
@@ -36,7 +29,7 @@ import soma.ghostrunner.global.common.CommonApi;
 import soma.ghostrunner.global.common.log.HttpLogger;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
-@WebMvcTest(controllers = {RunningApi.class, AuthApi.class, CommonApi.class, NoticeApi.class, MemberApi.class, PacemakerApi.class, DeviceApi.class})
+@WebMvcTest(controllers = {RunningApi.class, AuthApi.class, CommonApi.class, NoticeApi.class, MemberApi.class, PacemakerApi.class, DeviceApi.class, NotificationApi.class})
 @Import(RunningApiMapperImpl.class)
 @WithMockUser
 public abstract class ApiTestSupport {
@@ -79,5 +72,8 @@ public abstract class ApiTestSupport {
 
     @MockitoBean
     protected GhostRunnerS3PresignUrlClient ghostRunnerS3PresignUrlClient;
+
+    @MockitoBean
+    protected PushService pushService;
 
 }

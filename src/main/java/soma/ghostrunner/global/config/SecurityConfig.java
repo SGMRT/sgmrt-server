@@ -22,7 +22,7 @@ public class SecurityConfig {
 
     private static final String[] AUTH_BLACKLIST = {"/v1/runs", "/v1/runs/**", "/v1/courses", "/v1/courses/**",
             "/v1/members", "/v1/members/**", "/v1/auth/reissue", "/v1/auth/logout", "/v1/admin/**", "/v1/notifications/**",
-            "/v1/notices", "/v1/notices/**", "/v2/notices/**"};
+            "/v1/notices", "/v1/notices/**", "/v2/notices/**", "/v1/push/**"};
 
     private final GhostRunAuthenticationEntryPoint authenticationEntryPoint;
     private final GhostRunAccessDeniedHandler accessDeniedHandler;

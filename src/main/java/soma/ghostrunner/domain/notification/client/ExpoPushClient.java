@@ -6,8 +6,8 @@ import com.niamedtech.expo.exposerversdk.response.TicketResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
-import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
+import soma.ghostrunner.domain.notification.application.dto.PushMessage;
+import soma.ghostrunner.domain.notification.application.dto.PushSendResult;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,13 +24,13 @@ public class ExpoPushClient {
     private final ExpoPushNotificationClient pushClient;
     private final Executor pushTaskExecutor;
 
-    public List<NotificationSendResult> push(NotificationRequest request) throws IOException {
+    public List<PushSendResult> push(PushMessage request) throws IOException {
         PushNotification notification = createPushNotification(request);
         List<TicketResponse.Ticket> tickets = pushClient.sendPushNotifications(List.of(notification));
         return mapToNotificationSendResults(request, tickets);
     }
 
-    public CompletableFuture<List<NotificationSendResult>> pushAsync(NotificationRequest request) {
+    public CompletableFuture<List<PushSendResult>> pushAsync(PushMessage request) {
             return CompletableFuture.supplyAsync(() -> {
                 try {
                     return push(request);
@@ -40,32 +40,32 @@ public class ExpoPushClient {
             }, pushTaskExecutor);
     }
 
-    private static List<NotificationSendResult> mapToNotificationSendResults(NotificationRequest request,
-                                                                             List<TicketResponse.Ticket> tickets) {
-        List<NotificationSendResult> results = new ArrayList<>();
-        if(tickets.size() != request.getTargetPushTokens().size()) {
-            throw new RuntimeException("Ticket size and request size do not match - tickets: " + tickets.size() + ", request: " + request.getTargetPushTokens().size());
+    private static List<PushSendResult> mapToNotificationSendResults(PushMessage request,
+                                                                     List<TicketResponse.Ticket> tickets) {
+        List<PushSendResult> results = new ArrayList<>();
+        if(tickets.size() != request.pushTokens().size()) {
+            throw new RuntimeException("Ticket size and request size do not match - tickets: " + tickets.size() + ", request: " + request.pushTokens().size());
         }
 
         int i = 0;
         for(var ticket : tickets) {
             switch (ticket.getStatus()) {
-                case OK -> results.add(NotificationSendResult
-                            .ofSuccess(request.getTargetPushTokens().get(i), ticket.getId()));
-                case ERROR -> results.add(NotificationSendResult
-                            .ofFailure(request.getTargetPushTokens().get(i), ticket.getMessage()));
+                case OK -> results.add(PushSendResult
+                            .ofSuccess(request.pushTokens().get(i), ticket.getId()));
+                case ERROR -> results.add(PushSendResult
+                            .ofFailure(request.pushTokens().get(i), ticket.getMessage()));
             }
             i++;
         }
         return results;
     }
 
-    private PushNotification createPushNotification(NotificationRequest request) {
+    private PushNotification createPushNotification(PushMessage request) {
         PushNotification notification = new PushNotification();
-        notification.setTitle(request.getTitle());
-        notification.setBody(request.getBody());
-        notification.setData(request.getData());
-        notification.setTo(request.getTargetPushTokens());
+        notification.setTitle(request.title());
+        notification.setBody(request.body());
+        notification.setData(request.data());
+        notification.setTo(request.pushTokens());
         return notification;
     }
 
