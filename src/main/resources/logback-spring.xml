@@ -70,6 +70,17 @@
         <secretAccessKey>${aws_secret_key}</secretAccessKey>
     </appender>
 
+    <!-- Sentry Appender 추가 -->
+    <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+        <options>
+            <dsn>${sentry_dsn}</dsn>
+            <sendDefaultPii>true</sendDefaultPii>
+        </options>
+        <!-- WARN 이상만 이벤트로 전송 -->
+        <minimumEventLevel>WARN</minimumEventLevel>
+        <!-- INFO 이상은 breadcrumb으로 수집 -->
+        <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
+    </appender>
 
     <!-- 로컬 환경 -->
     <springProfile name="local">
@@ -89,6 +100,7 @@
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="PROD_CONSOLE_APPENDER"/>
+            <appender-ref ref="SENTRY"/>
         </root>
     </springProfile>
 
