@@ -29,7 +29,7 @@ class TelemetryProcessorTest extends IntegrationTestSupport {
     @Autowired
     TelemetryProcessor telemetryProcessor;
 
-    @DisplayName(".jsonl Multipart 파일을 역직렬화 후 상대 시간 변환, 좌표 수집, 최고 / 최저 속도, 평균 고도를 계산한다.")
+    @DisplayName(".jsonl Multipart 파일을 역직렬화 후 상대 시간 변환, 좌표 수집, 최고 / 최저 속도, 평균 고도, 총 전체 거리를 계산한다.")
     @Test
     void processTelemetryTest() throws Exception {
         // given
@@ -53,6 +53,8 @@ class TelemetryProcessorTest extends IntegrationTestSupport {
         Assertions.assertThat(processedTelemetry.lowestPace()).isEqualTo(5.0);
         Assertions.assertThat(processedTelemetry.highestPace()).isEqualTo(14.0);
         Assertions.assertThat(processedTelemetry.avgElevation()).isEqualTo(4.5);
+
+        System.out.println(processedTelemetry.courseDistance());
     }
 
     @DisplayName(".jsonl Multipart 파일이 비어있다면 예외를 발생한다.")

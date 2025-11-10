@@ -73,7 +73,7 @@ public interface RunningApplicationMapper {
                             TelemetryStatistics processedTelemetry,
                             RunningDataUrlsDto runningDataUrlsDto) {
 
-        Double distance = createRunCommand.getRecord().getDistance();
+        Double distance = processedTelemetry.courseDistance();
         Double elevationAverage = processedTelemetry.avgElevation();
         Double elevationGain = createRunCommand.getRecord().getElevationGain();
         Double elevationLoss = createRunCommand.getRecord().getElevationLoss();

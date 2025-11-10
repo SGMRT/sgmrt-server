@@ -1,15 +1,15 @@
-package soma.ghostrunner.domain.notification.dao;
+package soma.ghostrunner.domain.device.dao;
 
 import com.querydsl.core.types.Predicate;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.domain.device.domain.Device;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 
 import java.util.List;
 
-import static soma.ghostrunner.domain.notification.domain.QDevice.device;
+import static soma.ghostrunner.domain.device.domain.QDevice.device;
 
 @Repository
 @RequiredArgsConstructor
@@ -22,6 +22,13 @@ public class CustomDeviceRepositoryImpl implements CustomDeviceRepository {
         return queryFactory.selectFrom(device)
                 .where(device.member.id.in(memberIds),
                        appVersionWithinRange(appVersionRange))
+                .fetch();
+    }
+
+    @Override
+    public List<Device> findAllByAppVersionRange(VersionRange versionRange) {
+        return queryFactory.selectFrom(device)
+                .where(appVersionWithinRange(versionRange))
                 .fetch();
     }
 

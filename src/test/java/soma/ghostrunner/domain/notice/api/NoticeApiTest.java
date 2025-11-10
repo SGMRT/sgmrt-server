@@ -277,7 +277,6 @@ class NoticeApiTest extends ApiTestSupport {
         Long noticeId = 1L;
         NoticeDetailedResponse response = new NoticeDetailedResponse(noticeId, "제목", NoticeType.GENERAL_V2, "내용", null,
                 null, NOW, null);
-        given(noticeService.findNotice(noticeId)).willReturn(response);
 
         // when & then
         mockMvc.perform(MockMvcRequestBuilders.get("/v1/notices/{noticeId}", noticeId))

@@ -167,7 +167,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createCourse(member, "테스트 코스", 5.2);
         courseRepository.save(course);
 
         Running running1 = createSoloRunning(member, course);
@@ -180,10 +180,14 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         // then
         assertThat(soloRunDetailInfo.getStartedAt()).isEqualTo(running1.getStartedAt());
         assertThat(soloRunDetailInfo.getRunningName()).isEqualTo(running1.getRunningName());
+
         assertThat(soloRunDetailInfo.getCourseInfo().getId()).isEqualTo(running1.getCourse().getId());
         assertThat(soloRunDetailInfo.getCourseInfo().getName()).isEqualTo(running1.getCourse().getName());
+        assertThat(soloRunDetailInfo.getCourseInfo().getDistance()).isEqualTo(5.2);
+
         assertThat(soloRunDetailInfo.getTelemetryUrl())
                 .isEqualTo(running1.getRunningDataUrls().getInterpolatedTelemetryUrl());
+
         assertThat(soloRunDetailInfo.getRecordInfo().getDistance())
                 .isEqualTo(running1.getRunningRecord().getDistance());
         assertThat(soloRunDetailInfo.getRecordInfo().getDuration())
@@ -197,8 +201,8 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 true, false, "URL", "URL", "URL", testMember, testCourse);
     }
 
-    private Course createCourse(Member testMember, String courseName) {
-        CourseProfile testCourseProfile = createCourseProfile();
+    private Course createCourse(Member testMember, String courseName, double km) {
+        CourseProfile testCourseProfile = createCourseProfile(km);
         Coordinate testCoordinate = createStartPoint();
         Course course = Course.of(testMember, testCourseProfile.getDistance(),
                 testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
@@ -207,6 +211,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         course.setName(courseName);
         course.setIsPublic(true);
         return course;
+    }
+
+    private CourseProfile createCourseProfile(double km) {
+        return CourseProfile.of(km, 30.0, 40.0, -10.0);
     }
 
     @DisplayName("기존 코스를 기반으로 혼자 뛴 러닝에 대한 상세 정보를 조회한다. 비공개 코스라도 정보를 모두 응답한다.")
@@ -258,7 +266,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member ghostMember = createMember("고스트 이복둥");
         memberRepository.saveAll(List.of(member, ghostMember));
 
-        Course course = createCourse(member, "테스트 코스");
+        Course course = createCourse(member, "테스트 코스", 5.2);
         courseRepository.save(course);
 
         Running ghostRunning = createRunning(ghostMember, course);
@@ -281,8 +289,21 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         assertThat(ghostRunDetailInfo.getTelemetryUrl()).isEqualTo(running.getRunningDataUrls().getInterpolatedTelemetryUrl());
 
         assertThat(ghostRunDetailInfo.getCourseInfo().getName()).isEqualTo("테스트 코스");
+        assertThat(ghostRunDetailInfo.getCourseInfo().getDistance()).isEqualTo(5.2);
 
         assertThat(ghostRunDetailInfo.getGhostRunInfo()).isNull();
+    }
+
+    private Course createCourse(Member testMember, String courseName) {
+        CourseProfile testCourseProfile = createCourseProfile();
+        Coordinate testCoordinate = createStartPoint();
+        Course course = Course.of(testMember, testCourseProfile.getDistance(),
+                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
+                "URL", "URL", "URL");
+        course.setName(courseName);
+        course.setIsPublic(true);
+        return course;
     }
 
     private Running createGhostRunning(Member testMember, Course testCourse, Long ghostRunningId) {
@@ -439,9 +460,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course c1 = createCourse(member);
-        Course c2 = createCourse(member);
-        Course c3 = createCourse(member);
+        Course c1 = createCourse(member, 5.4);
+        Course c2 = createCourse(member, 5.4);
+        Course c3 = createCourse(member, 5.4);
         courseRepository.saveAll(List.of(c1, c2, c3));
         List<Course> courses = List.of(c1, c2, c3);
 
@@ -491,6 +512,7 @@ class RunningRepositoryTest extends IntegrationTestSupport {
             assertThat(a.getName()).isEqualTo(e.getRunningName());
             assertThat(a.getStartedAt()).isEqualTo(e.getStartedAt());
             assertThat(a.getGhostRunningId()).isEqualTo(e.getGhostRunningId());
+            assertThat(a.getCourseInfo().getDistance()).isEqualTo(5.4);
         }
 
         for (int i = page1.size(); i < page2.size(); i++) {
@@ -520,6 +542,17 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         //startedAt DESC, id DESC 로 정렬되어 있는지
         assertSortedByStartedAtThenIdDesc(page1);
         assertSortedByStartedAtThenIdDesc(page2);
+    }
+
+    private Course createCourse(Member testMember, double km) {
+        CourseProfile testCourseProfile = createCourseProfile(km);
+        Coordinate testCoordinate = createStartPoint();
+        Course course = Course.of(testMember, testCourseProfile.getDistance(),
+                testCourseProfile.getElevationAverage(), testCourseProfile.getElevationGain(), testCourseProfile.getElevationLoss(),
+                testCoordinate.getLatitude(), testCoordinate.getLongitude(),
+                "URL", "URL", "URL");
+        course.setIsPublic(true);
+        return course;
     }
 
     private static void assertSortedByStartedAtThenIdDesc(List<RunInfo> list) {
@@ -636,8 +669,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         // then: startedAt == 2000 인 것들만 전부 포함(동률 여러 건도 포함)
         assertThat(result).isNotEmpty();
         assertThat(result).allMatch(r -> Objects.equals(r.getStartedAt(), 2000L));
+
         // 동률 집합 내에서도 id DESC
         assertSortedByStartedAtThenIdDesc(result);
+
         // 결과 아이디 집합이 정확히 r2, r3 로만 구성되었는지(순서는 DESC)
         List<Long> gotIds = result.stream().map(RunInfo::getRunningId).toList();
         assertThat(gotIds).containsExactlyElementsOf(

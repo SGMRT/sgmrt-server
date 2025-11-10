@@ -44,7 +44,8 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
                                 new QCourseInfo(
                                         course.id,
                                         course.name,
-                                        course.isPublic),
+                                        course.isPublic,
+                                        course.courseProfile.distance),
                                 new QRunRecordInfo(
                                         running.runningRecord.distance,
                                         running.runningRecord.duration,
@@ -79,7 +80,8 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
                                 new QCourseInfo(
                                         course.id,
                                         course.name,
-                                        course.isPublic
+                                        course.isPublic,
+                                        course.courseProfile.distance
                                 ),
                                 new QMemberAndRunRecordInfo(
                                         member.nickname,
@@ -147,7 +149,8 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
                         new QCourseInfo(
                                 running.course.id,
                                 running.course.name,
-                                running.course.isPublic
+                                running.course.isPublic,
+                                course.courseProfile.distance
                         ),
                         running.ghostRunningId,
                         running.runningDataUrls.screenShotUrl
@@ -194,7 +197,8 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
                         new QCourseInfo(
                                 running.course.id,
                                 running.course.name,
-                                running.course.isPublic
+                                running.course.isPublic,
+                                course.courseProfile.distance
                         ),
                         running.ghostRunningId,
                         running.runningDataUrls.screenShotUrl

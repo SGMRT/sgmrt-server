@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification.dao;
+package soma.ghostrunner.domain.device.dao;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.domain.device.domain.Device;
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 
@@ -335,6 +335,29 @@ class DeviceRepositoryTest extends IntegrationTestSupport {
         assertThat(foundDevices).hasSize(3)
                 .extracting("token")
                 .containsExactlyInAnyOrder("ExponentPushToken[1]", "ExponentPushToken[2]", "ExponentPushToken[3]");
+    }
+
+    @DisplayName("주어진 버전 범위 내의 디바이스들을 모두 조회한다.")
+    @Test
+    void findAllByAppVersionRange_success() {
+        // given
+        Member member1 = createMember("도라에몽");
+        Member member2 = createMember("진구");
+        memberRepository.saveAll(List.of(member1, member2));
+
+        Device device1 = Device.of(member1, "ExponentPushToken[1]", "uuid-1", SemanticVersion.of("1.0.0"), "iOS", "14.0", "iPhone 8");
+        Device device2 = Device.of(member1, "ExponentPushToken[2]", "uuid-2", SemanticVersion.of("1.0.5"), "Android", "11.0", "Galaxy S25");
+        Device device3 = Device.of(member2, "ExponentPushToken[3]", "uuid-3", SemanticVersion.of("2.0.0"), "iOS", "13.0", "iPhone 16 Pro");
+        deviceRepository.saveAll(List.of(device1, device2, device3));
+
+        // when
+        VersionRange versionRange = VersionRange.atLeast(SemanticVersion.of("1.0.3"));
+        List<Device> foundDevices = deviceRepository.findAllByAppVersionRange(versionRange);
+
+        // then
+        assertThat(foundDevices).hasSize(2)
+                .extracting("token")
+                .containsExactlyInAnyOrder("ExponentPushToken[2]", "ExponentPushToken[3]");
     }
 
 }

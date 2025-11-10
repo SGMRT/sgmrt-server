@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification;
+package soma.ghostrunner.domain.device.application;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -8,10 +8,9 @@ import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
-import soma.ghostrunner.domain.notification.api.dto.DeviceRegistrationRequest;
-import soma.ghostrunner.domain.notification.application.DeviceService;
-import soma.ghostrunner.domain.notification.dao.DeviceRepository;
-import soma.ghostrunner.domain.notification.domain.Device;
+import soma.ghostrunner.domain.device.api.dto.DeviceRegistrationRequest;
+import soma.ghostrunner.domain.device.dao.DeviceRepository;
+import soma.ghostrunner.domain.device.domain.Device;
 import soma.ghostrunner.global.common.versioning.SemanticVersion;
 
 import java.util.List;
@@ -38,7 +37,8 @@ class DeviceServiceTest extends IntegrationTestSupport {
         deviceRepository.save(device);
     }
 
-    // findDevicesByMemberIds 테스트
+    /* findDevicesByMemberIds 테스트 */
+
     @DisplayName("주어진 회원 ID 목록에 해당하는 디바이스 정보를 조회한다.")
     @Test
     void findDevicesByMemberIds_success() {
@@ -69,7 +69,8 @@ class DeviceServiceTest extends IntegrationTestSupport {
         assertThat(devices).isEmpty();
     }
 
-    // registerDevice 테스트
+    /* registerDevice 테스트 */
+
     @DisplayName("새로운 디바이스 정보를 저장한다.")
     @Test
     void registerDevice_success() {
@@ -102,7 +103,7 @@ class DeviceServiceTest extends IntegrationTestSupport {
         // when & then
         assertThatThrownBy(() -> deviceService.registerDevice(member.getUuid(), request))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("올바른 Push Token 방식이 아닙니다");
+                .hasMessageContaining("올바른 푸쉬 토큰 방식이 아닙니다");
     }
 
     @DisplayName("동일한 기기 UUID의 디바이스 정보가 존재한다면 기존 정보를 업데이트한다.")
@@ -157,7 +158,45 @@ class DeviceServiceTest extends IntegrationTestSupport {
                 .hasMessageContaining("Device UUID는 필수입니다.");
     }
 
-    // saveMemberToken 테스트 (deprecated 메서드)
+    @DisplayName("OS 정보와 모델명이 null인 경우 기본값으로 저장된다.")
+    @Test
+    void registerDevice_nullOsAndModel() {
+        // given
+        String pushToken = "ExponentPushToken[yyyy]";
+        DeviceRegistrationRequest request = new DeviceRegistrationRequest(
+                "device-uuid",
+                "1.0.0",
+                pushToken,
+                null,
+                null,
+                null
+        );
+
+        // when
+        deviceService.registerDevice(member.getUuid(), request);
+
+        // then
+        Device device = deviceRepository.findByUuid("device-uuid").orElseThrow();
+        assertThat(device.getOsName()).isEqualTo("unknown");
+        assertThat(device.getOsVersion()).isEqualTo("unknown");
+        assertThat(device.getModelName()).isEqualTo("unknown");
+    }
+
+    @DisplayName("푸쉬토큰이 null인 경우에도 디바이스 정보가 저장된다.")
+    @Test
+    void registerDevice_nullPushToken() {
+        // given
+        DeviceRegistrationRequest request = createDeviceRequest("device-uuid", null);
+
+        // when
+        deviceService.registerDevice(member.getUuid(), request);
+
+        // then
+        Device device = deviceRepository.findByUuid("device-uuid").orElseThrow();
+        assertThat(device.getToken()).isNull();
+    }
+
+    /* saveMemberToken 테스트 (deprecated 메서드) */
 
     @DisplayName("새로운 푸쉬 토큰을 저장한다.")
     @Deprecated(since = "v1.0.4 PushToken 저장 방식 변경으로 인한 사용 중단; registerDevice 활용 (클라이언트 하위호환을 위해 남겨둠)")
@@ -193,6 +232,20 @@ class DeviceServiceTest extends IntegrationTestSupport {
         Device updatedDevice = deviceRepository.findByToken(existingPushToken).orElseThrow();
         assertThat(updatedDevice.getMember().getUuid()).isEqualTo(newMember.getUuid());
         assertThat(updatedDevice.getToken()).isEqualTo(existingPushToken);
+    }
+
+    @DisplayName("기존에 동일한 회원-토큰 조합의 디바이스 정보가 존재한다면 새로 덮어씌우지 않고 종료한다.")
+    @Deprecated(since = "v1.0.4 PushToken 저장 방식 변경으로 인한 사용 중단; registerDevice 활용 (클라이언트 하위호환을 위해 남겨둠)")
+    @Test
+    void saveMemberPushToken_existingMemberTokenPair() {
+        // given
+        String existingPushToken = device.getToken();
+        long initialCount = deviceRepository.count();
+        // when
+        deviceService.saveMemberPushToken(member.getUuid(), existingPushToken);
+        // then
+        long afterCount = deviceRepository.count();
+        assertThat(afterCount).isEqualTo(initialCount);
     }
 
     @DisplayName("푸쉬 토큰 형식이 Expo Push Token이 아니면 예외를 발생시킨다.")

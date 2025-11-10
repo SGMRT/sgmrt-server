@@ -1,4 +1,4 @@
-package soma.ghostrunner.domain.notification.api.dto;
+package soma.ghostrunner.domain.device.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
