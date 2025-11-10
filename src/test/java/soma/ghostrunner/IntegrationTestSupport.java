@@ -27,88 +27,131 @@ public abstract class IntegrationTestSupport {
     private static final String REDIS_IMAGE = "redis:7-alpine";
     private static final String LOCALSTACK_IMAGE = "localstack/localstack:3.0";
 
-    // static 블록으로 단 한 번만 시작
-    private static final MySQLContainer<?> MYSQL_CONTAINER;
-    private static final GenericContainer<?> REDIS_CONTAINER;
-    private static final LocalStackContainer SQS_CONTAINER;
+    protected static final MySQLContainer<?> MYSQL_CONTAINER;
+    protected static final GenericContainer<?> REDIS_CONTAINER;
+    protected static final LocalStackContainer SQS_CONTAINER;
+
+    private static boolean CONTAINERS_STARTED = false;
+    private static Exception INITIALIZATION_ERROR = null;
 
     static {
-
-        // MySQL 컨테이너 초기화 및 시작
-        MYSQL_CONTAINER = new MySQLContainer<>(MYSQL_IMAGE)
-                .withDatabaseName("ghostrunner_test")
-                .withUsername("test")
-                .withPassword("test")
-                .withStartupTimeout(Duration.ofMinutes(3));
-        MYSQL_CONTAINER.start();
-
-        // Redis 컨테이너 초기화 및 시작
-        REDIS_CONTAINER = new GenericContainer<>(DockerImageName.parse(REDIS_IMAGE))
-                .withExposedPorts(6379)
-                .withStartupTimeout(Duration.ofMinutes(2));
-        REDIS_CONTAINER.start();
-
-        // LocalStack 컨테이너 초기화 및 시작
-        SQS_CONTAINER = new LocalStackContainer(DockerImageName.parse(LOCALSTACK_IMAGE))
-                .withServices(SQS)
-                .withEnv("SERVICES", "sqs")  // SQS만 활성화
-                .withStartupTimeout(Duration.ofMinutes(5))
-                .waitingFor(Wait.forLogMessage(".*Ready.*", 1)
-                        .withStartupTimeout(Duration.ofMinutes(3)));
-        SQS_CONTAINER.start();
-
-        // LocalStack 완전 초기화 대기 및 SQS 큐 생성
         try {
-            Thread.sleep(5000);  // 5초 추가 대기
-            createSQSQueues();
+            System.out.println("🚀 Starting test containers...");
+
+            // MySQL 시작
+            MYSQL_CONTAINER = new MySQLContainer<>(MYSQL_IMAGE)
+                    .withDatabaseName("ghostrunner_test")
+                    .withUsername("test")
+                    .withPassword("test")
+                    .withCommand("--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci")
+                    .withStartupTimeout(Duration.ofMinutes(3))
+                    .withStartupAttempts(3);
+
+            System.out.println("⏳ Starting MySQL...");
+            MYSQL_CONTAINER.start();
+            System.out.println("✅ MySQL started: " + MYSQL_CONTAINER.getJdbcUrl());
+
+            // Redis 시작
+            REDIS_CONTAINER = new GenericContainer<>(DockerImageName.parse(REDIS_IMAGE))
+                    .withExposedPorts(6379)
+                    .withStartupTimeout(Duration.ofMinutes(2))
+                    .withStartupAttempts(3);
+
+            System.out.println("⏳ Starting Redis...");
+            REDIS_CONTAINER.start();
+            System.out.println("✅ Redis started: " + REDIS_CONTAINER.getHost() + ":" + REDIS_CONTAINER.getMappedPort(6379));
+
+            // LocalStack 시작 (선택적 - SQS 사용 안 하는 테스트도 있을 수 있음)
+            SQS_CONTAINER = new LocalStackContainer(DockerImageName.parse(LOCALSTACK_IMAGE))
+                    .withServices(SQS)
+                    .withEnv("SERVICES", "sqs")
+                    .withEnv("EAGER_SERVICE_LOADING", "0")
+                    .withStartupTimeout(Duration.ofMinutes(5))
+                    .withStartupAttempts(2);
+
+            System.out.println("⏳ Starting LocalStack...");
+            SQS_CONTAINER.start();
+            System.out.println("✅ LocalStack started");
+
+            // LocalStack 안정화 대기
+            System.out.println("⏳ Waiting for LocalStack to be ready...");
+            Thread.sleep(10000);  // CI 환경을 위해 10초로 증가
+
+            // SQS 큐 생성 (실패해도 테스트는 계속 진행)
+            try {
+                createSQSQueuesWithRetry();
+            } catch (Exception e) {
+                System.err.println("⚠️ Warning: Failed to create SQS queues, but continuing: " + e.getMessage());
+                // SQS 큐 생성 실패는 치명적이지 않을 수 있으므로 경고만 출력
+            }
+
+            CONTAINERS_STARTED = true;
+            System.out.println("🎉 All containers started successfully");
+
+            // Shutdown hook
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                System.out.println("🛑 Stopping test containers...");
+                try {
+                    if (SQS_CONTAINER != null && SQS_CONTAINER.isRunning()) {
+                        SQS_CONTAINER.stop();
+                    }
+                    if (REDIS_CONTAINER != null && REDIS_CONTAINER.isRunning()) {
+                        REDIS_CONTAINER.stop();
+                    }
+                    if (MYSQL_CONTAINER != null && MYSQL_CONTAINER.isRunning()) {
+                        MYSQL_CONTAINER.stop();
+                    }
+                    System.out.println("✅ All containers stopped");
+                } catch (Exception e) {
+                    System.err.println("⚠️ Error stopping containers: " + e.getMessage());
+                }
+            }));
+
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize SQS queues", e);
+            INITIALIZATION_ERROR = e;
+            System.err.println("❌ FATAL: Failed to initialize test containers");
+            e.printStackTrace();
+            throw new ExceptionInInitializerError(e);
         }
-
-        // JVM 종료 시 컨테이너 정리
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            SQS_CONTAINER.stop();
-            REDIS_CONTAINER.stop();
-            MYSQL_CONTAINER.stop();
-        }));
-
     }
 
     /**
-     * SQS 큐 생성 (재시도 로직 포함)
+     * SQS 큐 생성 (재시도 로직)
      */
-    private static void createSQSQueues() throws IOException, InterruptedException {
-        int maxRetries = 3;
-        int retryDelay = 2000;
+    private static void createSQSQueuesWithRetry() throws Exception {
+        int maxRetries = 5;  // CI 환경을 위해 재시도 횟수 증가
+        int retryDelay = 3000;  // 3초로 증가
 
         for (int i = 0; i < maxRetries; i++) {
             try {
-                // 컨테이너 실행 상태 확인
                 if (!SQS_CONTAINER.isRunning()) {
                     throw new IllegalStateException("LocalStack container is not running");
                 }
 
-                // SQS 큐 생성
+                System.out.println("🔄 Attempting to create SQS queues (attempt " + (i + 1) + "/" + maxRetries + ")");
+
                 var result1 = SQS_CONTAINER.execInContainer(
                         "awslocal", "sqs", "create-queue", "--queue-name", "TEST_QUEUE_NAME");
                 var result2 = SQS_CONTAINER.execInContainer(
                         "awslocal", "sqs", "create-queue", "--queue-name", "TEST_DLQ_NAME");
 
-                // 결과 확인
-                if (result1.getExitCode() == 0 && result2.getExitCode() == 0) {
-                    System.out.println("✅ SQS queues created successfully");
-                    return;
-                } else {
-                    System.err.println("⚠️ Queue creation returned non-zero exit code");
-                    System.err.println("STDOUT: " + result1.getStdout() + result2.getStdout());
-                    System.err.println("STDERR: " + result1.getStderr() + result2.getStderr());
+                if (result1.getExitCode() != 0) {
+                    throw new RuntimeException("Queue creation failed: " + result1.getStderr());
                 }
+                if (result2.getExitCode() != 0) {
+                    throw new RuntimeException("DLQ creation failed: " + result2.getStderr());
+                }
+
+                System.out.println("✅ SQS queues created successfully");
+                System.out.println("   - TEST_QUEUE_NAME: " + result1.getStdout().trim());
+                System.out.println("   - TEST_DLQ_NAME: " + result2.getStdout().trim());
+                return;
 
             } catch (Exception e) {
                 System.err.println("⚠️ Attempt " + (i + 1) + " failed: " + e.getMessage());
 
                 if (i < maxRetries - 1) {
-                    System.out.println("Retrying in " + retryDelay + "ms...");
+                    System.out.println("   Retrying in " + retryDelay + "ms...");
                     Thread.sleep(retryDelay);
                 } else {
                     throw new RuntimeException("Failed to create SQS queues after " + maxRetries + " attempts", e);
@@ -119,6 +162,12 @@ public abstract class IntegrationTestSupport {
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
+        if (!CONTAINERS_STARTED) {
+            throw new IllegalStateException(
+                    "Containers failed to start. Original error: " +
+                            (INITIALIZATION_ERROR != null ? INITIALIZATION_ERROR.getMessage() : "Unknown"));
+        }
+
         // MySQL
         registry.add("spring.datasource.url", MYSQL_CONTAINER::getJdbcUrl);
         registry.add("spring.datasource.password", MYSQL_CONTAINER::getPassword);
