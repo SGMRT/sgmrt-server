@@ -11,13 +11,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import soma.ghostrunner.domain.notification.application.dto.NotificationRequest;
-import soma.ghostrunner.domain.notification.application.dto.NotificationSendResult;
+import soma.ghostrunner.domain.notification.application.dto.PushMessage;
+import soma.ghostrunner.domain.notification.application.dto.PushSendResult;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -48,16 +49,16 @@ class ExpoPushClientTest {
     @Test
     void pushAsync_success() throws Exception {
         // given
-        NotificationRequest request = createRequest("test-token");
+        PushMessage message = createPushMessage("test-token");
         List<TicketResponse.Ticket> tickets = createSuccessTickets("ticket-id-1");
         given(expoPushNotificationClient.sendPushNotifications(anyList())).willReturn(tickets);
 
         // when
-        List<NotificationSendResult> results = expoPushClient.pushAsync(request).join();
+        List<PushSendResult> results = expoPushClient.pushAsync(message).join();
 
         // then
         assertThat(results).hasSize(1);
-        NotificationSendResult result = results.get(0);
+        PushSendResult result = results.get(0);
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.pushToken()).isEqualTo("test-token");
         assertThat(result.ticketId()).isEqualTo("ticket-id-1");
@@ -67,16 +68,16 @@ class ExpoPushClientTest {
     @Test
     void pushAsync_Failure() throws Exception {
         // given
-        NotificationRequest request = createRequest("invalid-token");
+        PushMessage message = createPushMessage("invalid-token");
         List<TicketResponse.Ticket> failureTickets = createFailureTickets("실패해부렸으");
         given(expoPushNotificationClient.sendPushNotifications(anyList())).willReturn(failureTickets);
 
         // when
-        List<NotificationSendResult> results = expoPushClient.pushAsync(request).join();
+        List<PushSendResult> results = expoPushClient.pushAsync(message).join();
 
         // then
         assertThat(results).hasSize(1);
-        NotificationSendResult result = results.get(0);
+        PushSendResult result = results.get(0);
         assertThat(result.pushToken()).isEqualTo("invalid-token");
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.errorMessage()).isEqualTo("실패해부렸으");
@@ -86,23 +87,23 @@ class ExpoPushClientTest {
     @Test
     void pushAsync_mixedResults() throws IOException {
         // given
-        NotificationRequest request = createRequest(List.of("valid-token", "invalid-token"));
+        PushMessage message = createPushMessage(List.of("valid-token", "invalid-token"));
         // 첫 결과는 성공, 다음 결과는 실패
         List<TicketResponse.Ticket> mixedTickets = new ArrayList<>(createSuccessTickets("success-ticket"));
         mixedTickets.addAll(createFailureTickets("이거 아니에유"));
         given(expoPushNotificationClient.sendPushNotifications(anyList())).willReturn(mixedTickets);
 
         // when
-        List<NotificationSendResult> results = expoPushClient.pushAsync(request).join();
+        List<PushSendResult> results = expoPushClient.pushAsync(message).join();
 
         // then
         assertThat(results).hasSize(2);
-        NotificationSendResult successResult = results.get(0);
+        PushSendResult successResult = results.get(0);
         assertThat(successResult.isSuccess()).isTrue();
         assertThat(successResult.pushToken()).isEqualTo("valid-token");
         assertThat(successResult.ticketId()).isEqualTo("success-ticket");
 
-        NotificationSendResult failureResult = results.get(1);
+        PushSendResult failureResult = results.get(1);
         assertThat(failureResult.isSuccess()).isFalse();
         assertThat(failureResult.pushToken()).isEqualTo("invalid-token");
         assertThat(failureResult.errorMessage()).isEqualTo("이거 아니에유");
@@ -112,20 +113,20 @@ class ExpoPushClientTest {
     @Test
     void pushAsync_throwsIOException() throws IOException {
         // given
-        NotificationRequest request = createRequest("test-token");
+        PushMessage message = createPushMessage("test-token");
         given(expoPushNotificationClient.sendPushNotifications(anyList())).willThrow(new IOException("Network error"));
 
         // when & then
-        assertThrows(CompletionException.class, () -> expoPushClient.pushAsync(request).join());
+        assertThrows(CompletionException.class, () -> expoPushClient.pushAsync(message).join());
     }
 
     // --- helper methods ---
-    private NotificationRequest createRequest(String pushToken) {
-        return new NotificationRequest("알림 제목", "알림 본문", Collections.emptyMap(), List.of(pushToken));
+    private PushMessage createPushMessage(String pushToken) {
+        return new PushMessage(List.of(pushToken), "알림 제목", "알림 본문", Collections.emptyMap(), UUID.randomUUID().toString());
     }
 
-    private NotificationRequest createRequest(List<String> pushTokens) {
-        return new NotificationRequest("알림 제목", "알림 본문", Collections.emptyMap(), pushTokens);
+    private PushMessage createPushMessage(List<String> pushTokens) {
+        return new PushMessage(pushTokens, "알림 제목", "알림 본문", Collections.emptyMap(), UUID.randomUUID().toString());
     }
 
     private List<TicketResponse.Ticket> createSuccessTickets(String ticketId) {
