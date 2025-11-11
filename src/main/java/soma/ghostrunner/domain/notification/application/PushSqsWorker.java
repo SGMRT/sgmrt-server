@@ -15,7 +15,11 @@ import soma.ghostrunner.global.clients.discord.DiscordWebhookClient;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static soma.ghostrunner.domain.notification.application.PushIdempotencyService.LockResult.ALREADY_COMPLETED;
+import static soma.ghostrunner.domain.notification.application.PushIdempotencyService.LockResult.LOCKED_BY_OTHER;
 
 @Slf4j
 @Service
@@ -25,6 +29,7 @@ public class PushSqsWorker {
     private final ExpoPushClient expoPushClient;
     private final DiscordWebhookClient discordWebhookClient;
     private final SqsWorkerInternalService internalService;
+    private final PushIdempotencyService idempotencyService;
 
     private static final int MIN_BACKOFF_MILLIS = 125;
     private static final int MAX_BACKOFF_MILLIS = 1000;
@@ -39,18 +44,42 @@ public class PushSqsWorker {
             log.warn("푸쉬 토큰이 없으므로 건너뜀: {}", pushMessage);
             return;
         }
+
+        String pushToken = pushMessage.pushTokens().get(0); // 토큰은 현재 1개만 온다고 가정
+        String messageUuid = pushMessage.messageUuid();
+
+        // 멱등성 락 획득 시도
+        PushIdempotencyService.LockResult lockResult = idempotencyService.tryAcquireLock(messageUuid, pushToken);
+        // 중복 처리 감지 시 바로 반환
+        if (Set.of(ALREADY_COMPLETED, LOCKED_BY_OTHER).contains(lockResult)) {
+            logDuplicatePushDetection(pushMessage, lockResult);
+            return;
+        }
+
         try {
             List<PushSendResult> sendResult = expoPushClient.push(pushMessage);
             validateSendResult(sendResult);
+            idempotencyService.markAsCompleted(messageUuid, pushToken); // 푸시 성공 시 락을 완료 상태로 업그레이드
             backoffMillis.set(MIN_BACKOFF_MILLIS);
         } catch (ExpoDeviceNotRegisteredException ex) {
             log.warn("유효하지 않은 푸쉬 토큰 삭제: {}", pushMessage.pushTokens());
+            idempotencyService.markAsCompleted(messageUuid, pushToken); // 굳이 재전송하지 않도록 완료 상태로 업그레이드
             deletePushToken(pushMessage.pushTokens());
         } catch (Exception ex) {
             log.error("푸쉬 알림 전송 실패: {}", pushMessage, ex);
+            idempotencyService.releaseLock(messageUuid, pushToken); // 푸시 실패 시 락 해제
             doExponentialBackoff();
             throw ex;
         }
+    }
+
+    private void logDuplicatePushDetection(PushMessage pushMessage, PushIdempotencyService.LockResult lockResult) {
+        if(lockResult == LOCKED_BY_OTHER) {
+            log.warn("다른 워커가 처리 중인 푸시 알림 감지됨. 처리 중단: {}", pushMessage);
+            return;
+        }
+        log.warn("중복 푸시 알림 감지됨. 처리 중단: {}", pushMessage);
+        discordWebhookClient.sendMessage(generateDuplicatePushMessage(pushMessage, lockResult));
     }
 
     @SqsListener(value = "${cloud.aws.sqs.push-dlq-name}")
@@ -59,15 +88,6 @@ public class PushSqsWorker {
         discordWebhookClient.sendMessage(generateFailedPushNotificationMessage(pushMessage));
     }
 
-    private String generateFailedPushNotificationMessage(PushMessage pushMessage) {
-        return """
-                # 푸쉬 알림 전송 실패! (환경: %s)
-                여러 차례 재전송했음에도 실패한 푸쉬 알림 메시지에요.
-                ```
-                %s
-                ```
-                """.formatted(activeProfile, pushMessage);
-    }
 
     private void deletePushToken(List<String> pushTokens) {
         internalService.deletePushTokens(pushTokens);
@@ -96,6 +116,26 @@ public class PushSqsWorker {
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private String generateFailedPushNotificationMessage(PushMessage pushMessage) {
+        return """
+                # 푸쉬 알림 전송 실패! (환경: %s)
+                여러 차례 재전송했음에도 실패한 푸쉬 알림 메시지에요.
+                ```
+                %s
+                ```
+                """.formatted(activeProfile, pushMessage);
+    }
+
+    private String generateDuplicatePushMessage(PushMessage pushMessage, PushIdempotencyService.LockResult lockResult) {
+        return """
+            # 중복 푸시 알림 감지! (환경: %s)
+            이미 전송된 푸시 알림이 다시 전송되려고 했어요.
+            ```
+            %s
+            ```
+            """.formatted(activeProfile, pushMessage);
     }
 
 }
