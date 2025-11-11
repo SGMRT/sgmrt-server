@@ -19,6 +19,10 @@ public class DiscordWebhookClient {
     private final RestClient restClient = RestClient.create();
 
     public void sendMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return;
+        }
+
         Map<String, String> payload = Map.of("content", message);
 
         try {
