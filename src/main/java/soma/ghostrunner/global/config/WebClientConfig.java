@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class WebClientConfig {
 
-    private static final int TIMEOUT_SECONDS = 90;
+    private static final int TIMEOUT_SECONDS = 180;
 
     @Bean
     public WebClient openAiWebClient(@Value("${openai.api.key}") String apiKey) {
