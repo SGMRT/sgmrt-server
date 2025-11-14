@@ -4,8 +4,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 import soma.ghostrunner.domain.running.domain.llm.PacemakerLlmClient;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
 @Slf4j
 @Component
@@ -24,6 +31,11 @@ public class PacemakerOpenAiClient implements PacemakerLlmClient {
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(OpenAiResponse.class)
+                .timeout(Duration.ofSeconds(90))
+                .retryWhen(
+                        Retry.backoff(1, Duration.ofSeconds(2))   // 1회 재시도, 초기 wait = 2초
+                                .filter(this::isRetryableException)   // 재시도 가능한 예외만
+                )
                 .map(this::llmResponseToString);
     }
 
@@ -35,7 +47,23 @@ public class PacemakerOpenAiClient implements PacemakerLlmClient {
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(OpenAiResponse.class)
+                .timeout(Duration.ofSeconds(90))
+                .retryWhen(
+                        Retry.backoff(1, Duration.ofSeconds(2))   // 1회 재시도, 초기 wait = 2초
+                                .filter(this::isRetryableException)   // 재시도 가능한 예외만
+                )
                 .map(this::llmResponseToString);
+    }
+
+    private boolean isRetryableException(Throwable e) {
+
+        if (e instanceof WebClientResponseException ex) {
+            return ex.getStatusCode().is5xxServerError();
+        }
+
+        return e instanceof IOException
+                || e instanceof TimeoutException
+                || e instanceof WebClientRequestException;
     }
 
     private String llmResponseToString(OpenAiResponse res) {

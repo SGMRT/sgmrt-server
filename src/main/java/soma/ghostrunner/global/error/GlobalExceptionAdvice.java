@@ -1,11 +1,12 @@
 package soma.ghostrunner.global.error;
 
+import io.sentry.Sentry;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
@@ -22,6 +23,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import soma.ghostrunner.global.error.exception.BusinessException;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
@@ -134,9 +138,27 @@ public class GlobalExceptionAdvice {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleException(Exception e) {
+    public ResponseEntity<ErrorResponse> handleException(Exception e, HttpServletRequest request) {
         log.error("can't find Handler Entity ", e);
-        return createErrorResponse(ErrorCode.SERVICE_UNAVAILABLE);
+
+        ResponseEntity<ErrorResponse> responseEntity = createErrorResponse(ErrorCode.SERVICE_UNAVAILABLE);
+
+        // 센트리 응답 가공
+        Sentry.withScope(scope -> {
+
+            // 응답 가공
+            Map<String, Object> responseInfo = new HashMap<>();
+            responseInfo.put("Status Code", responseEntity.getStatusCodeValue());
+            responseInfo.put("Headers", responseEntity.getHeaders().toSingleValueMap());
+
+            scope.setContexts("Response", responseInfo);
+
+            // 로그 기록
+            log.error("Unhandled Server Error: {} {}", request.getMethod(), request.getRequestURI(), e);
+
+        });
+
+        return responseEntity;
     }
 
     private ResponseEntity<ErrorResponse> createErrorResponse(ErrorCode errorCode, BindingResult bindingResult) {

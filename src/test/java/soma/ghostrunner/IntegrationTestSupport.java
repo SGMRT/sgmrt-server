@@ -1,7 +1,5 @@
 package soma.ghostrunner;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -10,10 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.localstack.LocalStackContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
-import java.io.IOException;
 import java.time.Duration;
 
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
@@ -75,7 +71,7 @@ public abstract class IntegrationTestSupport {
 
             // LocalStack 안정화 대기
             System.out.println("⏳ Waiting for LocalStack to be ready...");
-            Thread.sleep(10000);  // CI 환경을 위해 10초로 증가
+            Thread.sleep(3000);  // CI 환경을 위해 3초로 증가
 
             // SQS 큐 생성 (실패해도 테스트는 계속 진행)
             try {
@@ -130,10 +126,8 @@ public abstract class IntegrationTestSupport {
 
                 System.out.println("🔄 Attempting to create SQS queues (attempt " + (i + 1) + "/" + maxRetries + ")");
 
-                var result1 = SQS_CONTAINER.execInContainer(
-                        "awslocal", "sqs", "create-queue", "--queue-name", "TEST_QUEUE_NAME");
-                var result2 = SQS_CONTAINER.execInContainer(
-                        "awslocal", "sqs", "create-queue", "--queue-name", "TEST_DLQ_NAME");
+                var result1 = SQS_CONTAINER.execInContainer("awslocal", "sqs", "create-queue", "--queue-name", "TEST_QUEUE_NAME");
+                var result2 = SQS_CONTAINER.execInContainer("awslocal", "sqs", "create-queue", "--queue-name", "TEST_DLQ_NAME");
 
                 if (result1.getExitCode() != 0) {
                     throw new RuntimeException("Queue creation failed: " + result1.getStderr());
