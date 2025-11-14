@@ -78,6 +78,9 @@ management:
   metrics:
     enable:
       hikaricp: true
+      reactor.netty: true
+      reactor: true
+      http.client.requests: true
     distribution:
       percentiles-histogram:
         http.server.requests: true

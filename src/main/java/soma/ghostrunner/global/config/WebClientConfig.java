@@ -1,5 +1,6 @@
 package soma.ghostrunner.global.config;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
