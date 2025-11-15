@@ -23,7 +23,7 @@ public class JwtProvider {
   
     public String extractTokenFromHeader(HttpServletRequest request) {
         String authorizationHeader = request.getHeader("Authorization");
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+        if ( authorizationHeader == null || !authorizationHeader.startsWith("Bearer ") || authorizationHeader.isBlank() ) {
             throw new ParsingTokenException("HTTP 요청 헤더에서 토큰 파싱을 실패했습니다.");
         }
         return authorizationHeader.substring(7);
