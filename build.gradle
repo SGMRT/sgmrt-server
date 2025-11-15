@@ -52,6 +52,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+	// WebClient
+	implementation 'io.micrometer:micrometer-core'
+	implementation 'io.micrometer:micrometer-observation'
+
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
