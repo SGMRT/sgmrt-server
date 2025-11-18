@@ -25,11 +25,10 @@ import soma.ghostrunner.domain.running.application.PacemakerService;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
-import soma.ghostrunner.global.common.CommonApi;
 import soma.ghostrunner.global.common.log.HttpLogger;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
-@WebMvcTest(controllers = {RunningApi.class, AuthApi.class, CommonApi.class, NoticeApi.class, MemberApi.class, PacemakerApi.class, DeviceApi.class, NotificationApi.class})
+@WebMvcTest(controllers = {RunningApi.class, AuthApi.class, NoticeApi.class, MemberApi.class, PacemakerApi.class, DeviceApi.class, NotificationApi.class})
 @Import(RunningApiMapperImpl.class)
 @WithMockUser
 public abstract class ApiTestSupport {
