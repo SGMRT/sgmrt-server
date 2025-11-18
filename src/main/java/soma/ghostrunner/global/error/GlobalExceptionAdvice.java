@@ -34,7 +34,7 @@ public class GlobalExceptionAdvice {
     // BusinessException
     @ExceptionHandler(BusinessException.class)
     protected ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
-        log.error("handleBusinessException", e);
+        log.warn("handleBusinessException", e);
         return createErrorResponse(e.getErrorCode());
     }
 
@@ -55,7 +55,7 @@ public class GlobalExceptionAdvice {
     // Enum Type 이 일치하지 않아 바인딩 실패
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     protected ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
-        log.error("handleMethodArgumentTypeMismatchException", e);
+        log.warn("handleMethodArgumentTypeMismatchException", e);
         return createErrorResponse(ErrorCode.INVALID_REQUEST_VALUE);
     }
 
@@ -83,35 +83,35 @@ public class GlobalExceptionAdvice {
     // 지원하지 않는 URI 요청
     @ExceptionHandler(NoResourceFoundException.class)
     protected ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException e) {
-        log.error("handleNoResourceFoundException", e);
+        log.warn("handleNoResourceFoundException", e);
         return createErrorResponse(ErrorCode.NONE_REQUEST_URI);
     }
 
     // 지원하지 않는 HTTP 메서드
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     protected ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException e) {
-        log.error("handleHttpRequestMethodNotSupportedException", e);
+        log.warn("handleHttpRequestMethodNotSupportedException", e);
         return createErrorResponse(ErrorCode.METHOD_NOT_ALLOWED);
     }
 
     // 컨트롤러 메소드 파라미터 @Validated 유효성 검사 실패
     @ExceptionHandler(HandlerMethodValidationException.class)
     protected ResponseEntity<ErrorResponse> handleHandlerMethodValidationException(HandlerMethodValidationException e) {
-        log.error("handleHandlerMethodValidationException", e);
+        log.warn("handleHandlerMethodValidationException", e);
         return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
     }
 
     // 잘못된 데이터 혹은 인자
     @ExceptionHandler(IllegalArgumentException.class)
     protected ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
-        log.error("handleIllegalArgumentException", e);
+        log.warn("handleIllegalArgumentException", e);
         return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
     }
 
     // 잘못된 헤더
     @ExceptionHandler(MissingRequestHeaderException.class)
     protected ResponseEntity<ErrorResponse> handleMissingRequestHeaderException(MissingRequestHeaderException e) {
-        log.error("handleMissingRequestHeaderException", e);
+        log.warn("handleMissingRequestHeaderException", e);
         return createErrorResponse(ErrorCode.INVALID_REQUEST_HEADER);
     }
 
@@ -119,26 +119,27 @@ public class GlobalExceptionAdvice {
     @ExceptionHandler(MissingServletRequestPartException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<ErrorResponse> handleMissingPart(MissingServletRequestPartException e) {
-        log.error("handleMissingServletRequestPartException", e);
+        log.warn("handleMissingServletRequestPartException", e);
         return createErrorResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
     }
 
    // 인증 실패
     @ExceptionHandler(AuthenticationException.class)
     protected ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException e) {
-        log.error("handleAuthenticationException", e);
+        log.warn("handleAuthenticationException", e);
         return createErrorResponse(ErrorCode.AUTHENTICATION_FAILED);
     }
 
     // 인가 실패
     @ExceptionHandler(AccessDeniedException.class)
     protected ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
-        log.error("handleAccessDeniedException", e);
+        log.warn("handleAccessDeniedException", e);
         return  createErrorResponse(ErrorCode.ACCESS_DENIED);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e, HttpServletRequest request) {
+
         log.error("can't find Handler Entity ", e);
 
         ResponseEntity<ErrorResponse> responseEntity = createErrorResponse(ErrorCode.SERVICE_UNAVAILABLE);
