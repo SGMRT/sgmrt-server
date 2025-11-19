@@ -144,7 +144,6 @@ dependencies {
 	implementation 'org.locationtech.proj4j:proj4j-epsg:1.4.1'
 
 	// Sentry
-	implementation 'io.sentry:sentry-spring-boot-starter-jakarta'
 	implementation 'io.sentry:sentry-logback'
 
 }
