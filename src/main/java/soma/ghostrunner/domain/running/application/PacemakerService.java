@@ -27,6 +27,7 @@ import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -162,7 +163,7 @@ public class PacemakerService {
 
     @Transactional(readOnly = true)
     public Long getRateLimitCounter(String memberUuid) {
-        String rateLimitKey = createRateLimitKey(memberUuid, LocalDate.now());
+        String rateLimitKey = createRateLimitKey(memberUuid, LocalDate.now(ZoneId.of("Asia/Seoul")));
 
         String counter = redisRunningRepository.get(rateLimitKey);
         if (counter == null) {
