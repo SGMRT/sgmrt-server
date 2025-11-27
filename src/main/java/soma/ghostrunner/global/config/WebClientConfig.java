@@ -1,6 +1,5 @@
 package soma.ghostrunner.global.config;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import io.netty.channel.ChannelOption;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -17,17 +16,16 @@ import java.time.Duration;
 @Configuration
 public class WebClientConfig {
 
-    private static final int TIMEOUT_SECONDS = 300;
+    private static final int CONNECT_TIMEOUT_MILLIS = 10_000;
+    private static final int RESPONSE_TIMEOUT_SECONDS = 90;
 
     @Bean
     public WebClient openAiWebClient(@Value("${openai.api.key}") String apiKey) {
 
-        // 매 요청마다 새 TCP 커넥션을 생성하는 HttpClient
+        // 매 연결마다 TCP Connection 생성 + 타임아웃 90s
         HttpClient httpClient = HttpClient.create(ConnectionProvider.newConnection())
-                // 1) TCP connect 타임아웃
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10_000)
-                // 2) 응답 전체에 대한 타임아웃 (헤더/바디)
-                .responseTimeout(Duration.ofSeconds(TIMEOUT_SECONDS));
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, CONNECT_TIMEOUT_MILLIS)
+                .responseTimeout(Duration.ofSeconds(RESPONSE_TIMEOUT_SECONDS));
 
         return WebClient.builder()
                 .baseUrl("https://api.openai.com/v1")
