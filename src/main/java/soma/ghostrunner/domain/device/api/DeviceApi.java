@@ -8,12 +8,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 import soma.ghostrunner.domain.device.application.DeviceService;
 import soma.ghostrunner.domain.device.api.dto.DeviceRegistrationRequest;
 import soma.ghostrunner.domain.device.api.dto.PushTokenSaveRequest;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
 public class DeviceApi {
     private final DeviceService deviceService;
