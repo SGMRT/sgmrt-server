@@ -6,9 +6,9 @@ import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-
 @Configuration
 public class HttpClientConfig {
+
     @Bean
     public CloseableHttpClient httpClient() {
         PoolingHttpClientConnectionManager connManager = new PoolingHttpClientConnectionManager();
@@ -19,4 +19,5 @@ public class HttpClientConfig {
                 .setConnectionManager(connManager)
                 .build();
     }
+
 }

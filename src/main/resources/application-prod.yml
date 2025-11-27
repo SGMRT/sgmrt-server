@@ -1,18 +1,12 @@
+server:
+  shutdown: graceful
+
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
-    hikari:
-      pool-name: "GhostRunnerPool"
-      register-mbeans: true
-      maximum-pool-size: 10
-      minimum-idle: 10
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-
   servlet:
     multipart:
       max-file-size: 50MB
@@ -31,6 +25,8 @@ spring:
       hibernate:
         default_batch_fetch_size: 100
     show-sql: false
+  lifecycle:
+    timeout-per-shutdown-phase: 120s
 
 logging:
   level:

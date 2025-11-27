@@ -32,8 +32,8 @@ public class PacemakerOpenAiClient implements PacemakerLlmClient {
                 .retrieve()
                 .bodyToMono(OpenAiResponse.class)
                 .retryWhen(
-                        Retry.backoff(1, Duration.ofSeconds(2))   // 1회 재시도, 초기 wait = 2초
-                                .filter(this::isRetryableException)   // 재시도 가능한 예외만
+                        Retry.backoff(2, Duration.ofSeconds(2))
+                                .filter(this::isRetryableException)
                 )
                 .map(this::llmResponseToString);
     }
@@ -47,8 +47,8 @@ public class PacemakerOpenAiClient implements PacemakerLlmClient {
                 .retrieve()
                 .bodyToMono(OpenAiResponse.class)
                 .retryWhen(
-                        Retry.backoff(1, Duration.ofSeconds(2))   // 1회 재시도, 초기 wait = 2초
-                                .filter(this::isRetryableException)   // 재시도 가능한 예외만
+                        Retry.backoff(2, Duration.ofSeconds(2))
+                                .filter(this::isRetryableException)
                 )
                 .map(this::llmResponseToString);
     }
