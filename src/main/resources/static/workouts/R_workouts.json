@@ -1,0 +1,44 @@
+[
+  {
+    "id": "R-01",
+    "sets": [
+      {
+        "type": "R",
+        "distance": 400
+      },
+      {
+        "type": "E",
+        "distance": 400
+      }
+    ],
+    "repetitions": 4
+  },
+  {
+    "id": "R-02",
+    "sets": [
+      {
+        "type": "R",
+        "distance": 400
+      },
+      {
+        "type": "E",
+        "distance": 400
+      }
+    ],
+    "repetitions": 6
+  },
+  {
+    "id": "R-03",
+    "sets": [
+      {
+        "type": "R",
+        "distance": 800
+      },
+      {
+        "type": "E",
+        "distance": 800
+      }
+    ],
+    "repetitions": 5
+  }
+]

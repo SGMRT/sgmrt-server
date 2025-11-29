@@ -1,0 +1,188 @@
+package soma.ghostrunner.domain.running.infra.persistence;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.util.Pair;
+import org.springframework.stereotype.Repository;
+import soma.ghostrunner.domain.course.dto.CourseRunDto;
+import soma.ghostrunner.domain.running.domain.Running;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface RunningRepository extends JpaRepository<Running, Long>, RunningQueryRepository {
+
+    @Query("SELECT r.id FROM Running r WHERE r.course.id = :courseId")
+    List<Long> findIdsByCourseId(@Param("courseId") Long courseId);
+
+    Optional<Running> findByIdAndMemberId(Long runningId, Long memberId);
+
+    @Query("""
+        select r.runningDataUrls.interpolatedTelemetryUrl
+        from Running r
+        where r.id = :runningId
+          and r.member.uuid = :memberUuid
+    """)
+    Optional<String> findInterpolatedTelemetryUrlByIdAndMemberUuid(Long runningId, String memberUuid);
+
+    @Query("SELECT r FROM Running r JOIN FETCH r.member "
+            + "WHERE r.course.id = :courseId AND r.isPublic = true")
+    Page<Running> findByCourse_IdAndIsPublicTrue(Long courseId, Pageable pageable);
+
+    @Query("SELECT r FROM Running r JOIN FETCH r.member m WHERE r.course.id = :courseId AND r.hasPaused = false "
+            + "AND m.uuid = :memberUuid ORDER BY r.runningRecord.duration LIMIT 1")
+    Optional<Running> findBestPublicRunByCourseIdAndMemberId(Long courseId, String memberUuid);
+
+    @Query("""
+        SELECT r
+        FROM Running r
+        JOIN r.member m
+        WHERE m.uuid = :memberUuid
+          AND r.course.id IN :courseIds
+          AND r.hasPaused = false
+          AND r.runningRecord.duration = (
+              SELECT MIN(r2.runningRecord.duration)
+              FROM Running r2
+              WHERE r2.member.uuid = :memberUuid
+                    AND r2.course.id = r.course.id
+                    AND r2.hasPaused = false
+          )
+    """)
+    List<Running> findBestRunningRecordsByMemberIdAndCourseIds(String memberUuid, List<Long> courseIds);
+
+    @Query("SELECT DISTINCT r.course.id FROM Running r JOIN r.member m " +
+            "WHERE m.uuid = :memberUuid AND r.course.id IN :courseIds")
+    List<Long> findRanCourseIdsByMemberIdAndCourseIds(String memberUuid, List<Long> courseIds);
+
+    @Query("SELECT COUNT(r) FROM Running r "
+            + "WHERE r.course.id = :courseId AND r.isPublic = true AND r.runningRecord.averagePace < :averagePace")
+    Optional<Integer> countByCourseIdAndIsPublicTrueAndAveragePaceLessThan(Long courseId, Double averagePace);
+
+    @Query("select r from Running r where r.course.id = :courseId order by r.id asc limit 1")
+    Optional<Running> findFirstRunningByCourseId(Long courseId);
+
+    @Query("select r from Running r where r.id in :runningIds")
+    List<Running> findByIds(List<Long> runningIds);
+
+    @Query(
+            value = "select * from running_record r where r.id in :runningIds",
+            nativeQuery = true
+    )
+    List<Running> findByIdsNoMatterDeleted(@Param("runningIds") List<Long> runningIds);
+
+    @Modifying(clearAutomatically = true)
+    @Query("delete from Running r where r.id in :runningIds")
+    void deleteInRunningIds(@Param("runningIds") List<Long> runningIds);
+
+    @Query("select count(r.id) from Running r where r.course.id = :courseId")
+    long countTotalRunningsCount(Long courseId);
+
+    @Query(value = "SELECT COUNT(DISTINCT r.member_id) FROM running_record r WHERE r.course_id = :courseId AND r.is_public = true",
+            nativeQuery = true)
+    long countPublicRunnersInCourse(Long courseId);
+
+    @Query("select r from Running r where r.course.id = :courseId and r.member.id = :memberId order by r.startedAt desc, r.id desc")
+    List<Running> findRunningsByCourseIdAndMemberId(Long courseId, Long memberId);
+
+    @Query(value = """
+    SELECT
+        m.uuid AS runnerUuid,
+        m.profile_picture_url AS runnerProfileUrl,
+        m.nickname AS runnerNickname,
+        rr.id AS runningId,
+        rr.course_id AS courseId,
+        rr.running_name AS runningName,
+        rr.`average_pace_min/km` AS averagePace,
+        rr.`average_cadence_spm` AS cadence,
+        rr.`average_bpm` AS bpm,
+        rr.`duration_sec` AS duration,
+        rr.is_public AS isPublic,
+        rr.started_at_ms  AS startedAt
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(PARTITION BY member_id ORDER BY duration_sec ASC) as rn
+        FROM running_record
+        WHERE course_id = :courseId AND is_public = true AND deleted = false
+    ) AS rr
+    JOIN member m ON rr.member_id = m.id
+    WHERE rr.rn = 1
+    ORDER BY rr.`duration_sec` ASC
+    LIMIT :count
+    """, nativeQuery = true)
+    List<CourseRunDto> findTopRankingRunsByCourseIdWithDistinctMember(@Param("courseId") Long courseId, @Param("count") Integer count);
+
+    @Query(value = """
+        -- 멤버 별 개인 최고 기록
+        WITH filtered_runs AS (
+            SELECT
+                *,
+                ROW_NUMBER() OVER(PARTITION BY member_id, course_id ORDER BY duration_sec ASC) as rn
+            FROM running_record
+            WHERE course_id IN (:courseIds) AND is_public = true AND deleted = false
+        ),
+        -- 코스 별로 랭킹된 러닝 기록
+        ranked_runs AS (
+            SELECT
+                fr.course_id,
+                fr.running_name,
+                fr.id,
+                m.uuid,
+                m.profile_picture_url,
+                m.nickname,
+                fr.duration_sec,
+                fr.`average_pace_min/km`,
+                fr.average_cadence_spm,
+                fr.average_bpm,
+                fr.is_public,
+                fr.started_at_ms,
+                ROW_NUMBER() OVER(PARTITION BY fr.course_id ORDER BY fr.duration_sec ASC) as ranking
+            FROM filtered_runs fr
+            JOIN member m ON fr.member_id = m.id
+            WHERE fr.rn = 1
+        )
+        SELECT
+            rr.uuid AS runnerUuid,
+            rr.profile_picture_url AS runnerProfileUrl,
+            rr.nickname AS runnerNickname,
+            rr.id AS runningId,
+            rr.course_id AS courseId,
+            rr.running_name AS runningName,
+            rr.`average_pace_min/km` AS averagePace,
+            rr.average_cadence_spm AS cadence,
+            rr.average_bpm AS bpm,
+            rr.duration_sec AS duration,
+            rr.is_public AS isPublic,
+            rr.started_at_ms AS startedAt
+        FROM ranked_runs rr
+        WHERE rr.ranking <= :limit
+        ORDER BY rr.course_id, rr.ranking
+    """, nativeQuery = true)
+    List<CourseRunDto> findTopRankingRunsByCourseIdsWithDistinctMember(List<Long> courseIds, int limit);
+
+
+    @Query("""
+        SELECT r.course.id, COUNT(DISTINCT r.member.id)
+        FROM Running r
+        WHERE r.course.id IN :courseIds AND r.isPublic = true
+        GROUP BY r.course.id
+    """)
+    List<Pair<Long, Long>> findPublicRunnerCountsByCourseIds(List<Long> courseIds);
+
+    @Query("select r from Running r where r.course.id = :courseId and r.member.uuid = :memberUuid order by r.startedAt desc, r.id desc limit :limit")
+    List<Running> findLatestRunsByCourseIdAndMemberId(Long courseId, String memberUuid, int limit);
+
+    @Query("select r from Running r " +
+            "where r.course.id = :courseId " +
+            "and r.member.uuid = :memberUuid " +
+            "and r.startedAt < :runStartedAt " +
+            "order by r.runningRecord.duration asc, r.id asc " +
+            "limit 1")
+    Optional<Running> findBestRunByCourseIdAndMemberUuidBefore(Long courseId, String memberUuid, Long runStartedAt);
+
+}

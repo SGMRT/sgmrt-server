@@ -1,0 +1,47 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate.dialect: org.hibernate.dialect.MySQL8Dialect
+  flyway:
+    enabled: false
+
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: TEST_AWS_ACCESS_KEY
+      secret-key: TEST_AWS_SECRET_KEY
+    stack:
+      auto: false
+    sqs:
+      push-queue-name: TEST_QUEUE_NAME
+      push-dlq-name: TEST_DLQ_NAME
+
+s3:
+  bucket: ghostrunner-test-bucket
+  running-directory: running
+  course-directory: course
+  member-directory: member
+  notice-directory: notice
+
+jwt:
+  secret: ca4af8af65f788e32f267de8dcac28271b886a302a99fdc19aba24557ac095922384b9a05febb1ea7bc67df87a898bb589aa357e877fb06fa3470b3e5dcff8cf
+  expiration_time:
+    access_token: 1200000
+    refresh_token: 604800000
+
+openai:
+  api:
+    key: dummy_api_key
+
+logging:
+  level:
+    org.hibernate.tool.schema: DEBUG
+
+discord:
+  webhook:
+    url: https://discord.com/api/webhooks/dummy
+
