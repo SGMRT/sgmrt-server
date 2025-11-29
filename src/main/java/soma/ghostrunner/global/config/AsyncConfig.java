@@ -22,4 +22,19 @@ public class AsyncConfig {
         return executor;
     }
 
+    @Bean(name = "llmTaskExecutor")
+    public Executor llmTaskExecutor() {
+
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setThreadNamePrefix("llm-async-");
+
+        executor.setCorePoolSize(16);
+        executor.setMaxPoolSize(32);
+        executor.setQueueCapacity(100);
+
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.initialize();
+        return executor;
+    }
+
 }

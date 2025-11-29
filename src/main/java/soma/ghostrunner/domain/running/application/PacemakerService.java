@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.running.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RLock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.application.CourseService;
@@ -31,7 +30,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import static soma.ghostrunner.global.error.ErrorCode.*;
 
@@ -51,7 +49,7 @@ public class PacemakerService {
     private final MemberService memberService;
     private final RunningVdotService runningVdotService;
     private final WorkoutService workoutService;
-    private final PacemakerLlmService llmService;
+    private final PacemakerLlmAsyncService llmService;
 
     private final RunningApplicationMapper mapper;
 
