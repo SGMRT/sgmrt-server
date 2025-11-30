@@ -56,7 +56,7 @@ class PacemakerServiceTest {
     @Mock
     WorkoutService workoutService;
     @Mock
-    PacemakerLlmAsyncService llmService;
+    PacemakerLlmService llmService;
     @Mock
     RunningApplicationMapper mapper;
 

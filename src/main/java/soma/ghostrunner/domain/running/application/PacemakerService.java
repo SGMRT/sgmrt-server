@@ -49,7 +49,7 @@ public class PacemakerService {
     private final MemberService memberService;
     private final RunningVdotService runningVdotService;
     private final WorkoutService workoutService;
-    private final PacemakerLlmAsyncService llmService;
+    private final PacemakerLlmService llmService;
 
     private final RunningApplicationMapper mapper;
 

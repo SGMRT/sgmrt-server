@@ -28,7 +28,7 @@ class PacemakerLlmAsyncServiceTest {
     private PacemakerLlmCallbackService callbackService;
 
     @InjectMocks
-    private PacemakerLlmAsyncService service;
+    private PacemakerLlmService service;
 
     @Test
     void requestLlmToCreatePacemaker_success_shouldCallHandleSuccess() {

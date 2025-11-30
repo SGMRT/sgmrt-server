@@ -6,15 +6,15 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.application.dto.WorkoutDto;
+import soma.ghostrunner.domain.running.domain.llm.PacemakerLlmClient;
 import soma.ghostrunner.domain.running.domain.llm.PacemakerPromptGenerator;
-import soma.ghostrunner.domain.running.infra.openai.PacemakerOpenAiRestClient;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PacemakerLlmAsyncService {
+public class PacemakerLlmService {
 
-    private final PacemakerOpenAiRestClient llmClient;
+    private final PacemakerLlmClient llmClient;
     private final PacemakerLlmCallbackService callbackService;
 
     @Async("llmTaskExecutor")
@@ -44,8 +44,10 @@ public class PacemakerLlmAsyncService {
             callbackService.handleSuccess(pacemakerId, completedWorkoutStr);
 
         } catch (Exception e) {
+
             log.error("🚫 AI 고스트(페이스메이커) [{}] 생성 실패.. 에러 메세지 : {}", pacemakerId, e.getMessage());
             callbackService.handleError(rateLimitKey, pacemakerId);
+
         }
 
     }
