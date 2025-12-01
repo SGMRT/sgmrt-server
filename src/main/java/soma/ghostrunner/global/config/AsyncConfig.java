@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import soma.ghostrunner.global.common.MdcTaskDecorator;
 
 import java.util.concurrent.Executor;
 
@@ -32,7 +33,9 @@ public class AsyncConfig {
         executor.setMaxPoolSize(32);
         executor.setQueueCapacity(100);
 
+        executor.setTaskDecorator(new MdcTaskDecorator());
         executor.setWaitForTasksToCompleteOnShutdown(true);
+
         executor.initialize();
         return executor;
     }
