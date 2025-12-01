@@ -45,7 +45,7 @@ public class PacemakerLlmService {
 
         } catch (Exception e) {
 
-            log.error("🚫 AI 고스트(페이스메이커) [{}] 생성 실패.. 에러 메세지 : {}", pacemakerId, e.getMessage());
+            log.error("🚫 AI 고스트(페이스메이커) [{}] 생성 실패.", pacemakerId, e);
             callbackService.handleError(rateLimitKey, pacemakerId);
 
         }
