@@ -6,7 +6,6 @@ public class OpenAiResponse {
     public String id;
     public String object;
 
-    // 편의 필드: OpenAI 서버가 만들어주는 전체 텍스트
     public String output_text;
 
     public List<OutputItem> output;
