@@ -14,11 +14,13 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
+import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
 import soma.ghostrunner.domain.member.domain.Member;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -72,7 +74,7 @@ class CourseServiceUnitTest {
             request.setIsPublic(true);
 
             // when
-            courseService.updateCourse(courseId, request);
+            courseService.updateCourse(courseId, request, owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -100,7 +102,7 @@ class CourseServiceUnitTest {
             request.setIsPublic(true);
 
             // when
-            courseService.updateCourse(courseId, request);
+            courseService.updateCourse(courseId, request, owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -128,7 +130,7 @@ class CourseServiceUnitTest {
             request.setIsPublic(true);
 
             // when
-            courseService.updateCourse(courseId, request);
+            courseService.updateCourse(courseId, request, owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -167,7 +169,7 @@ class CourseServiceUnitTest {
             request.setIsPublic(false);
 
             // when
-            courseService.updateCourse(courseId, request);
+            courseService.updateCourse(courseId, request, owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isFalse();
@@ -193,7 +195,7 @@ class CourseServiceUnitTest {
             request.setIsPublic(false);
 
             // when
-            courseService.updateCourse(courseId, request);
+            courseService.updateCourse(courseId, request, owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isFalse();
@@ -223,7 +225,7 @@ class CourseServiceUnitTest {
 
             CoursePatchRequest registerRequest = new CoursePatchRequest();
             registerRequest.setIsPublic(true);
-            courseService.updateCourse(courseId, registerRequest);
+            courseService.updateCourse(courseId, registerRequest, owner.getUuid());
 
             // then 1
             assertThat(course.isPublic()).isTrue();
@@ -236,7 +238,7 @@ class CourseServiceUnitTest {
 
             CoursePatchRequest unregisterRequest = new CoursePatchRequest();
             unregisterRequest.setIsPublic(false);
-            courseService.updateCourse(courseId, unregisterRequest);
+            courseService.updateCourse(courseId, unregisterRequest, owner.getUuid());
 
             // then 2
             assertThat(course.isPublic()).isFalse();
@@ -245,12 +247,76 @@ class CourseServiceUnitTest {
             // when 3 - 재등록
             CoursePatchRequest reregisterRequest = new CoursePatchRequest();
             reregisterRequest.setIsPublic(true);
-            courseService.updateCourse(courseId, reregisterRequest);
+            courseService.updateCourse(courseId, reregisterRequest, owner.getUuid());
 
             // then 3
             assertThat(course.isPublic()).isTrue();
             assertThat(subscription.isActive()).isTrue();
             then(courseRepository).should(times(3)).save(course);
+        }
+    }
+
+    @Nested
+    @DisplayName("코스 소유자 검증")
+    class OwnerVerification {
+
+        @Test
+        @DisplayName("코스 소유자가 수정하면 정상 동작한다")
+        void updateCourse_ByOwner_Success() {
+            // given
+            Long courseId = 1L;
+            Long memberId = 1L;
+            setIds(course, courseId, owner, memberId);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(courseRepository.save(any(Course.class))).willReturn(course);
+
+            CoursePatchRequest request = new CoursePatchRequest();
+            request.setName("새로운 이름");
+
+            // when
+            courseService.updateCourse(courseId, request, owner.getUuid());
+
+            // then
+            then(courseRepository).should().save(course);
+        }
+
+        @Test
+        @DisplayName("코스 소유자가 아닌 사람이 수정하면 CourseAccessDeniedException이 발생한다")
+        void updateCourse_ByNonOwner_ThrowsException() {
+            // given
+            Long courseId = 1L;
+            Long memberId = 1L;
+            setIds(course, courseId, owner, memberId);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+
+            CoursePatchRequest request = new CoursePatchRequest();
+            request.setName("새로운 이름");
+            String otherMemberUuid = "other-member-uuid";
+
+            // when & then
+            assertThatThrownBy(() -> courseService.updateCourse(courseId, request, otherMemberUuid))
+                    .isInstanceOf(CourseAccessDeniedException.class)
+                    .hasMessageContaining("소유자가 아닙니다");
+        }
+
+        @Test
+        @DisplayName("코스 삭제 시 소유자가 아니면 CourseAccessDeniedException이 발생한다")
+        void deleteCourse_ByNonOwner_ThrowsException() {
+            // given
+            Long courseId = 1L;
+            Long memberId = 1L;
+            setIds(course, courseId, owner, memberId);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+
+            String otherMemberUuid = "other-member-uuid";
+
+            // when & then
+            assertThatThrownBy(() -> courseService.deleteCourse(courseId, otherMemberUuid))
+                    .isInstanceOf(CourseAccessDeniedException.class)
+                    .hasMessageContaining("소유자가 아닙니다");
         }
     }
 

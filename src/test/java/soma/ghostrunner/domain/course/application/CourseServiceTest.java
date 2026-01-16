@@ -16,7 +16,6 @@ import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.CoursePreviewDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
-import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -193,7 +192,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         CoursePatchRequest request = new CoursePatchRequest("바꿨다", true, Set.of(NAME, IS_PUBLIC));
 
         // when
-        courseService.updateCourse(id, request);
+        courseService.updateCourse(id, request, dummyMember.getUuid());
 
         // then
         Course course = courseRepository.findById(id).orElseThrow();
@@ -210,7 +209,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         CoursePatchRequest request = new CoursePatchRequest("바꿨다", null, Set.of(NAME));
 
         // when
-        courseService.updateCourse(id, request);
+        courseService.updateCourse(id, request, dummyMember.getUuid());
 
         // then
         Course course = courseRepository.findById(id).orElseThrow();
@@ -227,7 +226,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         CoursePatchRequest request = new CoursePatchRequest(" ", null, Set.of(NAME));
 
         // when & then
-        Assertions.assertThatThrownBy(() -> courseService.updateCourse(id, request))
+        Assertions.assertThatThrownBy(() -> courseService.updateCourse(id, request, dummyMember.getUuid()))
                 .isInstanceOf(CourseNameNotValidException.class)
                 .hasMessage("invalid course name");
     }
@@ -241,25 +240,43 @@ class CourseServiceTest extends IntegrationTestSupport {
         CoursePatchRequest request = new CoursePatchRequest(null, false, Set.of(IS_PUBLIC));
 
         // when
-        courseService.updateCourse(id, request);
+        courseService.updateCourse(id, request, dummyMember.getUuid());
 
         // then - 등록 해제 성공
         Course course = courseRepository.findById(id).orElseThrow();
         Assertions.assertThat(course.getIsPublic()).isFalse();
     }
 
-    @DisplayName("이미 공개 상태인 코스를 다시 공개로 수정하려고 하면 예외가 발생한다.")
+    @DisplayName("이미 공개 상태인 코스를 다시 공개로 수정해도 성공한다 (멱등성)")
     @Test
-    void updateCourse_AlreadyPublic_ThrowsException() {
+    void updateCourse_AlreadyPublic_Idempotent() {
         // given
         Course publicCourse = createPublicCourse("공개 코스", LAT, LNG);
         Long id = courseRepository.save(publicCourse).getId();
         CoursePatchRequest request = new CoursePatchRequest(null, true, Set.of(IS_PUBLIC));
 
-        // when & then
-        Assertions.assertThatThrownBy(() -> courseService.updateCourse(id, request))
-                .isInstanceOf(CourseAlreadyPublicException.class)
-                .hasMessageContaining("already public");
+        // when
+        courseService.updateCourse(id, request, dummyMember.getUuid());
+
+        // then - 여전히 공개 상태 유지 (멱등성)
+        Course course = courseRepository.findById(id).orElseThrow();
+        Assertions.assertThat(course.getIsPublic()).isTrue();
+    }
+
+    @DisplayName("이미 비공개 상태인 코스를 다시 비공개로 수정해도 성공한다 (멱등성)")
+    @Test
+    void updateCourse_AlreadyPrivate_Idempotent() {
+        // given
+        Course privateCourse = createPrivateCourse("비공개 코스", LAT, LNG);
+        Long id = courseRepository.save(privateCourse).getId();
+        CoursePatchRequest request = new CoursePatchRequest(null, false, Set.of(IS_PUBLIC));
+
+        // when
+        courseService.updateCourse(id, request, dummyMember.getUuid());
+
+        // then - 여전히 비공개 상태 유지 (멱등성)
+        Course course = courseRepository.findById(id).orElseThrow();
+        Assertions.assertThat(course.getIsPublic()).isFalse();
     }
 
     @DisplayName("코스의 id를 기반으로 코스를 삭제할 수 있다.")
@@ -270,7 +287,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         Long id = courseRepository.save(course).getId();
 
         // when
-        courseService.deleteCourse(id);
+        courseService.deleteCourse(id, dummyMember.getUuid());
 
         // then
         Assertions.assertThat(courseRepository.findById(id)).isNotPresent();

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.course.enums.CourseSource;
+import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
 import soma.ghostrunner.domain.member.domain.Member;
 
 import static org.assertj.core.api.Assertions.*;
@@ -159,6 +160,43 @@ class CourseTest {
         // when & then
         assertThat(privateCourse.isPublic()).isFalse();
         assertThat(publicCourse.isPublic()).isTrue();
+    }
+
+    @Test
+    @DisplayName("코스 소유자가 verifyOwner()를 호출하면 예외가 발생하지 않는다")
+    void verifyOwner_Success() {
+        // given
+        Course course = createDefaultCourse();
+        String ownerUuid = member.getUuid();
+
+        // when & then
+        assertThatCode(() -> course.verifyOwner(ownerUuid))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("코스 소유자가 아닌 사람이 verifyOwner()를 호출하면 CourseAccessDeniedException이 발생한다")
+    void verifyOwner_NotOwner_ThrowsException() {
+        // given
+        Course course = createDefaultCourse();
+        String otherMemberUuid = "other-member-uuid";
+
+        // when & then
+        assertThatThrownBy(() -> course.verifyOwner(otherMemberUuid))
+                .isInstanceOf(CourseAccessDeniedException.class)
+                .hasMessageContaining("소유자가 아닙니다");
+    }
+
+    @Test
+    @DisplayName("verifyOwner()에 null을 전달하면 CourseAccessDeniedException이 발생한다")
+    void verifyOwner_NullUuid_ThrowsException() {
+        // given
+        Course course = createDefaultCourse();
+
+        // when & then
+        assertThatThrownBy(() -> course.verifyOwner(null))
+                .isInstanceOf(CourseAccessDeniedException.class)
+                .hasMessageContaining("소유자가 아닙니다");
     }
 
     private Course createDefaultCourse() {

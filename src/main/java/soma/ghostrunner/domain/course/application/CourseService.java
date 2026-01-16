@@ -14,7 +14,6 @@ import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
-import soma.ghostrunner.domain.course.exception.CourseAlreadyPublicException;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
@@ -68,14 +67,16 @@ public class CourseService {
     }
 
     @Transactional
-    public void deleteCourse(Long courseId) {
+    public void deleteCourse(Long courseId, String memberUuid) {
         Course course = findCourseById(courseId);
-        courseRepository.delete(course); // 아마 select 두 번 하게 될 거임
+        course.verifyOwner(memberUuid);
+        courseRepository.delete(course);
     }
 
     @Transactional
-    public void updateCourse(Long courseId, CoursePatchRequest request) {
+    public void updateCourse(Long courseId, CoursePatchRequest request, String memberUuid) {
         Course course = findCourseById(courseId);
+        course.verifyOwner(memberUuid);
 
         if (request.getName() != null) {
             updateCourseName(course, request.getName());
@@ -100,16 +101,18 @@ public class CourseService {
         
         boolean currentStatus = course.isPublic();
         
-        // 등록
+        if (currentStatus == isPublic) {
+            log.debug("Course {} is already in desired state: isPublic={}", course.getId(), isPublic);
+            return;
+        }
+        
+        // 등록: false -> true
         if (!currentStatus && isPublic) {
             registerCourse(course);
         }
-        // 등록 해제
+        // 등록 해제: true -> false
         else if (currentStatus && !isPublic) {
             unregisterCourse(course);
-        }
-        else if (currentStatus && isPublic) {
-            throw new CourseAlreadyPublicException(ErrorCode.COURSE_ALREADY_PUBLIC, course.getId());
         }
     }
 

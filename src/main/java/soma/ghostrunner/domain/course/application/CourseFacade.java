@@ -224,12 +224,12 @@ public class CourseFacade {
         return courseMapper.toCourseDetailedResponse(course, telemetryUrl, courseStatistics, userPaceStats, ghostForUser);
     }
 
-    public void updateCourse(Long courseId, CoursePatchRequest request) {
-        courseService.updateCourse(courseId, request);
+    public void updateCourse(Long courseId, CoursePatchRequest request, String memberUuid) {
+        courseService.updateCourse(courseId, request, memberUuid);
     }
 
-    public void deleteCourse(Long courseId) {
-        courseService.deleteCourse(courseId);
+    public void deleteCourse(Long courseId, String memberUuid) {
+        courseService.deleteCourse(courseId, memberUuid);
     }
 
     public Page<CourseGhostResponse> findPublicGhosts(Long courseId, Pageable pageable) {
