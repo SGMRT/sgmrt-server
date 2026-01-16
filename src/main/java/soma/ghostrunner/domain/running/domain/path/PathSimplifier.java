@@ -192,62 +192,74 @@ public class PathSimplifier {
     }
 
     private List<CoordinatesWithTs> visValingamWhyatt(List<CoordinatesWithTs> points, List<CoordinatesWithTs> utmPoints) {
-        PriorityQueue<VWHeapNode> heap = new PriorityQueue<>();
-        for (int i = 1; i < utmPoints.size()-1; i++) {
-            double area = calculateTriangleArea(utmPoints.get(i-1), utmPoints.get(i), utmPoints.get(i+1));
-            heap.add(new VWHeapNode(area, i - 1, i, i + 1));
+
+        // removed, prev, next 초기화
+        boolean[] removed = new boolean[points.size()];
+        int[] prev = new int[points.size()];
+        for (int i = 0; i < points.size(); i++) {
+            prev[i] = i - 1;
+        }
+        int[] next = new int[points.size()];
+        for (int i = 0; i < points.size() - 1; i++) {
+            next[i] = i + 1;
+        }
+        next[points.size() - 1] = -1;
+
+        // 힙 초기화
+        PriorityQueue<CoordinatesTriangle> heap = new PriorityQueue<>(Comparator.comparingDouble(
+                (CoordinatesTriangle triangle) -> triangle.area));
+        for (int i = 0; i < points.size() - 2; i++) {
+            double area = calculateTriangleArea(utmPoints.get(i), utmPoints.get(i + 1), utmPoints.get(i + 2));
+            heap.add(new CoordinatesTriangle(area, i, i + 1, i + 2));
         }
 
-        List<VWLNode> vwNodes = VWLNode.toList(points.size());     // 연결 정보
-
-        boolean[] isActive = new boolean[points.size()];           // 활성화 정보
-        Arrays.fill(isActive, true);
-
+        // VW 알고리즘
         while (!heap.isEmpty()) {
-            VWHeapNode point = heap.poll();     // 가장 넓이가 적은 삼각형
-            double area = point.getArea();
-            int start = point.startCoordinatesIdx;
-            int mid = point.midCoordinatesIdx;
-            int end = point.endCoordinatesIdx;
 
-            if (vwNodes.get(mid).prevIdx != start || vwNodes.get(mid).nextIdx != end) {       // 비활성화 점, 변경된 점 스킵
-                continue;
-            }
+            CoordinatesTriangle triangle = heap.poll();
 
-            if (area < VW_EPSILON_AREA) {
-                isActive[mid] = false;          // 가운데 인덱스 비활성화
-                vwNodes.get(start).setNextIdx(vwNodes.get(mid).nextIdx);        // 주변 노드 정보 갱신
-                vwNodes.get(end).setPrevIdx(vwNodes.get(mid).prevIdx);
+            // 삭제된 점이 있다면 넘긴다.
+            if (triangle.containsRemovedIdx(removed)) continue;
 
-                if (vwNodes.get(start).prevIdx != null) {       // 왼쪽 삼각형
-                    double leftTriangleArea = calculateTriangleArea(
-                            utmPoints.get(vwNodes.get(start).prevIdx),
-                            utmPoints.get(start),
-                            utmPoints.get(end)
-                    );
-                    heap.add(new VWHeapNode(leftTriangleArea, vwNodes.get(start).prevIdx, start, end));
-                }
-
-                if (vwNodes.get(end).nextIdx != null) {       // 오른쪽 삼각형
-                    double rightTriangleArea = calculateTriangleArea(
-                            utmPoints.get(start),
-                            utmPoints.get(end),
-                            utmPoints.get(vwNodes.get(end).nextIdx)
-                    );
-                    heap.add(new VWHeapNode(rightTriangleArea, start, end, vwNodes.get(end).nextIdx));
-                }
-            } else {
+            // 너비가 임계치보다 크다면 끝
+            if (triangle.area > VW_EPSILON_AREA) {
                 break;
             }
+
+            // 삭제
+            int removedIdx = triangle.idx;
+            removed[removedIdx] = true;
+            if (removedIdx != 0) {
+                next[prev[removedIdx]] = next[removedIdx];
+            }
+            if (removedIdx != points.size() - 1) {
+                prev[next[removedIdx]] = prev[removedIdx];
+            }
+
+            // 양옆의 점을 찾아 추가한다.
+            // 왼쪽
+            if (prev[triangle.prevIdx] != -1) {
+                double leftArea = calculateTriangleArea(
+                        utmPoints.get(prev[triangle.prevIdx]), utmPoints.get(triangle.prevIdx), utmPoints.get(next[triangle.prevIdx]));
+                heap.add(new CoordinatesTriangle(leftArea, prev[triangle.prevIdx], triangle.prevIdx, next[triangle.prevIdx]));
+            }
+            // 오른쪽
+            if (next[triangle.nextIdx] != -1) {
+                double rightArea = calculateTriangleArea(
+                        utmPoints.get(prev[triangle.nextIdx]), utmPoints.get(triangle.nextIdx), utmPoints.get(next[triangle.nextIdx]));
+                heap.add(new CoordinatesTriangle(rightArea, prev[triangle.nextIdx], triangle.nextIdx, next[triangle.nextIdx]));
+            }
+
         }
 
-        List<CoordinatesWithTs> coordinatesWithTsList = new ArrayList<>();
-        for (int i = 0; i < vwNodes.size(); i++) {
-            if (isActive[i]) {
-                coordinatesWithTsList.add(points.get(i));
+        // 삭제 안된 애들
+        List<CoordinatesWithTs> remains = new ArrayList<>();
+        for (int r = 0; r < removed.length; r++) {
+            if (!removed[r]) {
+                remains.add(points.get(r));
             }
         }
-        return coordinatesWithTsList;
+        return remains;
     }
 
     private Double calculateTriangleArea(CoordinatesWithTs p1, CoordinatesWithTs p2, CoordinatesWithTs p3) {
@@ -258,39 +270,17 @@ public class PathSimplifier {
         );
     }
 
-    @Getter @Setter
     @AllArgsConstructor
-    private class VWHeapNode implements Comparable<VWHeapNode> {
+    private class CoordinatesTriangle {
 
         double area;
-        int startCoordinatesIdx;
-        int midCoordinatesIdx;
-        int endCoordinatesIdx;
+        int prevIdx;
+        int idx;
+        int nextIdx;
 
-        @Override
-        public int compareTo(@NotNull VWHeapNode other) {
-            return Double.compare(this.area, other.area);
+        boolean containsRemovedIdx(boolean[] removed) {
+            return removed[prevIdx] || removed[idx] || removed[nextIdx];
         }
-
-    }
-
-    @Getter @Setter
-    @AllArgsConstructor
-    private class VWLNode {
-
-        Integer prevIdx;
-        Integer nextIdx;
-
-        static List<VWLNode> toList(int size) {
-            List<VWLNode> result = new ArrayList<>();
-            result.add(new VWLNode(null, 1));
-            for (int i = 1; i < size - 1; i++) {
-                result.add(new VWLNode(i - 1, i + 1));
-            }
-            result.add(new VWLNode(size - 2, null));
-            return result;
-        }
-
     }
 
 }
