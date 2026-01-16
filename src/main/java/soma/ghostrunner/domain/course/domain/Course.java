@@ -98,4 +98,35 @@ public class Course extends BaseTimeEntity {
     public String getOfficialTelemetryUrl() {
         return courseDataUrls.getRouteUrl();
     }
+
+    /* =====================
+       도메인 로직
+       ===================== */
+
+    /**
+     * 코스를 공개 상태로 변경
+     */
+    public void makePublic() {
+        if (this.isPublic) {
+            throw new IllegalStateException("Course is already public");
+        }
+        this.isPublic = true;
+    }
+
+    /**
+     * 코스를 비공개 상태로 변경 (등록 해제)
+     */
+    public void makePrivate() {
+        if (!this.isPublic) {
+            throw new IllegalStateException("Course is already private");
+        }
+        this.isPublic = false;
+    }
+
+    /**
+     * 공개 상태 확인
+     */
+    public boolean isPublic() {
+        return this.isPublic != null && this.isPublic;
+    }
 }

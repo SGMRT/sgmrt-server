@@ -197,8 +197,8 @@ class CourseServiceTest extends IntegrationTestSupport {
 
         // then
         Course course = courseRepository.findById(id).orElseThrow();
-        Assertions.assertThat(course.getName()).isEqualTo(privateCourse.getName());
-        Assertions.assertThat(course.getIsPublic()).isEqualTo(privateCourse.getIsPublic());
+        Assertions.assertThat(course.getName()).isEqualTo("바꿨다");
+        Assertions.assertThat(course.getIsPublic()).isTrue();
     }
 
     @DisplayName("코스 변경 DTO의 필드가 일부만 존재하는 경우 해당 필드만 수정한다.")
@@ -214,8 +214,8 @@ class CourseServiceTest extends IntegrationTestSupport {
 
         // then
         Course course = courseRepository.findById(id).orElseThrow();
-        Assertions.assertThat(course.getName()).isEqualTo(privateCourse.getName());
-        Assertions.assertThat(course.getIsPublic()).isFalse();
+        Assertions.assertThat(course.getName()).isEqualTo("바꿨다"); // 수정된 값
+        Assertions.assertThat(course.getIsPublic()).isFalse(); // 그대로 유지
     }
 
     @DisplayName("코스 제목을 빈칸으로 수정하면 예외가 발생한다.")
@@ -232,13 +232,29 @@ class CourseServiceTest extends IntegrationTestSupport {
                 .hasMessage("invalid course name");
     }
 
-    @DisplayName("코스가 이미 공개 상태인 경우 비공개 상태로 수정하면 예외가 발생한다.")
+    @DisplayName("코스가 이미 공개 상태인 경우 비공개 상태로 수정할 수 있다 (등록 해제)")
     @Test
-    void updateCourse_CannotSetIsPublicToFalse() {
+    void updateCourse_CanSetIsPublicToFalse_Unregister() {
         // given
-        Course privateCourse = createPublicCourse("공개 코스", LAT, LNG);
-        Long id = courseRepository.save(privateCourse).getId();
+        Course publicCourse = createPublicCourse("공개 코스", LAT, LNG);
+        Long id = courseRepository.save(publicCourse).getId();
         CoursePatchRequest request = new CoursePatchRequest(null, false, Set.of(IS_PUBLIC));
+
+        // when
+        courseService.updateCourse(id, request);
+
+        // then - 등록 해제 성공
+        Course course = courseRepository.findById(id).orElseThrow();
+        Assertions.assertThat(course.getIsPublic()).isFalse();
+    }
+
+    @DisplayName("이미 공개 상태인 코스를 다시 공개로 수정하려고 하면 예외가 발생한다.")
+    @Test
+    void updateCourse_AlreadyPublic_ThrowsException() {
+        // given
+        Course publicCourse = createPublicCourse("공개 코스", LAT, LNG);
+        Long id = courseRepository.save(publicCourse).getId();
+        CoursePatchRequest request = new CoursePatchRequest(null, true, Set.of(IS_PUBLIC));
 
         // when & then
         Assertions.assertThatThrownBy(() -> courseService.updateCourse(id, request))

@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
@@ -18,6 +20,7 @@ import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,6 +30,7 @@ public class CourseService {
 
     private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
+    private final CourseSubscriptionRepository subscriptionRepository;
 
     public Long save(Course course) {
         return courseRepository.save(course).getId();
@@ -71,7 +75,7 @@ public class CourseService {
 
     @Transactional
     public void updateCourse(Long courseId, CoursePatchRequest request) {
-        Course course = findCourseById(courseId); // courseId null 체크는 메소드 내에서 이뤄짐
+        Course course = findCourseById(courseId);
 
         if (request.getName() != null) {
             updateCourseName(course, request.getName());
@@ -93,8 +97,85 @@ public class CourseService {
     private void updateCoursePublicity(Course course, Boolean isPublic) {
         if(course == null) throw new IllegalArgumentException("Course cannot be null");
         if(isPublic == null) throw new IllegalArgumentException("IsPublic cannot be null");
-        if(course.getIsPublic() == true) throw new CourseAlreadyPublicException(ErrorCode.COURSE_ALREADY_PUBLIC, course.getId());
-        course.setIsPublic(isPublic);
+        
+        boolean currentStatus = course.isPublic();
+        
+        // 등록
+        if (!currentStatus && isPublic) {
+            registerCourse(course);
+        }
+        // 등록 해제
+        else if (currentStatus && !isPublic) {
+            unregisterCourse(course);
+        }
+        else if (currentStatus && isPublic) {
+            throw new CourseAlreadyPublicException(ErrorCode.COURSE_ALREADY_PUBLIC, course.getId());
+        }
+    }
+
+    /**
+     * 코스 등록 (도메인 + 중간테이블 조율)
+     */
+    private void registerCourse(Course course) {
+        manageSubscriptionForRegister(course);
+        course.makePublic();
+    }
+
+    /**
+     * 코스 등록 해제 (도메인 + 중간테이블 조율)
+     */
+    private void unregisterCourse(Course course) {
+        manageSubscriptionForUnregister(course);
+        course.makePrivate();
+    }
+
+    /**
+     * 등록 시 중간테이블 관리
+     * - 중간테이블이 없으면 생성
+     * - deleted=true면 restore
+     * - deleted=false면 그대로
+     */
+    private void manageSubscriptionForRegister(Course course) {
+        Long courseId = course.getId();
+        Long memberId = course.getMember().getId();
+        
+        Optional<CourseSubscription> existingSubscription = 
+                subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId);
+        
+        if (existingSubscription.isEmpty()) {
+            // 새로 등록: 중간테이블 생성
+            CourseSubscription newSubscription = CourseSubscription.create(course, course.getMember());
+            subscriptionRepository.save(newSubscription);
+            log.info("Created new subscription for course={}, member={}", courseId, memberId);
+        } else {
+            CourseSubscription subscription = existingSubscription.get();
+            if (subscription.isDeleted()) {
+                // 재등록: restore
+                subscription.restore();
+                subscriptionRepository.save(subscription);
+                log.info("Restored subscription for course={}, member={}", courseId, memberId);
+            } else {
+                // 이미 활성 상태
+                log.debug("Subscription already active for course={}, member={}", courseId, memberId);
+            }
+        }
+    }
+
+    /**
+     * 등록 해제 시 중간테이블 관리
+     */
+    private void manageSubscriptionForUnregister(Course course) {
+        Long courseId = course.getId();
+        Long memberId = course.getMember().getId();
+        
+        Optional<CourseSubscription> subscription = 
+                subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId);
+        
+        if (subscription.isPresent()) {
+            subscription.get().unregister();
+            subscriptionRepository.save(subscription.get());
+            log.info("Unregistered subscription for course={}, member={}", courseId, memberId);
+        }
     }
 
     /** (lat, lng)을 radiusM로 둘러싼 직사각형의 네 꼭지점 좌표를 반환한다 */

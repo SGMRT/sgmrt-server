@@ -91,6 +91,76 @@ class CourseTest {
         assertThat(course.getIsPublic()).isTrue();
     }
 
+    @Test
+    @DisplayName("makePublic()을 호출하면 비공개 코스가 공개된다")
+    void makePublic_Success() {
+        // given
+        Course course = createDefaultCourse();
+        assertThat(course.isPublic()).isFalse();
+
+        // when
+        course.makePublic();
+
+        // then
+        assertThat(course.isPublic()).isTrue();
+        assertThat(course.getIsPublic()).isTrue();
+    }
+
+    @Test
+    @DisplayName("이미 공개된 코스에 makePublic()을 호출하면 예외가 발생한다")
+    void makePublic_AlreadyPublic_ThrowsException() {
+        // given
+        Course course = createDefaultCourse();
+        course.setIsPublic(true);
+
+        // when & then
+        assertThatThrownBy(() -> course.makePublic())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Course is already public");
+    }
+
+    @Test
+    @DisplayName("makePrivate()을 호출하면 공개 코스가 비공개된다")
+    void makePrivate_Success() {
+        // given
+        Course course = createDefaultCourse();
+        course.setIsPublic(true);
+        assertThat(course.isPublic()).isTrue();
+
+        // when
+        course.makePrivate();
+
+        // then
+        assertThat(course.isPublic()).isFalse();
+        assertThat(course.getIsPublic()).isFalse();
+    }
+
+    @Test
+    @DisplayName("이미 비공개 코스에 makePrivate()을 호출하면 예외가 발생한다")
+    void makePrivate_AlreadyPrivate_ThrowsException() {
+        // given
+        Course course = createDefaultCourse();
+        assertThat(course.isPublic()).isFalse();
+
+        // when & then
+        assertThatThrownBy(() -> course.makePrivate())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Course is already private");
+    }
+
+    @Test
+    @DisplayName("isPublic() 메서드는 공개 상태를 정확히 반환한다")
+    void isPublic_ReturnsCorrectStatus() {
+        // given
+        Course privateCourse = createDefaultCourse();
+        Course publicCourse = createDefaultCourse();
+        publicCourse.setIsPublic(true);
+
+        // when & then
+        assertThat(privateCourse.isPublic()).isFalse();
+        assertThat(publicCourse.isPublic()).isTrue();
+    }
+
     private Course createDefaultCourse() {
         return Course.of(member, 5.0, 10.0, 100.0, -50.0, 37.123, 127.123, "route.url", "checkpoint.url", "thumb.url");
     }
