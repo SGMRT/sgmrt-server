@@ -68,14 +68,14 @@ public class CourseService {
 
     @Transactional
     public void deleteCourse(Long courseId, String memberUuid) {
-        Course course = findCourseById(courseId);
+        Course course = findCourseByIdFetchJoinMember(courseId);
         course.verifyOwner(memberUuid);
         courseRepository.delete(course);
     }
 
     @Transactional
     public void updateCourse(Long courseId, CoursePatchRequest request, String memberUuid) {
-        Course course = findCourseById(courseId);
+        Course course = findCourseByIdFetchJoinMember(courseId);
         course.verifyOwner(memberUuid);
 
         if (request.getName() != null) {
