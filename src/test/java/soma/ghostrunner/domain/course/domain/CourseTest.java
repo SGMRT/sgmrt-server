@@ -181,8 +181,13 @@ class CourseTest {
         Course course = createDefaultCourse();
         String otherMemberUuid = "other-member-uuid";
 
+        Course dummyCourse = createDefaultDummyCourse();
+
         // when & then
         assertThatThrownBy(() -> course.verifyOwner(otherMemberUuid))
+                .isInstanceOf(CourseAccessDeniedException.class)
+                .hasMessageContaining("소유자가 아닙니다");
+        assertThatThrownBy(() -> dummyCourse.verifyOwner(otherMemberUuid))
                 .isInstanceOf(CourseAccessDeniedException.class)
                 .hasMessageContaining("소유자가 아닙니다");
     }
@@ -201,5 +206,9 @@ class CourseTest {
 
     private Course createDefaultCourse() {
         return Course.of(member, 5.0, 10.0, 100.0, -50.0, 37.123, 127.123, "route.url", "checkpoint.url", "thumb.url");
+    }
+
+    private Course createDefaultDummyCourse() {
+        return Course.of(null, 5.0, 10.0, 100.0, -50.0, 37.123, 127.123, "route.url", "checkpoint.url", "thumb.url");
     }
 }

@@ -7,6 +7,7 @@ import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.global.common.BaseTimeEntity;
+import soma.ghostrunner.global.error.ErrorCode;
 
 @Entity
 @Table(name = "course")
@@ -134,13 +135,14 @@ public class Course extends BaseTimeEntity {
     /**
      * 코스 소유자 검증
      * @param memberUuid 검증할 회원 UUID
-     * @throws soma.ghostrunner.domain.course.exception.CourseAccessDeniedException 소유자가 아닌 경우
+     * @throws CourseAccessDeniedException 소유자가 아닌 경우
      */
     public void verifyOwner(String memberUuid) {
-        if (!this.member.getUuid().equals(memberUuid)) {
+
+        // member가 null인 경우는 더미 코스일 때
+        if (member == null || !this.member.getUuid().equals(memberUuid)) {
             throw new CourseAccessDeniedException(
-                    soma.ghostrunner.global.error.ErrorCode.ACCESS_DENIED,
-                    "해당 코스의 소유자가 아닙니다"
+                    ErrorCode.ACCESS_DENIED, "해당 코스의 소유자가 아닙니다"
             );
         }
     }
