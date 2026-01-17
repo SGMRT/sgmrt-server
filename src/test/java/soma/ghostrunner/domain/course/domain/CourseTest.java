@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import soma.ghostrunner.domain.course.enums.CourseSource;
+import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
 import soma.ghostrunner.domain.member.domain.Member;
 
 import static org.assertj.core.api.Assertions.*;
@@ -91,7 +92,123 @@ class CourseTest {
         assertThat(course.getIsPublic()).isTrue();
     }
 
+    @Test
+    @DisplayName("makePublic()을 호출하면 비공개 코스가 공개된다")
+    void makePublic_Success() {
+        // given
+        Course course = createDefaultCourse();
+        assertThat(course.isPublic()).isFalse();
+
+        // when
+        course.makePublic();
+
+        // then
+        assertThat(course.isPublic()).isTrue();
+        assertThat(course.getIsPublic()).isTrue();
+    }
+
+    @Test
+    @DisplayName("이미 공개된 코스에 makePublic()을 호출하면 예외가 발생한다")
+    void makePublic_AlreadyPublic_ThrowsException() {
+        // given
+        Course course = createDefaultCourse();
+        course.setIsPublic(true);
+
+        // when & then
+        assertThatThrownBy(() -> course.makePublic())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Course is already public");
+    }
+
+    @Test
+    @DisplayName("makePrivate()을 호출하면 공개 코스가 비공개된다")
+    void makePrivate_Success() {
+        // given
+        Course course = createDefaultCourse();
+        course.setIsPublic(true);
+        assertThat(course.isPublic()).isTrue();
+
+        // when
+        course.makePrivate();
+
+        // then
+        assertThat(course.isPublic()).isFalse();
+        assertThat(course.getIsPublic()).isFalse();
+    }
+
+    @Test
+    @DisplayName("이미 비공개 코스에 makePrivate()을 호출하면 예외가 발생한다")
+    void makePrivate_AlreadyPrivate_ThrowsException() {
+        // given
+        Course course = createDefaultCourse();
+        assertThat(course.isPublic()).isFalse();
+
+        // when & then
+        assertThatThrownBy(() -> course.makePrivate())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Course is already private");
+    }
+
+    @Test
+    @DisplayName("isPublic() 메서드는 공개 상태를 정확히 반환한다")
+    void isPublic_ReturnsCorrectStatus() {
+        // given
+        Course privateCourse = createDefaultCourse();
+        Course publicCourse = createDefaultCourse();
+        publicCourse.setIsPublic(true);
+
+        // when & then
+        assertThat(privateCourse.isPublic()).isFalse();
+        assertThat(publicCourse.isPublic()).isTrue();
+    }
+
+    @Test
+    @DisplayName("코스 소유자가 verifyOwner()를 호출하면 예외가 발생하지 않는다")
+    void verifyOwner_Success() {
+        // given
+        Course course = createDefaultCourse();
+        String ownerUuid = member.getUuid();
+
+        // when & then
+        assertThatCode(() -> course.verifyOwner(ownerUuid))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("코스 소유자가 아닌 사람이 verifyOwner()를 호출하면 CourseAccessDeniedException이 발생한다")
+    void verifyOwner_NotOwner_ThrowsException() {
+        // given
+        Course course = createDefaultCourse();
+        String otherMemberUuid = "other-member-uuid";
+
+        Course dummyCourse = createDefaultDummyCourse();
+
+        // when & then
+        assertThatThrownBy(() -> course.verifyOwner(otherMemberUuid))
+                .isInstanceOf(CourseAccessDeniedException.class)
+                .hasMessageContaining("소유자가 아닙니다");
+        assertThatThrownBy(() -> dummyCourse.verifyOwner(otherMemberUuid))
+                .isInstanceOf(CourseAccessDeniedException.class)
+                .hasMessageContaining("소유자가 아닙니다");
+    }
+
+    @Test
+    @DisplayName("verifyOwner()에 null을 전달하면 CourseAccessDeniedException이 발생한다")
+    void verifyOwner_NullUuid_ThrowsException() {
+        // given
+        Course course = createDefaultCourse();
+
+        // when & then
+        assertThatThrownBy(() -> course.verifyOwner(null))
+                .isInstanceOf(CourseAccessDeniedException.class)
+                .hasMessageContaining("소유자가 아닙니다");
+    }
+
     private Course createDefaultCourse() {
         return Course.of(member, 5.0, 10.0, 100.0, -50.0, 37.123, 127.123, "route.url", "checkpoint.url", "thumb.url");
+    }
+
+    private Course createDefaultDummyCourse() {
+        return Course.of(null, 5.0, 10.0, 100.0, -50.0, 37.123, 127.123, "route.url", "checkpoint.url", "thumb.url");
     }
 }
