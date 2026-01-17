@@ -28,7 +28,14 @@ class CourseCacheEventListenerTest {
     void handleRunFinishedEvent() {
         // given
         Long courseId = 1L;
-        RunFinishedEvent event = new RunFinishedEvent(1L, courseId, "member-uuid", 5.0);
+        RunFinishedEvent event = new RunFinishedEvent(
+            1L,              // runId
+            courseId,        // courseId
+            "member-uuid",   // memberUuid
+            100L,            // memberId (추가)
+            1800,            // durationSeconds (추가)
+            5.0              // averagePace
+        );
         willDoNothing().given(courseCacheRepository).deleteById(courseId);
 
         // when

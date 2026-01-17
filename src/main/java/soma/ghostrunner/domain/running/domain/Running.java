@@ -79,7 +79,10 @@ public class Running extends BaseTimeEntity {
                 id,
                 course != null ? course.getId() : null,
                 member != null ? member.getUuid() : null,
-                runningRecord.getAveragePace()
+                member != null ? member.getId() : null,
+                runningRecord != null && runningRecord.getDuration() != null 
+                    ? runningRecord.getDuration().intValue() : null,
+                runningRecord != null ? runningRecord.getAveragePace() : null
         ));
     }
 
