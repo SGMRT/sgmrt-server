@@ -182,7 +182,7 @@ public class CourseService {
     }
 
     /** (lat, lng)을 radiusM로 둘러싼 직사각형의 네 꼭지점 좌표를 반환한다 */
-    private static LatLngs getBoundingBoxLatLngs(Double lat, Double lng, double radiusM) {
+    public static LatLngs getBoundingBoxLatLngs(Double lat, Double lng, double radiusM) {
         double radiusKm = radiusM / 1000d;
         double latDelta = radiusKm / 111.0;
         double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
@@ -195,7 +195,7 @@ public class CourseService {
         return new LatLngs(minLat, maxLat, minLng, maxLng);
     }
 
-    private record LatLngs(double minLat, double maxLat, double minLng, double maxLng) {
+    public record LatLngs(double minLat, double maxLat, double minLng, double maxLng) {
     }
 
 }

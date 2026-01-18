@@ -47,25 +47,25 @@ public interface CourseReadModelRepository extends JpaRepository<CourseReadModel
             
             rm.top1_time_seconds AS top1TimeSeconds,
             m1.uuid AS top1Uuid,
-            m1.profile_url AS top1ProfileUrl,
+            m1.profile_picture_url AS top1ProfileUrl,
             
             rm.top2_time_seconds AS top2TimeSeconds,
             m2.uuid AS top2Uuid,
-            m2.profile_url AS top2ProfileUrl,
+            m2.profile_picture_url AS top2ProfileUrl,
             
             rm.top3_time_seconds AS top3TimeSeconds,
             m3.uuid AS top3Uuid,
-            m3.profile_url AS top3ProfileUrl,
+            m3.profile_picture_url AS top3ProfileUrl,
             
             rm.top4_time_seconds AS top4TimeSeconds,
             m4.uuid AS top4Uuid,
-            m4.profile_url AS top4ProfileUrl
+            m4.profile_picture_url AS top4ProfileUrl
             
         FROM course_read_model rm
-        LEFT JOIN member m1 ON rm.top1_member_id = m1.id AND m1.deleted = false
-        LEFT JOIN member m2 ON rm.top2_member_id = m2.id AND m2.deleted = false
-        LEFT JOIN member m3 ON rm.top3_member_id = m3.id AND m3.deleted = false
-        LEFT JOIN member m4 ON rm.top4_member_id = m4.id AND m4.deleted = false
+        LEFT JOIN member m1 ON rm.top1_member_id = m1.id AND m1.deleted_at IS NULL
+        LEFT JOIN member m2 ON rm.top2_member_id = m2.id AND m2.deleted_at IS NULL
+        LEFT JOIN member m3 ON rm.top3_member_id = m3.id AND m3.deleted_at IS NULL
+        LEFT JOIN member m4 ON rm.top4_member_id = m4.id AND m4.deleted_at IS NULL
         
         WHERE rm.is_public = true
           AND rm.start_lat BETWEEN :minLat AND :maxLat

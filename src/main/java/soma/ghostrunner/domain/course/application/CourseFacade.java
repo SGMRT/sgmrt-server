@@ -7,8 +7,10 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dao.CourseCacheRepository;
+import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.*;
+import soma.ghostrunner.domain.course.dto.query.CourseMapDto;
 import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
@@ -29,6 +31,7 @@ public class CourseFacade {
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
     private final CourseCacheRepository courseCacheRepository;
+    private final CourseReadModelRepository readModelRepository;
 
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
@@ -121,6 +124,37 @@ public class CourseFacade {
             CourseQueryModel cachedCourse = cachedCourses.get(course.id());
             return courseMapper.toCourseMapResponse(course, cachedCourse.topRunners(), cachedCourse.runnerCount(), ghostForUser);
         }).toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public List<CourseMapResponse> findCoursesByPositionWithReadModel(
+        Double lat, 
+        Double lng, 
+        Integer radiusM,
+        String viewerUuid
+    ) {
+        // 1. 범위 계산 (기존 로직 재사용)
+        CourseService.LatLngs bounds = CourseService.getBoundingBoxLatLngs(lat, lng, radiusM);
+        
+        // 2. 리드모델 조회 (단일 쿼리)
+        List<CourseMapDto> courseDtos = readModelRepository.findCoursesForMap(
+            bounds.minLat(),
+            bounds.maxLat(),
+            bounds.minLng(),
+            bounds.maxLng(),
+            100 // limit
+        );
+        
+        log.info("Found {} courses using read model", courseDtos.size());
+        
+        // 3. DTO 변환
+        return courseDtos.stream()
+            .map(dto -> {
+                // 내 기록 조회 (별도 쿼리, 필요 시)
+                CourseGhostResponse myGhost = getGhostResponse(dto.courseId(), viewerUuid);
+                return dto.toResponse(myGhost);
+            })
+            .toList();
     }
 
     @Deprecated
