@@ -47,3 +47,5 @@ out/
 
 ### Secrets ###
 firebase-private-key.json
+
+*.bak
