@@ -62,8 +62,6 @@ dependencies {
 
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testCompileOnly 'org.projectlombok:lombok'
-	testAnnotationProcessor 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testCompileOnly 'org.junit.jupiter:junit-jupiter-params:5.9.2'
 	testImplementation 'org.springframework.security:spring-security-test'
@@ -71,7 +69,6 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 
 	// RDB
-//	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
 	// H2

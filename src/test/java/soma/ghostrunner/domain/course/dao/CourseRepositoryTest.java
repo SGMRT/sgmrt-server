@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
@@ -23,6 +24,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@DisplayName("CourseRepository 통합 테스트")
 class CourseRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
@@ -31,6 +33,8 @@ class CourseRepositoryTest extends IntegrationTestSupport {
     private MemberRepository memberRepository;
     @Autowired
     private RunningRepository runningRepository;
+    @Autowired
+    private CourseSubscriptionRepository courseSubscriptionRepository;
 
     private Member member1;
     private Member member2;
@@ -157,6 +161,64 @@ class CourseRepositoryTest extends IntegrationTestSupport {
         assertThat(fetchedCourse.getMember().getBioInfo()).isEqualTo(member1.getBioInfo());
     }
 
+    @DisplayName("비공개 코스라도 구독(= 달린 적 있는) 사용자는 조회할 수 있다")
+    @Test
+    void findCoursesWithFilters_PrivateCourseVisibleToSubscriber() {
+        // given
+        Course privateCourse = createCourse(member1, "비공개 코스", false);
+        courseRepository.save(privateCourse);
+
+        // member2가 해당 코스를 달린 기록 생성 (CourseSubscription 생성)
+        CourseSubscription subscription = CourseSubscription.create(privateCourse, member2);
+        courseSubscriptionRepository.save(subscription);
+
+        // when
+//        List<CourseSubscription> subscriptions = courseSubscriptionRepository.findAll();
+//        List<Course> courses = courseRepository.findAll();
+        List<Course> results = courseRepository.findCoursesWithFilters(
+                37.5, 127.0, 37.0, 39.0, 126.0, 130.0,
+                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, member2.getUuid());
+
+        // then
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getName()).isEqualTo("비공개 코스");
+    }
+
+    @DisplayName("비공개 코스는 구독하지 않은 사용자에게 조회되지 않는다")
+    @Test
+    void findCoursesWithFilters_PrivateCourseNotVisibleToNonSubscriber() {
+        // given
+        Course privateCourse = createCourse(member1, "비공개 코스", false);
+        courseRepository.save(privateCourse);
+
+        // when - member2는 구독하지 않음
+        List<Course> results = courseRepository.findCoursesWithFilters(
+                37.5, 127.0, 37.0, 39.0, 126.0, 130.0,
+                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, member2.getUuid());
+
+        // then
+        assertThat(results).isEmpty();
+    }
+
+    @DisplayName("비공개 코스에 코스 구독이 삭제된 사용자에게는 코스가 조회되지 않는다")
+    @Test
+    void findCoursesWithFilters_PrivateCourseNotVisibleDeletedSubscriber() {
+        // given
+        Course privateCourse = createCourse(member1, "비공개 코스", false);
+        courseRepository.save(privateCourse);
+
+        // member2가 해당 코스를 달린 기록 생성 (CourseSubscription 생성)
+        CourseSubscription subscription = CourseSubscription.create(privateCourse, member2);
+        subscription.unregister(); // 구독 삭제 상태로 만듦
+        courseSubscriptionRepository.save(subscription);
+
+        // when
+        List<Course> results = courseRepository.findCoursesWithFilters(
+                37.5, 127.0, 37.0, 39.0, 126.0, 130.0,
+                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, member2.getUuid());
+        // then
+        assertThat(results).isEmpty();
+    }
 
     // --- 헬퍼 메소드 ---
 
