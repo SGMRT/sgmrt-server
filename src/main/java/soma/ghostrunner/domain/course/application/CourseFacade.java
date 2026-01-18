@@ -36,8 +36,6 @@ public class CourseFacade {
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
 
-    private static final int MAX_RUNNER_PROFILES_PER_COURSE = 4;
-
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPositionCached(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                                CourseSearchFilterDto filters, String viewerUuid) {
@@ -127,59 +125,53 @@ public class CourseFacade {
     }
     
     @Transactional(readOnly = true)
-    public List<CourseMapResponse> findCoursesByPositionWithReadModel(
+    public List<CourseMapResponse> findCoursesByPosition(
         Double lat, 
         Double lng, 
         Integer radiusM,
-        String viewerUuid
+        String viewerUuid,
+        int limit
     ) {
-        // 1. 범위 계산 (기존 로직 재사용)
+        // 1. 범위 계산
         CourseService.LatLngs bounds = CourseService.getBoundingBoxLatLngs(lat, lng, radiusM);
         
-        // 2. 리드모델 조회 (단일 쿼리)
-        List<CourseMapDto> courseDtos = readModelRepository.findCoursesForMap(
+        // 2. 리드모델 조회 (넉넉하게 50개)
+        List<CourseMapDto> allCourses = readModelRepository.findCoursesForMap(
             bounds.minLat(),
             bounds.maxLat(),
             bounds.minLng(),
             bounds.maxLng(),
-            100 // limit
+            50
         );
         
-        log.info("Found {} courses using read model", courseDtos.size());
+        log.info("Found {} courses using read model", allCourses.size());
         
-        // 3. DTO 변환
-        return courseDtos.stream()
-            .map(dto -> {
-                // 내 기록 조회 (별도 쿼리, 필요 시)
-                CourseGhostResponse myGhost = getGhostResponse(dto.courseId(), viewerUuid);
-                return dto.toResponse(myGhost);
-            })
+        // 3. CoursePreviewDto로 변환
+        List<CoursePreviewDto> previewDtos = allCourses.stream()
+            .map(CourseMapDto::toPreviewDto)
             .toList();
-    }
-
-    @Deprecated
-    @Transactional(readOnly = true)
-    public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
-                                                         CourseSearchFilterDto filters, String viewerUuid) {
-        // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
-        List<CoursePreviewDto> filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
-        // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
-        return filteredCourses.stream().map(course -> {
-            List<CourseGhostResponse> rankers = runningQueryService.findTopRankingDistinctGhostsByCourseId(course.id(),
-                    MAX_RUNNER_PROFILES_PER_COURSE);
-            CourseGhostResponse ghostForUser = getGhostResponse(course.id(), viewerUuid);
-            long runnersCount = getRunnersCount(course.id(), rankers);
-            return courseMapper.toCourseMapResponse(course, rankers.stream().map(RunnerProfile::from).toList(), runnersCount, ghostForUser);
-        }).toList();
-    }
-
-    private long getRunnersCount(Long courseId, List<CourseGhostResponse> rankers) {
-        if (rankers.size() < MAX_RUNNER_PROFILES_PER_COURSE) {
-            return rankers.size();
-        } else {
-            return runningQueryService.findPublicRunnersCount(courseId);
-        }
+        
+        // 4. 랜덤 선별 (기존 로직 재사용)
+        List<CoursePreviewDto> selectedCourses = limitCoursesForViewer(previewDtos, viewerUuid, limit);
+        
+        // 5. 선택된 코스의 ID로 원본 CourseMapDto 찾아서 응답 변환
+        var courseIds = selectedCourses.stream().map(CoursePreviewDto::id).toList();
+        var courseMap = allCourses.stream()
+            .filter(dto -> courseIds.contains(dto.courseId()))
+            .collect(java.util.stream.Collectors.toMap(CourseMapDto::courseId, dto -> dto));
+        
+        // 6. 최종 응답 생성 (순서 유지, 고스트 정보 없음)
+        return selectedCourses.stream()
+            .map(preview -> {
+                CourseMapDto dto = courseMap.get(preview.id());
+                if (dto == null) {
+                    log.warn("CourseMapDto not found for id: {}", preview.id());
+                    return null;
+                }
+                return dto.toResponse(null); // 고스트 정보 없이 변환
+            })
+            .filter(java.util.Objects::nonNull)
+            .toList();
     }
 
     /** 본인 코스 > RECOMMENDED 지정 코스 > 타 러너 코스 > 더미 코스 순으로 limit개 이하를 선택한다. */
@@ -319,10 +311,6 @@ public class CourseFacade {
                 uniqueRunnersCount,
                 uniqueRunnersCount // totalRunsCount 대신 uniqueRunnersCount 할당
         );
-    }
-
-    private static CourseRunStatisticsDto getDummyCourseStatistics() {
-        return new CourseRunStatisticsDto(0d, 0d, 0d, 0d, 0d, 0, 0);
     }
 
     public CourseStatisticsResponse findCourseStatistics(Long courseId) {

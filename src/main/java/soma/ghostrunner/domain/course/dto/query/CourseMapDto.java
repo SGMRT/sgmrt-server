@@ -1,8 +1,10 @@
 package soma.ghostrunner.domain.course.dto.query;
 
+import soma.ghostrunner.domain.course.dto.CoursePreviewDto;
 import soma.ghostrunner.domain.course.dto.RunnerProfile;
 import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
 import soma.ghostrunner.domain.course.dto.response.CourseMapResponse;
+import soma.ghostrunner.domain.course.enums.CourseSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +21,7 @@ public record CourseMapDto(
     Long courseId,
     String name,
     String ownerUuid,
+    String source,  // CourseSource (ENUM → String for native query)
     String routeUrl,
     Double startLat,
     Double startLng,
@@ -53,12 +56,13 @@ public record CourseMapDto(
      */
     public CourseMapResponse toResponse(CourseGhostResponse myGhostInfo) {
         List<RunnerProfile> runners = buildRunnerProfiles();
+        CourseSource courseSource = source != null ? CourseSource.valueOf(source) : null;
         
         return new CourseMapResponse(
             courseId,
             name,
             ownerUuid,
-            null, // source (나중에 추가 가능)
+            courseSource,
             startLat,
             startLng,
             routeUrl,
@@ -72,6 +76,32 @@ public record CourseMapDto(
             myGhostInfo,
             runners,
             runnersCount
+        );
+    }
+    
+    /**
+     * CoursePreviewDto로 변환 (랜덤 선별용)
+     * 
+     * @return CoursePreviewDto
+     */
+    public CoursePreviewDto toPreviewDto() {
+        CourseSource courseSource = source != null ? CourseSource.valueOf(source) : CourseSource.USER;
+        
+        return new CoursePreviewDto(
+            courseId,
+            name,
+            ownerUuid,
+            startLat,
+            startLng,
+            courseSource,
+            routeUrl,
+            null, // checkpointsUrl
+            null, // thumbnailUrl
+            null, // distance
+            null, // elevationAverage
+            null, // elevationGain
+            null, // elevationLoss
+            null  // createdAt
         );
     }
     

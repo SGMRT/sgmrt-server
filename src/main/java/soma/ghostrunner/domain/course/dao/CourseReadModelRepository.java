@@ -40,6 +40,7 @@ public interface CourseReadModelRepository extends JpaRepository<CourseReadModel
             rm.course_id AS courseId,
             rm.name AS name,
             rm.owner_uuid AS ownerUuid,
+            rm.source AS source,
             rm.route_url AS routeUrl,
             rm.start_lat AS startLat,
             rm.start_lng AS startLng,

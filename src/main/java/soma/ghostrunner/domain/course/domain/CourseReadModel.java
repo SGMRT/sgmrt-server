@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
 import java.util.Objects;
@@ -86,6 +87,10 @@ public class CourseReadModel extends BaseTimeEntity {
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic = false;
     
+    @Column(name = "source", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    private CourseSource source;
+    
     // ========== 생성 메서드 ==========
     
     @Builder
@@ -96,7 +101,8 @@ public class CourseReadModel extends BaseTimeEntity {
         String routeUrl,
         Double startLat,
         Double startLng,
-        Boolean isPublic
+        Boolean isPublic,
+        CourseSource source
     ) {
         this.courseId = courseId;
         this.name = name;
@@ -105,6 +111,7 @@ public class CourseReadModel extends BaseTimeEntity {
         this.startLat = startLat;
         this.startLng = startLng;
         this.isPublic = isPublic != null ? isPublic : false;
+        this.source = source != null ? source : CourseSource.USER;
         this.runnersCount = 0L;
     }
     
@@ -117,6 +124,7 @@ public class CourseReadModel extends BaseTimeEntity {
             .startLat(course.getStartCoordinate().getLatitude())
             .startLng(course.getStartCoordinate().getLongitude())
             .isPublic(course.getIsPublic())
+            .source(course.getSource())
             .build();
     }
     
