@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.course.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -17,10 +18,15 @@ import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
  * 역할:
  * - 러닝 저장 시 리드모델 갱신 (증분 갱신)
  * - 같은 트랜잭션 내에서 실행 (BEFORE_COMMIT)
+ * - Running 저장과 ReadModel 갱신이 원자적으로 처리됨
  * 
  * 동시성 제어:
  * - X락 (FOR UPDATE)으로 Lost Update 방지
  * - REPEATABLE READ 격리 수준 유지 (증분 갱신이므로 문제없음)
+ * 
+ * 트랜잭션 전파:
+ * - Running 저장 트랜잭션 커밋 전에 실행됨
+ * - 실패 시 Running 저장도 함께 롤백됨 (일관성 보장)
  */
 @Slf4j
 @Component
@@ -34,13 +40,15 @@ public class ReadModelSyncListener {
     /**
      * 러닝 완료 이벤트 처리
      * 
+     * - Running 저장 트랜잭션 커밋 전에 실행됨 (BEFORE_COMMIT)
+     * - 같은 트랜잭션 내에서 실행되어 원자성 보장
      * - 리드모델에 TOP4 증분 갱신
      * - 리드모델이 없으면 생성
      * - runners_count 업데이트
      * 
      * @param event RunFinishedEvent
      */
-    @TransactionalEventListener
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     public void handleRunFinished(RunFinishedEvent event) {
         Long courseId = event.courseId();
         Long memberId = event.memberId();

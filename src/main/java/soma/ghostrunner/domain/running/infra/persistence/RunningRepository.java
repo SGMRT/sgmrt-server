@@ -21,7 +21,7 @@ public interface RunningRepository extends JpaRepository<Running, Long>, Running
     List<Long> findIdsByCourseId(@Param("courseId") Long courseId);
 
     Optional<Running> findByIdAndMemberId(Long runningId, Long memberId);
-    
+
     /**
      * 특정 코스를 뛴 DISTINCT 러너 수 조회
      * 리드모델 동기화용

@@ -123,7 +123,7 @@ public class CourseFacade {
             return courseMapper.toCourseMapResponse(course, cachedCourse.topRunners(), cachedCourse.runnerCount(), ghostForUser);
         }).toList();
     }
-    
+
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(
         Double lat, 

@@ -3,8 +3,6 @@ package soma.ghostrunner.domain.running.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SoftDelete;
-import org.springframework.data.domain.AfterDomainEventPublication;
-import org.springframework.data.domain.DomainEvents;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -15,7 +13,7 @@ import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.List;
 
 @Entity
 @Table(name = "running_record")
@@ -60,22 +58,22 @@ public class Running extends BaseTimeEntity {
     @JoinColumn(name = "course_id")
     private Course course;
 
-    @Transient
-    private final List<Object> domainEvents = new ArrayList<>();
-
-    @DomainEvents
-    public Collection<Object> events() {
-        return Collections.unmodifiableList(domainEvents);
-    }
-
-    @AfterDomainEventPublication
-    public void clearEvents() {
-        this.domainEvents.clear();
-    }
-
-    @PostPersist
-    private void onPersisted() {
-        domainEvents.add(new RunFinishedEvent(
+    /**
+     * 러닝 생성 이벤트 생성
+     * 
+     * - Service에서 save() 후 호출하여 이벤트 객체를 생성
+     * - ApplicationEventPublisher로 직접 발행
+     * - 순수 도메인 객체 (JPA 의존 없음)
+     * 
+     * @return RunFinishedEvent
+     * @throws IllegalStateException ID가 없는 경우
+     */
+    public RunFinishedEvent createFinishedEvent() {
+        if (this.id == null) {
+            throw new IllegalStateException("ID가 없으면 이벤트를 생성할 수 없습니다. save() 후에 호출하세요.");
+        }
+        
+        return new RunFinishedEvent(
                 id,
                 course != null ? course.getId() : null,
                 member != null ? member.getUuid() : null,
@@ -83,18 +81,31 @@ public class Running extends BaseTimeEntity {
                 runningRecord != null && runningRecord.getDuration() != null 
                     ? runningRecord.getDuration().intValue() : null,
                 runningRecord != null ? runningRecord.getAveragePace() : null
-        ));
+        );
     }
 
-    @PostUpdate
-    private void onUpdated() {
-        domainEvents.add(new RunUpdatedEvent(
+    /**
+     * 러닝 수정 이벤트 생성
+     * 
+     * - Service에서 엔티티 수정 후 호출하여 이벤트 객체를 생성
+     * - ApplicationEventPublisher로 직접 발행
+     * - 이름 변경, 공개여부 변경 시 사용
+     * 
+     * @return RunUpdatedEvent
+     * @throws IllegalStateException ID가 없는 경우
+     */
+    public RunUpdatedEvent createUpdatedEvent() {
+        if (this.id == null) {
+            throw new IllegalStateException("ID가 없으면 이벤트를 생성할 수 없습니다.");
+        }
+        
+        return new RunUpdatedEvent(
                 id,
                 course != null ? course.getId() : null,
                 member != null ? member.getUuid() : null,
                 runningName,
                 isPublic
-        ));
+        );
     }
 
     @Builder(access = AccessLevel.PRIVATE)
