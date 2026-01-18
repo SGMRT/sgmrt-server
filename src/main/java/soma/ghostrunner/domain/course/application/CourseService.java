@@ -7,9 +7,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
@@ -30,6 +32,7 @@ public class CourseService {
     private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
     private final CourseSubscriptionRepository subscriptionRepository;
+    private final CourseReadModelRepository readModelRepository;
 
     public Long save(Course course) {
         return courseRepository.save(course).getId();
@@ -70,6 +73,11 @@ public class CourseService {
     public void deleteCourse(Long courseId, String memberUuid) {
         Course course = findCourseById(courseId);
         course.verifyOwner(memberUuid);
+        
+        // 리드모델 삭제 (있으면)
+        readModelRepository.findByCourseId(courseId)
+            .ifPresent(readModelRepository::delete);
+        
         courseRepository.delete(course);
     }
 
@@ -83,6 +91,7 @@ public class CourseService {
         }
         if (request.getIsPublic() != null) {
             updateCoursePublicity(course, request.getIsPublic());
+            syncReadModelPublicity(courseId, request.getIsPublic()); // 리드모델 동기화
         }
         courseRepository.save(course);
     }
@@ -179,6 +188,41 @@ public class CourseService {
             subscriptionRepository.save(subscription.get());
             log.info("Unregistered subscription for course={}, member={}", courseId, memberId);
         }
+    }
+    
+    /**
+     * 리드모델 공개/비공개 동기화
+     * 
+     * @param courseId 코스 ID
+     * @param isPublic true: 공개 (리드모델 생성 또는 공개), false: 비공개 (리드모델 비공개)
+     */
+    private void syncReadModelPublicity(Long courseId, Boolean isPublic) {
+        if (isPublic) {
+            // 공개: 리드모델 생성 또는 공개
+            CourseReadModel readModel = readModelRepository.findByCourseId(courseId)
+                .orElseGet(() -> createReadModelForCourse(courseId));
+            readModel.makePublic();
+            readModelRepository.save(readModel);
+            log.info("Read model made public for course={}", courseId);
+        } else {
+            // 비공개: 리드모델 비공개 (있으면)
+            readModelRepository.findByCourseId(courseId)
+                .ifPresent(rm -> {
+                    rm.makePrivate();
+                    readModelRepository.save(rm);
+                    log.info("Read model made private for course={}", courseId);
+                });
+        }
+    }
+    
+    /**
+     * 코스 정보로 리드모델 생성 (저장은 호출자가 담당)
+     */
+    private CourseReadModel createReadModelForCourse(Long courseId) {
+        Course course = findCourseById(courseId);
+        CourseReadModel readModel = CourseReadModel.create(course);
+        log.info("Created read model for course={}", courseId);
+        return readModel;
     }
 
     /** (lat, lng)을 radiusM로 둘러싼 직사각형의 네 꼭지점 좌표를 반환한다 */
