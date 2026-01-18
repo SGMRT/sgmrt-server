@@ -12,7 +12,7 @@ public interface CustomCourseRepository {
                                       Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort);
 
   List<Course> findCoursesWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
-                                      Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort, String viewerUuid);
+                                      Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort, Long memberId);
 
   List<Long> findCourseIdsWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
                                       Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort);

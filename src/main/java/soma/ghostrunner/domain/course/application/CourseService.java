@@ -46,13 +46,13 @@ public class CourseService {
     }
 
     public List<CoursePreviewDto> findNearbyCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
-                                                    CourseSearchFilterDto filters, String viewerUuid) {
+                                                    CourseSearchFilterDto filters, Long memberId) {
         // 코스 검색할 직사각형 반경 계산
         // - 1도 위도 당 111km 가정 (지구 둘레 40,075km / 360도 = 약 111.3km)
         // - 근사치이며, 적도에서 멀어질 수록 경도 거리 오차가 커짐 -> TODO: 추후 Haversine 공식이나 DB 공간 데이터 타입 활용하도록 변경
         LatLngs result = getBoundingBoxLatLngs(lat, lng, radiusM);
 
-        List<Course> courses = courseRepository.findCoursesWithFilters(lat, lng, result.minLat(), result.maxLat(), result.minLng(), result.maxLng(), filters, sort, viewerUuid);
+        List<Course> courses = courseRepository.findCoursesWithFilters(lat, lng, result.minLat(), result.maxLat(), result.minLng(), result.maxLng(), filters, sort, memberId);
         log.info("CourseService::findNearbyCourses() - found {} courses", courses.size());
 
         return courses.stream()

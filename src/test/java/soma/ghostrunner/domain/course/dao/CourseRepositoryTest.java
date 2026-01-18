@@ -173,11 +173,9 @@ class CourseRepositoryTest extends IntegrationTestSupport {
         courseSubscriptionRepository.save(subscription);
 
         // when
-//        List<CourseSubscription> subscriptions = courseSubscriptionRepository.findAll();
-//        List<Course> courses = courseRepository.findAll();
         List<Course> results = courseRepository.findCoursesWithFilters(
                 37.5, 127.0, 37.0, 39.0, 126.0, 130.0,
-                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, member2.getUuid());
+                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, member2.getId());
 
         // then
         assertThat(results).hasSize(1);
@@ -194,7 +192,7 @@ class CourseRepositoryTest extends IntegrationTestSupport {
         // when - member2는 구독하지 않음
         List<Course> results = courseRepository.findCoursesWithFilters(
                 37.5, 127.0, 37.0, 39.0, 126.0, 130.0,
-                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, member2.getUuid());
+                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, member2.getId());
 
         // then
         assertThat(results).isEmpty();
@@ -215,7 +213,7 @@ class CourseRepositoryTest extends IntegrationTestSupport {
         // when
         List<Course> results = courseRepository.findCoursesWithFilters(
                 37.5, 127.0, 37.0, 39.0, 126.0, 130.0,
-                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, member2.getUuid());
+                CourseSearchFilterDto.of(), CourseSortType.DISTANCE, member2.getId());
         // then
         assertThat(results).isEmpty();
     }

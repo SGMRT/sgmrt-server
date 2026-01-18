@@ -31,23 +31,23 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
 
   @Override
   public List<Course> findCoursesWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
-                                             Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort, String viewerUuid) {
+                                             Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort, Long memberId) {
     // todo - 코스에 딸린 러닝기록 수 반정규화해서 따로 저장해두면 굳이 Running 테이블까지 조인할 필요 없음
     JPAQuery<Course> query = queryFactory
             .selectFrom(course)
             .leftJoin(running).on(running.course.id.eq(course.id).and(running.isPublic.isTrue()))
             .leftJoin(course.member).fetchJoin(); // 코스 소유자 정보도 함께 조회
 
-    if (viewerUuid != null) {
+    if (memberId != null) {
       query.leftJoin(courseSubscription).on(
               courseSubscription.course.id.eq(course.id)
-              .and(courseSubscription.member.uuid.eq(viewerUuid)));
+              .and(courseSubscription.member.id.eq(memberId)));
     }
 
     query.where(
                 startPointWithinBoundary(minLat, maxLat, minLng, maxLng),
                 withSearchFilters(filters),
-                viewerUuid != null
+                memberId != null
                     ? isPublicCourse().or(isSubscribedCourse())
                     : isPublicCourse()
         )
@@ -63,6 +63,7 @@ public class CustomCourseRepositoryImpl implements CustomCourseRepository{
     return query.fetch();
   }
 
+  @Deprecated // 필요해지면 로직 업데이트 필요
   @Override
   public List<Long> findCourseIdsWithFilters(Double curLat, Double curLng, Double minLat, Double maxLat,
                                              Double minLng, Double maxLng, CourseSearchFilterDto filters, CourseSortType sort) {
