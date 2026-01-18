@@ -71,7 +71,7 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 
 	// RDB
-	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+//	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
 	// H2
