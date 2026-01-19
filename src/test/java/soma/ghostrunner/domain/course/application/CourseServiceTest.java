@@ -58,7 +58,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseNearby1, courseNearby2, courseFar));
 
         // when
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         // - course1, 2는 조회되고, course3은 조회되지 않는다
@@ -76,7 +76,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(course1, course2));
 
         // when
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, LNG, 0, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, LNG, 0, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         Assertions.assertThat(courses).hasSize(1)
@@ -93,7 +93,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(publicCourse, privateCourse));
 
         // when
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         Assertions.assertThat(courses).hasSize(1);
@@ -110,7 +110,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseEast, courseWest, courseFar));
 
         // when
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, 0d, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, 0d, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         // 동경, 서경 코스는 모두 조회되고, 멀리 있는 코스는 조회되지 않아야 함
@@ -131,7 +131,7 @@ class CourseServiceTest extends IntegrationTestSupport {
 
         // when
         // 동경 179.9985도 지점에서 반경 1km 내 코스 검색
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, 179.9985, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(LAT, 179.9985, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         // 동경 끝, 서경 끝 코스는 모두 조회되고, 멀리 있는 코스는 조회되지 않아야 함
@@ -151,7 +151,7 @@ class CourseServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseNearby, courseFar));
 
         // when
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of());
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         assertThat(courses).hasSize(1)

@@ -15,6 +15,8 @@ import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
+import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -29,6 +31,7 @@ public class CourseFacade {
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
     private final CourseCacheRepository courseCacheRepository;
+    private final MemberService memberService;
 
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
@@ -39,7 +42,8 @@ public class CourseFacade {
     public List<CourseMapResponse> findCoursesByPositionCached(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                                CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내 코스 리스트 조회
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
+        Member viewer = findMemberByUuid(viewerUuid);
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters, viewer.getId());
         List<Long> courseIds = courses.stream().map(CoursePreviewDto::id).toList();
 
         // 캐시에서 코스 정보 조회
@@ -128,7 +132,8 @@ public class CourseFacade {
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                          CourseSearchFilterDto filters, String viewerUuid) {
         // 범위 내의 코스를 가져온 후, 각 코스에 대해 Top 4 러닝기록을 조회하고 dto에 매핑해 반환
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters);
+        Member viewer = findMemberByUuid(viewerUuid);
+        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters, viewer.getId());
         List<CoursePreviewDto> filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
         // todo: courses 개수만큼 순회하면서 쿼리를 실행하는 대신, Set(course_id)를 뽑아서 한 번의 쿼리로 집계한다.
         return filteredCourses.stream().map(course -> {
@@ -271,6 +276,10 @@ public class CourseFacade {
         }
 
         return new PageImpl<>(results, pageable, courseDetails.getTotalElements());
+    }
+
+    private Member findMemberByUuid(String memberUuid) {
+        return memberService.findMemberByUuid(memberUuid);
     }
 
     // totalRunsCount 대신 uniqueRunnersCount를 할당하여 반환 (프론트 요청)
