@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("SemanticVersion 단위 테스트")
 class SemanticVersionTest {
 
     @DisplayName("of(String)를 호출하면 버전 문자열을 파싱하여 객체를 생성한다.")
