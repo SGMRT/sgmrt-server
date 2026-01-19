@@ -318,7 +318,7 @@ class CourseMapperTest {
     }
 
     private RunnerProfile createRunnerProfile(String uuid) {
-        return new RunnerProfile(uuid, "profile.url");
+        return new RunnerProfile(uuid, "profile.url", null);
     }
 
     private CourseGhostResponse createCourseGhostResponse() {

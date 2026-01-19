@@ -121,6 +121,7 @@ class RunningCommandServiceTest {
         Running running = mock(Running.class);
         when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
         when(runningRepository.save(running)).thenReturn(running);
+        when(running.getId()).thenReturn(1L);
 
         CreateCourseAndRunResponse response = new CreateCourseAndRunResponse(null, null);
         when(mapper.toResponse(running, course)).thenReturn(response);
@@ -149,6 +150,7 @@ class RunningCommandServiceTest {
         inOrder.verify(courseService).save(course);
         inOrder.verify(mapper).toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course));
         inOrder.verify(runningRepository).save(running);
+        // 이벤트 발행은 스프링 테스트하지 않음 (생략)
         inOrder.verify(mapper).toResponse(running, course);
 
         verifyNoMoreInteractions(memberService, telemetryProcessor, pathSimplificationService,
