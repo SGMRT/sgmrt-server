@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
-import soma.ghostrunner.domain.running.application.RunningVdotService;
+import soma.ghostrunner.domain.pacemaker.application.VdotService;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 import soma.ghostrunner.domain.member.api.dto.TermsAgreementDto;
 import soma.ghostrunner.domain.member.api.dto.request.MemberSettingsUpdateRequest;
@@ -34,7 +34,7 @@ import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 @RequiredArgsConstructor
 public class MemberService {
 
-    private final RunningVdotService runningVdotService;
+    private final VdotService vdotService;
 
     private final MemberMapper mapper;
 
@@ -241,7 +241,7 @@ public class MemberService {
     public void calculateAndSaveVdot(String memberUuid, String level) {
         Member member = findMemberByUuid(memberUuid);
         cannotSaveIfAlreadyVdotExist(memberUuid);
-        int vdot = runningVdotService.calculateVdotFromRunningLevel(level);
+        int vdot = vdotService.calculateVdotFromRunningLevel(level);
         memberVdotRepository.save(mapper.toMemberVdot(member, vdot));
     }
 

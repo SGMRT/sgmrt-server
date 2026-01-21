@@ -8,7 +8,7 @@ import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
-import soma.ghostrunner.domain.running.application.RunningVdotService;
+import soma.ghostrunner.domain.pacemaker.application.VdotService;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 
 import java.util.Optional;
@@ -20,12 +20,12 @@ public class RunFinishedEventListener {
     private final MemberMapper mapper;
     private final MemberVdotRepository memberVdotRepository;
     private final MemberService memberService;
-    private final RunningVdotService runningVdotService;
+    private final VdotService vdotService;
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     public void handleRunFinished(RunFinishedEvent event) {
         Member member = memberService.findMemberByUuid(event.memberUuid());
-        int vdot = runningVdotService.calculateVdot(event.averagePace());
+        int vdot = vdotService.calculateVdot(event.averagePace());
         upsertMemberVdot(member, vdot);
     }
 
