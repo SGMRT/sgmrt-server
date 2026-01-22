@@ -4,19 +4,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerInCourseViewPollingResponse;
 import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.pacemaker.application.dto.WorkoutDto;
-import soma.ghostrunner.domain.pacemaker.application.dto.request.CreatePacemakerCommand;
+import soma.ghostrunner.domain.pacemaker.application.dto.request.PacemakerCreateCommand;
 import soma.ghostrunner.domain.pacemaker.application.support.PacemakerApplicationMapper;
-import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.pacemaker.domain.Pacemaker;
 import soma.ghostrunner.domain.pacemaker.domain.PacemakerSet;
-import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.pacemaker.domain.RunningType;
 import soma.ghostrunner.domain.pacemaker.domain.formula.RunningTipsProvider;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
@@ -39,14 +36,13 @@ import static soma.ghostrunner.global.error.ErrorCode.*;
 @RequiredArgsConstructor
 public class PacemakerService {
 
+    private final PacemakerValidator validator;
     private final RunningTipsProvider runningTipsProvider;
 
     private final PacemakerRepository pacemakerRepository;
     private final PacemakerSetRepository pacemakerSetRepository;
     private final RedisRunningRepository redisRunningRepository;
 
-    private final RunningQueryService runningQueryService;
-    private final CourseService courseService;
     private final MemberService memberService;
     private final VdotService runningVdotService;
     private final WorkoutService workoutService;
@@ -59,11 +55,13 @@ public class PacemakerService {
     private static final int KEY_EXPIRATION_TIME_SECONDS = 86400;
 
     @Transactional
-    public Long createPaceMaker(String memberUuid, CreatePacemakerCommand command) {
+    public Long createPaceMaker(String memberUuid, PacemakerCreateCommand command) {
 
-        // 멤버, 코스 찾고
+        // 멤버 조회 (존재 여부 자동 검증)
         Member member = memberService.findMemberByUuid(memberUuid);
-        courseService.findCourseById(command.getCourseId());
+
+        // 코스 검증
+        validator.validateCreationRequest(command.getCourseId());
 
         // VDOT -> 권장 페이스
         int vdot = determineVdot(member);
@@ -117,11 +115,11 @@ public class PacemakerService {
         return PACEMAKER_API_RATE_LIMIT_KEY_PREFIX + memberUuid + ":" + localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
     }
 
-    private Pacemaker savePacemaker(CreatePacemakerCommand command, Long courseId, RunningType runningType, Member member) {
+    private Pacemaker savePacemaker(PacemakerCreateCommand command, Long courseId, RunningType runningType, Member member) {
         return pacemakerRepository.save(mapper.toPacemaker(Pacemaker.Norm.DISTANCE, command, courseId, runningType, member));
     }
 
-    private void requestLlmToCreatePacemaker(CreatePacemakerCommand command, Member member,
+    private void requestLlmToCreatePacemaker(PacemakerCreateCommand command, Member member,
                                              WorkoutDto workoutDto, int vdot, Pacemaker pacemaker,
                                              String rateLimitKey) {
         llmService.requestLlmToCreatePacemaker(
@@ -182,10 +180,6 @@ public class PacemakerService {
         Pacemaker pacemaker = findPacemaker(pacemakerId);
         pacemaker.verifyMember(memberUuid);
         pacemaker.updateAfterRunning(runningId);
-    }
-
-    private Running findRunning(Long runningId) {
-        return runningQueryService.findRunningByRunningId(runningId);
     }
 
     @Transactional

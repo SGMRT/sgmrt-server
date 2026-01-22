@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Data
 @AllArgsConstructor
 @Builder
-public class CreatePacemakerCommand {
+public class PacemakerCreateCommand {
 
     private String type;
     private Double targetDistance;
@@ -19,7 +19,7 @@ public class CreatePacemakerCommand {
     private LocalDate localDate;
     private Long courseId;
 
-    public CreatePacemakerCommand(PacemakerType pacemakerType, Double targetDistance,
+    public PacemakerCreateCommand(PacemakerType pacemakerType, Double targetDistance,
                                   Integer condition, Integer temperature, Long courseId) {
         this.type = pacemakerType.name();
         this.targetDistance = targetDistance;

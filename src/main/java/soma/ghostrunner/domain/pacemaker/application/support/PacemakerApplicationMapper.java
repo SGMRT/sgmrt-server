@@ -5,7 +5,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.pacemaker.api.dto.response.*;
-import soma.ghostrunner.domain.pacemaker.application.dto.request.CreatePacemakerCommand;
+import soma.ghostrunner.domain.pacemaker.application.dto.request.PacemakerCreateCommand;
 import soma.ghostrunner.domain.pacemaker.domain.Pacemaker;
 import soma.ghostrunner.domain.pacemaker.domain.PacemakerSet;
 import soma.ghostrunner.domain.pacemaker.domain.RunningType;
@@ -18,7 +18,7 @@ public interface PacemakerApplicationMapper {
 
     PacemakerApplicationMapper INSTANCE = Mappers.getMapper(PacemakerApplicationMapper.class);
 
-    default Pacemaker toPacemaker(Pacemaker.Norm norm, CreatePacemakerCommand command, Long courseId,
+    default Pacemaker toPacemaker(Pacemaker.Norm norm, PacemakerCreateCommand command, Long courseId,
                                   RunningType runningType, Member member) {
         return Pacemaker.of(norm, command.getTargetDistance(), courseId, runningType, member.getUuid());
     }
