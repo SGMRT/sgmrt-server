@@ -19,7 +19,7 @@ import soma.ghostrunner.domain.notification.application.dto.PushContent;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
-import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
+import soma.ghostrunner.domain.pacemaker.domain.events.PacemakerCreatedEvent;
 
 import java.util.List;
 import java.util.Optional;

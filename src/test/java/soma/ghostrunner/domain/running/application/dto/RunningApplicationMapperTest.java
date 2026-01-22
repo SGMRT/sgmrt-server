@@ -12,7 +12,6 @@ import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.*;
-import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
 import soma.ghostrunner.domain.running.domain.path.Coordinates;
 import soma.ghostrunner.domain.running.domain.path.Telemetry;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
@@ -179,31 +178,6 @@ class RunningApplicationMapperTest {
         assertThat(event.runDuration()).isEqualTo(running.getRunningRecord().getDuration());
         assertThat(event.runnerId()).isEqualTo(runner.getId());
         assertThat(event.runnerNickname()).isEqualTo(runner.getNickname());
-    }
-
-    @DisplayName("페이스메이커 엔티티를 PacemakerCreatedEvent로 변환한다.")
-    @Test
-    void toPacemakerCreatedEvent() {
-        // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 500d, 1L, RunningType.E, "uuid");
-        setPacemakerId(pacemaker, 100L);
-
-        // when
-        PacemakerCreatedEvent event = mapper.toPacemakerCreatedEvent(pacemaker);
-        // then
-        assertThat(event.pacemakerId()).isEqualTo(pacemaker.getId());
-        assertThat(event.courseId()).isEqualTo(pacemaker.getCourseId());
-        assertThat(event.memberUuid()).isEqualTo(pacemaker.getMemberUuid());
-    }
-
-    private void setPacemakerId(Pacemaker pacemaker, long id) {
-        try {
-            java.lang.reflect.Field idField = Pacemaker.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(pacemaker, id);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private Running createPublicSoloRunning(Member member, Course course) {

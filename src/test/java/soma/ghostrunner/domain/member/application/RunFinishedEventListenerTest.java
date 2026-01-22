@@ -10,7 +10,7 @@ import soma.ghostrunner.domain.member.application.dto.MemberMapper;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
-import soma.ghostrunner.domain.running.application.RunningVdotService;
+import soma.ghostrunner.domain.pacemaker.application.VdotService;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 
 import java.util.Optional;
@@ -24,7 +24,7 @@ class RunFinishedEventListenerTest {
     @Mock
     private MemberService memberService;
     @Mock
-    private RunningVdotService runningVdotService;
+    private VdotService vdotService;
     @Mock
     private MemberVdotRepository memberVdotRepository;
     @Mock
@@ -43,7 +43,7 @@ class RunFinishedEventListenerTest {
         Member mockMember = mock(Member.class);
 
         given(memberService.findMemberByUuid(memberUuid)).willReturn(mockMember);
-        given(runningVdotService.calculateVdot(6.0)).willReturn(50);
+        given(vdotService.calculateVdot(6.0)).willReturn(50);
 
         given(memberVdotRepository.findByMemberUuid(mockMember.getUuid())).willReturn(Optional.empty());
 
@@ -68,7 +68,7 @@ class RunFinishedEventListenerTest {
         MemberVdot mockMemberVdot = mock(MemberVdot.class);
 
         given(memberService.findMemberByUuid(memberUuid)).willReturn(mockMember);
-        given(runningVdotService.calculateVdot(6.0)).willReturn(50);
+        given(vdotService.calculateVdot(6.0)).willReturn(50);
         given(memberVdotRepository.findByMemberUuid(mockMember.getUuid())).willReturn(Optional.of(mockMemberVdot));
 
         // when

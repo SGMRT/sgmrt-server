@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.pacemaker.domain.formula.RunningTipsProvider;
 
 class RunningTipsProviderTest extends IntegrationTestSupport {
 
