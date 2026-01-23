@@ -29,7 +29,7 @@ public class PacemakerSet {
     @Column(name = "set_num", nullable = false)
     private Integer setNum;
 
-    @Column(name = "message", nullable = false, columnDefinition = "LONGTEXT")
+    @Column(name = "message", columnDefinition = "LONGTEXT")
     private String message;
 
     @Column(name = "start_point", nullable = false)
@@ -81,6 +81,22 @@ public class PacemakerSet {
                         .message(dto.getMessage())
                         .pacemaker(pacemaker)
                         .build()).collect(Collectors.toList());
+    }
+
+    public static List<PacemakerSet> createRuleBasePacemakerSets(List<WorkoutSetDto> dtos, Pacemaker pacemaker) {
+        return dtos.stream()
+                .map(dto -> PacemakerSet.builder()
+                        .setNum(dto.getSetNum())
+                        .pace(toMinuteSecond(dto.getPace()))
+                        .startPoint(dto.getStartPoint())
+                        .endPoint(dto.getEndPoint())
+                        .message(null)
+                        .pacemaker(pacemaker)
+                        .build()).collect(Collectors.toList());
+    }
+
+    public void updateMessage(String message) {
+        this.message = message;
     }
 
     private static Double toMinuteSecond(String paceMinKm) {

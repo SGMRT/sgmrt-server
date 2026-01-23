@@ -15,7 +15,6 @@ import soma.ghostrunner.domain.pacemaker.domain.PacemakerSet;
 import soma.ghostrunner.domain.pacemaker.domain.events.PacemakerCreatedEvent;
 import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerSetRepository;
-import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,7 +35,7 @@ class PacemakerLlmCallbackServiceTest {
     private PacemakerSetRepository pacemakerSetRepository;
 
     @Mock
-    private RedisRunningRepository redisRunningRepository;
+    private PacemakerRateLimitService rateLimitService;
 
     @Mock
     private PacemakerApplicationMapper mapper;
@@ -45,7 +44,7 @@ class PacemakerLlmCallbackServiceTest {
     private ApplicationEventPublisher publisher;
 
     @Test
-    void handleSuccess_shouldUpdateEntitiesAndRedis() {
+    void handleSuccess_shouldUpdatePacemakerAndSets() {
         // given
         Long pacemakerId = 100L;
         String workoutJson = "{...any json...}";
@@ -53,43 +52,51 @@ class PacemakerLlmCallbackServiceTest {
         Pacemaker pacemaker = mock(Pacemaker.class);
         when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
 
-        WorkoutDto workoutDto = mock(WorkoutDto.class);
-        List<WorkoutSetDto> setDtos = List.of(mock(WorkoutSetDto.class));
-        when(workoutDto.getSets()).thenReturn(setDtos);
+        WorkoutSetDto setDto = mock(WorkoutSetDto.class);
+        when(setDto.getMessage()).thenReturn("안내 메시지");
 
-        PacemakerSet setEntity = mock(PacemakerSet.class);
-        List<PacemakerSet> sets = List.of(setEntity);
+        WorkoutDto workoutDto = mock(WorkoutDto.class);
+        List<WorkoutSetDto> setDtos = List.of(setDto);
+        when(workoutDto.getSets()).thenReturn(setDtos);
+        when(workoutDto.getSummary()).thenReturn("요약");
+        when(workoutDto.getGoalKm()).thenReturn(10.0);
+        when(workoutDto.getExpectedMinutes()).thenReturn(50);
+        when(workoutDto.getInitialMessage()).thenReturn("초기 메시지");
+
+        PacemakerSet existingSet = mock(PacemakerSet.class);
+        List<PacemakerSet> existingSets = List.of(existingSet);
+        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId)).thenReturn(existingSets);
+
         PacemakerCreatedEvent event = mock(PacemakerCreatedEvent.class);
         when(mapper.toPacemakerCreatedEvent(any())).thenReturn(event);
         doNothing().when(publisher).publishEvent(event);
 
-        try (MockedStatic<WorkoutDto> workoutDtoStatic = mockStatic(WorkoutDto.class);
-             MockedStatic<PacemakerSet> pacemakerSetStatic = mockStatic(PacemakerSet.class)) {
+        try (MockedStatic<WorkoutDto> workoutDtoStatic = mockStatic(WorkoutDto.class)) {
 
             workoutDtoStatic.when(() ->
                             WorkoutDto.fromVoiceGuidanceGeneratedWorkoutDto(anyString()))
                     .thenReturn(workoutDto);
-
-            pacemakerSetStatic.when(() ->
-                            PacemakerSet.createPacemakerSets(eq(setDtos), eq(pacemaker)))
-                    .thenReturn(sets);
 
             // when
             assertThatNoException()
                     .isThrownBy(() -> service.handleSuccess(pacemakerId, workoutJson));
 
             // then
-            // 1) 도메인 업데이트
+            // 1) Pacemaker 상태 전이: PROCEEDING -> COMPLETED
             verify(pacemakerRepository).findById(pacemakerId);
-            verify(pacemakerRepository).save(pacemaker);
+            verify(pacemaker).complete("요약", 10.0, 50, "초기 메시지");
 
-            // 2) 세트 저장
-            verify(pacemakerSetRepository).saveAll(sets);
+            // 2) 기존 PacemakerSet의 message 업데이트
+            verify(pacemakerSetRepository).findByPacemakerIdOrderBySetNumAsc(pacemakerId);
+            verify(existingSet).updateMessage("안내 메시지");
+
+            // 3) 이벤트 발행
+            verify(publisher).publishEvent(event);
         }
     }
 
     @Test
-    void handleError_shouldCompensateAndUpdateFailedStatus() {
+    void handleError_shouldCompensateRedisAndUpdateToFallback() {
         // given
         String rateLimitKey = "rl:member:1";
         Long pacemakerId = 200L;
@@ -102,12 +109,12 @@ class PacemakerLlmCallbackServiceTest {
                 .isThrownBy(() -> service.handleError(rateLimitKey, pacemakerId));
 
         // then
-        // 1) 레이트리밋 보상
-        verify(redisRunningRepository).decrementRateLimitCounter(rateLimitKey);
+        // 1) Redis 카운트 복구 (보상) - 사용자가 다시 시도할 수 있도록
+        verify(rateLimitService).decrementCounter(rateLimitKey);
 
-        // 2) 상태 업데이트 (FAILED)
+        // 2) 상태를 FALLBACK으로 전이 (Rule-Base 결과 제공)
         verify(pacemakerRepository).findById(pacemakerId);
-        verify(pacemaker).updateStatus(Pacemaker.Status.FAILED);
+        verify(pacemaker).fallback();
     }
 
 }

@@ -7,11 +7,154 @@ import org.springframework.security.access.AccessDeniedException;
 
 class PacemakerTest {
 
-    @DisplayName("LLM API 통신 상태를 업데이트한다.")
+    @DisplayName("페이스메이커 생성 시 INIT 상태로 시작한다.")
+    @Test
+    void createWithInitStatus() {
+        // given & when
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+
+        // then
+        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.INIT);
+    }
+
+    @DisplayName("INIT -> PROCEEDING 상태 전이가 가능하다.")
+    @Test
+    void transitionFromInitToProceeding() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+
+        // when
+        pacemaker.proceed();
+
+        // then
+        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
+    }
+
+    @DisplayName("PROCEEDING -> COMPLETED 상태 전이가 가능하다.")
+    @Test
+    void transitionFromProceedingToCompleted() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        pacemaker.proceed();
+
+        // when
+        pacemaker.complete("요약", 10.0, 50, "초기 메시지");
+
+        // then
+        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.COMPLETED);
+        Assertions.assertThat(pacemaker.getSummary()).isEqualTo("요약");
+        Assertions.assertThat(pacemaker.getExpectedTime()).isEqualTo(50);
+        Assertions.assertThat(pacemaker.getInitialMessage()).isEqualTo("초기 메시지");
+    }
+
+    @DisplayName("PROCEEDING -> FALLBACK 상태 전이가 가능하다.")
+    @Test
+    void transitionFromProceedingToFallback() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        pacemaker.proceed();
+
+        // when
+        pacemaker.fallback();
+
+        // then
+        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.FALLBACK);
+    }
+
+    @DisplayName("INIT에서 COMPLETED로 직접 전이할 수 없다.")
+    @Test
+    void cannotTransitionFromInitToCompleted() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+
+        // when & then
+        Assertions.assertThatThrownBy(() -> pacemaker.complete("요약", 10.0, 50, "메시지"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot transition from INIT to COMPLETED");
+    }
+
+    @DisplayName("INIT에서 FALLBACK으로 직접 전이할 수 없다.")
+    @Test
+    void cannotTransitionFromInitToFallback() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+
+        // when & then
+        Assertions.assertThatThrownBy(() -> pacemaker.fallback())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot transition from INIT to FALLBACK");
+    }
+
+    @DisplayName("COMPLETED 상태에서는 다른 상태로 전이할 수 없다.")
+    @Test
+    void cannotTransitionFromCompleted() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        pacemaker.proceed();
+        pacemaker.complete("요약", 10.0, 50, "메시지");
+
+        // when & then
+        Assertions.assertThatThrownBy(() -> pacemaker.fallback())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot transition from COMPLETED to FALLBACK");
+    }
+
+    @DisplayName("FALLBACK 상태에서는 다른 상태로 전이할 수 없다.")
+    @Test
+    void cannotTransitionFromFallback() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        pacemaker.proceed();
+        pacemaker.fallback();
+
+        // when & then
+        Assertions.assertThatThrownBy(() -> pacemaker.complete("요약", 10.0, 50, "메시지"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot transition from FALLBACK to COMPLETED");
+    }
+
+    @DisplayName("COMPLETED와 FALLBACK 상태는 완료된 상태로 간주한다.")
+    @Test
+    void isCompletedReturnsTrueForCompletedAndFallback() {
+        // given
+        Pacemaker completed = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        completed.proceed();
+        completed.complete("요약", 10.0, 50, "메시지");
+
+        Pacemaker fallback = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        fallback.proceed();
+        fallback.fallback();
+
+        // then
+        Assertions.assertThat(completed.isCompleted()).isTrue();
+        Assertions.assertThat(completed.isNotCompleted()).isFalse();
+        Assertions.assertThat(fallback.isCompleted()).isTrue();
+        Assertions.assertThat(fallback.isNotCompleted()).isFalse();
+    }
+
+    @DisplayName("INIT과 PROCEEDING 상태는 완료되지 않은 상태로 간주한다.")
+    @Test
+    void isNotCompletedReturnsTrueForInitAndProceeding() {
+        // given
+        Pacemaker init = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+
+        Pacemaker proceeding = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        proceeding.proceed();
+
+        // then
+        Assertions.assertThat(init.isNotCompleted()).isTrue();
+        Assertions.assertThat(init.isCompleted()).isFalse();
+        Assertions.assertThat(proceeding.isNotCompleted()).isTrue();
+        Assertions.assertThat(proceeding.isCompleted()).isFalse();
+    }
+
+    @Deprecated
+    @DisplayName("LLM API 통신 상태를 업데이트한다. (레거시)")
     @Test
     void updateStatus() {
         // given
         Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        pacemaker.proceed(); // INIT -> PROCEEDING
 
         // when
         pacemaker.updateStatus(Pacemaker.Status.COMPLETED);
