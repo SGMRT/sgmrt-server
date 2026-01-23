@@ -1,12 +1,13 @@
-package soma.ghostrunner.domain.pacemaker.application;
+package soma.ghostrunner.domain.pacemaker.application.support;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.course.application.CourseService;
+import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 
 /**
- * Pacemaker 생성 요청에 대한 검증을 담당하는 Validator
+ * Pacemaker 생성 요청에 대한 검증을 담당하는 Validato
  */
 @Slf4j
 @Component
@@ -28,7 +29,7 @@ public class PacemakerValidator {
     private void validateCourseExists(Long courseId) {
         try {
             courseService.findCourseById(courseId);
-        } catch (Exception e) {
+        } catch (CourseNotFoundException e) {
             log.warn("Pacemaker 생성 실패: 코스 존재하지 않음. courseId={}", courseId);
             throw e;
         }

@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
+import soma.ghostrunner.domain.pacemaker.application.support.PacemakerValidator;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
