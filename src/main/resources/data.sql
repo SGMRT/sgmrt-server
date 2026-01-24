@@ -112,6 +112,33 @@ VALUES
     (1, 1, 'ExponentPushToken[test-token-001]', 'device-uuid-001', 1, 0, 0, 'iOS', '17.0', 'iPhone 15 Pro', NOW(), NOW(), NULL),
     (2, 2, 'ExponentPushToken[test-token-002]', 'device-uuid-002', 1, 0, 0, 'Android', '14', 'Galaxy S24', NOW(), NOW(), NULL),
     (3, 3, 'ExponentPushToken[test-token-003]', 'device-uuid-003', 1, 0, 0, 'iOS', '17.0', 'iPhone 14', NOW(), NOW(), NULL);
+-- ===================================
+-- 4. 리드모델 생성 (공개 코스만)
+-- ===================================
+INSERT INTO course_read_model (
+    course_id, name, owner_uuid, source, route_url, start_lat, start_lng,
+    top1_member_id, top1_time_seconds,
+    top2_member_id, top2_time_seconds,
+    top3_member_id, top3_time_seconds,
+    top4_member_id, top4_time_seconds,
+    runners_count, is_public, created_at, updated_at
+)
+VALUES
+    -- 코스 1: 한강 (TOP4: 러너2, 러너4, 러너1, 러너3)
+    (1, '한강 러닝 코스', 'user-uuid-001', 'USER', 'https://example.com/route1.json', 37.5219, 127.0411,
+     2, 1500, 4, 1600, 1, 1700, 3, 1800, 5, true, NOW(), NOW()),
+
+    -- 코스 2: 올림픽공원 (TOP3: 러너4, 러너3, 러너5)
+    (2, '올림픽공원 달리기', 'user-uuid-002', 'USER', 'https://example.com/route2.json', 37.5219, 127.1263,
+     4, 1100, 3, 1200, 5, 1300, NULL, NULL, 3, true, NOW(), NOW()),
+
+    -- 코스 3: 강남 (TOP2: 러너2, 러너1)
+    (3, '강남 야간 러닝', 'user-uuid-003', 'RECOMMENDED', 'https://example.com/route3.json', 37.4979, 127.0276,
+     2, 2200, 1, 2400, NULL, NULL, NULL, NULL, 2, true, NOW(), NOW()),
+
+    -- 코스 4: 여의도 (TOP1: 러너1)
+    (4, '여의도 한강 순환', 'user-uuid-004', 'USER', 'https://example.com/route4.json', 37.5219, 126.9245,
+     1, 3600, NULL, NULL, NULL, NULL, NULL, NULL, 1, true, NOW(), NOW());
 
 -- Notice 테이블
 INSERT INTO notice (id, title, content, type, image_url, priority, start_at, end_at, created_at, updated_at)
@@ -122,3 +149,7 @@ VALUES
      'https://example.com/notices/event.png', 2, NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY), NOW(), NOW()),
     (3, '서버 점검 안내', '2월 1일 오전 2시부터 4시까지 서버 점검이 예정되어 있습니다.', 'GENERAL_V2',
      NULL, 0, NOW(), DATE_ADD(NOW(), INTERVAL 14 DAY), NOW(), NOW());
+-- ===================================
+-- 5. 외래키 체크 재활성화
+-- ===================================
+SET FOREIGN_KEY_CHECKS = 1;

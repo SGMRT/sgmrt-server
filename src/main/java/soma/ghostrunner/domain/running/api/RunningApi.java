@@ -115,6 +115,7 @@ public class RunningApi {
         return runningQueryService.findGhostRunInfo(myRunningId, ghostRunningId, memberUuid);
     }
 
+    @Deprecated
     @PatchMapping("/v1/runs/{runningId}/isPublic")
     public void patchRunningPublicStatus(
             @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long runningId) {
@@ -122,6 +123,7 @@ public class RunningApi {
         runningCommandService.updateRunningPublicStatus(runningId, memberUuid);
     }
 
+    @Deprecated
     @DeleteMapping("/v1/runs")
     public void deleteRunnings(
             @AuthenticationPrincipal JwtUserDetails userDetails, @RequestBody @Valid DeleteRunningRequest request) {

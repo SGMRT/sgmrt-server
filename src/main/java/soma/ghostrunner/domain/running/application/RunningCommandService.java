@@ -82,7 +82,10 @@ public class RunningCommandService {
 
     private Running createAndSaveRunning(CreateRunCommand command, TelemetryStatistics telemetryStatistics,
                                          RunningDataUrlsDto runningDataUrlsDto, Member member, Course course) {
-        return runningRepository.save(mapper.toRunning(command, telemetryStatistics, runningDataUrlsDto, member, course));
+        Running running = mapper.toRunning(command, telemetryStatistics, runningDataUrlsDto, member, course);
+        Running saved = runningRepository.save(running);
+        eventPublisher.publishEvent(saved.createFinishedEvent());
+        return saved;
     }
 
     @Transactional
@@ -128,6 +131,7 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updateName(name);
+        eventPublisher.publishEvent(running.createUpdatedEvent());
     }
 
     @Transactional
@@ -135,6 +139,7 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updatePublicStatus();
+        eventPublisher.publishEvent(running.createUpdatedEvent());
     }
 
     private Running findRunning(Long runningId) {

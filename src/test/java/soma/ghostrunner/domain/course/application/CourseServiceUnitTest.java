@@ -8,9 +8,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
@@ -35,6 +37,9 @@ class CourseServiceUnitTest {
 
     @Mock
     private CourseSubscriptionRepository subscriptionRepository;
+    
+    @Mock
+    private CourseReadModelRepository readModelRepository;
 
     @Mock
     private CourseMapper courseMapper;
@@ -317,6 +322,150 @@ class CourseServiceUnitTest {
             assertThatThrownBy(() -> courseService.deleteCourse(courseId, otherMemberUuid))
                     .isInstanceOf(CourseAccessDeniedException.class)
                     .hasMessageContaining("소유자가 아닙니다");
+        }
+    }
+
+    @Nested
+    @DisplayName("리드모델 동기화")
+    class ReadModelSync {
+
+        @Test
+        @DisplayName("코스 공개 시 리드모델이 없으면 생성한다")
+        void updateCourse_toPublic_createsReadModel() {
+            // given
+            Long courseId = 1L;
+            Long memberId = 1L;
+            setIds(course, courseId, owner, memberId);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.empty());
+            given(courseRepository.save(any(Course.class))).willReturn(course);
+
+            CoursePatchRequest request = new CoursePatchRequest();
+            request.setIsPublic(true);
+
+            // when
+            courseService.updateCourse(courseId, request, owner.getUuid());
+
+            // then
+            then(readModelRepository).should().save(any(CourseReadModel.class));
+            assertThat(course.isPublic()).isTrue();
+        }
+
+        @Test
+        @DisplayName("코스 공개 시 리드모델이 있으면 공개 상태로 변경한다")
+        void updateCourse_toPublic_updatesReadModel() {
+            // given
+            Long courseId = 1L;
+            Long memberId = 1L;
+            setIds(course, courseId, owner, memberId);
+
+            CourseReadModel existingReadModel = CourseReadModel.create(course);
+            existingReadModel.makePrivate(); // 비공개 상태
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.of(existingReadModel));
+            given(courseRepository.save(any(Course.class))).willReturn(course);
+
+            CoursePatchRequest request = new CoursePatchRequest();
+            request.setIsPublic(true);
+
+            // when
+            courseService.updateCourse(courseId, request, owner.getUuid());
+
+            // then
+            then(readModelRepository).should().save(existingReadModel);
+            assertThat(existingReadModel.getIsPublic()).isTrue();
+        }
+
+        @Test
+        @DisplayName("코스 비공개 시 리드모델이 있으면 비공개 상태로 변경한다")
+        void updateCourse_toPrivate_updatesReadModel() {
+            // given
+            Long courseId = 1L;
+            Long memberId = 1L;
+            setIds(course, courseId, owner, memberId);
+            course.setIsPublic(true); // 공개 상태로 시작
+
+            CourseReadModel existingReadModel = CourseReadModel.create(course);
+            existingReadModel.makePublic();
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.of(existingReadModel));
+            given(courseRepository.save(any(Course.class))).willReturn(course);
+
+            CoursePatchRequest request = new CoursePatchRequest();
+            request.setIsPublic(false);
+
+            // when
+            courseService.updateCourse(courseId, request, owner.getUuid());
+
+            // then
+            then(readModelRepository).should().save(existingReadModel);
+            assertThat(existingReadModel.getIsPublic()).isFalse();
+        }
+
+        @Test
+        @DisplayName("코스 비공개 시 리드모델이 없으면 아무 동작도 하지 않는다")
+        void updateCourse_toPrivate_noReadModel_doesNothing() {
+            // given
+            Long courseId = 1L;
+            Long memberId = 1L;
+            setIds(course, courseId, owner, memberId);
+            course.setIsPublic(true);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.empty());
+            given(courseRepository.save(any(Course.class))).willReturn(course);
+
+            CoursePatchRequest request = new CoursePatchRequest();
+            request.setIsPublic(false);
+
+            // when
+            courseService.updateCourse(courseId, request, owner.getUuid());
+
+            // then
+            then(readModelRepository).should(never()).save(any(CourseReadModel.class));
+        }
+
+        @Test
+        @DisplayName("코스 삭제 시 리드모델도 함께 삭제한다")
+        void deleteCourse_deletesReadModel() {
+            // given
+            Long courseId = 1L;
+            Long memberId = 1L;
+            setIds(course, courseId, owner, memberId);
+
+            CourseReadModel existingReadModel = CourseReadModel.create(course);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.of(existingReadModel));
+
+            // when
+            courseService.deleteCourse(courseId, owner.getUuid());
+
+            // then
+            then(courseRepository).should().delete(course);
+            then(readModelRepository).should().delete(existingReadModel);
+        }
+
+        @Test
+        @DisplayName("코스 삭제 시 리드모델이 없어도 정상 동작한다")
+        void deleteCourse_noReadModel_success() {
+            // given
+            Long courseId = 1L;
+            Long memberId = 1L;
+            setIds(course, courseId, owner, memberId);
+
+            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.empty());
+
+            // when
+            courseService.deleteCourse(courseId, owner.getUuid());
+
+            // then
+            then(courseRepository).should().delete(course);
+            then(readModelRepository).should(never()).delete(any(CourseReadModel.class));
         }
     }
 
