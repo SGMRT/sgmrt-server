@@ -18,11 +18,6 @@ public interface PacemakerApplicationMapper {
 
     PacemakerApplicationMapper INSTANCE = Mappers.getMapper(PacemakerApplicationMapper.class);
 
-    default Pacemaker toPacemaker(Pacemaker.Norm norm, PacemakerCreateCommand command, Long courseId,
-                                  RunningType runningType, Member member) {
-        return Pacemaker.of(norm, command.getTargetDistance(), courseId, runningType, member.getUuid());
-    }
-
     default PacemakerPollingResponse toPacemakerPollingResponse(Pacemaker p) {
         return PacemakerPollingResponse.builder()
                 .processingStatus(p.getStatus().name())

@@ -168,11 +168,16 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         String member = "MEMBER-A";
         Long courseId = 600L;
 
-        Pacemaker failedRun = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
-        failedRun.updateStatus(Pacemaker.Status.FAILED);
-        Pacemaker ran = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
-        ran.updateAfterRunning(1L);
-        pacemakerRepository.saveAll(List.of(failedRun, ran));
+        // 이미 함께 뛴 페이스메이커만 있는 경우 빈 결과 반환
+        Pacemaker ran1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
+        ran1.proceed();
+        ran1.complete("요약", 10.0, 50, "메시지");
+        ran1.updateAfterRunning(1L);
+        Pacemaker ran2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
+        ran2.proceed();
+        ran2.complete("요약", 10.0, 50, "메시지");
+        ran2.updateAfterRunning(2L);
+        pacemakerRepository.saveAll(List.of(ran1, ran2));
 
         // when
         Optional<Pacemaker> found = pacemakerRepository.findByCourseId(courseId, member);
@@ -209,33 +214,33 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
         assertThat(found.get().getId()).isEqualTo(notYetRun2.getId());
     }
 
-    @DisplayName("가장 최근 페이스메이커가 가공에 실패했다면 이전의 가공되어 있는 페이스메이커가 나온다.")
+    @DisplayName("FALLBACK 상태의 페이스메이커도 조회 대상이 된다.")
     @Test
-    void returnNotFailedPacemaker() throws InterruptedException {
+    void returnFallbackPacemaker() throws InterruptedException {
         // given
         String member = "MEMBER-A";
         Long courseId = 600L;
 
         Pacemaker ran1 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
+        ran1.proceed();
+        ran1.complete("요약", 10.0, 50, "메시지");
         ran1.updateAfterRunning(1L);
-        Pacemaker ran2 = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
-        ran2.updateAfterRunning(1L);
-        pacemakerRepository.saveAll(List.of(ran1, ran2));
-
-        Pacemaker succeedPacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
-        pacemakerRepository.save(succeedPacemaker);
+        pacemakerRepository.save(ran1);
 
         Thread.sleep(5);
 
-        Pacemaker failedRun = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
-        failedRun.updateStatus(Pacemaker.Status.FAILED);
-        pacemakerRepository.save(failedRun);
+        // FALLBACK 상태의 페이스메이커 (LLM 실패로 Rule-Base 결과만 있음)
+        Pacemaker fallbackPacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, courseId, RunningType.R, member);
+        fallbackPacemaker.proceed();
+        fallbackPacemaker.fallback();
+        pacemakerRepository.save(fallbackPacemaker);
 
         // when
         Optional<Pacemaker> found = pacemakerRepository.findByCourseId(courseId, member);
 
-        // then
-        assertThat(found.get().getId()).isEqualTo(succeedPacemaker.getId());
+        // then - FALLBACK도 유효한 결과이므로 최신 것이 조회됨
+        assertThat(found.get().getId()).isEqualTo(fallbackPacemaker.getId());
+        assertThat(found.get().getStatus()).isEqualTo(Pacemaker.Status.FALLBACK);
     }
 
 }

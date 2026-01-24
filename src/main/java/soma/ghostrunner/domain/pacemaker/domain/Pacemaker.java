@@ -64,7 +64,7 @@ public class Pacemaker extends BaseTimeEntity {
     @Builder(access = AccessLevel.PRIVATE)
     public Pacemaker(RunningType runningType, Norm norm, String summary,
                      Double goalDistance, Integer expectedTime, String initialMessage,
-                     Long runningId, Long courseId, String memberUuid) {
+                     Long runningId, Long courseId, String memberUuid, Status status) {
         this.runningType = runningType;
         this.norm = norm;
         this.summary = summary;
@@ -73,7 +73,7 @@ public class Pacemaker extends BaseTimeEntity {
         this.initialMessage = initialMessage;
         this.runningId = runningId;
         this.courseId = courseId;
-        this.status = Status.PROCEEDING;
+        this.status = status != null ? status : Status.INIT;
         this.hasRunWith = false;
         this.memberUuid = memberUuid;
     }
@@ -85,9 +85,24 @@ public class Pacemaker extends BaseTimeEntity {
                 .courseId(courseId)
                 .runningType(runningType)
                 .memberUuid(memberUuid)
+                .status(Status.INIT)
                 .build();
     }
 
+    public static Pacemaker createWithRuleBase(Norm norm, Double goalDistance, Integer expectedTime,
+                                                Long courseId, RunningType runningType, String memberUuid) {
+        return Pacemaker.builder()
+                .norm(norm)
+                .goalDistance(goalDistance)
+                .expectedTime(expectedTime)
+                .courseId(courseId)
+                .runningType(runningType)
+                .memberUuid(memberUuid)
+                .status(Status.INIT)
+                .build();
+    }
+
+    @Deprecated
     public void updateSucceedPacemaker(String summary, Double goalKm, Integer expectedMinutes, String initialMessage) {
         this.summary = summary;
         this.goalDistance = goalKm;
@@ -101,9 +116,61 @@ public class Pacemaker extends BaseTimeEntity {
     }
 
     public enum Status {
-        PROCEEDING, COMPLETED, FAILED
+        INIT {
+            @Override
+            public boolean canTransitionTo(Status next) {
+                return next == PROCEEDING;
+            }
+        },
+        PROCEEDING {
+            @Override
+            public boolean canTransitionTo(Status next) {
+                return next == COMPLETED || next == FALLBACK;
+            }
+        },
+        COMPLETED {
+            @Override
+            public boolean canTransitionTo(Status next) {
+                return false;
+            }
+        },
+        FALLBACK {
+            @Override
+            public boolean canTransitionTo(Status next) {
+                return false;
+            }
+        };
+
+        public abstract boolean canTransitionTo(Status next);
     }
 
+    public void proceed() {
+        validateStatusTransition(Status.PROCEEDING);
+        this.status = Status.PROCEEDING;
+    }
+
+    public void complete(String summary, Double goalKm, Integer expectedMinutes, String initialMessage) {
+        validateStatusTransition(Status.COMPLETED);
+        this.summary = summary;
+        this.goalDistance = goalKm;
+        this.expectedTime = expectedMinutes;
+        this.initialMessage = initialMessage;
+        this.status = Status.COMPLETED;
+    }
+
+    public void fallback() {
+        validateStatusTransition(Status.FALLBACK);
+        this.status = Status.FALLBACK;
+    }
+
+    private void validateStatusTransition(Status next) {
+        if (!this.status.canTransitionTo(next)) {
+            throw new IllegalStateException(
+                    String.format("Cannot transition from %s to %s", this.status, next));
+        }
+    }
+
+    @Deprecated
     public void updateStatus(Status status) {
         this.status = status;
     }
@@ -115,7 +182,11 @@ public class Pacemaker extends BaseTimeEntity {
     }
 
     public boolean isNotCompleted() {
-        return !status.equals(Status.COMPLETED);
+        return !status.equals(Status.COMPLETED) && !status.equals(Status.FALLBACK);
+    }
+
+    public boolean isCompleted() {
+        return status.equals(Status.COMPLETED) || status.equals(Status.FALLBACK);
     }
 
     public void updateAfterRunning(Long runningId) {
