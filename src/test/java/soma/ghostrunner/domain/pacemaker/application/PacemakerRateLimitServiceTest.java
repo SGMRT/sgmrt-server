@@ -10,6 +10,7 @@ import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatNoException;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -25,6 +26,48 @@ class PacemakerRateLimitServiceTest {
     void setUp() {
         rateLimitService = new PacemakerRateLimitService(redisRunningRepository);
     }
+
+    // ==================== validateRateLimit 테스트 ====================
+
+    @Test
+    @DisplayName("Rate Limit 사전 체크 - 남은 횟수가 있으면 통과")
+    void validateRateLimit_success() {
+        // given
+        String memberUuid = "member-123";
+        when(redisRunningRepository.get(anyString())).thenReturn("1"); // 1회 사용 → 2회 남음
+
+        // when/then
+        assertThatNoException()
+                .isThrownBy(() -> rateLimitService.validateRateLimit(memberUuid));
+    }
+
+    @Test
+    @DisplayName("Rate Limit 사전 체크 - 사용량 초과 시 예외 발생")
+    void validateRateLimit_exceeded_throwsException() {
+        // given
+        String memberUuid = "member-123";
+        when(redisRunningRepository.get(anyString())).thenReturn("3"); // 3회 사용 → 0회 남음
+
+        // when/then
+        assertThatThrownBy(() -> rateLimitService.validateRateLimit(memberUuid))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessageContaining("일일 사용량");
+    }
+
+    @Test
+    @DisplayName("Rate Limit 사전 체크 - 초과 사용한 경우에도 예외 발생")
+    void validateRateLimit_overExceeded_throwsException() {
+        // given
+        String memberUuid = "member-123";
+        when(redisRunningRepository.get(anyString())).thenReturn("5"); // 5회 사용 → 0회 남음
+
+        // when/then
+        assertThatThrownBy(() -> rateLimitService.validateRateLimit(memberUuid))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessageContaining("일일 사용량");
+    }
+
+    // ==================== getRemainingCount 테스트 ====================
 
     @Test
     @DisplayName("남은 일일 사용량을 조회한다 - 1회 사용한 경우")

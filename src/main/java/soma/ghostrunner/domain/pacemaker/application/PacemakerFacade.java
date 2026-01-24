@@ -33,6 +33,12 @@ public class PacemakerFacade {
     /**
      * 페이스메이커 생성 (TX 분리)
      *
+     * 흐름:
+     * 1. Rate Limit 사전 체크 (Fail-Fast)
+     * 2. TX1: Rule-Base Pacemaker(INIT) 생성
+     * 3. TX2: PROCEEDING 상태 업데이트
+     * 4. TX2 커밋 후: Redis 카운트 증가 + LLM 호출
+     *
      * @param memberUuid 회원 UUID
      * @param command 생성 요청 커맨드
      * @return 생성된 페이스메이커 ID
@@ -40,6 +46,9 @@ public class PacemakerFacade {
     public Long createPacemaker(String memberUuid, PacemakerCreateCommand command) {
 
         log.info("페이스메이커 생성 시작 - memberUuid={}, courseId={}", memberUuid, command.getCourseId());
+
+        // Rate Limit 사전 체크 (Fail-Fast) - TX 시작 전에 검증하여 불필요한 DB 작업 방지
+        rateLimitService.validateRateLimit(memberUuid);
 
         // TX1: Rule-Base Pacemaker(INIT) 생성 및 저장
         PacemakerCreationResult result = creationService.createInitialPacemaker(memberUuid, command);

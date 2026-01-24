@@ -19,6 +19,9 @@ import soma.ghostrunner.domain.pacemaker.domain.RunningType;
 
 import java.util.List;
 
+import soma.ghostrunner.domain.running.exception.InvalidRunningException;
+import soma.ghostrunner.global.error.ErrorCode;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -51,7 +54,7 @@ class PacemakerFacadeTest {
 
     // ==================== 생성 테스트 ====================
 
-    @DisplayName("페이스메이커 생성: TX1 → TX2 → Redis + LLM 순서로 실행된다")
+    @DisplayName("페이스메이커 생성: Rate Limit 체크 → TX1 → TX2 → Redis + LLM 순서로 실행된다")
     @Test
     void createPacemaker_executesInCorrectOrder() {
         // given
@@ -85,11 +88,35 @@ class PacemakerFacadeTest {
         // then
         assertThat(actualId).isEqualTo(expectedPacemakerId);
 
-        // 실행 순서 검증: TX1 → TX2 → triggerLlmAfterCommit
-        InOrder inOrder = inOrder(creationService, llmTriggerService);
+        // 실행 순서 검증: Rate Limit 체크 → TX1 → TX2 → triggerLlmAfterCommit
+        InOrder inOrder = inOrder(rateLimitService, creationService, llmTriggerService);
+        inOrder.verify(rateLimitService).validateRateLimit(memberUuid);
         inOrder.verify(creationService).createInitialPacemaker(memberUuid, command);
         inOrder.verify(llmTriggerService).updateToProceeding(expectedPacemakerId);
         inOrder.verify(llmTriggerService).triggerLlmAfterCommit(result);
+    }
+
+    @DisplayName("Rate Limit 초과 시 TX1, TX2, LLM이 실행되지 않는다 (Fail-Fast)")
+    @Test
+    void createPacemaker_rateLimitExceeded_noTxOrLlm() {
+        // given
+        String memberUuid = "member-123";
+        Long courseId = 1L;
+
+        PacemakerCreateCommand command = new PacemakerCreateCommand(
+                PacemakerType.STAMINA, 10.0, 3, 25, courseId);
+
+        doThrow(new InvalidRunningException(ErrorCode.TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다."))
+                .when(rateLimitService).validateRateLimit(memberUuid);
+
+        // when & then
+        assertThatThrownBy(() -> facade.createPacemaker(memberUuid, command))
+                .isInstanceOf(InvalidRunningException.class)
+                .hasMessageContaining("일일 사용량");
+
+        // TX1, TX2, LLM 모두 호출되지 않아야 함
+        verifyNoInteractions(creationService);
+        verifyNoInteractions(llmTriggerService);
     }
 
     @DisplayName("TX1 실패 시 TX2와 LLM 호출이 실행되지 않는다")

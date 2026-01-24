@@ -30,6 +30,21 @@ public class PacemakerRateLimitService {
     private static final int KEY_EXPIRATION_TIME_SECONDS = 86400;
 
     /**
+     * Rate Limit 사전 검증 (Fail-Fast)
+     * TX 시작 전에 호출하여 불필요한 DB 작업 방지
+     *
+     * @throws InvalidRunningException 일일 사용량 초과 시
+     */
+    public void validateRateLimit(String memberUuid) {
+        Long remaining = getRemainingCount(memberUuid);
+        if (remaining <= 0) {
+            log.warn("Rate Limit 사전 체크 실패 - memberUuid={}, remaining={}", memberUuid, remaining);
+            throw new InvalidRunningException(TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다.");
+        }
+        log.debug("Rate Limit 사전 체크 통과 - memberUuid={}, remaining={}", memberUuid, remaining);
+    }
+
+    /**
      * 남은 일일 사용량 조회
      */
     public Long getRemainingCount(String memberUuid) {
