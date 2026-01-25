@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient;
 public class OpenAiRestClientConfig {
 
     private static final int CONNECT_TIMEOUT_MILLIS = 10_000;
-    private static final int RESPONSE_TIMEOUT_SECONDS = 180;
+    private static final int RESPONSE_TIMEOUT_SECONDS = 120;
 
     @Bean
     public RestClient openAiRestClient(@Value("${openai.api.key}") String apiKey) {
