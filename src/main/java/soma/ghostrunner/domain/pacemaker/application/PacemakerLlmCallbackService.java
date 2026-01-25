@@ -34,6 +34,12 @@ public class PacemakerLlmCallbackService {
         WorkoutDto workoutDto = WorkoutDto.fromVoiceGuidanceGeneratedWorkoutDto(workoutDtoStr);
         Pacemaker pacemaker = findPacemaker(pacemakerId);
 
+        // 멱등성: 이미 완료된 상태면 무시
+        if (pacemaker.isCompleted()) {
+            log.warn("이미 완료된 Pacemaker 무시 - pacemakerId={}, status={}", pacemakerId, pacemaker.getStatus());
+            return;
+        }
+
         // 상태 전이: PROCEEDING -> COMPLETED
         pacemaker.complete(
                 workoutDto.getSummary(),
@@ -62,16 +68,24 @@ public class PacemakerLlmCallbackService {
     }
 
     /**
-     * LLM 실패 시 FALLBACK 처리
+     * LLM 실패 시 FALLBACK 처리 (메인 요청용)
      * - Redis 카운트 복구 (보상) - 사용자가 다시 시도할 수 있도록
      * - FALLBACK 상태로 전환하여 Rule-Base 결과 제공
      */
     @Transactional
     public void handleError(String rateLimitKey, Long pacemakerId) {
-        // Redis 카운트 복구 (보상)
-        rateLimitService.decrementCounter(rateLimitKey);
-
         Pacemaker pacemaker = findPacemaker(pacemakerId);
+
+        // 멱등성: 이미 완료된 상태면 무시
+        if (pacemaker.isCompleted()) {
+            log.warn("이미 완료된 Pacemaker 무시 - pacemakerId={}, status={}", pacemakerId, pacemaker.getStatus());
+            return;
+        }
+
+        // Redis 카운트 복구 (보상) - rateLimitKey가 null이면 스킵 (워커 재시도)
+        if (rateLimitKey != null) {
+            rateLimitService.decrementCounter(rateLimitKey);
+        }
 
         // 상태 전이: PROCEEDING -> FALLBACK
         pacemaker.fallback();

@@ -2,8 +2,10 @@ package soma.ghostrunner.global.error;
 
 import io.sentry.Sentry;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -24,12 +26,16 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import soma.ghostrunner.global.error.exception.BusinessException;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionAdvice {
+
+    private final Environment environment;
 
     // BusinessException
     @ExceptionHandler(BusinessException.class)
@@ -144,6 +150,12 @@ public class GlobalExceptionAdvice {
 
         ResponseEntity<ErrorResponse> responseEntity = createErrorResponse(ErrorCode.SERVICE_UNAVAILABLE);
 
+        // 로컬 환경에서는 Sentry 전송 스킵
+        if (isLocalProfile()) {
+            log.error("Unhandled Server Error: {} {}", request.getMethod(), request.getRequestURI(), e);
+            return responseEntity;
+        }
+
         // 센트리 응답 가공
         Sentry.withScope(scope -> {
 
@@ -160,6 +172,10 @@ public class GlobalExceptionAdvice {
         });
 
         return responseEntity;
+    }
+
+    private boolean isLocalProfile() {
+        return Arrays.asList(environment.getActiveProfiles()).contains("local");
     }
 
     private ResponseEntity<ErrorResponse> createErrorResponse(ErrorCode errorCode, BindingResult bindingResult) {

@@ -82,17 +82,17 @@ VALUES
 
 -- Pacemaker 테이블
 INSERT INTO pacemaker (id, running_type, norm, summary, goal_km, expected_time_min, initial_message, status, has_run_with,
-                       deleted, running_id, course_id, member_uuid, created_at, updated_at)
+                       deleted, running_id, course_id, member_uuid, condition_level, temperature, last_retry_at, created_at, updated_at)
 VALUES
     (1, 'E', 'DISTANCE', '오늘은 가볍게 회복 조깅을 해볼까요? 천천히 시작해서 몸을 풀어봅시다.',
      5.0, 30, '안녕하세요! 오늘의 회복 조깅을 시작합니다. 편안한 페이스로 달려볼게요.',
-     'COMPLETED', false, false, NULL, 1, 'test-uuid-001', NOW(), NOW()),
+     'COMPLETED', false, false, NULL, 1, 'test-uuid-001', 3, 20, NULL, NOW(), NOW()),
     (2, 'M', 'DISTANCE', '마라톤 페이스 훈련입니다. 일정한 페이스를 유지해주세요.',
      10.0, 50, '마라톤 페이스 훈련을 시작합니다. 꾸준히 달려봅시다!',
-     'COMPLETED', true, false, 1, 1, 'test-uuid-001', NOW(), NOW()),
+     'COMPLETED', true, false, 1, 1, 'test-uuid-001', 4, 15, NULL, NOW(), NOW()),
     (3, 'T', 'DISTANCE', '템포런 훈련입니다. 조금 빠른 페이스로 달려봅시다.',
      5.0, 22, '템포런을 시작합니다. 힘들지만 할 수 있어요!',
-     'PROCEEDING', false, false, NULL, 3, 'test-uuid-002', NOW(), NOW());
+     'PROCEEDING', false, false, NULL, 3, 'test-uuid-002', 3, 25, NULL, NOW(), NOW());
 
 -- PacemakerSet 테이블
 INSERT INTO pacemaker_set (id, set_num, message, start_point, end_point, `pace_min/km`, deleted, pacemaker_id)

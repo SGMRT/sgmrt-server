@@ -50,6 +50,15 @@ public class WorkoutSetDto {
                 .build();
     }
 
+    public static WorkoutSetDto of(Integer setNum, String pace, double startPoint, double endPoint) {
+        return WorkoutSetDto.builder()
+                .setNum(setNum)
+                .pace(pace)
+                .startPoint(startPoint)
+                .endPoint(endPoint)
+                .build();
+    }
+
     public static WorkoutSetDto of(Integer setNum, WorkoutType type, String pace,
                                    double startPoint, double endPoint, String feedback) {
         return WorkoutSetDto.builder()

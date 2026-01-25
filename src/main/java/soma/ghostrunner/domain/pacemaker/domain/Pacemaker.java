@@ -11,6 +11,8 @@ import org.hibernate.annotations.Where;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
+import java.time.LocalDateTime;
+
 @SQLDelete(sql = "UPDATE pacemaker SET deleted = true WHERE id=?")
 @Where(clause = "deleted = false")
 @Entity
@@ -61,10 +63,20 @@ public class Pacemaker extends BaseTimeEntity {
     @Column(name = "member_uuid")
     private String memberUuid;
 
+    @Column(name = "condition_level")
+    private Integer condition;
+
+    @Column(name = "temperature")
+    private Integer temperature;
+
+    @Column(name = "last_retry_at")
+    private LocalDateTime lastRetryAt;
+
     @Builder(access = AccessLevel.PRIVATE)
     public Pacemaker(RunningType runningType, Norm norm, String summary,
                      Double goalDistance, Integer expectedTime, String initialMessage,
-                     Long runningId, Long courseId, String memberUuid, Status status) {
+                     Long runningId, Long courseId, String memberUuid, Status status,
+                     Integer condition, Integer temperature) {
         this.runningType = runningType;
         this.norm = norm;
         this.summary = summary;
@@ -76,6 +88,8 @@ public class Pacemaker extends BaseTimeEntity {
         this.status = status != null ? status : Status.INIT;
         this.hasRunWith = false;
         this.memberUuid = memberUuid;
+        this.condition = condition;
+        this.temperature = temperature;
     }
 
     public static Pacemaker of(Norm norm, Double goalDistance, Long courseId, RunningType runningType, String memberUuid) {
@@ -90,7 +104,8 @@ public class Pacemaker extends BaseTimeEntity {
     }
 
     public static Pacemaker createWithRuleBase(Norm norm, Double goalDistance, Integer expectedTime,
-                                                Long courseId, RunningType runningType, String memberUuid) {
+                                                Long courseId, RunningType runningType, String memberUuid,
+                                                Integer condition, Integer temperature) {
         return Pacemaker.builder()
                 .norm(norm)
                 .goalDistance(goalDistance)
@@ -98,6 +113,8 @@ public class Pacemaker extends BaseTimeEntity {
                 .courseId(courseId)
                 .runningType(runningType)
                 .memberUuid(memberUuid)
+                .condition(condition)
+                .temperature(temperature)
                 .status(Status.INIT)
                 .build();
     }
@@ -199,6 +216,21 @@ public class Pacemaker extends BaseTimeEntity {
         if (hasRunWith) {
             throw new IllegalArgumentException("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
         }
+    }
+
+    public void updateLastRetryAt() {
+        this.lastRetryAt = LocalDateTime.now();
+    }
+
+    /**
+     * 워커 재시도 시 INIT → PROCEEDING 전이
+     * 기존 proceed()와 달리 이미 PROCEEDING인 경우 무시
+     */
+    public void proceedForRetry() {
+        if (this.status == Status.INIT) {
+            this.status = Status.PROCEEDING;
+        }
+        // PROCEEDING인 경우 상태 유지
     }
 
 }

@@ -94,7 +94,9 @@ public class PacemakerCreationService {
                 workoutDto.getExpectedMinutes(),
                 command.getCourseId(),
                 runningType,
-                member.getUuid()
+                member.getUuid(),
+                command.getCondition(),
+                command.getTemperature()
         );
         return pacemakerRepository.save(pacemaker);
     }

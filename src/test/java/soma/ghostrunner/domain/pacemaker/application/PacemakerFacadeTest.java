@@ -54,7 +54,7 @@ class PacemakerFacadeTest {
 
     // ==================== 생성 테스트 ====================
 
-    @DisplayName("페이스메이커 생성: 선카운트 → TX1 → TX2 → LLM 순서로 실행된다")
+    @DisplayName("페이스메이커 생성: 선카운트 → TX1 → 비동기 처리 전달 순서로 실행된다")
     @Test
     void createPacemaker_executesInCorrectOrder() {
         // given
@@ -89,12 +89,11 @@ class PacemakerFacadeTest {
         // then
         assertThat(actualId).isEqualTo(expectedPacemakerId);
 
-        // 실행 순서 검증: 선카운트 → TX1 → TX2 → triggerLlmAfterCommit
+        // 실행 순서 검증: 선카운트 → TX1 → 비동기 처리 전달 (TX2 + LLM은 비동기에서 처리)
         InOrder inOrder = inOrder(rateLimitService, creationService, llmTriggerService);
         inOrder.verify(rateLimitService).incrementCounter(memberUuid);
         inOrder.verify(creationService).createInitialPacemaker(memberUuid, command);
-        inOrder.verify(llmTriggerService).updateToProceeding(expectedPacemakerId);
-        inOrder.verify(llmTriggerService).triggerLlmAfterCommit(result);
+        inOrder.verify(llmTriggerService).processAsync(result);
     }
 
     @DisplayName("Rate Limit 초과 시 TX1, TX2, LLM이 실행되지 않는다 (Fail-Fast)")
@@ -121,9 +120,9 @@ class PacemakerFacadeTest {
         verifyNoInteractions(llmTriggerService);
     }
 
-    @DisplayName("TX1 실패 시 TX2와 LLM 호출이 실행되지 않고, 카운트 보상이 실행된다")
+    @DisplayName("TX1 실패 시 비동기 처리가 실행되지 않고, 카운트 보상이 실행된다")
     @Test
-    void createPacemaker_tx1Fails_noTx2OrLlm_andCompensates() {
+    void createPacemaker_tx1Fails_noAsync_andCompensates() {
         // given
         String memberUuid = "member-123";
         Long courseId = 1L;
@@ -141,49 +140,8 @@ class PacemakerFacadeTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("TX1 실패");
 
-        // TX2와 LLM은 호출되지 않아야 함
+        // 비동기 처리는 호출되지 않아야 함
         verifyNoInteractions(llmTriggerService);
-
-        // 카운트 보상이 실행되어야 함
-        verify(rateLimitService).decrementCounter(rateLimitKey);
-    }
-
-    @DisplayName("TX2 실패 시 LLM 호출이 실행되지 않고, 카운트 보상이 실행된다")
-    @Test
-    void createPacemaker_tx2Fails_noLlm_andCompensates() {
-        // given
-        String memberUuid = "member-123";
-        Long courseId = 1L;
-        Long pacemakerId = 100L;
-        String rateLimitKey = "rate-limit-key";
-
-        PacemakerCreateCommand command = new PacemakerCreateCommand(
-                PacemakerType.STAMINA, 10.0, 3, 25, courseId);
-
-        Member member = Member.of("러너", "url");
-        member.setUuid(memberUuid);
-
-        PacemakerCreationResult result = PacemakerCreationResult.builder()
-                .pacemakerId(pacemakerId)
-                .member(member)
-                .workoutDto(WorkoutDto.of(RunningType.I, 10.0, List.of()))
-                .vdot(45)
-                .condition(3)
-                .temperature(25)
-                .build();
-
-        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn(rateLimitKey);
-        when(creationService.createInitialPacemaker(memberUuid, command)).thenReturn(result);
-        doThrow(new RuntimeException("TX2 실패"))
-                .when(llmTriggerService).updateToProceeding(pacemakerId);
-
-        // when & then
-        assertThatThrownBy(() -> facade.createPacemaker(memberUuid, command))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("TX2 실패");
-
-        // triggerLlmAfterCommit은 호출되지 않아야 함
-        verify(llmTriggerService, never()).triggerLlmAfterCommit(any());
 
         // 카운트 보상이 실행되어야 함
         verify(rateLimitService).decrementCounter(rateLimitKey);

@@ -12,7 +12,7 @@ import soma.ghostrunner.domain.pacemaker.application.dto.request.PacemakerCreate
  * 페이스메이커 Facade - 모든 진입점
  *
  * 역할:
- * - 생성: TX1(Rule-Base) → TX2(PROCEEDING) → Redis + LLM
+ * - 생성: TX1(Rule-Base, INIT) → 비동기(TX2 + LLM)
  * - 조회: 단건 조회, 코스 내 조회
  * - 업데이트: 러닝 후 상태 업데이트, 삭제
  * - Rate Limit: 남은 사용량 조회
@@ -31,17 +31,18 @@ public class PacemakerFacade {
     // ==================== 생성 ====================
 
     /**
-     * 페이스메이커 생성 (TX 분리)
+     * 페이스메이커 생성
      *
      * 흐름:
      * 1. Rate Limit 선카운트 (원자적 증가 + 임계치 검증)
      * 2. TX1: Rule-Base Pacemaker(INIT) 생성
-     * 3. TX2: PROCEEDING 상태 업데이트
-     * 4. 비동기 LLM 호출
+     * 3. 비동기 처리 전달 (TX2 + LLM 호출)
      *
-     * Race Condition 방지:
-     * - 선카운트로 Redis에서 원자적으로 카운트 증가 및 임계치 검증
-     * - TX1/TX2 실패 시 보상 트랜잭션으로 카운트 감소
+     * 상태 의미:
+     * - INIT: Rule-Base 생성 완료, 비동기 작업 대기 중
+     * - PROCEEDING: LLM 통신 중
+     * - COMPLETED: LLM 성공
+     * - FALLBACK: LLM 실패, Rule-Base 제공
      *
      * @param memberUuid 회원 UUID
      * @param command 생성 요청 커맨드
@@ -55,25 +56,22 @@ public class PacemakerFacade {
         String rateLimitKey = rateLimitService.createRateLimitKey(memberUuid);
         rateLimitService.incrementCounter(memberUuid);
 
+        // TX1: Rule-Base Pacemaker(INIT) 생성 및 저장
+        // TX1 실패 시에만 카운트 보상 (Pacemaker가 저장되지 않았으므로)
+        PacemakerCreationResult result;
         try {
-            // TX1: Rule-Base Pacemaker(INIT) 생성 및 저장
-            PacemakerCreationResult result = creationService.createInitialPacemaker(memberUuid, command);
-            Long pacemakerId = result.getPacemakerId();
-
-            // TX2: PROCEEDING 상태로 업데이트
-            llmTriggerService.updateToProceeding(pacemakerId);
-
-            // 비동기 LLM 호출
-            llmTriggerService.triggerLlmAfterCommit(result);
-
-            log.info("페이스메이커 생성 요청 완료 - pacemakerId={}", pacemakerId);
-            return pacemakerId;
-
+            result = creationService.createInitialPacemaker(memberUuid, command);
         } catch (Exception e) {
-            log.warn("페이스메이커 생성 실패, 카운트 보상 처리 - memberUuid={}", memberUuid, e);
+            log.warn("TX1 실패, 카운트 보상 처리 - memberUuid={}", memberUuid, e);
             compensateRateLimitCounter(rateLimitKey);
             throw e;
         }
+
+        // 비동기 처리 전달 (TX2 + LLM 호출은 비동기 스레드에서 수행)
+        llmTriggerService.processAsync(result);
+
+        log.info("페이스메이커 생성 요청 완료 - pacemakerId={}", result.getPacemakerId());
+        return result.getPacemakerId();
     }
 
     /**
