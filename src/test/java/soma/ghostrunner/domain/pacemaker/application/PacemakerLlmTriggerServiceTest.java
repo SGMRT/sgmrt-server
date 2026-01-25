@@ -9,13 +9,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.pacemaker.application.dto.PacemakerCreationResult;
 import soma.ghostrunner.domain.pacemaker.application.dto.WorkoutDto;
-import soma.ghostrunner.domain.pacemaker.domain.Pacemaker;
 import soma.ghostrunner.domain.pacemaker.domain.RunningType;
-import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerRepository;
-import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -25,7 +21,7 @@ import static org.mockito.Mockito.*;
 class PacemakerLlmTriggerServiceTest {
 
     @Mock
-    PacemakerRepository pacemakerRepository;
+    PacemakerStatusService statusService;
     @Mock
     PacemakerRateLimitService rateLimitService;
     @Mock
@@ -36,32 +32,15 @@ class PacemakerLlmTriggerServiceTest {
     @BeforeEach
     void setUp() {
         triggerService = new PacemakerLlmTriggerService(
-                pacemakerRepository,
+                statusService,
                 rateLimitService,
                 llmService
         );
     }
 
-    @DisplayName("TX2: INIT 상태의 Pacemaker를 PROCEEDING으로 업데이트한다")
+    @DisplayName("processAsync: PROCEEDING 업데이트 후 LLM 호출한다")
     @Test
-    void updateToProceeding_success() {
-        // given
-        Long pacemakerId = 100L;
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.I, "member-uuid");
-        // 현재 INIT 상태
-
-        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
-
-        // when
-        triggerService.updateToProceeding(pacemakerId);
-
-        // then
-        assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
-    }
-
-    @DisplayName("TX2 커밋 후: LLM 비동기 호출이 실행된다 (카운트 증가는 Facade에서 처리)")
-    @Test
-    void triggerLlmAfterCommit_success() {
+    void processAsync_updatesToProceedingAndCallsLlm() {
         // given
         String memberUuid = "member-123";
         Long pacemakerId = 100L;
@@ -75,30 +54,64 @@ class PacemakerLlmTriggerServiceTest {
 
         WorkoutDto workoutDto = WorkoutDto.of(RunningType.I, 10.0, List.of());
 
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.I, memberUuid);
-
-        PacemakerCreationResult result = PacemakerCreationResult.of(
-                pacemaker, member, workoutDto, vdot, condition, temperature);
+        PacemakerCreationResult result = PacemakerCreationResult.builder()
+                .pacemakerId(pacemakerId)
+                .member(member)
+                .workoutDto(workoutDto)
+                .vdot(vdot)
+                .condition(condition)
+                .temperature(temperature)
+                .build();
 
         when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn(rateLimitKey);
 
         // when
-        triggerService.triggerLlmAfterCommit(result);
+        triggerService.processAsync(result);
 
         // then
-        // 카운트 증가는 Facade에서 선카운트로 처리되므로 여기서는 호출되지 않음
-        verify(rateLimitService, never()).incrementCounter(any());
+        // 1. PROCEEDING 상태 업데이트 (새 트랜잭션)
+        verify(statusService).updateToProceeding(pacemakerId);
 
-        // LLM 서비스 호출 확인
+        // 2. LLM 호출
         verify(llmService).requestLlmToCreatePacemaker(
                 eq(member),
                 eq(workoutDto),
                 eq(vdot),
                 eq(condition),
                 eq(temperature),
-                eq(pacemaker.getId()),
+                eq(pacemakerId),
                 eq(rateLimitKey)
         );
+    }
+
+    @DisplayName("processAsync: TX2 실패 시 LLM 호출하지 않고 예외를 던지지 않는다 (워커가 복구)")
+    @Test
+    void processAsync_whenTx2Fails_shouldNotThrowAndNotCallLlm() {
+        // given
+        String memberUuid = "member-123";
+        Long pacemakerId = 100L;
+
+        Member member = Member.of("러너", "url");
+        member.setUuid(memberUuid);
+
+        PacemakerCreationResult result = PacemakerCreationResult.builder()
+                .pacemakerId(pacemakerId)
+                .member(member)
+                .workoutDto(WorkoutDto.of(RunningType.I, 10.0, List.of()))
+                .vdot(45)
+                .condition(3)
+                .temperature(25)
+                .build();
+
+        // TX2 실패 시뮬레이션
+        doThrow(new RuntimeException("TX2 실패"))
+                .when(statusService).updateToProceeding(pacemakerId);
+
+        // when & then - 예외를 던지지 않음
+        assertThatNoException().isThrownBy(() -> triggerService.processAsync(result));
+
+        // LLM은 호출되지 않아야 함
+        verifyNoInteractions(llmService);
     }
 
 }
