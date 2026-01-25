@@ -55,25 +55,27 @@ public class PacemakerFacade {
         String rateLimitKey = rateLimitService.createRateLimitKey(memberUuid);
         rateLimitService.incrementCounter(memberUuid);
 
+        // TX1: Rule-Base Pacemaker(INIT) 생성 및 저장
+        // TX1 실패 시에만 카운트 보상 (Pacemaker가 저장되지 않았으므로)
+        PacemakerCreationResult result;
         try {
-            // TX1: Rule-Base Pacemaker(INIT) 생성 및 저장
-            PacemakerCreationResult result = creationService.createInitialPacemaker(memberUuid, command);
-            Long pacemakerId = result.getPacemakerId();
-
-            // TX2: PROCEEDING 상태로 업데이트
-            llmTriggerService.updateToProceeding(pacemakerId);
-
-            // 비동기 LLM 호출
-            llmTriggerService.triggerLlmAfterCommit(result);
-
-            log.info("페이스메이커 생성 요청 완료 - pacemakerId={}", pacemakerId);
-            return pacemakerId;
-
+            result = creationService.createInitialPacemaker(memberUuid, command);
         } catch (Exception e) {
-            log.warn("페이스메이커 생성 실패, 카운트 보상 처리 - memberUuid={}", memberUuid, e);
+            log.warn("TX1 실패, 카운트 보상 처리 - memberUuid={}", memberUuid, e);
             compensateRateLimitCounter(rateLimitKey);
             throw e;
         }
+
+        // TX2: PROCEEDING 상태로 업데이트
+        // TX2 이후 실패는 카운트 보상 안 함 (워커가 INIT/PROCEEDING 상태를 복구하므로)
+        Long pacemakerId = result.getPacemakerId();
+        llmTriggerService.updateToProceeding(pacemakerId);
+
+        // 비동기 LLM 호출
+        llmTriggerService.triggerLlmAfterCommit(result);
+
+        log.info("페이스메이커 생성 요청 완료 - pacemakerId={}", pacemakerId);
+        return pacemakerId;
     }
 
     /**
