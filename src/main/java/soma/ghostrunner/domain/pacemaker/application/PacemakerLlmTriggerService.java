@@ -13,8 +13,8 @@ import soma.ghostrunner.global.error.ErrorCode;
 /**
  * TX2: LLM 요청 트리거 담당
  * - PROCEEDING 상태로 업데이트
- * - TX2 커밋 후 Redis 카운트 증가
  * - 비동기 LLM 호출
+ * (카운트 증가는 Facade에서 선카운트로 처리)
  */
 @Slf4j
 @Service
@@ -39,14 +39,12 @@ public class PacemakerLlmTriggerService {
     }
 
     /**
-     * TX2 커밋 후 호출: Redis 카운트 증가 + LLM 비동기 호출
+     * TX2 커밋 후 호출: LLM 비동기 호출
+     * (카운트 증가는 Facade에서 선카운트로 처리됨)
      */
     public void triggerLlmAfterCommit(PacemakerCreationResult result) {
         String memberUuid = result.getMember().getUuid();
         String rateLimitKey = rateLimitService.createRateLimitKey(memberUuid);
-
-        // Redis 카운트 증가 (DB 커밋 후이므로 안전)
-        rateLimitService.incrementCounter(memberUuid);
 
         // 비동기 LLM 호출
         llmService.requestLlmToCreatePacemaker(

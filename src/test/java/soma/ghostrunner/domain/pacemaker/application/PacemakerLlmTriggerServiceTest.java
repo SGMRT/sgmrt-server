@@ -59,7 +59,7 @@ class PacemakerLlmTriggerServiceTest {
         assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
     }
 
-    @DisplayName("TX2 커밋 후: Redis 카운트 증가 및 LLM 비동기 호출이 실행된다")
+    @DisplayName("TX2 커밋 후: LLM 비동기 호출이 실행된다 (카운트 증가는 Facade에서 처리)")
     @Test
     void triggerLlmAfterCommit_success() {
         // given
@@ -86,8 +86,8 @@ class PacemakerLlmTriggerServiceTest {
         triggerService.triggerLlmAfterCommit(result);
 
         // then
-        // Redis 카운트 증가 확인
-        verify(rateLimitService).incrementCounter(memberUuid);
+        // 카운트 증가는 Facade에서 선카운트로 처리되므로 여기서는 호출되지 않음
+        verify(rateLimitService, never()).incrementCounter(any());
 
         // LLM 서비스 호출 확인
         verify(llmService).requestLlmToCreatePacemaker(
@@ -99,61 +99,6 @@ class PacemakerLlmTriggerServiceTest {
                 eq(pacemaker.getId()),
                 eq(rateLimitKey)
         );
-    }
-
-    @DisplayName("TX2 커밋 후: 일일 사용량 초과 시 InvalidRunningException을 던진다")
-    @Test
-    void triggerLlmAfterCommit_rateLimitExceeded_throwsException() {
-        // given
-        String memberUuid = "member-123";
-
-        Member member = Member.of("러너", "url");
-        member.setUuid(memberUuid);
-
-        WorkoutDto workoutDto = WorkoutDto.of(RunningType.I, 10.0, List.of());
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.I, memberUuid);
-
-        PacemakerCreationResult result = PacemakerCreationResult.of(
-                pacemaker, member, workoutDto, 45, 3, 25);
-
-        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn("rate-limit-key");
-        doThrow(new InvalidRunningException(soma.ghostrunner.global.error.ErrorCode.TOO_MANY_REQUESTS, "일일 사용량 초과"))
-                .when(rateLimitService).incrementCounter(memberUuid);
-
-        // when & then
-        assertThatThrownBy(() -> triggerService.triggerLlmAfterCommit(result))
-                .isInstanceOf(InvalidRunningException.class)
-                .hasMessageContaining("일일 사용량");
-
-        // LLM 서비스는 호출되지 않아야 함
-        verifyNoInteractions(llmService);
-    }
-
-    @DisplayName("TX2 커밋 후: Redis 스크립트 오류 시 RuntimeException을 던진다")
-    @Test
-    void triggerLlmAfterCommit_redisError_throwsException() {
-        // given
-        String memberUuid = "member-123";
-
-        Member member = Member.of("러너", "url");
-        member.setUuid(memberUuid);
-
-        WorkoutDto workoutDto = WorkoutDto.of(RunningType.I, 10.0, List.of());
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.I, memberUuid);
-
-        PacemakerCreationResult result = PacemakerCreationResult.of(
-                pacemaker, member, workoutDto, 45, 3, 25);
-
-        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn("rate-limit-key");
-        doThrow(new RuntimeException("Redis 스크립트 실행 오류"))
-                .when(rateLimitService).incrementCounter(memberUuid);
-
-        // when & then
-        assertThatThrownBy(() -> triggerService.triggerLlmAfterCommit(result))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Redis 스크립트");
-
-        verifyNoInteractions(llmService);
     }
 
 }

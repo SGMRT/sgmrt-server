@@ -54,7 +54,7 @@ class PacemakerFacadeTest {
 
     // ==================== 생성 테스트 ====================
 
-    @DisplayName("페이스메이커 생성: Rate Limit 체크 → TX1 → TX2 → Redis + LLM 순서로 실행된다")
+    @DisplayName("페이스메이커 생성: 선카운트 → TX1 → TX2 → LLM 순서로 실행된다")
     @Test
     void createPacemaker_executesInCorrectOrder() {
         // given
@@ -80,6 +80,7 @@ class PacemakerFacadeTest {
                 .temperature(25)
                 .build();
 
+        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn("rate-limit-key");
         when(creationService.createInitialPacemaker(memberUuid, command)).thenReturn(result);
 
         // when
@@ -88,9 +89,9 @@ class PacemakerFacadeTest {
         // then
         assertThat(actualId).isEqualTo(expectedPacemakerId);
 
-        // 실행 순서 검증: Rate Limit 체크 → TX1 → TX2 → triggerLlmAfterCommit
+        // 실행 순서 검증: 선카운트 → TX1 → TX2 → triggerLlmAfterCommit
         InOrder inOrder = inOrder(rateLimitService, creationService, llmTriggerService);
-        inOrder.verify(rateLimitService).validateRateLimit(memberUuid);
+        inOrder.verify(rateLimitService).incrementCounter(memberUuid);
         inOrder.verify(creationService).createInitialPacemaker(memberUuid, command);
         inOrder.verify(llmTriggerService).updateToProceeding(expectedPacemakerId);
         inOrder.verify(llmTriggerService).triggerLlmAfterCommit(result);
@@ -106,8 +107,9 @@ class PacemakerFacadeTest {
         PacemakerCreateCommand command = new PacemakerCreateCommand(
                 PacemakerType.STAMINA, 10.0, 3, 25, courseId);
 
+        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn("rate-limit-key");
         doThrow(new InvalidRunningException(ErrorCode.TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다."))
-                .when(rateLimitService).validateRateLimit(memberUuid);
+                .when(rateLimitService).incrementCounter(memberUuid);
 
         // when & then
         assertThatThrownBy(() -> facade.createPacemaker(memberUuid, command))
@@ -119,16 +121,18 @@ class PacemakerFacadeTest {
         verifyNoInteractions(llmTriggerService);
     }
 
-    @DisplayName("TX1 실패 시 TX2와 LLM 호출이 실행되지 않는다")
+    @DisplayName("TX1 실패 시 TX2와 LLM 호출이 실행되지 않고, 카운트 보상이 실행된다")
     @Test
-    void createPacemaker_tx1Fails_noTx2OrLlm() {
+    void createPacemaker_tx1Fails_noTx2OrLlm_andCompensates() {
         // given
         String memberUuid = "member-123";
         Long courseId = 1L;
+        String rateLimitKey = "rate-limit-key";
 
         PacemakerCreateCommand command = new PacemakerCreateCommand(
                 PacemakerType.STAMINA, 10.0, 3, 25, courseId);
 
+        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn(rateLimitKey);
         when(creationService.createInitialPacemaker(memberUuid, command))
                 .thenThrow(new RuntimeException("TX1 실패"));
 
@@ -139,15 +143,19 @@ class PacemakerFacadeTest {
 
         // TX2와 LLM은 호출되지 않아야 함
         verifyNoInteractions(llmTriggerService);
+
+        // 카운트 보상이 실행되어야 함
+        verify(rateLimitService).decrementCounter(rateLimitKey);
     }
 
-    @DisplayName("TX2 실패 시 Redis와 LLM 호출이 실행되지 않는다")
+    @DisplayName("TX2 실패 시 LLM 호출이 실행되지 않고, 카운트 보상이 실행된다")
     @Test
-    void createPacemaker_tx2Fails_noLlm() {
+    void createPacemaker_tx2Fails_noLlm_andCompensates() {
         // given
         String memberUuid = "member-123";
         Long courseId = 1L;
         Long pacemakerId = 100L;
+        String rateLimitKey = "rate-limit-key";
 
         PacemakerCreateCommand command = new PacemakerCreateCommand(
                 PacemakerType.STAMINA, 10.0, 3, 25, courseId);
@@ -164,6 +172,7 @@ class PacemakerFacadeTest {
                 .temperature(25)
                 .build();
 
+        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn(rateLimitKey);
         when(creationService.createInitialPacemaker(memberUuid, command)).thenReturn(result);
         doThrow(new RuntimeException("TX2 실패"))
                 .when(llmTriggerService).updateToProceeding(pacemakerId);
@@ -175,6 +184,9 @@ class PacemakerFacadeTest {
 
         // triggerLlmAfterCommit은 호출되지 않아야 함
         verify(llmTriggerService, never()).triggerLlmAfterCommit(any());
+
+        // 카운트 보상이 실행되어야 함
+        verify(rateLimitService).decrementCounter(rateLimitKey);
     }
 
     // ==================== 조회 테스트 ====================

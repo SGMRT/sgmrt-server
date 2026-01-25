@@ -34,10 +34,14 @@ public class PacemakerFacade {
      * 페이스메이커 생성 (TX 분리)
      *
      * 흐름:
-     * 1. Rate Limit 사전 체크 (Fail-Fast)
+     * 1. Rate Limit 선카운트 (원자적 증가 + 임계치 검증)
      * 2. TX1: Rule-Base Pacemaker(INIT) 생성
      * 3. TX2: PROCEEDING 상태 업데이트
-     * 4. TX2 커밋 후: Redis 카운트 증가 + LLM 호출
+     * 4. 비동기 LLM 호출
+     *
+     * Race Condition 방지:
+     * - 선카운트로 Redis에서 원자적으로 카운트 증가 및 임계치 검증
+     * - TX1/TX2 실패 시 보상 트랜잭션으로 카운트 감소
      *
      * @param memberUuid 회원 UUID
      * @param command 생성 요청 커맨드
@@ -47,21 +51,41 @@ public class PacemakerFacade {
 
         log.info("페이스메이커 생성 시작 - memberUuid={}, courseId={}", memberUuid, command.getCourseId());
 
-        // Rate Limit 사전 체크 (Fail-Fast) - TX 시작 전에 검증하여 불필요한 DB 작업 방지
-        rateLimitService.validateRateLimit(memberUuid);
+        // 선카운트: 원자적으로 카운트 증가 + 임계치 검증 (Race Condition 방지)
+        String rateLimitKey = rateLimitService.createRateLimitKey(memberUuid);
+        rateLimitService.incrementCounter(memberUuid);
 
-        // TX1: Rule-Base Pacemaker(INIT) 생성 및 저장
-        PacemakerCreationResult result = creationService.createInitialPacemaker(memberUuid, command);
-        Long pacemakerId = result.getPacemakerId();
+        try {
+            // TX1: Rule-Base Pacemaker(INIT) 생성 및 저장
+            PacemakerCreationResult result = creationService.createInitialPacemaker(memberUuid, command);
+            Long pacemakerId = result.getPacemakerId();
 
-        // TX2: PROCEEDING 상태로 업데이트
-        llmTriggerService.updateToProceeding(pacemakerId);
+            // TX2: PROCEEDING 상태로 업데이트
+            llmTriggerService.updateToProceeding(pacemakerId);
 
-        // TX2 커밋 후: Redis 카운트 증가 + 비동기 LLM 호출
-        llmTriggerService.triggerLlmAfterCommit(result);
+            // 비동기 LLM 호출
+            llmTriggerService.triggerLlmAfterCommit(result);
 
-        log.info("페이스메이커 생성 요청 완료 - pacemakerId={}", pacemakerId);
-        return pacemakerId;
+            log.info("페이스메이커 생성 요청 완료 - pacemakerId={}", pacemakerId);
+            return pacemakerId;
+
+        } catch (Exception e) {
+            log.warn("페이스메이커 생성 실패, 카운트 보상 처리 - memberUuid={}", memberUuid, e);
+            compensateRateLimitCounter(rateLimitKey);
+            throw e;
+        }
+    }
+
+    /**
+     * Rate Limit 카운트 보상 (실패 시 감소)
+     */
+    private void compensateRateLimitCounter(String rateLimitKey) {
+        try {
+            rateLimitService.decrementCounter(rateLimitKey);
+        } catch (Exception compensationEx) {
+            log.error("카운트 보상 트랜잭션 실패 - rateLimitKey={}", rateLimitKey, compensationEx);
+            // 보상 실패는 사용자에게 유리한 방향(카운트 덜 소진)이므로 무시
+        }
     }
 
     // ==================== 조회 ====================
