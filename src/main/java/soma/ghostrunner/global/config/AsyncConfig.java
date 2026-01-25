@@ -35,6 +35,7 @@ public class AsyncConfig {
 
         executor.setTaskDecorator(new MdcTaskDecorator());
         executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(240);
 
         executor.initialize();
         return executor;
