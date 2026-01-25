@@ -4,15 +4,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.pacemaker.application.dto.RecoveryContext;
 import soma.ghostrunner.domain.pacemaker.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.pacemaker.application.dto.WorkoutSetDto;
 import soma.ghostrunner.domain.pacemaker.domain.Pacemaker;
 import soma.ghostrunner.domain.pacemaker.domain.PacemakerSet;
 import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerSetRepository;
+import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
+import soma.ghostrunner.global.error.ErrorCode;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,56 +39,66 @@ public class PacemakerRecoveryService {
     private final PacemakerLlmService llmService;
 
     /**
-     * 복구 대상 조회 및 LLM 재호출
+     * 복구 대상 ID 목록 조회
      */
-    @Transactional
-    public void recoverStalePacemakers() {
+    public List<Long> findRecoveryTargetIds() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(THRESHOLD_MINUTES);
-        List<Pacemaker> targets = pacemakerRepository.findRecoveryTargets(
-                threshold, PageRequest.of(0, BATCH_SIZE));
-
-        if (targets.isEmpty()) {
-            log.debug("복구 대상 Pacemaker 없음");
-            return;
-        }
-
-        log.info("복구 대상 Pacemaker 발견 - {}건", targets.size());
-
-        for (Pacemaker pacemaker : targets) {
-            try {
-                recoverPacemaker(pacemaker);
-            } catch (Exception e) {
-                log.error("Pacemaker 복구 실패 - pacemakerId={}", pacemaker.getId(), e);
-            }
-        }
+        return pacemakerRepository.findRecoveryTargetIds(threshold, PageRequest.of(0, BATCH_SIZE));
     }
 
-    private void recoverPacemaker(Pacemaker pacemaker) {
-        log.info("Pacemaker 복구 시작 - pacemakerId={}, status={}", pacemaker.getId(), pacemaker.getStatus());
+    /**
+     * 단일 Pacemaker 복구
+     * - 상태 업데이트 + 데이터 준비 (REQUIRES_NEW 트랜잭션)
+     * - LLM 재호출 (트랜잭션 밖)
+     */
+    public void recoverSingle(Long pacemakerId) {
+        log.info("Pacemaker 복구 시작 - pacemakerId={}", pacemakerId);
 
-        // 1. lastRetryAt 업데이트 (중복 처리 방지)
+        // 1. 상태 업데이트 + 데이터 준비 (독립 트랜잭션)
+        RecoveryContext context = prepareForRecovery(pacemakerId);
+
+        // 2. LLM 재호출 (트랜잭션 밖, rateLimitKey = null로 Rate Limit 복구 스킵)
+        llmService.requestLlmToCreatePacemaker(
+                context.member(),
+                context.workoutDto(),
+                context.vdot(),
+                context.condition(),
+                context.temperature(),
+                context.pacemakerId(),
+                null  // 워커 재시도는 Rate Limit 카운트 안 함
+        );
+
+        log.info("Pacemaker 복구 LLM 호출 완료 - pacemakerId={}", pacemakerId);
+    }
+
+    /**
+     * 복구 준비: 상태 업데이트 + 필요한 데이터 조회 (독립 트랜잭션)
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public RecoveryContext prepareForRecovery(Long pacemakerId) {
+        log.info("복구 트랜잭션 시작 - pacemakerId={}", pacemakerId);
+
+        // 1. Pacemaker 조회 및 상태 업데이트
+        Pacemaker pacemaker = pacemakerRepository.findById(pacemakerId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, pacemakerId));
         pacemaker.updateLastRetryAt();
-
-        // 2. INIT 상태면 PROCEEDING으로 전이
         pacemaker.proceedForRetry();
 
-        // 3. LLM 재호출에 필요한 데이터 준비
+        // 2. LLM 호출에 필요한 데이터 준비
         Member member = memberService.findMemberByUuid(pacemaker.getMemberUuid());
         int vdot = memberService.findMemberVdot(member.getUuid());
         WorkoutDto workoutDto = reconstructWorkoutDto(pacemaker);
 
-        // 4. 비동기 LLM 재호출 (rateLimitKey = null로 Rate Limit 복구 스킵)
-        llmService.requestLlmToCreatePacemaker(
+        log.info("복구 트랜잭션 완료 - pacemakerId={}", pacemakerId);
+
+        return new RecoveryContext(
                 member,
-                workoutDto,
                 vdot,
+                workoutDto,
                 pacemaker.getCondition(),
                 pacemaker.getTemperature(),
-                pacemaker.getId(),
-                null  // 워커 재시도는 Rate Limit 카운트 안 함
+                pacemaker.getId()
         );
-
-        log.info("Pacemaker 복구 LLM 호출 완료 - pacemakerId={}", pacemaker.getId());
     }
 
     /**

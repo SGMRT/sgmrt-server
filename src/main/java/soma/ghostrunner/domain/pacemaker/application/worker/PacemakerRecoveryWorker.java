@@ -5,7 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.pacemaker.application.PacemakerRecoveryService;
+
+import java.util.List;
 
 /**
  * Pacemaker 복구 워커
@@ -26,11 +29,27 @@ public class PacemakerRecoveryWorker {
             lockAtLeastFor = "PT50S",   // 최소 50초 락 유지 (중복 실행 방지)
             lockAtMostFor = "PT55S"     // 최대 55초 락 유지 (데드락 방지)
     )
+    @Transactional(readOnly = true)
     public void recoverStalePacemakers() {
         log.debug("Pacemaker 복구 워커 시작");
 
         try {
-            recoveryService.recoverStalePacemakers();
+            List<Long> targetIds = recoveryService.findRecoveryTargetIds();
+
+            if (targetIds.isEmpty()) {
+                log.debug("복구 대상 Pacemaker 없음");
+                return;
+            }
+
+            log.info("복구 대상 Pacemaker 발견 - {}건", targetIds.size());
+
+            for (Long pacemakerId : targetIds) {
+                try {
+                    recoveryService.recoverSingle(pacemakerId);
+                } catch (Exception e) {
+                    log.error("Pacemaker 복구 실패 - pacemakerId={}", pacemakerId, e);
+                }
+            }
         } catch (Exception e) {
             log.error("Pacemaker 복구 워커 실행 중 오류 발생", e);
         }

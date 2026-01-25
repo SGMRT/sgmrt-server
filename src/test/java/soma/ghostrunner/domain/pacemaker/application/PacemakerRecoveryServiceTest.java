@@ -6,9 +6,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.pacemaker.application.dto.RecoveryContext;
 import soma.ghostrunner.domain.pacemaker.domain.Pacemaker;
 import soma.ghostrunner.domain.pacemaker.domain.PacemakerSet;
 import soma.ghostrunner.domain.pacemaker.domain.RunningType;
@@ -17,10 +17,13 @@ import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerSetRepositor
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PacemakerRecoveryServiceTest {
@@ -38,34 +41,43 @@ class PacemakerRecoveryServiceTest {
     private MemberService memberService;
 
     @Mock
-    private VdotService vdotService;
-
-    @Mock
     private PacemakerLlmService llmService;
 
-    @DisplayName("복구 대상 Pacemaker가 없으면 아무 작업도 하지 않는다")
+    @DisplayName("findRecoveryTargetIds: 복구 대상 ID 목록을 반환한다")
     @Test
-    void recoverStalePacemakers_whenNoTargets_shouldDoNothing() {
+    void findRecoveryTargetIds_shouldReturnIds() {
         // given
-        when(pacemakerRepository.findRecoveryTargets(any(), any()))
+        when(pacemakerRepository.findRecoveryTargetIds(any(), any()))
+                .thenReturn(List.of(1L, 2L, 3L));
+
+        // when
+        List<Long> result = service.findRecoveryTargetIds();
+
+        // then
+        assertThat(result).containsExactly(1L, 2L, 3L);
+    }
+
+    @DisplayName("findRecoveryTargetIds: 복구 대상이 없으면 빈 목록을 반환한다")
+    @Test
+    void findRecoveryTargetIds_whenNoTargets_shouldReturnEmptyList() {
+        // given
+        when(pacemakerRepository.findRecoveryTargetIds(any(), any()))
                 .thenReturn(Collections.emptyList());
 
         // when
-        service.recoverStalePacemakers();
+        List<Long> result = service.findRecoveryTargetIds();
 
         // then
-        verify(pacemakerRepository).findRecoveryTargets(any(), any());
-        verifyNoInteractions(memberService);
-        verifyNoInteractions(llmService);
+        assertThat(result).isEmpty();
     }
 
-    @DisplayName("복구 대상 Pacemaker가 있으면 LLM 재호출을 수행한다")
+    @DisplayName("prepareForRecovery: 상태를 업데이트하고 RecoveryContext를 반환한다")
     @Test
-    void recoverStalePacemakers_whenTargetsExist_shouldCallLlm() {
+    void prepareForRecovery_shouldUpdateStatusAndReturnContext() {
         // given
+        Long pacemakerId = 1L;
         Pacemaker pacemaker = mock(Pacemaker.class);
-        when(pacemaker.getId()).thenReturn(1L);
-        when(pacemaker.getStatus()).thenReturn(Pacemaker.Status.PROCEEDING);
+        when(pacemaker.getId()).thenReturn(pacemakerId);
         when(pacemaker.getMemberUuid()).thenReturn("member-uuid");
         when(pacemaker.getRunningType()).thenReturn(RunningType.R);
         when(pacemaker.getGoalDistance()).thenReturn(10.0);
@@ -73,8 +85,41 @@ class PacemakerRecoveryServiceTest {
         when(pacemaker.getCondition()).thenReturn(3);
         when(pacemaker.getTemperature()).thenReturn(20);
 
-        when(pacemakerRepository.findRecoveryTargets(any(), any()))
-                .thenReturn(List.of(pacemaker));
+        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
+
+        Member member = mock(Member.class);
+        when(member.getUuid()).thenReturn("member-uuid");
+        when(memberService.findMemberByUuid("member-uuid")).thenReturn(member);
+        when(memberService.findMemberVdot("member-uuid")).thenReturn(45);
+        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId))
+                .thenReturn(Collections.emptyList());
+
+        // when
+        RecoveryContext context = service.prepareForRecovery(pacemakerId);
+
+        // then
+        verify(pacemaker).updateLastRetryAt();
+        verify(pacemaker).proceedForRetry();
+        assertThat(context.member()).isEqualTo(member);
+        assertThat(context.vdot()).isEqualTo(45);
+        assertThat(context.pacemakerId()).isEqualTo(pacemakerId);
+    }
+
+    @DisplayName("prepareForRecovery: PacemakerSet이 있으면 WorkoutDto에 포함된다")
+    @Test
+    void prepareForRecovery_withSets_shouldIncludeInWorkoutDto() {
+        // given
+        Long pacemakerId = 1L;
+        Pacemaker pacemaker = mock(Pacemaker.class);
+        when(pacemaker.getId()).thenReturn(pacemakerId);
+        when(pacemaker.getMemberUuid()).thenReturn("member-uuid");
+        when(pacemaker.getRunningType()).thenReturn(RunningType.R);
+        when(pacemaker.getGoalDistance()).thenReturn(10.0);
+        when(pacemaker.getExpectedTime()).thenReturn(50);
+        when(pacemaker.getCondition()).thenReturn(3);
+        when(pacemaker.getTemperature()).thenReturn(20);
+
+        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
 
         Member member = mock(Member.class);
         when(member.getUuid()).thenReturn("member-uuid");
@@ -86,82 +131,23 @@ class PacemakerRecoveryServiceTest {
         when(pacemakerSet.getPace()).thenReturn(5.30);
         when(pacemakerSet.getStartPoint()).thenReturn(0.0);
         when(pacemakerSet.getEndPoint()).thenReturn(10.0);
-        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(1L))
+        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId))
                 .thenReturn(List.of(pacemakerSet));
 
         // when
-        service.recoverStalePacemakers();
+        RecoveryContext context = service.prepareForRecovery(pacemakerId);
 
         // then
-        verify(pacemaker).updateLastRetryAt();
-        verify(pacemaker).proceedForRetry();
-        verify(llmService).requestLlmToCreatePacemaker(
-                eq(member),
-                any(),
-                eq(45),
-                eq(3),
-                eq(20),
-                eq(1L),
-                eq(null)  // 워커 재시도는 Rate Limit 카운트 안 함
-        );
+        assertThat(context.workoutDto().getSets()).hasSize(1);
     }
 
-    @DisplayName("복구 중 예외가 발생해도 다른 Pacemaker 복구를 계속한다")
+    @DisplayName("recoverSingle: prepareForRecovery 후 LLM을 호출한다")
     @Test
-    void recoverStalePacemakers_whenExceptionOccurs_shouldContinueWithOthers() {
+    void recoverSingle_shouldPrepareAndCallLlm() {
         // given
-        Pacemaker pacemaker1 = mock(Pacemaker.class);
-        when(pacemaker1.getId()).thenReturn(1L);
-        when(pacemaker1.getStatus()).thenReturn(Pacemaker.Status.PROCEEDING);
-        when(pacemaker1.getMemberUuid()).thenReturn("member-uuid-1");
-
-        Pacemaker pacemaker2 = mock(Pacemaker.class);
-        when(pacemaker2.getId()).thenReturn(2L);
-        when(pacemaker2.getStatus()).thenReturn(Pacemaker.Status.INIT);
-        when(pacemaker2.getMemberUuid()).thenReturn("member-uuid-2");
-        when(pacemaker2.getRunningType()).thenReturn(RunningType.R);
-        when(pacemaker2.getGoalDistance()).thenReturn(5.0);
-        when(pacemaker2.getExpectedTime()).thenReturn(30);
-        when(pacemaker2.getCondition()).thenReturn(3);
-        when(pacemaker2.getTemperature()).thenReturn(15);
-
-        when(pacemakerRepository.findRecoveryTargets(any(), any()))
-                .thenReturn(List.of(pacemaker1, pacemaker2));
-
-        // pacemaker1 복구 시 예외 발생
-        when(memberService.findMemberByUuid("member-uuid-1"))
-                .thenThrow(new RuntimeException("회원 조회 실패"));
-
-        // pacemaker2는 정상 복구
-        Member member2 = mock(Member.class);
-        when(member2.getUuid()).thenReturn("member-uuid-2");
-        when(memberService.findMemberByUuid("member-uuid-2")).thenReturn(member2);
-        when(memberService.findMemberVdot("member-uuid-2")).thenReturn(40);
-        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(2L))
-                .thenReturn(Collections.emptyList());
-
-        // when
-        service.recoverStalePacemakers();
-
-        // then - pacemaker2는 정상적으로 LLM 호출
-        verify(llmService).requestLlmToCreatePacemaker(
-                eq(member2),
-                any(),
-                eq(40),
-                eq(3),
-                eq(15),
-                eq(2L),
-                eq(null)
-        );
-    }
-
-    @DisplayName("INIT 상태의 Pacemaker는 PROCEEDING으로 전이한다")
-    @Test
-    void recoverStalePacemakers_whenInitStatus_shouldProceed() {
-        // given
+        Long pacemakerId = 1L;
         Pacemaker pacemaker = mock(Pacemaker.class);
-        when(pacemaker.getId()).thenReturn(1L);
-        when(pacemaker.getStatus()).thenReturn(Pacemaker.Status.INIT);
+        when(pacemaker.getId()).thenReturn(pacemakerId);
         when(pacemaker.getMemberUuid()).thenReturn("member-uuid");
         when(pacemaker.getRunningType()).thenReturn(RunningType.R);
         when(pacemaker.getGoalDistance()).thenReturn(10.0);
@@ -169,21 +155,28 @@ class PacemakerRecoveryServiceTest {
         when(pacemaker.getCondition()).thenReturn(3);
         when(pacemaker.getTemperature()).thenReturn(20);
 
-        when(pacemakerRepository.findRecoveryTargets(any(), any()))
-                .thenReturn(List.of(pacemaker));
+        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
 
         Member member = mock(Member.class);
         when(member.getUuid()).thenReturn("member-uuid");
         when(memberService.findMemberByUuid("member-uuid")).thenReturn(member);
         when(memberService.findMemberVdot("member-uuid")).thenReturn(45);
-        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(1L))
+        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId))
                 .thenReturn(Collections.emptyList());
 
         // when
-        service.recoverStalePacemakers();
+        service.recoverSingle(pacemakerId);
 
         // then
-        verify(pacemaker).proceedForRetry();
+        verify(llmService).requestLlmToCreatePacemaker(
+                any(Member.class),
+                any(),
+                any(Integer.class),
+                any(Integer.class),
+                any(Integer.class),
+                any(Long.class),
+                any()
+        );
     }
 
 }

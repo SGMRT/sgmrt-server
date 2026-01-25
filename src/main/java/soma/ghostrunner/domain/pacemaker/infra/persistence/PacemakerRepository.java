@@ -33,17 +33,17 @@ public interface PacemakerRepository extends JpaRepository<Pacemaker, Long> {
     int softDeleteAllByPacemakerId(Long pacemakerId);
 
     /**
-     * 복구 대상 Pacemaker 조회
+     * 복구 대상 Pacemaker ID 조회
      * - INIT 또는 PROCEEDING 상태
      * - lastRetryAt이 null이면 createdAt 기준, 아니면 lastRetryAt 기준으로 threshold 이전
      */
-    @Query("select p from Pacemaker p " +
+    @Query("select p.id from Pacemaker p " +
             "where (p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.INIT " +
             "       or p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.PROCEEDING) " +
             "and ((p.lastRetryAt is null and p.createdAt < :threshold) " +
             "     or (p.lastRetryAt is not null and p.lastRetryAt < :threshold)) " +
             "order by p.createdAt asc")
-    List<Pacemaker> findRecoveryTargets(@Param("threshold") LocalDateTime threshold,
-                                        org.springframework.data.domain.Pageable pageable);
+    List<Long> findRecoveryTargetIds(@Param("threshold") LocalDateTime threshold,
+                                     org.springframework.data.domain.Pageable pageable);
 
 }
