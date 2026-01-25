@@ -117,4 +117,72 @@ class PacemakerLlmCallbackServiceTest {
         verify(pacemaker).fallback();
     }
 
+    @Test
+    void handleSuccess_shouldIgnoreWhenAlreadyCompleted() {
+        // given
+        Long pacemakerId = 100L;
+        String workoutJson = "{...any json...}";
+
+        Pacemaker pacemaker = mock(Pacemaker.class);
+        when(pacemaker.isCompleted()).thenReturn(true);
+        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
+
+        WorkoutDto workoutDto = mock(WorkoutDto.class);
+
+        try (MockedStatic<WorkoutDto> workoutDtoStatic = mockStatic(WorkoutDto.class)) {
+            workoutDtoStatic.when(() ->
+                            WorkoutDto.fromVoiceGuidanceGeneratedWorkoutDto(anyString()))
+                    .thenReturn(workoutDto);
+
+            // when
+            assertThatNoException()
+                    .isThrownBy(() -> service.handleSuccess(pacemakerId, workoutJson));
+
+            // then
+            // 이미 완료된 상태이므로 complete() 호출되지 않아야 함
+            verify(pacemaker, never()).complete(any(), anyDouble(), anyInt(), any());
+            verify(publisher, never()).publishEvent(any());
+        }
+    }
+
+    @Test
+    void handleError_shouldIgnoreWhenAlreadyCompleted() {
+        // given
+        String rateLimitKey = "rl:member:1";
+        Long pacemakerId = 200L;
+
+        Pacemaker pacemaker = mock(Pacemaker.class);
+        when(pacemaker.isCompleted()).thenReturn(true);
+        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
+
+        // when
+        assertThatNoException()
+                .isThrownBy(() -> service.handleError(rateLimitKey, pacemakerId));
+
+        // then
+        // 이미 완료된 상태이므로 fallback()이나 Redis 카운트 복구 호출되지 않아야 함
+        verify(pacemaker, never()).fallback();
+        verify(rateLimitService, never()).decrementCounter(any());
+    }
+
+    @Test
+    void handleError_shouldSkipRedisDecrementWhenRateLimitKeyIsNull() {
+        // given
+        Long pacemakerId = 200L;
+
+        Pacemaker pacemaker = mock(Pacemaker.class);
+        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
+
+        // when - rateLimitKey가 null인 경우 (워커 재시도)
+        assertThatNoException()
+                .isThrownBy(() -> service.handleError(null, pacemakerId));
+
+        // then
+        // rateLimitKey가 null이면 Redis 카운트 복구 스킵
+        verify(rateLimitService, never()).decrementCounter(any());
+
+        // 상태 전이는 정상 수행
+        verify(pacemaker).fallback();
+    }
+
 }

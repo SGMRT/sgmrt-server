@@ -148,9 +148,9 @@ class PacemakerFacadeTest {
         verify(rateLimitService).decrementCounter(rateLimitKey);
     }
 
-    @DisplayName("TX2 실패 시 LLM 호출이 실행되지 않고, 카운트 보상이 실행된다")
+    @DisplayName("TX2 실패 시 LLM 호출이 실행되지 않고, 카운트 보상은 실행되지 않는다 (워커가 복구)")
     @Test
-    void createPacemaker_tx2Fails_noLlm_andCompensates() {
+    void createPacemaker_tx2Fails_noLlm_noCompensation() {
         // given
         String memberUuid = "member-123";
         Long courseId = 1L;
@@ -185,8 +185,8 @@ class PacemakerFacadeTest {
         // triggerLlmAfterCommit은 호출되지 않아야 함
         verify(llmTriggerService, never()).triggerLlmAfterCommit(any());
 
-        // 카운트 보상이 실행되어야 함
-        verify(rateLimitService).decrementCounter(rateLimitKey);
+        // TX1 성공 후이므로 카운트 보상이 실행되지 않아야 함 (워커가 INIT 상태를 복구)
+        verify(rateLimitService, never()).decrementCounter(any());
     }
 
     // ==================== 조회 테스트 ====================

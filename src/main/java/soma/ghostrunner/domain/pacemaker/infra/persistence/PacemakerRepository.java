@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.pacemaker.domain.Pacemaker;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,5 +31,19 @@ public interface PacemakerRepository extends JpaRepository<Pacemaker, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update PacemakerSet s set s.deleted = true where s.pacemaker.id = :pacemakerId")
     int softDeleteAllByPacemakerId(Long pacemakerId);
+
+    /**
+     * 복구 대상 Pacemaker 조회
+     * - INIT 또는 PROCEEDING 상태
+     * - lastRetryAt이 null이면 createdAt 기준, 아니면 lastRetryAt 기준으로 threshold 이전
+     */
+    @Query("select p from Pacemaker p " +
+            "where (p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.INIT " +
+            "       or p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.PROCEEDING) " +
+            "and ((p.lastRetryAt is null and p.createdAt < :threshold) " +
+            "     or (p.lastRetryAt is not null and p.lastRetryAt < :threshold)) " +
+            "order by p.createdAt asc")
+    List<Pacemaker> findRecoveryTargets(@Param("threshold") LocalDateTime threshold,
+                                        org.springframework.data.domain.Pageable pageable);
 
 }
