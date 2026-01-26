@@ -45,3 +45,16 @@ discord:
   webhook:
     url: https://discord.com/api/webhooks/dummy
 
+# Resilience4j Circuit Breaker (테스트용)
+resilience4j:
+  circuitbreaker:
+    instances:
+      llmApi:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+

@@ -18,7 +18,9 @@ public class PacemakerTimeTableResponse {
     public PacemakerTimeTableResponse(List<PacemakerSetResponse> sets, Integer expectedMinutes) {
         this.warmUpMinutes = calculateTimeTableMinutes(sets.get(0));
         this.coolDownMinutes = calculateTimeTableMinutes(sets.get(sets.size() - 1));
-        this.maintenanceMinutes = expectedMinutes - coolDownMinutes - warmUpMinutes;
+        this.maintenanceMinutes = expectedMinutes != null
+                ? expectedMinutes - coolDownMinutes - warmUpMinutes
+                : null;
     }
 
     private Integer calculateTimeTableMinutes(PacemakerSetResponse setResponse) {

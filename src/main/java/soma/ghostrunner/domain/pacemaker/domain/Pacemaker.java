@@ -119,15 +119,6 @@ public class Pacemaker extends BaseTimeEntity {
                 .build();
     }
 
-    @Deprecated
-    public void updateSucceedPacemaker(String summary, Double goalKm, Integer expectedMinutes, String initialMessage) {
-        this.summary = summary;
-        this.goalDistance = goalKm;
-        this.expectedTime = expectedMinutes;
-        this.initialMessage = initialMessage;
-        this.status = Status.COMPLETED;
-    }
-
     public enum Norm {
         DISTANCE, TIME
     }
@@ -136,7 +127,7 @@ public class Pacemaker extends BaseTimeEntity {
         INIT {
             @Override
             public boolean canTransitionTo(Status next) {
-                return next == PROCEEDING;
+                return next == PROCEEDING || next == FALLBACK;
             }
         },
         PROCEEDING {
@@ -185,11 +176,6 @@ public class Pacemaker extends BaseTimeEntity {
             throw new IllegalStateException(
                     String.format("Cannot transition from %s to %s", this.status, next));
         }
-    }
-
-    @Deprecated
-    public void updateStatus(Status status) {
-        this.status = status;
     }
 
     public void verifyMember(String memberUuid) {
