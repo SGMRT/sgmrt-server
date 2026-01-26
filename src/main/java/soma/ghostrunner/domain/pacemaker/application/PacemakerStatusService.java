@@ -34,6 +34,21 @@ public class PacemakerStatusService {
         log.info("TX2 완료: PROCEEDING 상태 업데이트 완료 - pacemakerId={}", pacemakerId);
     }
 
+    /**
+     * FALLBACK 상태로 업데이트 (새 트랜잭션)
+     * - 서킷브레이커가 열려있을 때 호출
+     * - INIT 또는 PROCEEDING 상태에서 FALLBACK으로 전이
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void updateToFallback(Long pacemakerId) {
+        log.info("FALLBACK 상태 업데이트 시작 - pacemakerId={}", pacemakerId);
+
+        Pacemaker pacemaker = findPacemaker(pacemakerId);
+        pacemaker.fallback();
+
+        log.info("FALLBACK 상태 업데이트 완료 - pacemakerId={}", pacemakerId);
+    }
+
     private Pacemaker findPacemaker(Long pacemakerId) {
         return pacemakerRepository.findById(pacemakerId)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, pacemakerId));

@@ -73,18 +73,6 @@ class PacemakerTest {
                 .hasMessageContaining("Cannot transition from INIT to COMPLETED");
     }
 
-    @DisplayName("INIT에서 FALLBACK으로 직접 전이할 수 없다.")
-    @Test
-    void cannotTransitionFromInitToFallback() {
-        // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
-
-        // when & then
-        Assertions.assertThatThrownBy(() -> pacemaker.fallback())
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Cannot transition from INIT to FALLBACK");
-    }
-
     @DisplayName("COMPLETED 상태에서는 다른 상태로 전이할 수 없다.")
     @Test
     void cannotTransitionFromCompleted() {
@@ -146,22 +134,6 @@ class PacemakerTest {
         Assertions.assertThat(init.isCompleted()).isFalse();
         Assertions.assertThat(proceeding.isNotCompleted()).isTrue();
         Assertions.assertThat(proceeding.isCompleted()).isFalse();
-    }
-
-    @Deprecated
-    @DisplayName("LLM API 통신 상태를 업데이트한다. (레거시)")
-    @Test
-    void updateStatus() {
-        // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
-        pacemaker.proceed(); // INIT -> PROCEEDING
-
-        // when
-        pacemaker.updateStatus(Pacemaker.Status.COMPLETED);
-
-        // then
-        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.COMPLETED);
-        Assertions.assertThat(pacemaker.getRunningType()).isEqualTo(RunningType.R);
     }
 
     @DisplayName("페이스메이커의 주인인지 검증한다.")

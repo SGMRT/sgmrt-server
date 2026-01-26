@@ -1,47 +1,57 @@
 package soma.ghostrunner.domain.pacemaker.application;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.pacemaker.application.dto.RecoveryContext;
-import soma.ghostrunner.domain.pacemaker.domain.Pacemaker;
-import soma.ghostrunner.domain.pacemaker.domain.PacemakerSet;
+import soma.ghostrunner.domain.pacemaker.application.dto.WorkoutDto;
 import soma.ghostrunner.domain.pacemaker.domain.RunningType;
 import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerRepository;
-import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerSetRepository;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PacemakerRecoveryServiceTest {
-
-    @InjectMocks
-    private PacemakerRecoveryService service;
 
     @Mock
     private PacemakerRepository pacemakerRepository;
 
     @Mock
-    private PacemakerSetRepository pacemakerSetRepository;
-
-    @Mock
-    private MemberService memberService;
+    private PacemakerRecoveryPrepareService prepareService;
 
     @Mock
     private PacemakerLlmService llmService;
+
+    @Mock
+    private PacemakerStatusService statusService;
+
+    @Mock
+    private CircuitBreaker circuitBreaker;
+
+    private PacemakerRecoveryService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new PacemakerRecoveryService(
+                pacemakerRepository,
+                prepareService,
+                llmService,
+                statusService,
+                circuitBreaker
+        );
+    }
 
     @DisplayName("findRecoveryTargetIds: 복구 대상 ID 목록을 반환한다")
     @Test
@@ -71,112 +81,91 @@ class PacemakerRecoveryServiceTest {
         assertThat(result).isEmpty();
     }
 
-    @DisplayName("prepareForRecovery: 상태를 업데이트하고 RecoveryContext를 반환한다")
-    @Test
-    void prepareForRecovery_shouldUpdateStatusAndReturnContext() {
-        // given
-        Long pacemakerId = 1L;
-        Pacemaker pacemaker = mock(Pacemaker.class);
-        when(pacemaker.getId()).thenReturn(pacemakerId);
-        when(pacemaker.getMemberUuid()).thenReturn("member-uuid");
-        when(pacemaker.getRunningType()).thenReturn(RunningType.R);
-        when(pacemaker.getGoalDistance()).thenReturn(10.0);
-        when(pacemaker.getExpectedTime()).thenReturn(50);
-        when(pacemaker.getCondition()).thenReturn(3);
-        when(pacemaker.getTemperature()).thenReturn(20);
-
-        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
-
+    private RecoveryContext createMockRecoveryContext(Long pacemakerId) {
         Member member = mock(Member.class);
-        when(member.getUuid()).thenReturn("member-uuid");
-        when(memberService.findMemberByUuid("member-uuid")).thenReturn(member);
-        when(memberService.findMemberVdot("member-uuid")).thenReturn(45);
-        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId))
-                .thenReturn(Collections.emptyList());
-
-        // when
-        RecoveryContext context = service.prepareForRecovery(pacemakerId);
-
-        // then
-        verify(pacemaker).updateLastRetryAt();
-        verify(pacemaker).proceedForRetry();
-        assertThat(context.member()).isEqualTo(member);
-        assertThat(context.vdot()).isEqualTo(45);
-        assertThat(context.pacemakerId()).isEqualTo(pacemakerId);
+        WorkoutDto workoutDto = WorkoutDto.of(RunningType.R, 10.0, List.of());
+        return new RecoveryContext(member, 45, workoutDto, 3, 20, pacemakerId);
     }
 
-    @DisplayName("prepareForRecovery: PacemakerSet이 있으면 WorkoutDto에 포함된다")
-    @Test
-    void prepareForRecovery_withSets_shouldIncludeInWorkoutDto() {
-        // given
-        Long pacemakerId = 1L;
-        Pacemaker pacemaker = mock(Pacemaker.class);
-        when(pacemaker.getId()).thenReturn(pacemakerId);
-        when(pacemaker.getMemberUuid()).thenReturn("member-uuid");
-        when(pacemaker.getRunningType()).thenReturn(RunningType.R);
-        when(pacemaker.getGoalDistance()).thenReturn(10.0);
-        when(pacemaker.getExpectedTime()).thenReturn(50);
-        when(pacemaker.getCondition()).thenReturn(3);
-        when(pacemaker.getTemperature()).thenReturn(20);
+    @Nested
+    @DisplayName("Circuit CLOSED 상태")
+    class WhenCircuitClosed {
 
-        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
+        @BeforeEach
+        void setUp() {
+            when(circuitBreaker.getState()).thenReturn(CircuitBreaker.State.CLOSED);
+        }
 
-        Member member = mock(Member.class);
-        when(member.getUuid()).thenReturn("member-uuid");
-        when(memberService.findMemberByUuid("member-uuid")).thenReturn(member);
-        when(memberService.findMemberVdot("member-uuid")).thenReturn(45);
+        @DisplayName("prepareForRecovery 후 LLM을 호출한다")
+        @Test
+        void recoverSingle_shouldPrepareAndCallLlm() {
+            // given
+            Long pacemakerId = 1L;
+            RecoveryContext context = createMockRecoveryContext(pacemakerId);
+            when(prepareService.prepareForRecovery(pacemakerId)).thenReturn(context);
 
-        PacemakerSet pacemakerSet = mock(PacemakerSet.class);
-        when(pacemakerSet.getSetNum()).thenReturn(1);
-        when(pacemakerSet.getPace()).thenReturn(5.30);
-        when(pacemakerSet.getStartPoint()).thenReturn(0.0);
-        when(pacemakerSet.getEndPoint()).thenReturn(10.0);
-        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId))
-                .thenReturn(List.of(pacemakerSet));
+            // when
+            service.recoverSingle(pacemakerId);
 
-        // when
-        RecoveryContext context = service.prepareForRecovery(pacemakerId);
-
-        // then
-        assertThat(context.workoutDto().getSets()).hasSize(1);
+            // then
+            verify(prepareService).prepareForRecovery(pacemakerId);
+            verify(llmService).requestLlmToCreatePacemaker(
+                    any(Member.class), any(), anyInt(), anyInt(), anyInt(), anyLong(), any()
+            );
+        }
     }
 
-    @DisplayName("recoverSingle: prepareForRecovery 후 LLM을 호출한다")
-    @Test
-    void recoverSingle_shouldPrepareAndCallLlm() {
-        // given
-        Long pacemakerId = 1L;
-        Pacemaker pacemaker = mock(Pacemaker.class);
-        when(pacemaker.getId()).thenReturn(pacemakerId);
-        when(pacemaker.getMemberUuid()).thenReturn("member-uuid");
-        when(pacemaker.getRunningType()).thenReturn(RunningType.R);
-        when(pacemaker.getGoalDistance()).thenReturn(10.0);
-        when(pacemaker.getExpectedTime()).thenReturn(50);
-        when(pacemaker.getCondition()).thenReturn(3);
-        when(pacemaker.getTemperature()).thenReturn(20);
+    @Nested
+    @DisplayName("Circuit OPEN 상태")
+    class WhenCircuitOpen {
 
-        when(pacemakerRepository.findById(pacemakerId)).thenReturn(Optional.of(pacemaker));
+        @BeforeEach
+        void setUp() {
+            when(circuitBreaker.getState()).thenReturn(CircuitBreaker.State.OPEN);
+        }
 
-        Member member = mock(Member.class);
-        when(member.getUuid()).thenReturn("member-uuid");
-        when(memberService.findMemberByUuid("member-uuid")).thenReturn(member);
-        when(memberService.findMemberVdot("member-uuid")).thenReturn(45);
-        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(pacemakerId))
-                .thenReturn(Collections.emptyList());
+        @DisplayName("복구를 스킵하고 FALLBACK 처리한다")
+        @Test
+        void recoverSingle_shouldSkipAndFallback() {
+            // given
+            Long pacemakerId = 1L;
 
-        // when
-        service.recoverSingle(pacemakerId);
+            // when
+            service.recoverSingle(pacemakerId);
 
-        // then
-        verify(llmService).requestLlmToCreatePacemaker(
-                any(Member.class),
-                any(),
-                any(Integer.class),
-                any(Integer.class),
-                any(Integer.class),
-                any(Long.class),
-                any()
-        );
+            // then
+            verify(statusService).updateToFallback(pacemakerId);
+            verifyNoInteractions(prepareService);
+            verifyNoInteractions(llmService);
+        }
+    }
+
+    @Nested
+    @DisplayName("Circuit HALF_OPEN 상태")
+    class WhenCircuitHalfOpen {
+
+        @BeforeEach
+        void setUp() {
+            when(circuitBreaker.getState()).thenReturn(CircuitBreaker.State.HALF_OPEN);
+        }
+
+        @DisplayName("테스트 요청으로 정상 처리한다")
+        @Test
+        void recoverSingle_shouldProcessNormally() {
+            // given
+            Long pacemakerId = 1L;
+            RecoveryContext context = createMockRecoveryContext(pacemakerId);
+            when(prepareService.prepareForRecovery(pacemakerId)).thenReturn(context);
+
+            // when
+            service.recoverSingle(pacemakerId);
+
+            // then
+            verify(prepareService).prepareForRecovery(pacemakerId);
+            verify(llmService).requestLlmToCreatePacemaker(
+                    any(Member.class), any(), anyInt(), anyInt(), anyInt(), anyLong(), any()
+            );
+        }
     }
 
 }

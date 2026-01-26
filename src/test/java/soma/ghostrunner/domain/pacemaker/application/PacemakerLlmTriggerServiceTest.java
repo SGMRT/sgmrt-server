@@ -1,7 +1,9 @@
 package soma.ghostrunner.domain.pacemaker.application;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -26,6 +28,8 @@ class PacemakerLlmTriggerServiceTest {
     PacemakerRateLimitService rateLimitService;
     @Mock
     PacemakerLlmService llmService;
+    @Mock
+    CircuitBreaker circuitBreaker;
 
     PacemakerLlmTriggerService triggerService;
 
@@ -34,84 +38,122 @@ class PacemakerLlmTriggerServiceTest {
         triggerService = new PacemakerLlmTriggerService(
                 statusService,
                 rateLimitService,
-                llmService
+                llmService,
+                circuitBreaker
         );
     }
 
-    @DisplayName("processAsync: PROCEEDING 업데이트 후 LLM 호출한다")
-    @Test
-    void processAsync_updatesToProceedingAndCallsLlm() {
-        // given
+    private PacemakerCreationResult createTestResult() {
         String memberUuid = "member-123";
-        Long pacemakerId = 100L;
-        int vdot = 45;
-        int condition = 3;
-        int temperature = 25;
-        String rateLimitKey = "pacemaker_api_rate_limit:member-123:2024-01-01";
-
         Member member = Member.of("러너", "url");
         member.setUuid(memberUuid);
 
-        WorkoutDto workoutDto = WorkoutDto.of(RunningType.I, 10.0, List.of());
-
-        PacemakerCreationResult result = PacemakerCreationResult.builder()
-                .pacemakerId(pacemakerId)
-                .member(member)
-                .workoutDto(workoutDto)
-                .vdot(vdot)
-                .condition(condition)
-                .temperature(temperature)
-                .build();
-
-        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn(rateLimitKey);
-
-        // when
-        triggerService.processAsync(result);
-
-        // then
-        // 1. PROCEEDING 상태 업데이트 (새 트랜잭션)
-        verify(statusService).updateToProceeding(pacemakerId);
-
-        // 2. LLM 호출
-        verify(llmService).requestLlmToCreatePacemaker(
-                eq(member),
-                eq(workoutDto),
-                eq(vdot),
-                eq(condition),
-                eq(temperature),
-                eq(pacemakerId),
-                eq(rateLimitKey)
-        );
-    }
-
-    @DisplayName("processAsync: TX2 실패 시 LLM 호출하지 않고 예외를 던지지 않는다 (워커가 복구)")
-    @Test
-    void processAsync_whenTx2Fails_shouldNotThrowAndNotCallLlm() {
-        // given
-        String memberUuid = "member-123";
-        Long pacemakerId = 100L;
-
-        Member member = Member.of("러너", "url");
-        member.setUuid(memberUuid);
-
-        PacemakerCreationResult result = PacemakerCreationResult.builder()
-                .pacemakerId(pacemakerId)
+        return PacemakerCreationResult.builder()
+                .pacemakerId(100L)
                 .member(member)
                 .workoutDto(WorkoutDto.of(RunningType.I, 10.0, List.of()))
                 .vdot(45)
                 .condition(3)
                 .temperature(25)
                 .build();
+    }
 
-        // TX2 실패 시뮬레이션
-        doThrow(new RuntimeException("TX2 실패"))
-                .when(statusService).updateToProceeding(pacemakerId);
+    @Nested
+    @DisplayName("Circuit CLOSED 상태")
+    class WhenCircuitClosed {
 
-        // when & then - 예외를 던지지 않음
-        assertThatNoException().isThrownBy(() -> triggerService.processAsync(result));
+        @BeforeEach
+        void setUp() {
+            when(circuitBreaker.getState()).thenReturn(CircuitBreaker.State.CLOSED);
+        }
 
-        // LLM은 호출되지 않아야 함
-        verifyNoInteractions(llmService);
+        @DisplayName("정상적으로 PROCEEDING 업데이트 후 LLM 호출한다")
+        @Test
+        void processAsync_updatesToProceedingAndCallsLlm() {
+            // given
+            PacemakerCreationResult result = createTestResult();
+            when(rateLimitService.createRateLimitKey(anyString())).thenReturn("rate-limit-key");
+
+            // when
+            triggerService.processAsync(result);
+
+            // then
+            verify(statusService).updateToProceeding(result.getPacemakerId());
+            verify(llmService).requestLlmToCreatePacemaker(
+                    eq(result.getMember()),
+                    eq(result.getWorkoutDto()),
+                    eq(result.getVdot()),
+                    eq(result.getCondition()),
+                    eq(result.getTemperature()),
+                    eq(result.getPacemakerId()),
+                    anyString()
+            );
+        }
+
+        @DisplayName("TX2 실패 시 LLM 호출하지 않고 워커가 복구하도록 둔다")
+        @Test
+        void processAsync_whenTx2Fails_shouldNotCallLlm() {
+            // given
+            PacemakerCreationResult result = createTestResult();
+            doThrow(new RuntimeException("TX2 실패"))
+                    .when(statusService).updateToProceeding(result.getPacemakerId());
+
+            // when & then
+            assertThatNoException().isThrownBy(() -> triggerService.processAsync(result));
+            verifyNoInteractions(llmService);
+        }
+    }
+
+    @Nested
+    @DisplayName("Circuit OPEN 상태")
+    class WhenCircuitOpen {
+
+        @BeforeEach
+        void setUp() {
+            when(circuitBreaker.getState()).thenReturn(CircuitBreaker.State.OPEN);
+        }
+
+        @DisplayName("TX2를 스킵하고 바로 FALLBACK 처리한다")
+        @Test
+        void processAsync_shouldSkipTx2AndFallback() {
+            // given
+            PacemakerCreationResult result = createTestResult();
+
+            // when
+            triggerService.processAsync(result);
+
+            // then
+            verify(statusService, never()).updateToProceeding(anyLong());
+            verify(statusService).updateToFallback(result.getPacemakerId());
+            verifyNoInteractions(llmService);
+        }
+    }
+
+    @Nested
+    @DisplayName("Circuit HALF_OPEN 상태")
+    class WhenCircuitHalfOpen {
+
+        @BeforeEach
+        void setUp() {
+            when(circuitBreaker.getState()).thenReturn(CircuitBreaker.State.HALF_OPEN);
+        }
+
+        @DisplayName("테스트 요청으로 정상 처리한다 (CLOSED와 동일)")
+        @Test
+        void processAsync_shouldProcessNormally() {
+            // given
+            PacemakerCreationResult result = createTestResult();
+            when(rateLimitService.createRateLimitKey(anyString())).thenReturn("rate-limit-key");
+
+            // when
+            triggerService.processAsync(result);
+
+            // then
+            verify(statusService).updateToProceeding(result.getPacemakerId());
+            verify(llmService).requestLlmToCreatePacemaker(
+                    any(), any(), anyInt(), anyInt(), anyInt(), anyLong(), anyString()
+            );
+        }
     }
 
 }

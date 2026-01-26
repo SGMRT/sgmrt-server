@@ -35,7 +35,7 @@ public class AsyncConfig {
 
         executor.setTaskDecorator(new MdcTaskDecorator());
         executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(240);
+        executor.setAwaitTerminationSeconds(480);  // 8분 (LLM 2회 호출 * 3분 + 버퍼)
 
         executor.initialize();
         return executor;

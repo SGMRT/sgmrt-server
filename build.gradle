@@ -147,6 +147,10 @@ dependencies {
 	implementation 'net.javacrumbs.shedlock:shedlock-spring:5.10.0'
 	implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:5.10.0'
 
+	// Resilience4j (서킷브레이커)
+	implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+	implementation 'org.springframework.boot:spring-boot-starter-aop'
+
 	// Mock WebServer
 	testImplementation "com.squareup.okhttp3:mockwebserver:4.12.0"
 	testImplementation "io.projectreactor:reactor-test"
