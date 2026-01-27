@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.Where;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
@@ -127,13 +126,13 @@ public class Pacemaker extends BaseTimeEntity {
         INIT {
             @Override
             public boolean canTransitionTo(Status next) {
-                return next == PROCEEDING || next == FALLBACK;
+                return next == PROCEEDING || next == FAILED;
             }
         },
         PROCEEDING {
             @Override
             public boolean canTransitionTo(Status next) {
-                return next == COMPLETED || next == FALLBACK;
+                return next == COMPLETED || next == FAILED;
             }
         },
         COMPLETED {
@@ -142,7 +141,7 @@ public class Pacemaker extends BaseTimeEntity {
                 return false;
             }
         },
-        FALLBACK {
+        FAILED {
             @Override
             public boolean canTransitionTo(Status next) {
                 return false;
@@ -167,8 +166,8 @@ public class Pacemaker extends BaseTimeEntity {
     }
 
     public void fallback() {
-        validateStatusTransition(Status.FALLBACK);
-        this.status = Status.FALLBACK;
+        validateStatusTransition(Status.FAILED);
+        this.status = Status.FAILED;
     }
 
     private void validateStatusTransition(Status next) {
@@ -185,11 +184,11 @@ public class Pacemaker extends BaseTimeEntity {
     }
 
     public boolean isNotCompleted() {
-        return !status.equals(Status.COMPLETED) && !status.equals(Status.FALLBACK);
+        return !status.equals(Status.COMPLETED) && !status.equals(Status.FAILED);
     }
 
     public boolean isCompleted() {
-        return status.equals(Status.COMPLETED) || status.equals(Status.FALLBACK);
+        return status.equals(Status.COMPLETED) || status.equals(Status.FAILED);
     }
 
     public void updateAfterRunning(Long runningId) {

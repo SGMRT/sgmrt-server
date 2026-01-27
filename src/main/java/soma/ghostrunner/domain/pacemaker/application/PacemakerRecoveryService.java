@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PacemakerRecoveryService {
 
-    private static final int THRESHOLD_MINUTES = 15;
+    private static final int THRESHOLD_MINUTES = 20;
     private static final int BATCH_SIZE = 10;
 
     private final PacemakerRepository pacemakerRepository;

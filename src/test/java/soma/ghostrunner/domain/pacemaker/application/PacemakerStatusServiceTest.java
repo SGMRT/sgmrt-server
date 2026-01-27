@@ -64,7 +64,7 @@ class PacemakerStatusServiceTest {
             statusService.updateToFallback(pacemakerId);
 
             // then
-            assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.FALLBACK);
+            assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.FAILED);
         }
 
         @DisplayName("PROCEEDING 상태의 Pacemaker를 FALLBACK으로 업데이트한다")
@@ -81,7 +81,7 @@ class PacemakerStatusServiceTest {
             statusService.updateToFallback(pacemakerId);
 
             // then
-            assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.FALLBACK);
+            assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.FAILED);
         }
     }
 
