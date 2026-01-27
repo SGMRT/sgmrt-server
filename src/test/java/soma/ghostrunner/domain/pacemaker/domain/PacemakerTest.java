@@ -58,7 +58,7 @@ class PacemakerTest {
         pacemaker.fallback();
 
         // then
-        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.FALLBACK);
+        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.FAILED);
     }
 
     @DisplayName("INIT에서 COMPLETED로 직접 전이할 수 없다.")
@@ -82,9 +82,9 @@ class PacemakerTest {
         pacemaker.complete("요약", 10.0, 50, "메시지");
 
         // when & then
-        Assertions.assertThatThrownBy(() -> pacemaker.fallback())
+        Assertions.assertThatThrownBy(pacemaker::fallback)
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Cannot transition from COMPLETED to FALLBACK");
+                .hasMessageContaining("Cannot transition from COMPLETED to FAILED");
     }
 
     @DisplayName("FALLBACK 상태에서는 다른 상태로 전이할 수 없다.")
@@ -98,7 +98,7 @@ class PacemakerTest {
         // when & then
         Assertions.assertThatThrownBy(() -> pacemaker.complete("요약", 10.0, 50, "메시지"))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Cannot transition from FALLBACK to COMPLETED");
+                .hasMessageContaining("Cannot transition from FAILED to COMPLETED");
     }
 
     @DisplayName("COMPLETED와 FALLBACK 상태는 완료된 상태로 간주한다.")

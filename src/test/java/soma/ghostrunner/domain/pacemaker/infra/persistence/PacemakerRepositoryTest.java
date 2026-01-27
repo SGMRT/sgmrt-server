@@ -240,7 +240,7 @@ class PacemakerRepositoryTest extends IntegrationTestSupport {
 
         // then - FALLBACK도 유효한 결과이므로 최신 것이 조회됨
         assertThat(found.get().getId()).isEqualTo(fallbackPacemaker.getId());
-        assertThat(found.get().getStatus()).isEqualTo(Pacemaker.Status.FALLBACK);
+        assertThat(found.get().getStatus()).isEqualTo(Pacemaker.Status.FAILED);
     }
 
 }
