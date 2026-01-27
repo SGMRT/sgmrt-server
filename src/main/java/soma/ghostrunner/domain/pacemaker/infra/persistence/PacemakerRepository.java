@@ -15,11 +15,7 @@ import java.util.Optional;
 public interface PacemakerRepository extends JpaRepository<Pacemaker, Long> {
 
     @Query("select p from Pacemaker p " +
-            "where p.courseId = :courseId and p.memberUuid = :memberUuid and p.hasRunWith = false and " +
-            "(p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.COMPLETED " +
-            "or p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.FAILED " +
-            "or p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.PROCEEDING " +
-            "or p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.INIT) " +
+            "where p.courseId = :courseId and p.memberUuid = :memberUuid and p.hasRunWith = false " +
             "order by p.createdAt desc " +
             "limit 1")
     Optional<Pacemaker> findByCourseId(Long courseId, String memberUuid);
