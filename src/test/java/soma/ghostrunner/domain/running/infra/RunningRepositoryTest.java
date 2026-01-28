@@ -8,9 +8,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
+import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
@@ -37,6 +39,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
 
     @Autowired
     private CourseRepository courseRepository;
+
+    @Autowired
+    private CourseSubscriptionRepository subscriptionRepository;
 
     @Autowired
     private MemberRepository memberRepository;
@@ -466,6 +471,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(c1, c2, c3));
         List<Course> courses = List.of(c1, c2, c3);
 
+        // subscription 생성 (courseInfo 노출을 위해)
+        courses.forEach(c -> subscriptionRepository.save(CourseSubscription.create(c, member)));
+
         Random rnd = new Random(42);
         List<Running> runnings = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
@@ -680,56 +688,216 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         );
     }
 
-    @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 비공개 코스라면 코스 정보는 Null로 조회된다.")
+    @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 subscription이 없으면 코스 정보는 Null로 조회된다.")
     @Test
-    void returnNullCourseInfoForPrivateCourses() {
+    void returnNullCourseInfoWhenNoSubscription() {
         // given
         Member member = createMember("이복둥");
         memberRepository.save(member);
 
-        Course publicCourse1 = createCourse(member);
-        Course publicCourse2 = createCourse(member);
-        Course privateCourse = createCourse(member);
-        privateCourse.setIsPublic(false);
-        courseRepository.saveAll(List.of(publicCourse1, publicCourse2, privateCourse));
-        List<Course> courses = List.of(publicCourse1, publicCourse2, privateCourse);
+        // subscription이 없는 코스
+        Course courseWithoutSubscription = createCourse(member);
+        courseRepository.save(courseWithoutSubscription);
 
-        Random rnd = new Random(42);
-        List<Running> runnings = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            long startedAt = Math.abs(rnd.nextLong() % 1_000_000L);
-            runnings.add(createRunning("러닝" + i, courses.get(rnd.nextInt(3)),
-                    member, startedAt, RunningMode.SOLO));
-        }
-        runningRepository.saveAll(runnings);
-
-        List<Running> runningWithPrivateCourse = runnings.stream()
-                .filter(running -> running.getCourse().getIsPublic().equals(false))
-                .toList();
-        int runningWithPrivateCourseCount = runningWithPrivateCourse.size();
+        Running running = createRunning("러닝1", courseWithoutSubscription, member, 1000L, RunningMode.SOLO);
+        runningRepository.save(running);
 
         long startEpoch = 0L;
-        long endEpoch   = 1_000_000L;
+        long endEpoch = 1_000_000L;
 
         // when
         List<RunInfo> runInfos = runningRepository.findRunInfosFilteredByDate(
                 null, null, startEpoch, endEpoch, member.getId());
-        for (int i = 0; i < 4; i++) {
-            RunInfo cursor = runInfos.get(runInfos.size() - 1);
-            List<RunInfo> nextRunInfos = runningRepository.findRunInfosFilteredByDate(
-                    cursor.getStartedAt(), cursor.getRunningId(),
-                    startEpoch, endEpoch, member.getId());
-            runInfos.addAll(nextRunInfos);
-        }
 
         // then
-        int nullCourseInfoCount = 0;
-        for (RunInfo runInfo : runInfos) {
-            if (runInfo.getCourseInfo() == null) {
-                nullCourseInfoCount += 1;
-            }
-        }
-        Assertions.assertThat(nullCourseInfoCount).isEqualTo(runningWithPrivateCourseCount);
+        assertThat(runInfos).hasSize(1);
+        assertThat(runInfos.get(0).getCourseInfo()).isNull();
+    }
+
+    @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 subscription.deleted=true면 코스 정보는 Null로 조회된다.")
+    @Test
+    void returnNullCourseInfoWhenSubscriptionDeleted() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse(member);
+        courseRepository.save(course);
+
+        // subscription 생성 후 deleted=true로 설정 (등록 해제 상태)
+        CourseSubscription subscription = CourseSubscription.create(course, member);
+        subscription.unregister(); // deleted = true
+        subscriptionRepository.save(subscription);
+
+        Running running = createRunning("러닝1", course, member, 1000L, RunningMode.SOLO);
+        runningRepository.save(running);
+
+        long startEpoch = 0L;
+        long endEpoch = 1_000_000L;
+
+        // when
+        List<RunInfo> runInfos = runningRepository.findRunInfosFilteredByDate(
+                null, null, startEpoch, endEpoch, member.getId());
+
+        // then
+        assertThat(runInfos).hasSize(1);
+        assertThat(runInfos.get(0).getCourseInfo()).isNull();
+    }
+
+    @DisplayName("기본/기간별 보기 방식으로 러닝 기록을 조회할 때 subscription.deleted=false면 코스 정보가 조회된다.")
+    @Test
+    void returnCourseInfoWhenSubscriptionActive() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course course = createCourse(member, "테스트 코스");
+        courseRepository.save(course);
+
+        // 활성 subscription 생성 (deleted = false)
+        CourseSubscription subscription = CourseSubscription.create(course, member);
+        subscriptionRepository.save(subscription);
+
+        Running running = createRunning("러닝1", course, member, 1000L, RunningMode.SOLO);
+        runningRepository.save(running);
+
+        long startEpoch = 0L;
+        long endEpoch = 1_000_000L;
+
+        // when
+        List<RunInfo> runInfos = runningRepository.findRunInfosFilteredByDate(
+                null, null, startEpoch, endEpoch, member.getId());
+
+        // then
+        assertThat(runInfos).hasSize(1);
+        assertThat(runInfos.get(0).getCourseInfo()).isNotNull();
+        assertThat(runInfos.get(0).getCourseInfo().getName()).isEqualTo("테스트 코스");
+    }
+
+    @DisplayName("러너가 따라뛴 코스는 주인이 등록 해제해도 러너에게는 코스 정보가 보인다.")
+    @Test
+    void runnerSeesCoursInfoEvenWhenOwnerUnregisters() {
+        // given
+        Member owner = createMember("코스 주인");
+        Member runner = createMember("따라뛴 러너");
+        memberRepository.saveAll(List.of(owner, runner));
+
+        Course course = createCourse(owner, "한강 코스");
+        courseRepository.save(course);
+
+        // 주인의 subscription (등록 해제됨)
+        CourseSubscription ownerSubscription = CourseSubscription.create(course, owner);
+        ownerSubscription.unregister(); // deleted = true
+        subscriptionRepository.save(ownerSubscription);
+
+        // 러너의 subscription (활성 상태)
+        CourseSubscription runnerSubscription = CourseSubscription.create(course, runner);
+        subscriptionRepository.save(runnerSubscription);
+
+        // 러너가 해당 코스에서 뛴 러닝
+        Running running = createRunning("러너의 러닝", course, runner, 1000L, RunningMode.SOLO);
+        runningRepository.save(running);
+
+        long startEpoch = 0L;
+        long endEpoch = 1_000_000L;
+
+        // when - 러너가 자신의 러닝 조회
+        List<RunInfo> runnerRunInfos = runningRepository.findRunInfosFilteredByDate(
+                null, null, startEpoch, endEpoch, runner.getId());
+
+        // then - 러너에게는 코스 정보가 보인다
+        assertThat(runnerRunInfos).hasSize(1);
+        assertThat(runnerRunInfos.get(0).getCourseInfo()).isNotNull();
+        assertThat(runnerRunInfos.get(0).getCourseInfo().getName()).isEqualTo("한강 코스");
+    }
+
+    @DisplayName("주인이 코스 등록 해제하면 주인에게는 코스 정보가 안 보인다.")
+    @Test
+    void ownerDoesNotSeeCourseInfoAfterUnregister() {
+        // given
+        Member owner = createMember("코스 주인");
+        memberRepository.save(owner);
+
+        Course course = createCourse(owner, "한강 코스");
+        courseRepository.save(course);
+
+        // 주인의 subscription (등록 해제됨)
+        CourseSubscription ownerSubscription = CourseSubscription.create(course, owner);
+        ownerSubscription.unregister(); // deleted = true
+        subscriptionRepository.save(ownerSubscription);
+
+        // 주인이 해당 코스에서 뛴 러닝
+        Running running = createRunning("주인의 러닝", course, owner, 1000L, RunningMode.SOLO);
+        runningRepository.save(running);
+
+        long startEpoch = 0L;
+        long endEpoch = 1_000_000L;
+
+        // when - 주인이 자신의 러닝 조회
+        List<RunInfo> ownerRunInfos = runningRepository.findRunInfosFilteredByDate(
+                null, null, startEpoch, endEpoch, owner.getId());
+
+        // then - 주인에게는 코스 정보가 안 보인다
+        assertThat(ownerRunInfos).hasSize(1);
+        assertThat(ownerRunInfos.get(0).getCourseInfo()).isNull();
+    }
+
+    @DisplayName("코스별 보기에서도 subscription 기반으로 코스 정보가 노출된다.")
+    @Test
+    void findRunInfosFilteredByCourses_subscriptionBased() {
+        // given
+        Member member = createMember("이복둥");
+        memberRepository.save(member);
+
+        Course activeCourse = createCourse(member, "A코스");
+        Course deletedCourse = createCourse(member, "B코스");
+        Course noSubscriptionCourse = createCourse(member, "C코스");
+        courseRepository.saveAll(List.of(activeCourse, deletedCourse, noSubscriptionCourse));
+
+        // 활성 subscription
+        CourseSubscription activeSubscription = CourseSubscription.create(activeCourse, member);
+        subscriptionRepository.save(activeSubscription);
+
+        // 등록 해제된 subscription
+        CourseSubscription deletedSubscription = CourseSubscription.create(deletedCourse, member);
+        deletedSubscription.unregister();
+        subscriptionRepository.save(deletedSubscription);
+
+        // noSubscriptionCourse는 subscription 없음
+
+        Running r1 = createRunning("A코스 러닝", activeCourse, member, 1000L, RunningMode.SOLO);
+        Running r2 = createRunning("B코스 러닝", deletedCourse, member, 2000L, RunningMode.SOLO);
+        Running r3 = createRunning("C코스 러닝", noSubscriptionCourse, member, 3000L, RunningMode.SOLO);
+        runningRepository.saveAll(List.of(r1, r2, r3));
+
+        long startEpoch = 0L;
+        long endEpoch = 1_000_000L;
+
+        // when
+        List<RunInfo> runInfos = runningRepository.findRunInfosFilteredByCourses(
+                null, null, startEpoch, endEpoch, member.getId());
+
+        // then
+        assertThat(runInfos).hasSize(3);
+
+        // 활성 subscription 코스만 courseInfo가 있어야 함
+        RunInfo activeRunInfo = runInfos.stream()
+                .filter(r -> r.getName().equals("A코스 러닝"))
+                .findFirst().orElseThrow();
+        assertThat(activeRunInfo.getCourseInfo()).isNotNull();
+        assertThat(activeRunInfo.getCourseInfo().getName()).isEqualTo("A코스");
+
+        // deleted subscription 코스는 courseInfo가 null
+        RunInfo deletedRunInfo = runInfos.stream()
+                .filter(r -> r.getName().equals("B코스 러닝"))
+                .findFirst().orElseThrow();
+        assertThat(deletedRunInfo.getCourseInfo()).isNull();
+
+        // no subscription 코스는 courseInfo가 null
+        RunInfo noSubRunInfo = runInfos.stream()
+                .filter(r -> r.getName().equals("C코스 러닝"))
+                .findFirst().orElseThrow();
+        assertThat(noSubRunInfo.getCourseInfo()).isNull();
     }
 
     private Running createRunningWithDuration(Course course, Member member, Long duration, Long startedAt) {
@@ -778,6 +946,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
                 .map(n -> { Course c = createCourse(member, n); c.setIsPublic(true); return c; })
                 .toList();
         courseRepository.saveAll(courses);
+
+        // subscription 생성 (courseInfo 노출을 위해)
+        courses.forEach(c -> subscriptionRepository.save(CourseSubscription.create(c, member)));
 
         Random rnd = new Random(42);
         List<Running> all = new ArrayList<>();
@@ -860,6 +1031,9 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         c.setIsPublic(true);
         courseRepository.save(c);
 
+        // subscription 생성 (courseInfo 노출을 위해)
+        subscriptionRepository.save(CourseSubscription.create(c, member));
+
         // 같은 코스명으로 SOLO 30건 — startedAt은 섞지만 정렬 키는 (name, id)
         List<Running> list = new ArrayList<>();
         for (int i = 0; i < 30; i++) {
@@ -909,6 +1083,10 @@ class RunningRepositoryTest extends IntegrationTestSupport {
         Course c2 = createCourse(member, "B");
         c1.setIsPublic(true); c2.setIsPublic(true);
         courseRepository.saveAll(List.of(c1, c2));
+
+        // subscription 생성 (courseInfo 노출을 위해)
+        subscriptionRepository.save(CourseSubscription.create(c1, member));
+        subscriptionRepository.save(CourseSubscription.create(c2, member));
 
         long target = 555_555L;
         Running in1  = createRunning("IN1", c1, member, target, RunningMode.SOLO);

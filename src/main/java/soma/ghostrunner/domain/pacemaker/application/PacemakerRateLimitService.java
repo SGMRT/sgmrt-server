@@ -2,6 +2,9 @@ package soma.ghostrunner.domain.pacemaker.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.infra.redis.RedisRunningRepository;
@@ -68,11 +71,27 @@ public class PacemakerRateLimitService {
     }
 
     /**
-     * Rate Limit 카운터 감소 (LLM 실패 시 보상)
+     * Rate Limit 카운터 감소 (TX1 실패 시 보상)
+     *
+     * - 최대 3회 재시도 (100ms 간격)
+     * - 모든 재시도 실패 시 @Recover로 최종 처리
      */
+    @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 100))
     public void decrementCounter(String rateLimitKey) {
         redisRunningRepository.decrementRateLimitCounter(rateLimitKey);
         log.info("Rate Limit 카운트 보상 완료 - rateLimitKey={}", rateLimitKey);
+    }
+
+    /**
+     * 카운트 보상 재시도 소진 시 최종 처리
+     *
+     * - 보상 실패 시 사용자에게 불리함 (카운트가 높게 유지됨)
+     * - TTL로 주기적 리셋되므로 일시적 불일치 허용
+     */
+    @Recover
+    public void recoverDecrementCounter(Exception e, String rateLimitKey) {
+        log.error("[COMPENSATION_EXHAUSTED] 카운트 보상 재시도 소진 - rateLimitKey={}", rateLimitKey, e);
+        // TODO: 빈번하게 발생 시 알림 설정 필요
     }
 
     /**

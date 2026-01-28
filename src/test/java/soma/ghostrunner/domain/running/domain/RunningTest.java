@@ -8,6 +8,7 @@ import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 
 import java.lang.reflect.Field;
@@ -195,5 +196,68 @@ class RunningTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("올바르지 않은 러닝 레벨입니다.");
     }
-  
+
+    @DisplayName("CourseRunEvent를 생성한다.")
+    @Test
+    void createCourseRunEvent() {
+        // given
+        Member runner = createMember();
+        Member courseOwner = Member.of("코스 주인", "코스 주인 프로필 URL");
+        Course course = createCourse(courseOwner);
+        course.setName("테스트 코스");
+        Running running = createRunning("테스트 러닝제목", runner, course);
+
+        setMemberId(runner, 1L);
+        setMemberId(courseOwner, 2L);
+        setCourseId(course, 100L);
+        setRunningId(running, 200L);
+
+        // when
+        CourseRunEvent event = running.createCourseRunEvent();
+
+        // then
+        assertThat(event.courseId()).isEqualTo(100L);
+        assertThat(event.courseName()).isEqualTo("테스트 코스");
+        assertThat(event.courseOwnerId()).isEqualTo(2L);
+        assertThat(event.runningId()).isEqualTo(200L);
+        assertThat(event.runStartedAt()).isEqualTo(running.getStartedAt());
+        assertThat(event.runDuration()).isEqualTo(running.getRunningRecord().getDuration());
+        assertThat(event.runnerId()).isEqualTo(1L);
+        assertThat(event.runnerNickname()).isEqualTo("이복둥");
+    }
+
+    @DisplayName("ID가 없으면 CourseRunEvent를 생성할 수 없다.")
+    @Test
+    void createCourseRunEvent_withoutId_throwsException() {
+        // given
+        Member member = createMember();
+        Course course = createCourse(member);
+        Running running = createRunning("테스트 러닝제목", member, course);
+
+        // when // then
+        assertThatThrownBy(running::createCourseRunEvent)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("ID가 없으면 이벤트를 생성할 수 없습니다. save() 후에 호출하세요.");
+    }
+
+    private void setRunningId(Running running, Long id) {
+        try {
+            Field idField = running.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(running, id);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void setMemberId(Member member, Long id) {
+        try {
+            Field idField = member.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(member, id);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

@@ -157,42 +157,4 @@ class RunningApplicationMapperTest {
         assertThat(response.startedAt()).isEqualTo(now);
      }
 
-    @DisplayName("러닝, 코스, 회원 엔티티를 CourseRunEvent로 변환한다.")
-    @Test
-    void toCourseRunEvent() {
-        // given
-        Member runner = Member.of("손흥민", "profile-url-1");
-        Member courseOwner = Member.of("코스 주인", "profile-url-2");
-        Course course = createCourse(courseOwner);
-        Running running = createPublicSoloRunning(runner, course);
-
-        // when
-        var event = mapper.toCourseRunEvent(running, course, runner);
-
-        // then
-        assertThat(event.courseId()).isEqualTo(course.getId());
-        assertThat(event.courseName()).isEqualTo(course.getName());
-        assertThat(event.courseOwnerId()).isEqualTo(courseOwner.getId());
-        assertThat(event.runningId()).isEqualTo(running.getId());
-        assertThat(event.runStartedAt()).isEqualTo(running.getStartedAt());
-        assertThat(event.runDuration()).isEqualTo(running.getRunningRecord().getDuration());
-        assertThat(event.runnerId()).isEqualTo(runner.getId());
-        assertThat(event.runnerNickname()).isEqualTo(runner.getNickname());
-    }
-
-    private Running createPublicSoloRunning(Member member, Course course) {
-        return Running.of(
-                "테스트 러닝",
-                RunningMode.SOLO,
-                null,
-                RunningRecord.of(5.5, 100.0, 100.0, 23D,
-                        5.4, 100D, 100D, 100L, 100, 180, 180),
-                1234567L,
-                true, false,
-                "RAW_URL", "INTERPOLATED_URL", "SCREENSHOT_URL",
-                member,
-                course
-        );
-    }
-
 }

@@ -9,9 +9,11 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
+import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
+import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.CoursePreviewDto;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
@@ -19,6 +21,10 @@ import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.running.domain.Running;
+import soma.ghostrunner.domain.running.domain.RunningMode;
+import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.util.List;
 import java.util.Set;
@@ -33,6 +39,8 @@ class CourseServiceTest extends IntegrationTestSupport {
     @Autowired private CourseService courseService;
     @Autowired private CourseRepository courseRepository;
     @Autowired private MemberRepository memberRepository;
+    @Autowired private RunningRepository runningRepository;
+    @Autowired private CourseReadModelRepository readModelRepository;
 
     private Member dummyMember;
     private final CourseProfile dummyCourseInfo = CourseProfile.of(100d, 0d,0d, 0d);
@@ -311,6 +319,171 @@ class CourseServiceTest extends IntegrationTestSupport {
         course.setName(name);
         course.setIsPublic(isPublic);
         return course;
+    }
+
+    // --- 리드모델 관련 테스트 ---
+
+    @DisplayName("코스 등록 시 리드모델이 생성되고 주인의 최고기록이 TOP1으로 설정된다.")
+    @Test
+    void registerCourse_createsReadModelWithOwnerBestRecord() {
+        // given
+        Course course = createPrivateCourse("테스트 코스", LAT, LNG);
+        course.setName("테스트 코스");
+        courseRepository.save(course);
+
+        // 코스 주인의 러닝 기록 생성 (최고기록: 100초)
+        Running bestRun = createRunning(course, dummyMember, 100L, false); // 100초, hasPaused=false
+        Running slowerRun = createRunning(course, dummyMember, 200L, false); // 200초
+        runningRepository.saveAll(List.of(bestRun, slowerRun));
+
+        CoursePatchRequest request = new CoursePatchRequest(null, true, Set.of(IS_PUBLIC));
+
+        // when
+        courseService.updateCourse(course.getId(), request, dummyMember.getUuid());
+
+        // then
+        CourseReadModel readModel = readModelRepository.findByCourseId(course.getId())
+                .orElseThrow(() -> new AssertionError("리드모델이 생성되지 않았습니다."));
+
+        assertThat(readModel.getIsPublic()).isTrue();
+        assertThat(readModel.getTop1MemberId()).isEqualTo(dummyMember.getId());
+        assertThat(readModel.getTop1TimeSeconds()).isEqualTo(100); // 최고기록
+        assertThat(readModel.getRunnersCount()).isEqualTo(1L);
+
+        // TOP2, TOP3, TOP4는 null
+        assertThat(readModel.getTop2MemberId()).isNull();
+        assertThat(readModel.getTop3MemberId()).isNull();
+        assertThat(readModel.getTop4MemberId()).isNull();
+    }
+
+    @DisplayName("코스 재등록 시 기존 리드모델의 isPublic만 true로 변경된다.")
+    @Test
+    void reRegisterCourse_onlyUpdatesIsPublic() {
+        // given
+        Course course = createPrivateCourse("테스트 코스", LAT, LNG);
+        course.setName("테스트 코스");
+        courseRepository.save(course);
+
+        Running run = createRunning(course, dummyMember, 100L, false);
+        runningRepository.save(run);
+
+        // 처음 등록
+        courseService.updateCourse(course.getId(),
+                new CoursePatchRequest(null, true, Set.of(IS_PUBLIC)), dummyMember.getUuid());
+
+        // 등록 해제
+        courseService.updateCourse(course.getId(),
+                new CoursePatchRequest(null, false, Set.of(IS_PUBLIC)), dummyMember.getUuid());
+
+        CourseReadModel readModelAfterUnregister = readModelRepository.findByCourseId(course.getId())
+                .orElseThrow();
+        assertThat(readModelAfterUnregister.getIsPublic()).isFalse();
+
+        // when - 재등록
+        courseService.updateCourse(course.getId(),
+                new CoursePatchRequest(null, true, Set.of(IS_PUBLIC)), dummyMember.getUuid());
+
+        // then
+        CourseReadModel readModel = readModelRepository.findByCourseId(course.getId())
+                .orElseThrow();
+
+        assertThat(readModel.getIsPublic()).isTrue();
+        // 기존 TOP1 데이터 유지
+        assertThat(readModel.getTop1MemberId()).isEqualTo(dummyMember.getId());
+        assertThat(readModel.getTop1TimeSeconds()).isEqualTo(100);
+    }
+
+    @DisplayName("코스 이름이 없는 상태에서 등록하려고 하면 예외가 발생한다.")
+    @Test
+    void registerCourse_withoutName_throwsException() {
+        // given
+        Course course = createPrivateCourse(null, LAT, LNG); // 이름 없음
+        courseRepository.save(course);
+
+        Running run = createRunning(course, dummyMember, 100L, false);
+        runningRepository.save(run);
+
+        CoursePatchRequest request = new CoursePatchRequest(null, true, Set.of(IS_PUBLIC));
+
+        // when & then
+        Assertions.assertThatThrownBy(() ->
+                courseService.updateCourse(course.getId(), request, dummyMember.getUuid()))
+                .isInstanceOf(CourseNameNotValidException.class);
+    }
+
+    @DisplayName("코스 등록 시 일시정지한 기록은 TOP1에서 제외된다.")
+    @Test
+    void registerCourse_excludesPausedRunFromTop1() {
+        // given
+        Course course = createPrivateCourse("테스트 코스", LAT, LNG);
+        course.setName("테스트 코스");
+        courseRepository.save(course);
+
+        // hasPaused=true인 기록은 제외
+        Running pausedRun = createRunning(course, dummyMember, 50L, true); // 더 빠르지만 일시정지함
+        Running validRun = createRunning(course, dummyMember, 100L, false); // 유효한 기록
+        runningRepository.saveAll(List.of(pausedRun, validRun));
+
+        CoursePatchRequest request = new CoursePatchRequest(null, true, Set.of(IS_PUBLIC));
+
+        // when
+        courseService.updateCourse(course.getId(), request, dummyMember.getUuid());
+
+        // then
+        CourseReadModel readModel = readModelRepository.findByCourseId(course.getId())
+                .orElseThrow();
+
+        // 일시정지하지 않은 기록(100초)이 TOP1
+        assertThat(readModel.getTop1TimeSeconds()).isEqualTo(100);
+    }
+
+    @DisplayName("코스 등록 시 일시정지한 기록만 있으면 TOP1은 null이지만 runnersCount는 정상 집계된다.")
+    @Test
+    void registerCourse_onlyPausedRuns_top1NullButRunnersCountCorrect() {
+        // given
+        Course course = createPrivateCourse("테스트 코스", LAT, LNG);
+        course.setName("테스트 코스");
+        courseRepository.save(course);
+
+        // hasPaused=true인 기록만 존재
+        Running pausedRun = createRunning(course, dummyMember, 50L, true);
+        runningRepository.save(pausedRun);
+
+        CoursePatchRequest request = new CoursePatchRequest(null, true, Set.of(IS_PUBLIC));
+
+        // when
+        courseService.updateCourse(course.getId(), request, dummyMember.getUuid());
+
+        // then
+        CourseReadModel readModel = readModelRepository.findByCourseId(course.getId())
+                .orElseThrow();
+
+        // TOP1은 null (hasPaused=false인 기록이 없으므로)
+        assertThat(readModel.getTop1MemberId()).isNull();
+        assertThat(readModel.getTop1TimeSeconds()).isNull();
+
+        // runnersCount는 1 (isPublic=true인 기록이 있으므로)
+        assertThat(readModel.getRunnersCount()).isEqualTo(1L);
+    }
+
+    private Running createRunning(Course course, Member member, Long durationSeconds, boolean hasPaused) {
+        RunningRecord record = RunningRecord.of(
+                5.0, 100.0, 50.0, 30.0,
+                6.0, 5.0, 7.0, durationSeconds,
+                300, 170, 80
+        );
+        return Running.of(
+                "테스트 러닝",
+                RunningMode.SOLO,
+                null,
+                record,
+                System.currentTimeMillis(),
+                true, // isPublic
+                hasPaused,
+                "rawUrl", "interpolatedUrl", "screenshotUrl",
+                member,
+                course
+        );
     }
 
 }

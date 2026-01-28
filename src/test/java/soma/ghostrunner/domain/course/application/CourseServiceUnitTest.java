@@ -18,6 +18,7 @@ import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.util.Optional;
 
@@ -37,9 +38,12 @@ class CourseServiceUnitTest {
 
     @Mock
     private CourseSubscriptionRepository subscriptionRepository;
-    
+
     @Mock
     private CourseReadModelRepository readModelRepository;
+
+    @Mock
+    private RunningRepository runningRepository;
 
     @Mock
     private CourseMapper courseMapper;
@@ -71,6 +75,7 @@ class CourseServiceUnitTest {
             setIds(course, courseId, owner, memberId);
 
             given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
             given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
                     .willReturn(Optional.empty());
             given(courseRepository.save(any(Course.class))).willReturn(course);
@@ -99,6 +104,7 @@ class CourseServiceUnitTest {
             deletedSubscription.unregister(); // deleted = true
 
             given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
             given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
                     .willReturn(Optional.of(deletedSubscription));
             given(courseRepository.save(any(Course.class))).willReturn(course);
@@ -127,6 +133,7 @@ class CourseServiceUnitTest {
             CourseSubscription activeSubscription = CourseSubscription.create(course, owner);
 
             given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
             given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
                     .willReturn(Optional.of(activeSubscription));
             given(courseRepository.save(any(Course.class))).willReturn(course);
@@ -222,6 +229,7 @@ class CourseServiceUnitTest {
             setIds(course, courseId, owner, memberId);
 
             given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
             // when 1 - 등록
@@ -338,6 +346,7 @@ class CourseServiceUnitTest {
             setIds(course, courseId, owner, memberId);
 
             given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
+            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
             given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.empty());
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
