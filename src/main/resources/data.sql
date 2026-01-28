@@ -44,7 +44,7 @@ VALUES
     (3, 2, '올림픽공원 코스', 7.2, 5.0, 15.0, 15.0, 37.5202, 127.1213, 'USER', true,
      'https://example.com/routes/3.json', 'https://example.com/checkpoints/3.json', 'https://example.com/thumbnails/3.png',
      false, NOW(), NOW()),
-    (4, NULL, '서울숲 공식 코스', 4.0, 8.0, 10.0, 10.0, 37.5443, 127.0374, 'OFFICIAL', true,
+    (4, 2, '서울숲 공식 코스', 4.0, 8.0, 10.0, 10.0, 37.5443, 127.0374, 'OFFICIAL', true,
      'https://example.com/routes/4.json', 'https://example.com/checkpoints/4.json', 'https://example.com/thumbnails/4.png',
      false, NOW(), NOW());
 

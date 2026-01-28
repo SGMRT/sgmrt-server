@@ -116,11 +116,11 @@ public class CourseService {
         }
         
         // 등록: false -> true
-        if (!currentStatus && isPublic) {
+        if (!currentStatus) {
             registerCourse(course);
         }
         // 등록 해제: true -> false
-        else if (currentStatus && !isPublic) {
+        else {
             unregisterCourse(course);
         }
     }
