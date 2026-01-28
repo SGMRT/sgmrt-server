@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.pacemaker.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerInCourseViewPollingResponse;
 import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerPollingResponse;
@@ -64,7 +63,7 @@ public class PacemakerFacade {
             result = creationService.createInitialPacemaker(memberUuid, command);
         } catch (Exception e) {
             log.warn("TX1 실패, 카운트 보상 처리 - memberUuid={}", memberUuid, e);
-            compensateRateLimitCounter(rateLimitKey);
+            rateLimitService.decrementCounter(rateLimitKey);
             throw e;
         }
 
@@ -73,19 +72,6 @@ public class PacemakerFacade {
 
         log.info("페이스메이커 생성 요청 완료 - pacemakerId={}", result.getPacemakerId());
         return result.getPacemakerId();
-    }
-
-    /**
-     * Rate Limit 카운트 보상 (실패 시 감소)
-     */
-    @Retryable
-    private void compensateRateLimitCounter(String rateLimitKey) {
-        try {
-            rateLimitService.decrementCounter(rateLimitKey);
-        } catch (Exception compensationEx) {
-            log.error("카운트 보상 트랜잭션 실패 - rateLimitKey={}", rateLimitKey, compensationEx);
-            // 보상 실패는 사용자에게 유리한 방향(카운트 덜 소진)이므로 무시
-        }
     }
 
     // ==================== 조회 ====================
