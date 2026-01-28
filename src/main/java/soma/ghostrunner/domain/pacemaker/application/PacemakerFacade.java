@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.pacemaker.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerInCourseViewPollingResponse;
 import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerPollingResponse;
@@ -77,6 +78,7 @@ public class PacemakerFacade {
     /**
      * Rate Limit 카운트 보상 (실패 시 감소)
      */
+    @Retryable
     private void compensateRateLimitCounter(String rateLimitKey) {
         try {
             rateLimitService.decrementCounter(rateLimitKey);
