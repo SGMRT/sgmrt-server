@@ -49,36 +49,70 @@ VALUES
      false, NOW(), NOW());
 
 -- CourseSubscription 테이블
+-- 시나리오 설명:
+-- 1. 코스1 (한강): 주인(러너원) 등록 상태, 러너투도 따라뜀
+-- 2. 코스2 (남산): 주인(러너원) 등록한 적 없음 → subscription 없음
+-- 3. 코스3 (올림픽공원): 주인(러너투) 등록 상태, 러너원도 따라뜀
+-- 4. 코스4 (서울숲): 주인(러너투) 등록 해제함, 러너원은 따라뛴 상태
 INSERT INTO course_subscription (id, course_id, member_id, deleted, created_at, updated_at)
 VALUES
-    (1, 1, 2, false, NOW(), NOW()),
-    (2, 3, 1, false, NOW(), NOW()),
-    (3, 4, 1, false, NOW(), NOW()),
-    (4, 4, 2, false, NOW(), NOW());
+    -- 코스1: 러너원(주인) 등록 상태, 러너투 따라뜀
+    (1, 1, 1, false, NOW(), NOW()),  -- 주인(러너원) 등록 상태
+    (2, 1, 2, false, NOW(), NOW()),  -- 러너투 따라뜀
+
+    -- 코스3: 러너투(주인) 등록 상태, 러너원 따라뜀
+    (3, 3, 2, false, NOW(), NOW()),  -- 주인(러너투) 등록 상태
+    (4, 3, 1, false, NOW(), NOW()),  -- 러너원 따라뜀
+
+    -- 코스4: 러너투(주인) 등록 해제함, 러너원은 따라뛴 상태 (핵심 시나리오!)
+    (5, 4, 2, true, NOW(), NOW()),   -- 주인(러너투) 등록 해제! deleted=true
+    (6, 4, 1, false, NOW(), NOW());  -- 러너원 따라뜀 (deleted=false → courseInfo 보여야 함)
 
 -- Running 테이블
+-- 시나리오별 러닝 데이터:
+-- 1. 러너원 - 한강(코스1): subscription 있음 → courseInfo 보임
+-- 2. 러너원 - 남산(코스2): subscription 없음 → courseInfo null
+-- 3. 러너투 - 한강(코스1): subscription 있음 → courseInfo 보임
+-- 4. 러너투 - 올림픽공원(코스3): 주인+subscription 있음 → courseInfo 보임
+-- 5. 러너투 - 서울숲(코스4): 주인이지만 등록 해제(deleted=true) → courseInfo null
+-- 6. 러너원 - 서울숲(코스4): 따라뛴 러너(deleted=false) → courseInfo 보임!
 INSERT INTO running_record (id, running_name, running_mode, ghost_running_id, distance_km, elevation_average_m,
                             elevation_gain_m, elevation_loss_m, `average_pace_min/km`, `highest_pace_min/km`, `lowest_pace_min/km`,
                             duration_sec, burned_calories_kcal, average_cadence_spm, average_bpm,
                             started_at_ms, is_public, has_paused, raw_telemetry_url, interpolated_telemetry_url, screen_shot_url,
                             member_id, course_id, deleted, created_at, updated_at)
 VALUES
+    -- 러너원(member_id=1)의 러닝들
     (1, '아침 한강 러닝', 'SOLO', NULL, 5.0, 10.5, 20.0, 18.0, 5.30, 4.50, 6.20, 1590, 350, 175, 145,
      1705881600000, true, false,
      'https://example.com/telemetry/raw/1.json', 'https://example.com/telemetry/interpolated/1.json', 'https://example.com/screenshots/1.png',
-     1, 1, false, NOW(), NOW()),
-    (2, '점심 조깅', 'SOLO', NULL, 3.2, 5.0, 8.0, 8.0, 6.00, 5.30, 7.00, 1152, 220, 168, 138,
-     1705968000000, false, false,
+     1, 1, false, NOW(), NOW()),  -- 코스1(한강) - subscription 있음 → courseInfo O
+
+    (2, '남산 점심 조깅', 'SOLO', NULL, 3.2, 5.0, 8.0, 8.0, 6.00, 5.30, 7.00, 1152, 220, 168, 138,
+     1705968000000, true, false,
      'https://example.com/telemetry/raw/2.json', 'https://example.com/telemetry/interpolated/2.json', 'https://example.com/screenshots/2.png',
-     1, 2, false, NOW(), NOW()),
-    (3, '저녁 러닝', 'GHOST', 1, 5.0, 10.5, 20.0, 18.0, 5.15, 4.45, 5.50, 1545, 360, 178, 150,
+     1, 2, false, NOW(), NOW()),  -- 코스2(남산) - subscription 없음 → courseInfo X
+
+    (3, '서울숲 따라뛰기', 'GHOST', 6, 4.0, 8.0, 10.0, 10.0, 5.20, 4.40, 5.50, 1248, 280, 170, 140,
+     1706227200000, true, false,
+     'https://example.com/telemetry/raw/5.json', 'https://example.com/telemetry/interpolated/5.json', 'https://example.com/screenshots/5.png',
+     1, 4, false, NOW(), NOW()),  -- 코스4(서울숲) - 러너원은 subscription.deleted=false → courseInfo O!
+
+    -- 러너투(member_id=2)의 러닝들
+    (4, '저녁 한강 러닝', 'GHOST', 1, 5.0, 10.5, 20.0, 18.0, 5.15, 4.45, 5.50, 1545, 360, 178, 150,
      1706054400000, true, false,
      'https://example.com/telemetry/raw/3.json', 'https://example.com/telemetry/interpolated/3.json', 'https://example.com/screenshots/3.png',
-     2, 1, false, NOW(), NOW()),
-    (4, '올림픽공원 완주', 'SOLO', NULL, 7.2, 5.0, 15.0, 15.0, 5.45, 5.00, 6.30, 2376, 480, 172, 142,
+     2, 1, false, NOW(), NOW()),  -- 코스1(한강) - subscription 있음 → courseInfo O
+
+    (5, '올림픽공원 완주', 'SOLO', NULL, 7.2, 5.0, 15.0, 15.0, 5.45, 5.00, 6.30, 2376, 480, 172, 142,
      1706140800000, true, false,
      'https://example.com/telemetry/raw/4.json', 'https://example.com/telemetry/interpolated/4.json', 'https://example.com/screenshots/4.png',
-     2, 3, false, NOW(), NOW());
+     2, 3, false, NOW(), NOW()),  -- 코스3(올림픽공원) - 주인+subscription 있음 → courseInfo O
+
+    (6, '서울숲 아침 러닝', 'SOLO', NULL, 4.0, 8.0, 10.0, 10.0, 5.00, 4.30, 5.30, 1200, 270, 172, 138,
+     1706313600000, true, false,
+     'https://example.com/telemetry/raw/6.json', 'https://example.com/telemetry/interpolated/6.json', 'https://example.com/screenshots/6.png',
+     2, 4, false, NOW(), NOW());  -- 코스4(서울숲) - 주인이지만 등록 해제(deleted=true) → courseInfo X!
 
 -- Pacemaker 테이블
 INSERT INTO pacemaker (id, running_type, norm, summary, goal_km, expected_time_min, initial_message, status, has_run_with,

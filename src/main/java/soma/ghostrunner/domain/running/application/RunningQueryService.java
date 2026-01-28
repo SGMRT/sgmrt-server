@@ -81,19 +81,6 @@ public class RunningQueryService {
                 .orElseThrow(() -> new AccessDeniedException("접근할 수 없는 러닝 데이터입니다."));
     }
 
-    public List<CourseGhostResponse> findTopRankingDistinctGhostsByCourseId(Long courseId, Integer count) {
-        return runningRepository.findTopRankingRunsByCourseIdWithDistinctMember(courseId, count)
-                .stream()
-                .map(mapper::toGhostResponse)
-                .toList();
-    }
-
-    public List<Running> findLatestRunningsByMember(Long courseId, String memberUuid, int limit) {
-        return runningRepository.findLatestRunsByCourseIdAndMemberId(courseId, memberUuid, limit)
-                .stream()
-                .toList();
-    }
-
     /** 코스 ID 별로 상위 랭킹 :limit위까지의 러닝 기록을 리스트로 매핑하여 반환한다. (러너 별로 최대 하나의 기록만 포함된다) (Key = 코스 ID, Value = 랭킹 내의 러닝 기록 리스트)*/
     public Map<Long, List<CourseRunDto>> findTopRankingDistinctGhostsByCourseIds(
             List<Long> cachedMissedCourseIds, int limit) {
@@ -178,18 +165,6 @@ public class RunningQueryService {
             result.put(courseId, bestRunsByCourseId.get(courseId)); // 최고 기록이 없으면 null이 들어감
         }
         return result;
-    }
-
-    /** 사용자가 couseId에 해당하는 코스를 달렸는지 여부를 매핑하여 반환한다. (Key: 코스 ID, Value: 러닝 여부) */
-    public Map<Long, Boolean> checkRunningHistoryForCourses(List<Long> courseIds, String memberUuid) {
-        // 사용자가 달린 코스 ID 리스트를 조회하여 courseId와 비교한다
-        List<Long> ranCourseIds = runningRepository.findRanCourseIdsByMemberIdAndCourseIds(memberUuid, courseIds);
-        Set<Long> ranCourseIdSet = new HashSet<>(ranCourseIds);
-        return courseIds.stream()
-                .collect(Collectors.toMap(
-                        courseId -> courseId,
-                        ranCourseIdSet::contains
-                ));
     }
 
     public List<RunInfo> findRunnings(String filteredBy,
