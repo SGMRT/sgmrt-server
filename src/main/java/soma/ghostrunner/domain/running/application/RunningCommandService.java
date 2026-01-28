@@ -101,8 +101,13 @@ public class RunningCommandService {
         RunningDataUrlsDto runningDataUrlsDto = upload(rawTelemetry, processedTelemetries, screenShotImage, member);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
 
-        eventPublisher.publishEvent(mapper.toCourseRunEvent(running, course, member));
+        publicCourseRunEvents(running, course, member);
         return running.getId();
+    }
+
+    private void publicCourseRunEvents(Running running, Course course, Member member) {
+        eventPublisher.publishEvent(running.createFinishedEvent());
+        eventPublisher.publishEvent(running.createCourseRunEvent());
     }
 
     private RunningDataUrlsDto upload(MultipartFile rawTelemetry, TelemetryStatistics telemetryStatistics,

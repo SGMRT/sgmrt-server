@@ -6,6 +6,7 @@ import org.hibernate.annotations.SoftDelete;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
+import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
@@ -98,13 +99,39 @@ public class Running extends BaseTimeEntity {
         if (this.id == null) {
             throw new IllegalStateException("ID가 없으면 이벤트를 생성할 수 없습니다.");
         }
-        
+
         return new RunUpdatedEvent(
                 id,
                 course != null ? course.getId() : null,
                 member != null ? member.getUuid() : null,
                 runningName,
                 isPublic
+        );
+    }
+
+    /**
+     * 코스 러닝 이벤트 생성
+     *
+     * - 기존 코스에서 러닝을 완료했을 때 발행되는 이벤트
+     * - 코스 소유자에게 알림을 보내기 위해 사용
+     *
+     * @return CourseRunEvent
+     * @throws IllegalStateException ID가 없는 경우
+     */
+    public CourseRunEvent createCourseRunEvent() {
+        if (this.id == null) {
+            throw new IllegalStateException("ID가 없으면 이벤트를 생성할 수 없습니다. save() 후에 호출하세요.");
+        }
+
+        return new CourseRunEvent(
+                course != null ? course.getId() : null,
+                course != null ? course.getName() : null,
+                course != null && course.getMember() != null ? course.getMember().getId() : null,
+                id,
+                startedAt,
+                runningRecord != null ? runningRecord.getDuration() : null,
+                member != null ? member.getId() : null,
+                member != null ? member.getNickname() : null
         );
     }
 
