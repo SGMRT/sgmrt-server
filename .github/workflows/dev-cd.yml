@@ -1,0 +1,164 @@
+name: dev 브랜치 CD (배포)
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:   # 수동 실행(첫 배포/검증용)
+
+# 동시 배포 방지 (겹치면 Blue-Green 상태가 꼬임)
+concurrency:
+  group: dev-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  HEALTH_URL: https://api.ghostrun.io/actuator/health
+  REMOTE_DIR: /home/ubuntu/ghostrunner
+
+jobs:
+  deploy:
+    name: Build & Blue-Green Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # JDK 17 + 21 둘 다 설치 → 현재 toolchain(17) 및 추후 21 승격 모두 대응
+      - name: Set up JDK 17 & 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+          cache: gradle
+
+      # 시크릿을 빌드 리소스로 주입 (jar에 번들됨)
+      - name: Inject config & secrets
+        env:
+          APP_PROD_YML: ${{ secrets.APP_PROD_YML }}
+          FIREBASE_PRIVATE_KEY_JSON: ${{ secrets.FIREBASE_PRIVATE_KEY_JSON }}
+        run: |
+          mkdir -p src/main/resources
+          printf '%s' "$APP_PROD_YML" > src/main/resources/application-prod.yml
+          printf '%s' "$FIREBASE_PRIVATE_KEY_JSON" > src/main/resources/firebase-private-key.json
+
+      - name: Build (테스트는 PR CI에서 수행 → 배포는 -x test)
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean build -x test --no-daemon \
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64
+
+      - name: Locate boot jar
+        id: jar
+        run: |
+          JAR=$(ls build/libs/ghostrunner-*.jar | grep -v plain | head -1)
+          echo "path=$JAR" >> "$GITHUB_OUTPUT"
+          echo "boot jar: $JAR"
+
+      # SSH 키 로드 (이후 raw scp/ssh 사용 → 출력 캡처 용이)
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Upload artifacts to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          scp -o StrictHostKeyChecking=accept-new \
+            "${{ steps.jar.outputs.path }}" "$EC2_USER@$EC2_HOST:$REMOTE_DIR/staging.jar"
+          scp -o StrictHostKeyChecking=accept-new \
+            deploy/deploy.sh "$EC2_USER@$EC2_HOST:$REMOTE_DIR/deploy.sh"
+
+      # 2단계 배포: switch(구버전 유지) → 외부 health 게이트 → finalize | rollback
+      #   외부 health 가 통과해야만 구버전을 정리(finalize). 실패 시 자동 롤백(구버전 무중단 유지).
+      - name: Deploy (switch → external gate → finalize/rollback)
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          STRATEGY: ${{ vars.DEPLOY_STRATEGY || 'bluegreen' }}
+        run: |
+          SSH="ssh -o StrictHostKeyChecking=accept-new $EC2_USER@$EC2_HOST"
+
+          # 1) switch: 신버전을 idle 에 올리고 nginx 전환 (구버전은 살아있음)
+          $SSH "chmod +x ~/ghostrunner/deploy.sh && STRATEGY=$STRATEGY ~/ghostrunner/deploy.sh switch"
+
+          # 2) 외부 health 게이트 (DNS+nginx+SSL 전 경로. 요구사항 검증 지점)
+          #    http 200 뿐 아니라 본문 "status":"UP" 까지 확인해 유지보수페이지/캐시 200 오탐 차단(H2)
+          ok=0
+          for i in $(seq 1 12); do
+            out=$(curl -s -m 8 -w $'\n%{http_code}' "$HEALTH_URL" || true)
+            code=${out##*$'\n'}; body=${out%$'\n'*}
+            if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"status":"UP"'; then
+              ok=1; echo "external health OK (200, UP)"; break
+            fi
+            echo "external attempt $i: HTTP $code"; sleep 5
+          done
+
+          # 3) 통과 → finalize(구버전 정리) / 실패 → rollback(구버전 복귀)
+          if [ "$ok" = "1" ]; then
+            $SSH "~/ghostrunner/deploy.sh finalize"
+          else
+            echo "외부 health 실패 → 자동 롤백"
+            if $SSH "~/ghostrunner/deploy.sh rollback"; then
+              echo "::warning::롤백 완료 — 구버전으로 복귀됨"
+            else
+              echo "::error::롤백 실패 — 수동 개입 필요"
+            fi
+            exit 1
+          fi
+
+      # 실패 시 서버 로그 수집 (Discord 첨부용)
+      - name: Collect server logs on failure
+        if: failure()
+        id: srvlog
+        continue-on-error: true
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          LOG=$(ssh -o StrictHostKeyChecking=accept-new "$EC2_USER@$EC2_HOST" '
+            echo "ACTIVE_PORT=$(cat ~/ghostrunner/ACTIVE_PORT 2>/dev/null) PENDING_PORT=$(cat ~/ghostrunner/PENDING_PORT 2>/dev/null)"
+            for p in 8080 8081; do
+              echo "===== ghostrunner@$p (tail 25) ====="
+              sudo journalctl -u ghostrunner@$p -n 25 --no-pager 2>/dev/null || true
+            done
+          ' 2>&1 \
+            | sed -E 's/(password|passwd|pwd|secret|token|authorization|api[_-]?key)([=: "]+)[^ "]+/\1\2***/Ig' \
+            | tail -c 1500)
+          {
+            echo "log<<__LOG_EOF__"
+            echo "$LOG"
+            echo "__LOG_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Notify Discord (success)
+        if: success()
+        env:
+          WEBHOOK: ${{ secrets.CICD_DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          MSG=$(printf '✅ **배포 성공** — GhostRunner dev\n커밋: `%s` (by %s)\nhealth: %s → 200\n%s' \
+            "${GITHUB_SHA:0:7}" "${{ github.actor }}" "$HEALTH_URL" "$RUN_URL")
+          jq -n --arg c "$MSG" '{content: $c}' \
+            | curl -sf -H "Content-Type: application/json" -d @- "$WEBHOOK"
+
+      - name: Notify Discord (failure)
+        if: failure()
+        env:
+          WEBHOOK: ${{ secrets.CICD_DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SRVLOG: ${{ steps.srvlog.outputs.log }}
+        run: |
+          MSG=$(printf '❌ **배포 실패** — GhostRunner dev\n커밋: `%s` (by %s)\n%s' \
+            "${GITHUB_SHA:0:7}" "${{ github.actor }}" "$RUN_URL")
+          jq -n --arg m "$MSG" --arg log "${SRVLOG:-(로그 수집 실패)}" \
+            '{content: ($m + "\n```\n" + $log + "\n```")}' \
+            | curl -sf -H "Content-Type: application/json" -d @- "$WEBHOOK"

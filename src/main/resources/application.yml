@@ -1,0 +1,10 @@
+# 공통(비민감) 설정 — 전 프로파일 공통. 프로파일별 application-<profile>.yml 이 오버라이드한다.
+# 시크릿을 포함하지 않으므로 리포에 커밋한다. (민감 설정은 application-prod.yml = APP_PROD_YML 시크릿)
+
+# 배포 게이트가 DB/Redis 등 의존성 blip 과 무관하게 '앱 자체 생존'을 확인할 수 있도록
+# liveness/readiness probe 를 활성화한다. deploy.sh 의 전환 후 게이트가 /actuator/health/liveness 를 사용.
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
