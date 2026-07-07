@@ -61,8 +61,11 @@ avail_mb()     { free -m | awk '/^Mem:/{print $7}'; }
 disk_avail_mb() { df -Pm "$APP_DIR" | awk 'NR==2{print $4}'; }
 
 # nginx 가 '실제로' 가리키는 포트(진실 원천). upstream conf 에서 파싱.
+# 파일 부재/무매칭 시 grep 이 non-zero 를 반환하는데, set -e+pipefail 하에서
+# 이 함수는 복구(stale PENDING) 경로의 command substitution 으로 호출되므로
+# '|| true' 로 빈 문자열을 안전히 반환한다(downstream 이 빈 값=orphan 으로 정상 처리).
 nginx_current_port() {
-  grep -oE '127\.0\.0\.1:[0-9]+' "$NGINX_UPSTREAM_CONF" 2>/dev/null | grep -oE '[0-9]+$' | head -1
+  grep -oE '127\.0\.0\.1:[0-9]+' "$NGINX_UPSTREAM_CONF" 2>/dev/null | grep -oE '[0-9]+$' | head -1 || true
 }
 
 # http 200 + 본문 "status":"UP" 확인. LAST_CODE 에 http 코드 기록.
