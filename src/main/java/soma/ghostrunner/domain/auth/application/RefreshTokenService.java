@@ -17,11 +17,11 @@ public class RefreshTokenService {
     private static final String REFRESH_TOKEN_PREFIX = "RT:";
 
     @Value("${jwt.expiration_time.refresh_token}")
-    private long REFRESH_TOKEN_TTL_SECONDS;
+    private long REFRESH_TOKEN_TTL_MILLIS;
 
     public void saveToken(String memberUuid, String refreshToken) {
         String key = REFRESH_TOKEN_PREFIX + memberUuid;
-        redisTemplate.opsForValue().set(key, refreshToken, REFRESH_TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(key, refreshToken, REFRESH_TOKEN_TTL_MILLIS, TimeUnit.MILLISECONDS);
     }
 
     public Optional<String> findTokenByMemberUuid(String memberUuid) {
