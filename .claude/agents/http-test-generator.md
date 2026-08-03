@@ -1,5 +1,5 @@
 ---
-name: HTTP Test Generator
+name: http-test-generator
 description: 변경/추가된 API 엔드포인트를 분석하여 E2E 테스트 케이스를 정의하고, IntelliJ HTTP Client 포맷의 .http 파일을 생성하는 에이전트
 model: sonnet
 tools:

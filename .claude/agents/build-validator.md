@@ -1,5 +1,5 @@
 ---
-name: Build Validator
+name: build-validator
 description: 전체 프로젝트의 컴파일, 테스트, 빌드를 순차적으로 실행하여 변경사항의 호환성을 검증하는 에이전트
 model: sonnet
 tools:

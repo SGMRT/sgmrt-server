@@ -1,5 +1,5 @@
 ---
-name: Red
+name: red
 description: 설계 문서의 테스트 시나리오를 기반으로 실패하는 테스트를 작성하고, 실제로 실패하는지 실행하여 확인하는 에이전트
 model: opus
 tools:

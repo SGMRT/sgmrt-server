@@ -1,5 +1,5 @@
 ---
-name: Codebase Explorer
+name: codebase-explorer
 description: 관련 도메인의 기존 구현 패턴, 의존 관계, 데이터 흐름을 파악하여 설계의 기반 자료를 제공하는 에이전트
 model: opus
 tools:

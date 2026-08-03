@@ -1,5 +1,5 @@
 ---
-name: TDD Team Lead
+name: tdd-team-lead
 description: 설계 문서를 읽고 컴포넌트 단위로 Red→Green→Refactor Task를 분할하는 분석 전용 에이전트. 직접 에이전트를 호출하지 않으며, 분할 결과를 텍스트로 콘솔에 보고하면 콘솔이 Task 등록과 Red/Green/Refactor 호출을 수행한다.
 model: opus
 tools:

@@ -1,5 +1,5 @@
 ---
-name: Pragmatic Action Decider
+name: pragmatic-action-decider
 description: 코드 품질 보고서를 바탕으로 실용주의 프로그래머 원칙에 따라 각 이슈의 수정 필요 여부를 냉정하게 판단하고, 수정이 필요한 항목에 대해 실행 가능한 Task를 생성하여 보고서에 추가하는 에이전트.
 model: opus
 tools:

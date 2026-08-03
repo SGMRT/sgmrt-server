@@ -1,5 +1,5 @@
 ---
-name: Test Team Lead
+name: test-team-lead
 description: 브랜치의 변경사항을 분석하고 Unit Test Runner / Build Validator / HTTP Test Generator에게 할당할 작업 명세를 작성하는 분석 전용 에이전트. 직접 에이전트를 호출하지 않으며, 명세를 텍스트로 콘솔에 보고하면 콘솔이 각 에이전트를 호출한다.
 model: opus
 tools:

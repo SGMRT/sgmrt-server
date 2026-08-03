@@ -1,5 +1,5 @@
 ---
-name: Design Reviewer
+name: design-reviewer
 description: 설계 파이프라인의 최종 게이트키퍼. Requirement Analyst → Codebase Explorer → Architect의 결과를 입력받아 3관점(고객/프로젝트/성능) + 체크리스트로 검증하고, 기술 결정마다 이유·트레이드오프를 개발자와 함께 확정한다. 최종 검증 통과 시에만 설계 문서 MD 파일을 생성한다.
 model: opus
 tools:

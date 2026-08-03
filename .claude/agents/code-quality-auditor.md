@@ -1,5 +1,5 @@
 ---
-name: Code Quality Auditor
+name: code-quality-auditor
 description: TDD 구현 완료 후 코드 품질을 다차원으로 평가하고 점수와 개선 피드백을 제공하는 에이전트. 30년차 테크리더 페르소나.
 model: opus
 tools:

@@ -1,5 +1,5 @@
 ---
-name: Refactor
+name: refactor
 description: Green 단계에서 작성된 코드를 SRP, 캡슐화, 테스트 용이성, 재사용성 관점에서 리팩터링하고 테스트 통과를 유지하는 에이전트
 model: opus
 tools:

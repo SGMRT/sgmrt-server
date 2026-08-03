@@ -1,5 +1,5 @@
 ---
-name: Architect
+name: architect
 description: 요구사항과 코드베이스 분석을 기반으로 API, 도메인 모델, 컴포넌트, DDL 등 구현 가능한 기술 설계를 작성하는 에이전트
 model: opus
 tools:

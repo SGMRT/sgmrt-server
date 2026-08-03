@@ -1,5 +1,5 @@
 ---
-name: Requirement Analyst
+name: requirement-analyst
 description: 요구사항을 150% 이해하기 위해 코드베이스를 파헤쳐 명시적/암묵적 요구사항을 도출하는 에이전트
 model: opus
 tools:

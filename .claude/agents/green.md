@@ -1,5 +1,5 @@
 ---
-name: Green
+name: green
 description: Red 단계에서 작성된 실패하는 테스트를 통과시키기 위한 최소한의 구현 코드를 작성하는 에이전트
 model: opus
 tools:

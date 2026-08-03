@@ -1,5 +1,5 @@
 ---
-name: Unit Test Runner
+name: unit-test-runner
 description: 변경된 파일과 관련된 단위 테스트를 실행하고, 실패 시 원인을 분석하여 수정하는 에이전트
 model: sonnet
 tools:

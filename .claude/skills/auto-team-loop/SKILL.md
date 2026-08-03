@@ -49,20 +49,20 @@ allowed-tools: Agent, SendMessage, Read, Glob, Grep, Bash, AskUserQuestion, Task
 
 | 단계 | 호출 순서 | subagent_type | 역할 |
 |------|---------|---------------|------|
-| 설계 | 1 | `Requirement Analyst` | 요구사항 비판적 분석 + 엣지 케이스 도출 |
-| 설계 | 2 | `Codebase Explorer` | 기존 패턴/의존성/스키마 현황 파악 |
-| 설계 | 3 | `Architect` | API/도메인/컴포넌트/DDL 설계 |
-| 설계 | 4 | `Design Reviewer` | 검증 + `docs/design/*.md` 생성 (유일한 MD 생성 권한) |
-| TDD | A | `TDD Team Lead` | Task 분할 (분석만) |
-| TDD | B | `Red` | 실패하는 테스트 작성 + 실행 확인 |
-| TDD | C | `Green` | 테스트 통과 최소 구현 |
-| TDD | D | `Refactor` | 품질 개선 (테스트 통과 유지) |
-| 리뷰 | 1 | `Code Quality Auditor` | 10차원 평가 + 보고서 작성 |
-| 리뷰 | 2 | `Pragmatic Action Decider` | FIX/DEFER/PASS 판정 + FIX Task 정의 |
-| 테스트 | 0 | `Test Team Lead` | 변경 분석 → 작업 명세 (분석만) |
-| 테스트 | 1a | `Unit Test Runner` | 단위 테스트 실행/수정 |
-| 테스트 | 1b | `Build Validator` | 컴파일/테스트/빌드 검증 (1a와 병렬) |
-| 테스트 | 2 | `HTTP Test Generator` | E2E `.http` 파일 생성 |
+| 설계 | 1 | `requirement-analyst` | 요구사항 비판적 분석 + 엣지 케이스 도출 |
+| 설계 | 2 | `codebase-explorer` | 기존 패턴/의존성/스키마 현황 파악 |
+| 설계 | 3 | `architect` | API/도메인/컴포넌트/DDL 설계 |
+| 설계 | 4 | `design-reviewer` | 검증 + `docs/design/*.md` 생성 (유일한 MD 생성 권한) |
+| TDD | A | `tdd-team-lead` | Task 분할 (분석만) |
+| TDD | B | `red` | 실패하는 테스트 작성 + 실행 확인 |
+| TDD | C | `green` | 테스트 통과 최소 구현 |
+| TDD | D | `refactor` | 품질 개선 (테스트 통과 유지) |
+| 리뷰 | 1 | `code-quality-auditor` | 10차원 평가 + 보고서 작성 |
+| 리뷰 | 2 | `pragmatic-action-decider` | FIX/DEFER/PASS 판정 + FIX Task 정의 |
+| 테스트 | 0 | `test-team-lead` | 변경 분석 → 작업 명세 (분석만) |
+| 테스트 | 1a | `unit-test-runner` | 단위 테스트 실행/수정 |
+| 테스트 | 1b | `build-validator` | 컴파일/테스트/빌드 검증 (1a와 병렬) |
+| 테스트 | 2 | `http-test-generator` | E2E `.http` 파일 생성 |
 
 ## 실행 순서
 
@@ -93,7 +93,7 @@ git status --short
 
 ```
 Agent({
-  subagent_type: "Requirement Analyst",
+  subagent_type: "requirement-analyst",
   description: "요구사항 분석",
   run_in_background: false,
   prompt: "{요구사항 컨텍스트 전체}. 분석 결과를 최종 텍스트로 보고하세요. MD 파일은 생성하지 마세요."
@@ -106,7 +106,7 @@ Agent({
 
 ```
 Agent({
-  subagent_type: "Codebase Explorer",
+  subagent_type: "codebase-explorer",
   description: "코드베이스 탐색",
   run_in_background: false,
   prompt: "{Step 1-1 결과 첨부}. 관련 도메인의 기존 패턴, 의존성, 스키마 현황을 파악하여 텍스트로 보고. MD 생성 금지."
@@ -117,7 +117,7 @@ Agent({
 
 ```
 Agent({
-  subagent_type: "Architect",
+  subagent_type: "architect",
   description: "기술 설계",
   run_in_background: false,
   prompt: "{Step 1-1, 1-2 결과 첨부}. API/도메인/컴포넌트/DDL 설계를 작성하여 텍스트로 보고. 기술 결정은 트레이드오프와 함께 제시. 외부 API 불변(docs/core/05-api.md) 준수. MD 생성 금지."
@@ -130,7 +130,7 @@ Architect가 사용자 확인이 필요한 결정을 보고하면, 콘솔이 `As
 
 ```
 Agent({
-  subagent_type: "Design Reviewer",
+  subagent_type: "design-reviewer",
   description: "설계 검증 및 MD 생성",
   run_in_background: false,
   prompt: "{Step 1-1~1-3 결과 전체 첨부}. 3관점(고객/프로젝트/성능) 검증 + 체크리스트 검증 수행 후, 통과 시 docs/design/{주제}-design.md 파일을 생성. 실패 시 어떤 단계로 돌아가야 하는지 명시."
@@ -164,7 +164,7 @@ AskUserQuestion("설계 문서 docs/design/...md 가 생성되었습니다. 다�
 
 ```
 Agent({
-  subagent_type: "TDD Team Lead",
+  subagent_type: "tdd-team-lead",
   description: "Task 분할 분석",
   run_in_background: false,
   prompt: "설계 문서 {$DESIGN_DOC} 를 읽고, 컴포넌트별로 Red/Green/Refactor Task를 분할하여 텍스트로 응답하세요. 의존성 순서(blockedBy)와 병렬 가능 여부도 명시. 직접 다른 에이전트를 호출하지 말고 분할 결과만 보고하세요."
@@ -179,7 +179,7 @@ Agent({
 
 ```
 Agent({
-  subagent_type: "Red",
+  subagent_type: "red",
   description: "Red: {컴포넌트}",
   prompt: "Task ID: {id}. 설계 문서 {$DESIGN_DOC} 의 {섹션}을 기반으로 실패하는 테스트를 작성하고 ./gradlew test --tests 로 실패를 확인하세요. 완료 시 Task를 completed로 변경."
 })
@@ -215,7 +215,7 @@ Red 완료 후 Green, Green 완료 후 Refactor를 같은 패턴으로 호출한
 
 ```
 Agent({
-  subagent_type: "Code Quality Auditor",
+  subagent_type: "code-quality-auditor",
   description: "코드 품질 리뷰 회차 {$ITER}",
   run_in_background: false,
   prompt: "설계 문서 {$DESIGN_DOC} 대비 구현 검증. 변경 파일: {$CHANGED_FILES}. 10차원 평가 후 docs/reviews/{브랜치}-iter{$ITER}.md 파일로 보고서 저장."
@@ -228,7 +228,7 @@ Agent({
 
 ```
 Agent({
-  subagent_type: "Pragmatic Action Decider",
+  subagent_type: "pragmatic-action-decider",
   description: "FIX/DEFER/PASS 판정 회차 {$ITER}",
   run_in_background: false,
   prompt: "보고서 {$REVIEW_REPORT} 를 읽고 각 이슈에 대해 7가지 원칙 기반으로 FIX/DEFER/PASS 판정. 보고서 파일 아래에 판정 결과 섹션을 추가하고, FIX Task 목록을 명시. 응답에는 FIX 개수와 보고서 경로를 반환."
@@ -247,8 +247,8 @@ Agent({
 
 `$REVIEW_REPORT`의 FIX Task 각각에 대해:
 
-1. 새 테스트 케이스가 필요한 FIX → `Red` → `Green` → `Refactor` 순서로 호출
-2. 리팩토링만 필요한 FIX → `Refactor`만 호출 (기존 테스트로 회귀 검증)
+1. 새 테스트 케이스가 필요한 FIX → `red` → `green` → `refactor` 순서로 호출
+2. 리팩토링만 필요한 FIX → `refactor`만 호출 (기존 테스트로 회귀 검증)
 3. 검증: `./gradlew test 2>&1 | tail -30`
 
 모든 테스트 통과 시 `$ITER += 1` 후 Step 3-2로 점프 (재리뷰).
@@ -261,7 +261,7 @@ Agent({
 
 ```
 Agent({
-  subagent_type: "Test Team Lead",
+  subagent_type: "test-team-lead",
   description: "변경사항 분석",
   run_in_background: false,
   prompt: "git diff dev --name-only 로 변경 파일 분류 후, Unit Test Runner / Build Validator / HTTP Test Generator 가 받아야 할 작업 명세를 텍스트로 응답. 직접 다른 에이전트를 호출하지 말 것."
@@ -273,10 +273,10 @@ Agent({
 같은 메시지에 두 Agent 호출을 함께 보내 병렬 실행한다.
 
 ```
-Agent({ subagent_type: "Unit Test Runner", description: "단위 테스트 실행",
+Agent({ subagent_type: "unit-test-runner", description: "단위 테스트 실행",
   prompt: "{Test Team Lead가 정의한 테스트 파일 목록}. 실행 후 실패 분석/수정 보고." })
 
-Agent({ subagent_type: "Build Validator", description: "빌드 검증",
+Agent({ subagent_type: "build-validator", description: "빌드 검증",
   prompt: "compileJava → compileTestJava → test → build 순서로 검증 후 보고. (통합 테스트는 Testcontainers — Docker 필요)" })
 ```
 
@@ -284,7 +284,7 @@ Agent({ subagent_type: "Build Validator", description: "빌드 검증",
 
 ```
 Agent({
-  subagent_type: "HTTP Test Generator",
+  subagent_type: "http-test-generator",
   description: "HTTP E2E 생성",
   run_in_background: false,
   prompt: "변경된 컨트롤러(*Api.java) 엔드포인트 분석 → 사용자/기술 관점 테스트 케이스 정의 → http/ 아래에 .http 파일 생성."
