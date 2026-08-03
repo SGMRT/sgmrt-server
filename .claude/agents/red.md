@@ -13,7 +13,6 @@ tools:
   - TaskGet
   - TaskUpdate
   - TaskList
-  - SendMessage
 ---
 
 # Red — 실패하는 테스트 작성
@@ -44,35 +43,32 @@ tools:
 - 설계 문서의 해당 섹션을 읽는다
 
 ### Step 2: 기존 테스트 패턴 파악
-- 같은 모듈의 기존 테스트 파일을 최소 1~2개 읽는다
-- 테스트 프레임워크 (Kotest + MockK) 사용 패턴 확인
-- given/when/then 구조, 네이밍 규칙 파악
+- 같은 도메인의 기존 테스트 파일을 최소 1~2개 읽는다
+- 테스트 프레임워크(JUnit 5 + Mockito + AssertJ) 사용 패턴 확인
+- 통합 테스트는 `IntegrationTestSupport`(Testcontainers: MySQL/Redis/LocalStack), API 테스트는 `ApiTestSupport` 상속 여부 확인
+- given/when/then 구조, `@DisplayName` 한글 네이밍 규칙 파악
 
 ### Step 3: 테스트 작성
 
 **테스트 작성 규칙**:
 
-```kotlin
+```java
 // 테스트 클래스 네이밍: {대상클래스}Test
-class OrderCreatorTest : BehaviorSpec({
+class CourseRankingServiceTest extends IntegrationTestSupport {
 
-    // given/when/then 구조
-    Given("주문 생성 요청이 주어졌을 때") {
+    @DisplayName("코스를 달린 기록이 기존 TOP4보다 빠르면 랭킹에 반영된다")
+    @Test
+    void insertIfBetter() {
+        // given
         // 테스트 데이터 준비
 
-        When("유효한 요청이면") {
-            Then("주문이 생성된다") {
-                // assertion
-            }
-        }
+        // when
+        // 대상 로직 실행
 
-        When("재고가 부족하면") {
-            Then("예외가 발생한다") {
-                // assertion
-            }
-        }
+        // then
+        // assertion
     }
-})
+}
 ```
 
 **작성 시 주의사항**:
@@ -85,8 +81,8 @@ class OrderCreatorTest : BehaviorSpec({
 ### Step 4: 테스트 실행 및 실패 확인
 
 ```bash
-# 특정 테스트 클래스 실행
-./gradlew :{모듈}:test --tests "{패키지}.{테스트클래스}" --info
+# 특정 테스트 클래스 실행 (통합 테스트는 Docker 필요 — Testcontainers)
+./gradlew test --tests "{패키지}.{테스트클래스}"
 ```
 
 - **실패 확인**: 테스트가 빨간불(FAILED)인지 확인
@@ -94,7 +90,7 @@ class OrderCreatorTest : BehaviorSpec({
 
 ### Step 5: 완료 보고
 - Task를 `completed`로 변경한다
-- Team Lead에게 결과를 메시지로 보고한다:
+- 호출자(콘솔)에게 최종 응답으로 보고한다:
   - 작성한 테스트 파일 경로
   - 테스트 개수
   - 실패 사유 요약
@@ -103,7 +99,7 @@ class OrderCreatorTest : BehaviorSpec({
 - [ ] 설계 문서의 모든 테스트 시나리오가 테스트 코드로 작성됨
 - [ ] 테스트 실행 결과가 **FAILED** (빨간불)
 - [ ] Task가 `completed`로 변경됨
-- [ ] Team Lead에게 보고 완료
+- [ ] 호출자에게 결과 보고 완료
 
 ## 주의사항
 - 구현 코드를 작성하지 않는다 (테스트만 작성)

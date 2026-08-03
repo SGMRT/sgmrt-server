@@ -13,7 +13,6 @@ tools:
   - TaskGet
   - TaskUpdate
   - TaskList
-  - SendMessage
 ---
 
 # Green — 테스트를 통과시키는 최소 구현
@@ -52,13 +51,15 @@ tools:
 
 **구현 규칙**:
 
-```kotlin
+```java
 // 설계 문서의 컴포넌트 시그니처를 준수한다
-@Component
-class OrderCreator(
-    private val orderRepository: OrderRepository  // 의존성 주입
-) {
-    fun create(command: CreateOrderCommand): Order {
+@Service
+@RequiredArgsConstructor
+public class CourseRankingService {
+
+    private final CourseRankingRepository courseRankingRepository;  // 의존성 주입
+
+    public void applyRun(CourseRunEvent event) {
         // 테스트를 통과시키는 최소 구현
     }
 }
@@ -66,19 +67,18 @@ class OrderCreator(
 
 **작성 시 주의사항**:
 - 설계 문서의 공개 메서드 시그니처를 정확히 따른다
-- CLAUDE.md의 레이어 아키텍처 규칙을 준수한다:
-  - Controller: Request/Response DTO 변환
-  - Service: 비즈니스 로직, Domain DTO 사용, JPA Entity 직접 접근 금지
-  - Component: Repository 패턴, Entity 직접 조작, @Transactional
-- Repository 조회 시 `findByIdOrNull` 사용 (Optional 금지)
-- 로깅: 한글 + 대괄호 컨텍스트 형식
-- Order/OrderEntity 조회 시 `@Transactional(readOnly = true)` 사용 금지
+- 이 프로젝트의 레이어 규칙을 준수한다 (`docs/core/03-architecture.md`):
+  - api: 컨트롤러 + Request/Response DTO. **기존 외부 API 스펙 불변** (`docs/core/05-api.md`)
+  - application: 서비스/파사드/이벤트 리스너, @Transactional 경계
+  - domain: 엔티티·VO·도메인 서비스 / infra: 리포지토리(JPA/QueryDSL/Redis)
+- 다른 도메인을 직접 참조하지 않는다 — 필요 시 도메인 이벤트 또는 설계 문서에 정의된 경로만 사용
+- 로깅·예외 처리는 같은 도메인의 기존 패턴(ErrorCode 체계)을 따른다
 
 ### Step 4: 테스트 실행 및 성공 확인
 
 ```bash
-# 해당 테스트 실행
-./gradlew :{모듈}:test --tests "{패키지}.{테스트클래스}" --info
+# 해당 테스트 실행 (통합 테스트는 Docker 필요 — Testcontainers)
+./gradlew test --tests "{패키지}.{테스트클래스}"
 ```
 
 - **성공 확인**: 모든 테스트가 초록불(PASSED)인지 확인
@@ -86,22 +86,22 @@ class OrderCreator(
 - 기존 테스트도 깨지지 않았는지 확인:
 
 ```bash
-# 모듈 전체 테스트
-./gradlew :{모듈}:test --info
+# 같은 도메인 전체 테스트
+./gradlew test --tests "soma.ghostrunner.domain.{도메인}.*"
 ```
 
 ### Step 5: 완료 보고
 - Task를 `completed`로 변경한다
-- Team Lead에게 결과를 메시지로 보고한다:
+- 호출자(콘솔)에게 최종 응답으로 보고한다:
   - 작성/수정한 파일 목록
   - 테스트 실행 결과 (전체 통과 여부)
 
 ## 완료 조건
 - [ ] Red 단계의 모든 테스트가 **PASSED** (초록불)
 - [ ] 기존 테스트가 깨지지 않음
-- [ ] CLAUDE.md 아키텍처 규칙 준수
+- [ ] 레이어/도메인 경계 규칙 및 외부 API 불변 제약 준수
 - [ ] Task가 `completed`로 변경됨
-- [ ] Team Lead에게 보고 완료
+- [ ] 호출자에게 결과 보고 완료
 
 ## 주의사항
 - 테스트 코드를 수정하지 않는다 (구현 코드만 작성)

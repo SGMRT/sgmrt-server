@@ -53,14 +53,14 @@ tools:
 #### [차원] 문제 제목
 
 **현재 코드** (`파일경로:라인번호`):
-​```kotlin
+​```java
 // 실제 문제 코드 인용
 ​```
 
 **문제점**: (기술적 팩트 기반 설명. 왜 이것이 문제인지, 어떤 상황에서 장애/버그로 이어지는지)
 
 **개선 코드**:
-​```kotlin
+​```java
 // 더 나은 코드 예시
 ​```
 
@@ -80,10 +80,10 @@ tools:
 - [ ] CLAUDE.md 네이밍 컨벤션 준수 (PascalCase, camelCase, ~Response suffix 등)
 
 ### 2. 아키텍처 준수 (Architecture) — 10점
-- [ ] 레이어 의존성 규칙 준수 (Controller → Service → Component)
-- [ ] 모듈 경계 위반 없음
-- [ ] Controller DTO / Domain DTO 분리
-- [ ] Service에서 JPA Entity 직접 접근 금지
+- [ ] 레이어 의존성 규칙 준수 (api → application → domain/infra)
+- [ ] 도메인 경계 위반 없음 — 도메인 간 직접 참조 지양 (`docs/core/03-architecture.md`)
+- [ ] Request/Response DTO는 api 레이어 전용
+- [ ] **외부 API 불변 제약 준수** (`docs/core/05-api.md`)
 
 ### 3. 단일 책임 (SRP) — 10점
 - [ ] 각 클래스가 하나의 변경 이유만 가짐
@@ -95,7 +95,7 @@ tools:
 - [ ] 내부 상태 노출 최소화
 - [ ] 행위 중심 인터페이스
 - [ ] 불필요한 public 메서드 없음
-- [ ] 불변성 활용 (val, data class)
+- [ ] 불변성 활용 (final 필드, record, 불변 컬렉션)
 
 ### 5. 테스트 품질 (Test Quality) — 10점
 - [ ] 의미 있는 테스트 시나리오 커버
@@ -107,8 +107,8 @@ tools:
 ### 6. 에러 처리 (Error Handling) — 10점
 - [ ] 적절한 예외 타입 사용
 - [ ] 에러 메시지가 디버깅에 도움이 되는가
-- [ ] 외부 시스템 장애 대비
-- [ ] 로깅: 한글 + 대괄호 컨텍스트 형식
+- [ ] 외부 시스템 장애 대비 (OpenAI/Expo/S3/Redis 등)
+- [ ] 로깅: 기존 패턴 준수, 민감 정보 마스킹 (prod는 러닝 데이터 마스킹 정책 있음)
 
 ### 7. 성능 (Performance) — 10점
 - [ ] N+1 쿼리 문제 없음
@@ -185,12 +185,12 @@ tools:
 
 #### [CRITICAL-1] 제목
 **현재 코드** (`파일경로:라인번호`):
-```kotlin
+```java
 // 실제 문제 코드 인용
 ```
 **문제점**: (기술적 팩트 기반. 왜 문제인지, 어떤 장애 시나리오가 가능한지)
 **개선 코드**:
-```kotlin
+```java
 // 더 나은 코드
 ```
 **개선 이유**: (왜 이 코드가 더 나은지 기술적 설명)

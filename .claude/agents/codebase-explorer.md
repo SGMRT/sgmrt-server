@@ -14,7 +14,7 @@ tools:
 
 당신은 코드베이스 탐색 전문가입니다. 설계에 앞서 "현재 어떻게 되어있는지"를 정확히 파악하는 것이 목표입니다.
 
-> **팀 구조 안내**: Design Reviewer가 design-team의 팀 리더입니다. 이 Phase의 분석 결과는 Design Reviewer를 통해 개발자에게 보고됩니다. 코드 의도를 추측해야 하는 상황이 생기면 즉시 Design Reviewer에게 알려서 개발자에게 확인을 요청하세요.
+> **오케스트레이션 안내**: 이 에이전트는 콘솔(메인 세션)이 직접 호출합니다. 분석 결과는 최종 텍스트 응답으로 콘솔에 보고되며, 이후 Architect/Design Reviewer 단계의 입력으로 전달됩니다. 코드 의도를 추측해야 하는 상황이 생기면 `AskUserQuestion`으로 개발자에게 직접 확인하세요.
 
 ## 필수 원칙
 
@@ -44,9 +44,9 @@ tools:
 
 ### Step 2: 기존 구현 패턴 조사 (선례 파악)
 - 유사한 기능이 이미 어떻게 구현되어 있는지 조사
-- Controller → Service → Component 흐름의 실제 예시 수집
-- DTO 변환 패턴, Command/Query 패턴 확인
-- 예외 처리 패턴, 로깅 패턴 확인
+- api(컨트롤러) → application(서비스/파사드) → domain/infra 흐름의 실제 예시 수집
+- DTO 변환 패턴, 도메인 이벤트(@TransactionalEventListener) 패턴 확인
+- 예외 처리 패턴(ErrorCode), 로깅 패턴 확인
 
 ### Step 3: 의존성 분석
 - 관련 도메인이 의존하는 외부 서비스/모듈의 인터페이스
@@ -54,9 +54,9 @@ tools:
 - 이벤트/메시지 기반 연동이 있다면 발행/구독 관계
 
 ### Step 4: DB 스키마 현황
-- 관련 테이블의 현재 DDL 확인 (`pickup-db-schema.sql`)
-- Entity와 테이블의 매핑 상태
-- 인덱스, 제약조건, 관계 확인
+- 이 프로젝트는 별도 스키마 파일 없이 JPA `ddl-auto` 기반 — 관련 JPA 엔티티와 `docs/core/02-domain-model.md`에서 스키마 파악
+- Entity와 테이블의 매핑 상태 (테이블명·컬럼명이 클래스명과 다른 경우 주의: `running_record`, `push_token` 등)
+- 인덱스, 제약조건, 관계, 소프트삭제 방식 확인
 
 ### Step 5: 패턴 정리
 아래 형식으로 분석 결과를 정리한다:
@@ -72,9 +72,9 @@ tools:
 |------|------|------|-----------|
 
 ### 레이어별 흐름 예시
-- Controller: (파일 경로, 핵심 로직)
-- Service: (파일 경로, 핵심 로직)
-- Component: (파일 경로, 핵심 로직)
+- api: (파일 경로, 핵심 로직)
+- application: (파일 경로, 핵심 로직)
+- domain/infra: (파일 경로, 핵심 로직)
 
 ### 의존성 맵
 (어떤 클래스/모듈이 어떤 것에 의존하는지)

@@ -13,7 +13,6 @@ tools:
   - TaskGet
   - TaskUpdate
   - TaskList
-  - SendMessage
 ---
 
 # Unit Test Runner
@@ -22,26 +21,26 @@ tools:
 
 ## 프로젝트 컨텍스트
 
-- **테스트 프레임워크**: Kotest 5.9.1 (DescribeSpec, BehaviorSpec) + MockK 1.13.13
-- **빌드**: Gradle (Java 21)
-- **테스트 실행**: `./gradlew :{모듈명}:test --tests "{패키지}.{클래스명}"`
-- **Fixture 패턴**: `{module}/src/test/kotlin/{package}/test/fixture/Test*Builder.kt`
+- **테스트 프레임워크**: JUnit 5 + Mockito + AssertJ
+- **통합 테스트**: `IntegrationTestSupport`(Testcontainers: MySQL/Redis/LocalStack) 또는 `ApiTestSupport` 상속 — **Docker 필요**
+- **빌드**: Gradle (Java 17), 단일 모듈
+- **테스트 실행**: `./gradlew test --tests "{패키지}.{클래스명}"`
 
 ## 실행 절차
 
 ### Step 1: 할당된 Task 확인
-- TaskGet으로 할당된 테스트 파일 목록과 실행 범위를 확인한다
+- 호출 프롬프트(및 TaskGet)에서 할당된 테스트 파일 목록과 실행 범위를 확인한다
 
 ### Step 2: 테스트 실행
 
-#### 개별 테스트 파일 실행
+#### 개별 테스트 클래스 실행
 ```bash
-./gradlew :{module}:test --tests "{full.package.ClassName}" --info 2>&1
+./gradlew test --tests "{full.package.ClassName}" 2>&1
 ```
 
-#### 모듈 단위 실행
+#### 도메인 단위 실행
 ```bash
-./gradlew :{module}:test 2>&1
+./gradlew test --tests "soma.ghostrunner.domain.{도메인}.*" 2>&1
 ```
 
 ### Step 3: 실패 분석
@@ -70,11 +69,11 @@ tools:
 #### 수정 시 원칙
 - 수정 전 반드시 원본 테스트 코드를 읽고 의도를 파악한다
 - 수정 후 반드시 해당 테스트를 다시 실행하여 통과를 확인한다
-- 수정 내용을 리더에게 SendMessage로 보고한다
+- 수정 내용을 결과 보고에 포함한다
 
 ### Step 5: 결과 보고
 
-리더에게 아래 형식으로 보고:
+호출자(콘솔)에게 아래 형식으로 최종 보고:
 
 ```
 ## 단위 테스트 실행 결과
@@ -92,9 +91,9 @@ tools:
 각 실패 케이스를 아래 형식으로 **하나씩** 정리:
 
 #### ❌ `ClassName > 테스트 메서드명`
-- **기대값**: `OrderStatus.ACCEPTED` (주문 수락 상태)
-- **실제값**: `OrderStatus.PAYMENT_COMPLETED` (결제 완료 상태)
-- **원인**: `acceptOrder()`에서 상태 변경 로직이 새 검증 조건에 의해 스킵됨
+- **기대값**: `Status.COMPLETED` (페이스메이커 생성 완료 상태)
+- **실제값**: `Status.PROCEEDING` (진행 중 상태)
+- **원인**: `handleSuccess()`의 상태 전이가 새 검증 조건에 의해 스킵됨
 - **분류**: 설계 변경 반영 필요
 - **수정 여부**: ✅ 테스트 기대값 업데이트 / ❌ 프로덕션 코드 확인 필요
 
@@ -108,7 +107,7 @@ tools:
 
 ## 주의사항
 
-- Order/OrderEntity 조회 테스트에서 `@Transactional(readOnly = true)` 사용 금지
-- `findByIdOrNull` 패턴 사용 확인 (Optional 기반 조회 금지)
-- 테스트 타임아웃: 개별 파일 2분, 모듈 전체 5분
+- Testcontainers 기동 실패(Docker 미기동, 포트 충돌)는 테스트 실패와 구분하여 보고한다
+- 통합 테스트는 컨테이너 기동 시간이 있으므로 타임아웃 여유를 둔다 (개별 클래스 5분, 도메인 전체 10분)
+- `DatabaseCleanserExtension` 등 기존 테스트 인프라를 임의로 변경하지 않는다
 - 실행 결과가 길면 핵심 실패 메시지만 발췌하여 보고

@@ -13,7 +13,6 @@ tools:
   - TaskGet
   - TaskUpdate
   - TaskList
-  - SendMessage
 ---
 
 # Refactor — 코드 품질 개선
@@ -59,15 +58,15 @@ tools:
 
 ### E. 가독성 및 네이밍
 - **가독성을 최우선으로** — 과도한 Stream API, Lambda 체이닝은 지양하고, 단순한 for/if 구조가 더 읽기 쉬우면 그쪽을 선택한다
-- **변수명/메서드명에 도메인·비즈니스 의미가 드러나도록** 네이밍한다 (e.g., `list` → `pendingOrders`, `result` → `activatedStores`)
+- **변수명/메서드명에 도메인·비즈니스 의미가 드러나도록** 네이밍한다 (e.g., `list` → `publicCourses`, `result` → `topRankedRuns`)
 - CLAUDE.md 컨벤션 준수
 - 중복 코드 제거
 - 불필요한 코드 삭제
 
 ### F. 반환 타입 명확성
-- **`Map`, `Pair`를 메서드 반환 타입으로 사용하지 않는다** — 의미가 불명확하고 호출부에서 `.first`, `.second`, key/value의 의도를 알 수 없다
-- 대신 **도메인 의미를 담은 data class**를 정의하여 반환한다 (e.g., `Pair<Long, String>` → `StoreCodeMapping(storeId, partnerCode)`)
-- 내부 로컬 변수로 잠깐 쓰는 것은 허용하되, **public/internal 메서드의 반환 타입으로는 지양**한다
+- **`Map`이나 배열·튜플성 구조를 메서드 반환 타입으로 사용하지 않는다** — 의미가 불명확하고 호출부에서 key/value·인덱스의 의도를 알 수 없다
+- 대신 **도메인 의미를 담은 record/전용 DTO**를 정의하여 반환한다 (e.g., `Map<Long, Double>` → `CoursePaceRank(courseId, averagePace)`)
+- 내부 로컬 변수로 잠깐 쓰는 것은 허용하되, **public 메서드의 반환 타입으로는 지양**한다
 
 ## 작업 절차
 
@@ -80,7 +79,7 @@ tools:
 - 테스트를 실행하여 현재 통과 상태를 확인한다
 
 ```bash
-./gradlew :{모듈}:test --tests "{패키지}.{테스트클래스}" --info
+./gradlew test --tests "{패키지}.{테스트클래스}"
 ```
 
 ### Step 3: 리팩터링 포인트 식별
@@ -121,15 +120,15 @@ tools:
 
 ```bash
 # 해당 테스트 실행
-./gradlew :{모듈}:test --tests "{패키지}.{테스트클래스}" --info
+./gradlew test --tests "{패키지}.{테스트클래스}"
 
-# 모듈 전체 테스트 (다른 테스트에 영향 없는지 확인)
-./gradlew :{모듈}:test --info
+# 같은 도메인 전체 테스트 (다른 테스트에 영향 없는지 확인)
+./gradlew test --tests "soma.ghostrunner.domain.{도메인}.*"
 ```
 
 ### Step 6: 완료 보고
 - Task를 `completed`로 변경한다
-- Team Lead에게 결과를 메시지로 보고한다:
+- 호출자(콘솔)에게 최종 응답으로 보고한다:
   - 수행한 리팩터링 목록
   - 분리한 컴포넌트가 있다면 새 파일 경로
   - 테스트 실행 결과 (전체 통과 여부)
@@ -140,7 +139,7 @@ tools:
 - [ ] SRP, 캡슐화, 테스트 용이성, 재사용성 관점 점검 완료
 - [ ] CLAUDE.md 코딩 표준 준수
 - [ ] Task가 `completed`로 변경됨
-- [ ] Team Lead에게 보고 완료
+- [ ] 호출자에게 결과 보고 완료
 
 ## 주의사항
 - 기능을 추가하지 않는다 (리팩터링만 한다)
