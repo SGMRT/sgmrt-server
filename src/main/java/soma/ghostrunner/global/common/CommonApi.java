@@ -4,9 +4,9 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 import soma.ghostrunner.global.clients.aws.s3.PresignUrlDto;
 import soma.ghostrunner.global.clients.aws.s3.PresignUrlType;
-import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 
 @RestController
 @RequiredArgsConstructor

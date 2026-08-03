@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.auth.application.dto.JwtTokens;
 
 import java.security.Key;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 @Component
@@ -40,13 +41,13 @@ public class JwtTokenFactory {
     private String createAccessToken(String memberId) {
         Claims claims = createClaims(memberId);
         ZonedDateTime now = ZonedDateTime.now();
-        return createToken(claims, now, now.plusSeconds(accessTokenExpTime));
+        return createToken(claims, now, now.plus(accessTokenExpTime, ChronoUnit.MILLIS));
     }
 
     private String createRefreshToken(String memberId){
         Claims claims = createClaims(memberId);
         ZonedDateTime now = ZonedDateTime.now();
-        return createToken(claims, now, now.plusSeconds(refreshTokenExpTime));
+        return createToken(claims, now, now.plus(refreshTokenExpTime, ChronoUnit.MILLIS));
     }
 
     private Claims createClaims(String memberId) {

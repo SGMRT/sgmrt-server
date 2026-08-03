@@ -9,11 +9,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
-import soma.ghostrunner.domain.running.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.dto.request.*;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
-import soma.ghostrunner.domain.running.application.PacemakerService;
 import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailInfo;
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
@@ -117,6 +115,7 @@ public class RunningApi {
         return runningQueryService.findGhostRunInfo(myRunningId, ghostRunningId, memberUuid);
     }
 
+    @Deprecated
     @PatchMapping("/v1/runs/{runningId}/isPublic")
     public void patchRunningPublicStatus(
             @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long runningId) {
@@ -124,6 +123,7 @@ public class RunningApi {
         runningCommandService.updateRunningPublicStatus(runningId, memberUuid);
     }
 
+    @Deprecated
     @DeleteMapping("/v1/runs")
     public void deleteRunnings(
             @AuthenticationPrincipal JwtUserDetails userDetails, @RequestBody @Valid DeleteRunningRequest request) {

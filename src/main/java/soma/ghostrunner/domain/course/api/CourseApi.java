@@ -53,14 +53,16 @@ public class CourseApi {
     @PatchMapping("/courses/{courseId}")
     public void updateCourse(
             @PathVariable("courseId") Long courseId,
-            @RequestBody CoursePatchRequest request) {
-        courseFacade.updateCourse(courseId, request);
+            @RequestBody CoursePatchRequest request,
+            @AuthenticationPrincipal JwtUserDetails userDetails) {
+        courseFacade.updateCourse(courseId, request, userDetails.getUserId());
     }
 
     @DeleteMapping("/courses/{courseId}")
     public void deleteCourse(
-            @PathVariable("courseId") Long courseId) {
-        courseFacade.deleteCourse(courseId);
+            @PathVariable("courseId") Long courseId,
+            @AuthenticationPrincipal JwtUserDetails userDetails) {
+        courseFacade.deleteCourse(courseId, userDetails.getUserId());
     }
 
     @GetMapping("/courses/{courseId}/ghosts")

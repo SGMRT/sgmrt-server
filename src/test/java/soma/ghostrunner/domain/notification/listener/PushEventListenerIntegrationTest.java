@@ -34,7 +34,7 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
-import soma.ghostrunner.domain.running.domain.events.PacemakerCreatedEvent;
+import soma.ghostrunner.domain.pacemaker.domain.events.PacemakerCreatedEvent;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.global.common.versioning.VersionRange;
 

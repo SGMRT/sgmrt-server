@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import soma.ghostrunner.global.common.MdcTaskDecorator;
 
 import java.util.concurrent.Executor;
 
@@ -18,6 +19,24 @@ public class AsyncConfig {
         executor.setMaxPoolSize(6);
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("PushThread-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "llmTaskExecutor")
+    public Executor llmTaskExecutor() {
+
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setThreadNamePrefix("llm-async-");
+
+        executor.setCorePoolSize(16);
+        executor.setMaxPoolSize(32);
+        executor.setQueueCapacity(100);
+
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(480);  // 8분 (LLM 2회 호출 * 3분 + 버퍼)
+
         executor.initialize();
         return executor;
     }

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static soma.ghostrunner.domain.course.domain.QCourse.course;
+import static soma.ghostrunner.domain.course.domain.QCourseSubscription.courseSubscription;
 import static soma.ghostrunner.domain.member.domain.QMember.member;
 import static soma.ghostrunner.domain.running.domain.QRunning.running;
 
@@ -153,10 +154,14 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
                                 course.courseProfile.distance
                         ),
                         running.ghostRunningId,
-                        running.runningDataUrls.screenShotUrl
+                        running.runningDataUrls.screenShotUrl,
+                        courseSubscription.deleted
                 ))
                 .from(running)
                 .leftJoin(running.course, course)
+                .leftJoin(courseSubscription)
+                    .on(courseSubscription.course.id.eq(running.course.id)
+                        .and(courseSubscription.member.id.eq(memberId)))
                 .where(
                         running.member.id.eq(memberId),
                         startedAtRange(startEpoch, endEpoch),
@@ -201,10 +206,14 @@ public class RunningQueryRepositoryImpl implements RunningQueryRepository {
                                 course.courseProfile.distance
                         ),
                         running.ghostRunningId,
-                        running.runningDataUrls.screenShotUrl
+                        running.runningDataUrls.screenShotUrl,
+                        courseSubscription.deleted
                 ))
                 .from(running)
                 .leftJoin(running.course, course)
+                .leftJoin(courseSubscription)
+                    .on(courseSubscription.course.id.eq(running.course.id)
+                        .and(courseSubscription.member.id.eq(memberId)))
                 .where(
                         running.member.id.eq(memberId),
                         startedAtRange(startEpoch, endEpoch),

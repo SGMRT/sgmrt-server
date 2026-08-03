@@ -6,7 +6,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import soma.ghostrunner.domain.course.dao.CourseCacheRepository;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
@@ -29,7 +28,14 @@ class CourseCacheEventListenerTest {
     void handleRunFinishedEvent() {
         // given
         Long courseId = 1L;
-        RunFinishedEvent event = new RunFinishedEvent(1L, courseId, "member-uuid", 5.0);
+        RunFinishedEvent event = new RunFinishedEvent(
+            1L,              // runId
+            courseId,        // courseId
+            "member-uuid",   // memberUuid
+            100L,            // memberId (추가)
+            1800,            // durationSeconds (추가)
+            5.0              // averagePace
+        );
         willDoNothing().given(courseCacheRepository).deleteById(courseId);
 
         // when

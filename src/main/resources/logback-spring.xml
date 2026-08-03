@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration packagingData="true">
 
-
     <!-- Time Stamp -->
     <timestamp key="timestamp" datePattern="yyyy-MM-dd-HH-mm-ssSSS"/>
     <!-- aws account -->
     <springProperty scope="context" name="aws_access_key" source="cloud.aws.credentials.access-key"/>
     <springProperty scope="context" name="aws_secret_key" source="cloud.aws.credentials.secret-key"/>
-
 
     <!-- Color Converter -->
     <conversionRule conversionWord="clr"
@@ -17,13 +15,11 @@
     <conversionRule conversionWord="wEx"
                     converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter"/>
 
-
     <!-- Colored Logging Pattern -->
     <property name="COLORED_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %clr(%5level) [%thread] [%X{requestId}] %clr(%-40.40logger{39}){cyan} : %msg%n"/>
 
     <!-- UnColored Logging Pattern -->
     <property name="UNCOLORED_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %5level [%thread] [%X{requestId}] %-40.40logger{39} : %msg%n"/>
-
 
     <!-- Local Console Appender -->
     <appender name="LOCAL_CONSOLE_APPENDER" class="ch.qos.logback.core.ConsoleAppender">

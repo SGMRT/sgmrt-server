@@ -17,11 +17,12 @@ import soma.ghostrunner.domain.notice.api.NoticeApi;
 import soma.ghostrunner.domain.notice.application.NoticeService;
 import soma.ghostrunner.domain.notification.api.NotificationApi;
 import soma.ghostrunner.domain.notification.application.PushService;
-import soma.ghostrunner.domain.running.api.PacemakerApi;
+import soma.ghostrunner.domain.pacemaker.api.PacemakerApi;
+import soma.ghostrunner.domain.pacemaker.api.support.PacemakerApiMapperImpl;
+import soma.ghostrunner.domain.pacemaker.application.PacemakerFacade;
 import soma.ghostrunner.domain.running.api.RunningApi;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapperImpl;
-import soma.ghostrunner.domain.running.application.PacemakerService;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
@@ -29,7 +30,7 @@ import soma.ghostrunner.global.common.log.HttpLogger;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
 
 @WebMvcTest(controllers = {RunningApi.class, AuthApi.class, NoticeApi.class, MemberApi.class, PacemakerApi.class, DeviceApi.class, NotificationApi.class})
-@Import(RunningApiMapperImpl.class)
+@Import({RunningApiMapperImpl.class, PacemakerApiMapperImpl.class})
 @WithMockUser
 public abstract class ApiTestSupport {
 
@@ -52,9 +53,6 @@ public abstract class ApiTestSupport {
     protected AuthService authService;
 
     @MockitoBean
-    protected PacemakerService paceMakerService;
-
-    @MockitoBean
     protected NoticeService noticeService;
 
     @MockitoBean
@@ -74,5 +72,8 @@ public abstract class ApiTestSupport {
 
     @MockitoBean
     protected PushService pushService;
+
+    @MockitoBean
+    protected PacemakerFacade pacemakerFacade;
 
 }

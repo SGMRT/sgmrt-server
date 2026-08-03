@@ -1,0 +1,31 @@
+package soma.ghostrunner.domain.pacemaker.api.dto.response;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.util.List;
+
+@Builder
+@Getter
+@AllArgsConstructor
+public class PacemakerTimeTableResponse {
+
+    private Integer warmUpMinutes;
+    private Integer maintenanceMinutes;
+    private Integer coolDownMinutes;
+
+    public PacemakerTimeTableResponse(List<PacemakerSetResponse> sets, Integer expectedMinutes) {
+        this.warmUpMinutes = calculateTimeTableMinutes(sets.get(0));
+        this.coolDownMinutes = calculateTimeTableMinutes(sets.get(sets.size() - 1));
+        this.maintenanceMinutes = expectedMinutes != null
+                ? expectedMinutes - coolDownMinutes - warmUpMinutes
+                : null;
+    }
+
+    private Integer calculateTimeTableMinutes(PacemakerSetResponse setResponse) {
+        Double distKm = setResponse.getEndPoint() - setResponse.getStartPoint();
+        return (int) (distKm * setResponse.getPace());
+    }
+
+}

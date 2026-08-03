@@ -53,6 +53,8 @@ public class RunningCommandService {
 
         Course course = createAndSaveCourse(member, command, telemetryStatistics, dataUrlsDto);
         Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
+
+        eventPublisher.publishEvent(running.createFinishedEvent());
         return mapper.toResponse(running, course);
     }
 
@@ -82,7 +84,8 @@ public class RunningCommandService {
 
     private Running createAndSaveRunning(CreateRunCommand command, TelemetryStatistics telemetryStatistics,
                                          RunningDataUrlsDto runningDataUrlsDto, Member member, Course course) {
-        return runningRepository.save(mapper.toRunning(command, telemetryStatistics, runningDataUrlsDto, member, course));
+        Running running = mapper.toRunning(command, telemetryStatistics, runningDataUrlsDto, member, course);
+        return runningRepository.save(running);
     }
 
     @Transactional
@@ -98,8 +101,13 @@ public class RunningCommandService {
         RunningDataUrlsDto runningDataUrlsDto = upload(rawTelemetry, processedTelemetries, screenShotImage, member);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
 
-        eventPublisher.publishEvent(mapper.toCourseRunEvent(running, course, member));
+        publicCourseRunEvents(running);
         return running.getId();
+    }
+
+    private void publicCourseRunEvents(Running running) {
+        eventPublisher.publishEvent(running.createFinishedEvent());
+        eventPublisher.publishEvent(running.createCourseRunEvent());
     }
 
     private RunningDataUrlsDto upload(MultipartFile rawTelemetry, TelemetryStatistics telemetryStatistics,
@@ -128,6 +136,7 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updateName(name);
+        eventPublisher.publishEvent(running.createUpdatedEvent());
     }
 
     @Transactional
@@ -135,6 +144,7 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updatePublicStatus();
+        eventPublisher.publishEvent(running.createUpdatedEvent());
     }
 
     private Running findRunning(Long runningId) {

@@ -4,8 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SoftDelete;
 import soma.ghostrunner.domain.course.enums.CourseSource;
+import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.global.common.BaseTimeEntity;
+import soma.ghostrunner.global.error.ErrorCode;
 
 @Entity
 @Table(name = "course")
@@ -97,5 +99,51 @@ public class Course extends BaseTimeEntity {
 
     public String getOfficialTelemetryUrl() {
         return courseDataUrls.getRouteUrl();
+    }
+
+    /* =====================
+       도메인 로직
+       ===================== */
+
+    /**
+     * 코스를 공개 상태로 변경
+     */
+    public void makePublic() {
+        if (this.isPublic) {
+            throw new IllegalStateException("Course is already public");
+        }
+        this.isPublic = true;
+    }
+
+    /**
+     * 코스를 비공개 상태로 변경 (등록 해제)
+     */
+    public void makePrivate() {
+        if (!this.isPublic) {
+            throw new IllegalStateException("Course is already private");
+        }
+        this.isPublic = false;
+    }
+
+    /**
+     * 공개 상태 확인
+     */
+    public boolean isPublic() {
+        return this.isPublic != null && this.isPublic;
+    }
+
+    /**
+     * 코스 소유자 검증
+     * @param memberUuid 검증할 회원 UUID
+     * @throws CourseAccessDeniedException 소유자가 아닌 경우
+     */
+    public void verifyOwner(String memberUuid) {
+
+        // member가 null인 경우는 더미 코스일 때
+        if (member == null || !this.member.getUuid().equals(memberUuid)) {
+            throw new CourseAccessDeniedException(
+                    ErrorCode.ACCESS_DENIED, "해당 코스의 소유자가 아닙니다"
+            );
+        }
     }
 }
