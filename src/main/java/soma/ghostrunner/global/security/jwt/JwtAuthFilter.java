@@ -31,7 +31,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final String HEALTH_CHECK_URI = "/";
 
     private final List<String> SIGN_ENDPOINTS = List.of(
-            "/v1/auth/firebase-signin", "v1/auth/firebase-signup"
+            "/v1/auth/firebase-signin", "/v1/auth/firebase-signup"
     );
 
     private static final List<String> PERMITTED_ENDPOINTS = List.of(
