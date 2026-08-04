@@ -5,6 +5,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.dao.RegionRepository;
+import soma.ghostrunner.domain.course.domain.BoundingBox;
 import soma.ghostrunner.domain.course.domain.Region;
 import soma.ghostrunner.domain.course.dto.query.CourseMapDto;
 import soma.ghostrunner.domain.course.exception.RegionNotFoundException;
@@ -64,7 +65,7 @@ public class CourseReadModelReader {
     }
 
     private List<CourseMapDto> queryCoursesForMap(double lat, double lng, int radiusM) {
-        CourseService.LatLngs bounds = CourseService.getBoundingBoxLatLngs(lat, lng, radiusM);
+        BoundingBox bounds = BoundingBox.of(lat, lng, radiusM);
         return readModelRepository.findCoursesForMap(
                 bounds.minLat(), bounds.maxLat(), bounds.minLng(), bounds.maxLng(), MAP_QUERY_LIMIT);
     }
