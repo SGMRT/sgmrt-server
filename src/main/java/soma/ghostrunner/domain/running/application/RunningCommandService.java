@@ -49,16 +49,15 @@ public class RunningCommandService {
 
         Member member = findMember(memberUuid);
 
+        // TODO: 러닝 데이터 가공해서 S3에 업로드하는 것은 비동기로 빼는 것 고민하기
         TelemetryStatistics telemetryStatistics = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
         SimplifiedPaths simplifiedPaths = pathSimplificationService.simplify(telemetryStatistics);
-
         RunningDataUrlsDto dataUrlsDto = upload(rawTelemetry, telemetryStatistics, simplifiedPaths, screenShotImage, member);
 
         Course course = createAndSaveCourse(member, command, telemetryStatistics, dataUrlsDto);
         Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
 
-        applyRunToReadModel(running);
-        // RunFinishedEvent → 멤버 VDOT 갱신(RunFinishedEventListener) · 코스 캐시 무효화(CourseCacheEventListener)
+        courseReadModelWriter.applyRun(running);   // 집계 대상 판정은 Writer 책임 (신규 코스는 리드모델 부재로 내부 스킵)
         eventPublisher.publishEvent(running.createFinishedEvent());
         return mapper.toResponse(running, course);
     }
@@ -106,37 +105,9 @@ public class RunningCommandService {
         RunningDataUrlsDto runningDataUrlsDto = upload(rawTelemetry, processedTelemetries, screenShotImage, member);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
 
-        applyRunToReadModel(running);
+        courseReadModelWriter.applyRun(running);   // 집계 대상 판정은 Writer 책임
         publishCourseRunEvents(running);
         return running.getId();
-    }
-
-    /**
-     * 저장된 러닝을 코스 리드모델에 증분 반영한다.
-     *
-     * - 집계 대상 러닝만 반영한다. ({@link #isReadModelAggregationTarget})
-     * - 신규 코스 생성 경로(createRunAndCourse)도 같은 헬퍼를 타지만, 신규 코스는 비공개로 만들어져
-     *   리드모델이 없으므로 CourseReadModelWriter 내부에서 스킵된다.
-     * - runningId 는 첫 러닝 판정 EXISTS 에서 자기 자신을 제외하기 위해 방금 저장한 러닝의 ID 를 넘긴다.
-     */
-    private void applyRunToReadModel(Running running) {
-        if (!isReadModelAggregationTarget(running)) {
-            return;
-        }
-        courseReadModelWriter.applyRun(
-                running.getCourse().getId(),
-                running.getMember().getId(),
-                running.getRunningRecord().getDuration().intValue(),
-                running.getId());
-    }
-
-    /**
-     * 리드모델 집계 대상 러닝인지 판단한다. (공개 + 일시정지 아님 + 코스에 속함)
-     */
-    private boolean isReadModelAggregationTarget(Running running) {
-        return running.isPublic()
-                && !running.isHasPaused()
-                && running.getCourse() != null;
     }
 
     /**

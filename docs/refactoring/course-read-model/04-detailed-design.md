@@ -342,9 +342,10 @@ course.dao
 #### CourseReadModelWriter (모든 메서드: 호출자 트랜잭션 참여 `@Transactional(MANDATORY)` 검토)
 
 ```java
-void applyRun(Long courseId, Long memberId, int durationSeconds, Long runningId);
+void applyRun(Running running);
+    // 저장된 러닝을 그대로 받음 — 집계 대상 판정(공개∧비일시정지∧코스 소속 — Q1·Q2)을 Writer가 내재화.
+    //   호출자 계약은 "저장 직후 넘길 것" 하나만 (EXISTS 자기 제외가 running.getId() 사용 — Q3)
     // X락 → rm.applyRun() → 첫 공개 러닝이면 runnersCount+1
-    //   (EXISTS 자기 제외 판정에 runningId 사용 — Q3. 공개 러닝만 호출하는 것이 호출자 계약 — Q2)
     // rm 없으면 스킵 (비공개 코스 — 공개 전환 시 생성됨)
 void recalculate(Collection<Long> courseIds);
     // 코스별: X락 → 재계산 쿼리(TOP4 + COUNT) → rm.replaceTopRunners() + updateRunnersCount()

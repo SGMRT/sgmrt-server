@@ -94,10 +94,10 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)  // 테스트 트랜잭션 비활성화
     void applyRun_withoutTransaction_throws() {
-        // given : 활성 트랜잭션이 없는 상태 (DB 접근 이전에 막히므로 데이터는 필요 없다)
+        // given : 활성 트랜잭션이 없는 상태 (프록시 인터셉터가 본문 실행 전에 막으므로 인자는 쓰이지 않는다)
 
         // when & then
-        assertThatThrownBy(() -> writer.applyRun(1L, 1L, 1800, 1L))
+        assertThatThrownBy(() -> writer.applyRun(null))
                 .isInstanceOf(IllegalTransactionStateException.class);
     }
 
@@ -114,7 +114,7 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
         flushAndClear();
 
         // when
-        writer.applyRun(course.getId(), runner.getId(), 1800, running.getId());
+        writer.applyRun(running);
         flushAndClear();
 
         // then
@@ -136,11 +136,33 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
         flushAndClear();
 
         // when & then : 예외 없이 통과하고 리드모델도 생기지 않는다
-        assertThatCode(() -> writer.applyRun(course.getId(), runner.getId(), 1800, running.getId()))
+        assertThatCode(() -> writer.applyRun(running))
                 .doesNotThrowAnyException();
         flushAndClear();
 
         assertThat(readModelRepository.findByCourseId(course.getId())).isEmpty();
+    }
+
+    @DisplayName("비공개·일시정지 러닝은 집계 대상이 아니므로 리드모델이 변하지 않는다 — 판정은 Writer 책임")
+    @Test
+    void applyRun_nonAggregationTargetRunning_isNoOp() {
+        // given : 리드모델이 있는 공개 코스 + 집계 대상이 아닌 러닝 2건
+        Member runner = saveMember("러너");
+        Course course = savePublicCourse("한강 코스", runner);
+        savePublicReadModel(course);
+        Running privateRunning = saveRunning(runner, course, 1000L, false, false);
+        Running pausedRunning = saveRunning(runner, course, 1100L, true, true);
+        flushAndClear();
+
+        // when
+        writer.applyRun(privateRunning);
+        writer.applyRun(pausedRunning);
+        flushAndClear();
+
+        // then : TOP4·러너 수 모두 그대로
+        CourseReadModel readModel = findReadModel(course.getId());
+        assertThat(readModel.getTop1()).isNull();
+        assertThat(readModel.getRunnersCount()).isZero();
     }
 
     @DisplayName("같은 러너의 두 번째 러닝은 기록만 갱신하고 러너 수는 늘리지 않는다")
@@ -153,7 +175,7 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
         Running firstRunning = savePublicRunning(runner, course, 3000L);
         flushAndClear();
 
-        writer.applyRun(course.getId(), runner.getId(), 3000, firstRunning.getId());
+        writer.applyRun(firstRunning);
         flushAndClear();
         assertThat(findReadModel(course.getId()).getRunnersCount()).isEqualTo(1L);
 
@@ -162,7 +184,7 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
         flushAndClear();
 
         // when : 두 번째 러닝의 id로 판정 (자기 자신을 제외하면 첫 러닝이 남아 있다)
-        writer.applyRun(course.getId(), runner.getId(), 2500, secondRunning.getId());
+        writer.applyRun(secondRunning);
         flushAndClear();
 
         // then : TOP1은 갱신되지만 러너 수는 그대로
@@ -313,8 +335,8 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
             Running runningB = savePublicRunning(runnerB, course, 1900L);
             return new ConcurrentFixture(
                     course.getId(),
-                    runnerA.getId(), runningA.getId(),
-                    runnerB.getId(), runningB.getId());
+                    runnerA.getId(), runningA,
+                    runnerB.getId(), runningB);
         });
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -324,10 +346,8 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
 
         // when : 두 스레드가 각자의 트랜잭션에서 동시에 증분 갱신
         try {
-            executor.submit(applyRunTask(fixture.courseId(), fixture.memberAId(), 1800, fixture.runningAId(),
-                    startLatch, doneLatch, failures));
-            executor.submit(applyRunTask(fixture.courseId(), fixture.memberBId(), 1900, fixture.runningBId(),
-                    startLatch, doneLatch, failures));
+            executor.submit(applyRunTask(fixture.runningA(), startLatch, doneLatch, failures));
+            executor.submit(applyRunTask(fixture.runningB(), startLatch, doneLatch, failures));
 
             startLatch.countDown();
             assertThat(doneLatch.await(30, TimeUnit.SECONDS)).isTrue();
@@ -349,14 +369,14 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
     }
 
     private Runnable applyRunTask(
-            Long courseId, Long memberId, int durationSeconds, Long runningId,
+            Running running,
             CountDownLatch startLatch, CountDownLatch doneLatch, List<Throwable> failures
     ) {
         return () -> {
             try {
                 startLatch.await();
-                requiresNewTemplate.executeWithoutResult(status ->
-                        writer.applyRun(courseId, memberId, durationSeconds, runningId));
+                // 다른 스레드의 준영속(detached) 러닝이지만, Writer 는 기본 필드와 연관 ID(getId)만 읽으므로 안전하다.
+                requiresNewTemplate.executeWithoutResult(status -> writer.applyRun(running));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } catch (Throwable t) {
@@ -369,8 +389,8 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
 
     private record ConcurrentFixture(
             Long courseId,
-            Long memberAId, Long runningAId,
-            Long memberBId, Long runningBId
+            Long memberAId, Running runningA,
+            Long memberBId, Running runningB
     ) {
     }
 
@@ -422,10 +442,15 @@ class CourseReadModelWriterTest extends IntegrationTestSupport {
     }
 
     private Running savePublicRunning(Member member, Course course, Long durationSeconds) {
+        return saveRunning(member, course, durationSeconds, true, false);
+    }
+
+    private Running saveRunning(Member member, Course course, Long durationSeconds,
+                                boolean isPublic, boolean hasPaused) {
         RunningRecord record = RunningRecord.of(5.2, 30.0, 40.0, -20.0,
                 6.1, 4.9, 6.9, durationSeconds, 302, 120, 56);
         Running running = Running.of("테스트 러닝", RunningMode.SOLO, null, record, 1750729987181L,
-                true, false, "URL", "URL", "URL", member, course);
+                isPublic, hasPaused, "URL", "URL", "URL", member, course);
         return runningRepository.save(running);
     }
 }

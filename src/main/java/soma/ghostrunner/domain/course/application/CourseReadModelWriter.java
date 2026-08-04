@@ -13,6 +13,7 @@ import soma.ghostrunner.domain.course.domain.RankSlot;
 import soma.ghostrunner.domain.course.domain.TopRunners;
 import soma.ghostrunner.domain.course.dto.query.TopRunnerRow;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
+import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.Collection;
@@ -47,15 +48,12 @@ public class CourseReadModelWriter {
     private final CourseRepository courseRepository;
 
     /**
-     * 러닝 종료에 따른 증분 갱신.
+     * 러닝 종료에 따른 증분 갱신. <b>저장된 러닝을 그대로 넘기면 된다.</b>
      *
-     * <p>호출자 계약</p>
-     * <ul>
-     *   <li>집계 대상 러닝(공개 + 일시정지 아님)이 저장된 뒤에만 호출한다. 비공개·일시정지 러닝까지 넘기면
-     *       TOP4·러너 수가 재계산 기준({@link #recalculate})과 어긋난다.</li>
-     *   <li>{@code runningId}는 방금 저장한 그 러닝의 ID다. 첫 러닝 판정 EXISTS 에서 <b>자기 자신을 제외</b>하는
-     *       용도이므로, 다른 값을 넘기면 러너 수가 중복 증가한다.</li>
-     * </ul>
+     * 집계 대상 여부(공개 ∧ 일시정지 아님 ∧ 코스 소속)는 이 메서드가 스스로 판단한다 — 판정 기준이
+     * 재계산({@link #recalculate})과 같은 곳에서 관리되도록 Writer 에 응집했다. 호출자에게 남는 계약은
+     * "<b>저장 직후</b>에 넘길 것" 하나뿐이다(첫 러닝 판정 EXISTS 가 자기 자신을 ID 로 제외하므로
+     * ID 가 채워진 영속 상태여야 한다).
      *
      * 리드모델이 없는 코스(비공개 등)는 아무 일도 하지 않는다 — 리드모델 생성은 공개 전환의 책임이다.
      * 해당 멤버의 첫 공개 러닝일 때만 러너 수를 1 증가시킨다.
@@ -65,7 +63,14 @@ public class CourseReadModelWriter {
      * <b>이 호출 이후에 무거운 작업(S3 업로드 등 외부 I/O)을 추가하지 말 것.</b>
      * (현재 {@code createRun}은 S3 업로드를 이 호출보다 앞에 두고 있다 — 그 순서를 유지해야 한다)</p>
      */
-    public void applyRun(Long courseId, Long memberId, int durationSeconds, Long runningId) {
+    public void applyRun(Running running) {
+        if (!isAggregationTarget(running)) {
+            return;
+        }
+        Long courseId = running.getCourse().getId();
+        Long memberId = running.getMember().getId();
+        int durationSeconds = running.getRunningRecord().getDuration().intValue();
+
         CourseReadModel readModel = readModelRepository.findByCourseIdForUpdate(courseId).orElse(null);
         if (readModel == null) {
             // 비공개 코스의 정상 스킵과 구분되지 않으므로 debug — 특정 코스만 반영이 안 될 때 레벨을 올려 확인한다.
@@ -75,7 +80,7 @@ public class CourseReadModelWriter {
 
         boolean topRunnersChanged = readModel.applyRun(memberId, durationSeconds);
 
-        boolean firstPublicRun = isMembersFirstPublicRun(courseId, memberId, runningId);
+        boolean firstPublicRun = isMembersFirstPublicRun(courseId, memberId, running.getId());
         if (firstPublicRun) {
             readModel.updateRunnersCount(readModel.getRunnersCount() + 1);
         }
@@ -86,6 +91,16 @@ public class CourseReadModelWriter {
             log.info("Applied run to read model. course={}, member={}, duration={}s, top4Changed={}, firstRun={}",
                     courseId, memberId, durationSeconds, topRunnersChanged, firstPublicRun);
         }
+    }
+
+    /**
+     * 리드모델 집계 대상 러닝인지 판단한다. 재계산 쿼리의 모집단(공개 ∧ 비삭제 ∧ 비일시정지)과
+     * 같은 기준이어야 증분과 재계산이 어긋나지 않는다. (삭제 여부는 저장 직후 경로라 판정 불필요)
+     */
+    private boolean isAggregationTarget(Running running) {
+        return running.isPublic()
+                && !running.isHasPaused()
+                && running.getCourse() != null;
     }
 
     /**

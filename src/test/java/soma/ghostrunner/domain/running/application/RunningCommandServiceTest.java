@@ -338,14 +338,13 @@ class RunningCommandServiceTest {
         // when
         sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
 
-        // then : 저장된 러닝의 id 로 호출해야 첫 러닝 판정(EXISTS 자기 제외)이 성립한다
-        verify(courseReadModelWriter, times(1))
-                .applyRun(courseId, memberId, (int) durationSeconds, runningId);
+        // then : 저장된 러닝 객체를 그대로 위임한다 (집계 대상 판정·필드 추출은 Writer 책임)
+        verify(courseReadModelWriter, times(1)).applyRun(running);
     }
 
     @Test
-    @DisplayName("createRun: 일시정지된 러닝은 집계 대상이 아니므로 리드모델을 갱신하지 않는다")
-    void createRun_pausedRun_doesNotApplyRunToReadModel() {
+    @DisplayName("createRun: 일시정지 러닝도 Writer 로 위임된다 — 집계 대상 필터링은 Writer 책임")
+    void createRun_pausedRun_delegatesToWriter() {
         // given
         long courseId = 77L;
         long memberId = 5L;
@@ -364,8 +363,8 @@ class RunningCommandServiceTest {
         // when
         sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
 
-        // then
-        verify(courseReadModelWriter, never()).applyRun(anyLong(), anyLong(), anyInt(), anyLong());
+        // then : 서비스는 필터링하지 않고 위임만 한다 (일시정지 제외는 CourseReadModelWriterTest 가 검증)
+        verify(courseReadModelWriter, times(1)).applyRun(running);
     }
 
     @Test
