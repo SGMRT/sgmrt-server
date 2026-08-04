@@ -15,7 +15,7 @@ import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
-import soma.ghostrunner.domain.member.application.MemberVdotUpdater;
+import soma.ghostrunner.domain.member.application.MemberVdotWriter;
 import soma.ghostrunner.domain.course.application.CourseSubscriptionService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
@@ -53,7 +53,7 @@ class RunningCommandServiceTest {
     @Mock CourseService courseService;
     @Mock MemberService memberService;
     @Mock CourseReadModelWriter courseReadModelWriter;
-    @Mock MemberVdotUpdater memberVdotUpdater;
+    @Mock MemberVdotWriter memberVdotWriter;
     @Mock CourseSubscriptionService courseSubscriptionService;
 
     RunningCommandService sut;
@@ -69,7 +69,7 @@ class RunningCommandServiceTest {
                 mapper, runningRepository,
                 telemetryProcessor, runningFileUploader, applicationEventPublisher,
                 pathSimplificationService, runningQueryService, courseService, memberService,
-                courseReadModelWriter, memberVdotUpdater, courseSubscriptionService
+                courseReadModelWriter, memberVdotWriter, courseSubscriptionService
         );
     }
 
@@ -351,7 +351,7 @@ class RunningCommandServiceTest {
         // then : 저장된 러닝 객체를 그대로 위임한다 (집계 대상 판정·필드 추출은 Writer 책임)
         verify(courseReadModelWriter, times(1)).applyRun(running);
         // 같은 트랜잭션 동기 로직 — 이벤트가 아닌 직접 호출로 위임된다 (설계 04 §6)
-        verify(memberVdotUpdater, times(1)).updateVdotFromRun(any(), any());
+        verify(memberVdotWriter, times(1)).updateFromRun(any(), any());
         verify(courseSubscriptionService, times(1)).subscribeIfAbsent(eq(courseId), any());
     }
 

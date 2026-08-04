@@ -12,7 +12,7 @@ import soma.ghostrunner.domain.running.application.dto.*;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
-import soma.ghostrunner.domain.member.application.MemberVdotUpdater;
+import soma.ghostrunner.domain.member.application.MemberVdotWriter;
 import soma.ghostrunner.domain.course.application.CourseSubscriptionService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
@@ -43,7 +43,7 @@ public class RunningCommandService {
     private final CourseService courseService;
     private final MemberService memberService;
     private final CourseReadModelWriter courseReadModelWriter;
-    private final MemberVdotUpdater memberVdotUpdater;
+    private final MemberVdotWriter memberVdotWriter;
     private final CourseSubscriptionService courseSubscriptionService;
 
     @Transactional
@@ -62,7 +62,7 @@ public class RunningCommandService {
         Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
 
         courseReadModelWriter.applyRun(running);   // 집계 대상 판정은 Writer 책임 (신규 코스는 리드모델 부재로 내부 스킵)
-        memberVdotUpdater.updateVdotFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
+        memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
         eventPublisher.publishEvent(running.createFinishedEvent());   // 소비자: 코스 캐시 무효화(AFTER_COMMIT)만
         return mapper.toResponse(running, course);
     }
@@ -111,7 +111,7 @@ public class RunningCommandService {
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
 
         courseReadModelWriter.applyRun(running);   // 집계 대상 판정은 Writer 책임
-        memberVdotUpdater.updateVdotFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
+        memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
         courseSubscriptionService.subscribeIfAbsent(courseId, member.getId());
         publishCourseRunEvents(running);
         return running.getId();
