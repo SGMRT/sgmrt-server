@@ -39,8 +39,6 @@ public class CacheConfig {
                 .cacheDefaults(defaults)
                 .withCacheConfiguration(CourseReadModelReader.COURSE_MAP_CACHE,
                         defaults.entryTtl(COURSE_MAP_TTL))
-                // 캐시별 히트/미스 카운터를 Micrometer 로 노출 (cache_gets_total{cache="course-map",result=...})
-                // — regionId 키 전략의 히트율을 운영에서 실측하기 위함 (설계 cache/05 §4, 오버헤드는 카운터 증가 수준)
                 .enableStatistics()
                 .build();
     }

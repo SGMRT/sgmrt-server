@@ -374,35 +374,6 @@ class CourseFacadeTest extends IntegrationTestSupport {
     }
 
     /**
-     * regionId 캐시 경로의 경계 검증 — 캐시는 "기본 요청"에만 적용된다 (설계 §5-2, §6-6).
-     *
-     * 비기본 요청(필터·정렬)에까지 regionId 키를 쓰면, 같은 course-map::{regionId} 엔트리에 필터마다
-     * 다른 결과가 실려 캐시 값의 결정성이 깨진다. 따라서 regionId가 붙어 있어도 비기본 요청은
-     * 캐시를 만들지도, 읽지도 않고 요청 좌표로 직접 조회해야 한다.
-     */
-    @DisplayName("regionId가 첨부돼도 비기본 요청이면 캐시 경로를 타지 않는다 - 요청 좌표 기준으로 조회되고 course-map 키도 생기지 않는다")
-    @Test
-    void findCoursesByPosition_withRegionIdAndNonDefaultRequest_bypassesCache() {
-        // given : 요청 좌표에서 멀리 떨어진 지역(대표좌표)과 그 동네 코스, 그리고 요청 좌표 위의 코스
-        Region farRegion = regionRepository.save(
-                Region.of("서울특별시 강남구 역삼동", DEFAULT_LAT + 0.5, DEFAULT_LNG + 0.5));
-        savePublicCourseWithReadModel("옆 동네 코스", DEFAULT_LAT + 0.5, DEFAULT_LNG + 0.5);
-        savePublicCourseWithReadModel("요청 좌표 코스", DEFAULT_LAT, DEFAULT_LNG);
-
-        // when : regionId를 실었지만 필터가 붙은 비기본 요청
-        CourseSearchFilterDto nonDefaultRequest = CourseSearchFilterDto.of(1000, null, null, null, null);
-        List<CourseMapResponse> courses = courseFacade.findCoursesByPosition(
-                DEFAULT_LAT, DEFAULT_LNG, 2000, CourseSortType.DISTANCE, nonDefaultRequest,
-                farRegion.getId(), defaultMember.getUuid());
-
-        // then : 지역 대표좌표가 아니라 요청 좌표 기준 결과가 나온다
-        assertThat(courses).extracting(CourseMapResponse::name).containsExactly("요청 좌표 코스");
-
-        // 캐시 키 공간도 오염되지 않는다 (비캐시 경로이므로 적재 자체가 없어야 한다)
-        assertThat(redisTemplate.keys(COURSE_MAP_KEY_PATTERN)).isEmpty();
-    }
-
-    /**
      * 미발급 regionId는 홈 화면을 막지 않는다 (설계 §5-1 "실패해도 폴백으로 코스 조회 가능").
      *
      * dev 환경은 ddl-auto: create라 배포마다 region 테이블이 비워지는 반면 FE는 regionId를 로컬에 보관한다.

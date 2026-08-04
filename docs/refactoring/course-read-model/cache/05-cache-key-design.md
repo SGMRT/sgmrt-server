@@ -262,8 +262,7 @@ sum(rate(cache_gets_total{cache="course-map",result="hit"}[5m]))
 
 | 경우 | 동작 |
 |------|------|
-| `regionId` 있음 + 기본 요청(정렬·필터 기본값) + `radiusM <= 3000` | **캐시 경로** — 대표좌표 기준 2km 결과셋 (히트 시 DB 0회) |
-| `regionId` 있음 + 비기본 요청 | 비캐시 폴백 (키 공간 오염 방지 — PR-2 `isDefaultMapRequest` 판정 재사용) |
+| `regionId` 있음 + `radiusM <= 3000` | **캐시 경로** — 대표좌표 기준 2km 결과셋 (히트 시 DB 0회) |
 | `regionId` 있음 + `radiusM > 3000` | 비캐시 폴백 (**광역 줌 방어** — 캐시 값은 고정 2km라 광역 뷰포트에 주면 침묵 오답, §4) |
 | `regionId` 없음 | 기존과 완전 동일 (요청 좌표 bbox 직접 조회, 캐시 없음) |
 | 발급된 적 없는 `regionId` | 서버가 **WARN 로그 후 요청 좌표 폴백으로 강등** (아래 참고) |
@@ -439,7 +438,7 @@ public class CourseReadModelReader {
         return queryCoursesForMap(region.getCenterLat(), region.getCenterLng(), REGION_MAP_RADIUS_M);
     }
 
-    /** 비캐시 폴백 경로 — 팬/줌, regionId 미첨부, 비기본 요청 */
+    /** 비캐시 폴백 경로 — 팬/줌, regionId 미첨부 */
     public List<CourseMapDto> findCoursesForMap(double lat, double lng, int radiusM) {
         return queryCoursesForMap(lat, lng, radiusM);
     }
@@ -480,15 +479,14 @@ private List<CourseMapDto> findCandidateCourses(Double lat, Double lng, Integer 
     }
 }
 
-/** ① regionId 첨부 ② 요청 반경이 고정 2km와 어긋나지 않을 만큼 좁음 ③ 기본 요청 — 셋 다 만족해야 캐시 */
-private boolean useRegionCache(Long regionId, Integer radiusM, CourseSortType sort, CourseSearchFilterDto filters) {
+/** ① regionId 첨부 ② 요청 반경이 고정 2km와 어긋나지 않을 만큼 좁음 — 둘 다 만족해야 캐시 */
+private boolean useRegionCache(Long regionId, Integer radiusM) {
     return regionId != null
-            && (radiusM == null || radiusM <= MAX_CACHEABLE_RADIUS_M)   // 3000 = 고정 2km + 뷰포트 오차 여유
-            && isDefaultMapRequest(sort, filters);
+            && (radiusM == null || radiusM <= MAX_CACHEABLE_RADIUS_M);  // 3000 = 고정 2km + 뷰포트 오차 여유
 }
 ```
 
-`isDefaultMapRequest`(거리 정렬 + 필터 없음 판정)는 PR-2 구현 그대로 재사용. `MAX_CACHEABLE_RADIUS_M`은 FE 규율에 의존하지 않는 **서버 자체 방어**다 (§4).
+정렬·필터 기본값 판정은 넣지 않는다 — 이 경로는 정렬·필터를 적용하지 않으므로(클라 미사용, core/04 §1) 어떤 요청이든 결과가 같아 캐시 공유가 안전하다. **필터를 실제로 적용하게 바뀌면 기본 요청 판정을 이 조건에 복원해야 한다** (코드 주석에도 명시 — 안 하면 필터 요청이 무필터 캐시 값을 받는 버그). `MAX_CACHEABLE_RADIUS_M`은 FE 규율에 의존하지 않는 **서버 자체 방어**다 (§4).
 
 ### 6-7. `CourseApi` — 파라미터 추가
 
@@ -596,7 +594,6 @@ FE가 지켜야 할 규칙 요약:
 | `CourseReadModelReader` | 같은 regionId 반복 조회 → 캐시 히트 (TTL 내 스테일 수용 확인, 키 `course-map::{id}`, TTL ≤60s) | 통합 (기존 ReaderTest 재작성) |
 | `CourseReadModelReader` | regionId 경로는 대표좌표 기준 2km — 요청 좌표와 무관하게 동일 결과 | 통합 |
 | `CourseReadModelReader` | 미존재 regionId → RegionNotFoundException | 통합 |
-| `CourseFacade` | regionId + 비기본 요청 → 비캐시 경로로 분기 | 기존 FacadeTest에 1케이스 |
 
 `POST /v1/regions` 컨트롤러는 얇은 위임이라 별도 API 테스트 생략 (핵심 로직만 원칙).
 

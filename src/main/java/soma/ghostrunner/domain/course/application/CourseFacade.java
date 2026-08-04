@@ -163,7 +163,7 @@ public class CourseFacade {
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                          CourseSearchFilterDto filters, Long regionId, String viewerUuid) {
-        List<CourseMapDto> candidateCourses = findCandidateCourses(lat, lng, radiusM, sort, filters, regionId);
+        List<CourseMapDto> candidateCourses = findCandidateCourses(lat, lng, radiusM, regionId);
 
         // 랜덤 선별 — 사용자별 다양성이 목적이므로 캐시된 원본 리스트 위에서 매 요청 수행한다.
         List<CoursePreviewDto> previews = candidateCourses.stream()
@@ -198,9 +198,8 @@ public class CourseFacade {
      * 캐시 프록시가 폴백 결과를 {@code course-map::{regionId}}에 적재해, 없는 지역의 좌표 기반 결과가
      * 캐시에 오염 적재된다. 예외가 프록시를 뚫고 나가면 Spring Cache는 적재하지 않는다.</p>
      */
-    private List<CourseMapDto> findCandidateCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
-                                                    CourseSearchFilterDto filters, Long regionId) {
-        if (!useRegionCache(regionId, radiusM, sort, filters)) {
+    private List<CourseMapDto> findCandidateCourses(Double lat, Double lng, Integer radiusM, Long regionId) {
+        if (!useRegionCache(regionId, radiusM)) {
             return courseReadModelReader.findCoursesForMap(lat, lng, radiusM);
         }
         try {
@@ -212,23 +211,17 @@ public class CourseFacade {
     }
 
     /**
-     * 지역 캐시 경로 판정 — 세 조건을 모두 만족해야 캐시를 읽고 적재한다.
+     * 지역 캐시 경로 판정 —
      * ① regionId 첨부 ② 요청 반경이 캐시 값의 고정 2km와 어긋나지 않을 만큼 좁음({@link #MAX_CACHEABLE_RADIUS_M})
-     * ③ 기본 요청(정렬·필터 기본값) — 비기본 요청까지 같은 키에 실으면 캐시 값의 결정성이 깨진다.
+     *
+     * <p>sort/filters는 판정에 넣지 않는다 — 이 경로는 정렬·필터를 애초에 적용하지 않으므로(클라 미사용,
+     * 설계 core/04 §1) 어떤 요청이든 결과가 같아 캐시 공유가 안전하다. <b>단, 필터를 실제로 적용하게
+     * 바뀌는 날에는 기본 요청 판정을 이 조건에 복원해야 한다</b> — 안 하면 필터 요청이 무필터 캐시 값을
+     * 받는 버그가 된다.</p>
      */
-    private boolean useRegionCache(Long regionId, Integer radiusM, CourseSortType sort, CourseSearchFilterDto filters) {
+    private boolean useRegionCache(Long regionId, Integer radiusM) {
         return regionId != null
-                && (radiusM == null || radiusM <= MAX_CACHEABLE_RADIUS_M)
-                && isDefaultMapRequest(sort, filters);
-    }
-
-    /** 캐시 대상 판정 — 클라이언트가 실제로 쓰는 기본 요청(거리 정렬 + 필터 없음)만 캐싱한다. */
-    private boolean isDefaultMapRequest(CourseSortType sort, CourseSearchFilterDto filters) {
-        boolean noFilters = filters == null
-                || (filters.getMinDistanceM() == null && filters.getMaxDistanceM() == null
-                    && filters.getMinElevationM() == null && filters.getMaxElevationM() == null
-                    && filters.getOwnerUuid() == null);
-        return (sort == null || sort == CourseSortType.DISTANCE) && noFilters;
+                && (radiusM == null || radiusM <= MAX_CACHEABLE_RADIUS_M);
     }
 
     /** 본인 코스 > RECOMMENDED 지정 코스 > 타 러너 코스 > 더미 코스 순으로 limit개 이하를 선택한다. */
