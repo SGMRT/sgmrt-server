@@ -30,6 +30,8 @@
 
 **목표**: `CourseReadModel` 재설계, 읽기/쓰기 경로 재정립, Redis 기반 **Spring Cache**(`@Cacheable` 등) 도입.
 
+> **진행 상황 (2026-08-04)**: 상세 설계·구현은 `docs/refactoring/course-read-model/` 참조. PR-1(쓰기 측: RankSlot/TopRunners VO, 엔티티 재설계, CourseReadModelWriter 직접 호출, ReadModelSyncListener 삭제) 구현 완료 단계. PR-2(조회 전환+캐시+백필) 예정.
+
 ### 현재 상태 (문제점)
 - `CourseReadModel`(379줄, main 최대 파일): courseId(unique) + **top1~top4 멤버ID/기록 8컬럼 역정규화** + runnersCount. `insertIfBetter()`/`shiftDown()` 수동 배열 시프트 로직 내장
 - 쓰기: `ReadModelSyncListener`가 `CourseRunEvent`를 **BEFORE_COMMIT**으로 수신 → `findByCourseIdForUpdate`(X락) → 증분 갱신. 러닝 생성 트랜잭션이 그만큼 길어지고 락 경합 지점
@@ -80,6 +82,7 @@
 - [ ] 리포지토리 패키지 명명 통일: `infra/persistence` vs `dao`
 - [ ] 페이스 표현 VO 도입 — `"5:30"` ↔ `5.30(Double)` 손실 인코딩 반복 제거
 - [ ] `Running.of()`의 `member.getRuns().contains()` 제거 — 전체 컬렉션 지연로딩 + O(n)
+- [ ] `Member.runs`의 `cascade = ALL` 재검토 — 같은 영속성 컨텍스트에서 `runningRepository.delete(entity)` 호출 시 컬렉션 cascade PERSIST가 REMOVED 상태를 되돌려 **소프트삭제가 조용히 무효화됨** (2026-08-04 리드모델 테스트 중 실증. 현재 프로덕션은 벌크 삭제만 써서 미발현 — 엔티티 삭제 경로가 추가되면 발현하는 지뢰)
 - [ ] `RunningCommandService` `upload()` 오버로드 중복 정리
 - [ ] `NoticeApi` v1/v2/admin 컨트롤러 분리
 - [ ] `PushSqsWorker` 파일 내 `@Service` 2개 분리, `Thread.sleep` 백오프 정리

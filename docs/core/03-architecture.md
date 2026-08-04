@@ -31,16 +31,20 @@ RunningCommandService (러닝 생성/수정 TX)
  ├─ RunFinishedEvent ──► member.RunFinishedEventListener   (BEFORE_COMMIT) VDOT 계산·upsert
  ├─ RunFinishedEvent ──► course.CourseCacheEventListener   (AFTER_COMMIT)  Redis 코스 캐시 무효화
  ├─ RunUpdatedEvent  ──► course.CourseCacheEventListener   (AFTER_COMMIT)  캐시 무효화
- ├─ CourseRunEvent   ──► course.ReadModelSyncListener      (BEFORE_COMMIT) TOP4 랭킹·runnersCount 증분 갱신 (X락)
  ├─ CourseRunEvent   ──► course.CourseSubscriptionEventListener (BEFORE_COMMIT) 구독 멱등 생성
  └─ CourseRunEvent   ──► notification.PushEventListener    (AFTER_COMMIT)  "내 코스를 남이 달림" / "개인 최고기록" 푸시
 
 NoticeService.activate() ─ NoticeActivatedEvent ─► PushEventListener (AFTER_COMMIT) 공지 브로드캐스트
 PacemakerLlmCallbackService ─ PacemakerCreatedEvent ─► PushEventListener (AFTER_COMMIT) 페이스메이커 완성 푸시
+
+[2026-08 리드모델 리팩토링 이후] 리드모델(CourseReadModel) 동기화는 이벤트가 아니라
+RunningCommandService/CourseService → course.CourseReadModelWriter **직접 호출**(같은 TX, X락)로 수행.
+구 ReadModelSyncListener는 삭제됨. 상세: docs/refactoring/course-read-model/04-detailed-design.md
 ```
 
-- BEFORE_COMMIT 리스너(VDOT, 읽기모델, 구독)는 **원 트랜잭션에 합류** → 강한 정합성, 대신 러닝 생성 TX가 길어짐.
+- BEFORE_COMMIT 리스너(VDOT, 구독)는 **원 트랜잭션에 합류** → 강한 정합성, 대신 러닝 생성 TX가 길어짐.
 - AFTER_COMMIT 리스너(캐시, 푸시)는 부수효과로 분리.
+- 리드모델 동기화는 직접 호출로 전환됨 (이벤트의 실질 이득이 없는 동일 TX 동기 경로였기 때문 — 04 문서 §6 참고).
 
 ## 러닝 생성 파이프라인 (`RunningCommandService`)
 
