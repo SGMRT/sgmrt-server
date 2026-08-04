@@ -15,6 +15,10 @@ import java.util.Optional;
 @Repository
 public interface CourseRepository extends CustomCourseRepository, JpaRepository<Course, Long> {
 
+    /** 리드모델 백필 대상 — 전체 공개 코스 ID. (@SoftDelete 가 삭제 코스를 자동 제외한다) */
+    @Query("SELECT c.id FROM Course c WHERE c.isPublic = true")
+    List<Long> findAllPublicCourseIds();
+
 
     // TODO: owner 필드 포함한 후에는, ownerId가 일치하면 isPublic=false여도 보여줘야 함
     /** 기준점 위경도 반경 내에 Course의 startPoint가 존재하는 코스 검색 (직사각형 형태) */
