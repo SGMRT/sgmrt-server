@@ -73,10 +73,6 @@ public class CourseReadModelWriter {
 
         CourseReadModel readModel = readModelRepository.findByCourseIdForUpdate(courseId).orElse(null);
         if (readModel == null) {
-<<<<<<< HEAD
-            // 비공개 코스의 정상 스킵과 구분되지 않으므로 debug — 특정 코스만 반영이 안 될 때 레벨을 올려 확인한다.
-=======
->>>>>>> origin/refactor/course-read-model-query
             log.debug("Skip applyRun: read model absent. course={}, member={}", courseId, memberId);
             return;
         }
@@ -88,11 +84,6 @@ public class CourseReadModelWriter {
             readModel.updateRunnersCount(readModel.getRunnersCount() + 1);
         }
 
-<<<<<<< HEAD
-        // 대부분의 러닝은 TOP4에 못 들므로 무조건 info 를 찍으면 로그가 러닝 수만큼 늘어난다.
-        // 의미 있는 상태 변화가 있을 때만 남긴다.
-=======
->>>>>>> origin/refactor/course-read-model-query
         if (topRunnersChanged || firstPublicRun) {
             log.info("Applied run to read model. course={}, member={}, duration={}s, top4Changed={}, firstRun={}",
                     courseId, memberId, durationSeconds, topRunnersChanged, firstPublicRun);
