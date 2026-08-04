@@ -144,8 +144,8 @@ class CourseReadModelRepositoryTest extends IntegrationTestSupport {
     }
     
     @Test
-    @DisplayName("탈퇴한 멤버는 TOP4에서 제외")
-    void findCoursesForMap_excludesDeletedMembers() {
+    @DisplayName("탈퇴한 멤버도 TOP4에 유지된다 — 탈퇴 러너 메인화면 유지 요구사항 (설계 04 확정 전제)")
+    void findCoursesForMap_keepsDeletedMembers() {
         // Given: 멤버 2명 (1명은 탈퇴)
         Member activeMember = createAndSaveMember("활동중");
         Member deletedMember = createAndSaveMember("탈퇴");
@@ -167,10 +167,10 @@ class CourseReadModelRepositoryTest extends IntegrationTestSupport {
             37.0, 38.0, 126.5, 128.0, 100
         );
         
-        // Then: 탈퇴 멤버는 조회 안 됨
+        // Then: 탈퇴 멤버의 프로필도 그대로 조회된다 (member 소프트삭제 — uuid/사진 유지)
         CourseMapDto dto = results.get(0);
-        assertThat(dto.top1Uuid()).isNull(); // 탈퇴 멤버 제외
-        assertThat(dto.top2Uuid()).isEqualTo(activeMember.getUuid()); // 활동 멤버만
+        assertThat(dto.top1Uuid()).isEqualTo(deletedMember.getUuid()); // 탈퇴해도 1위 유지
+        assertThat(dto.top2Uuid()).isEqualTo(activeMember.getUuid());
     }
     
     /**
