@@ -15,6 +15,8 @@ import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.member.application.MemberVdotUpdater;
+import soma.ghostrunner.domain.course.application.CourseSubscriptionService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
@@ -51,6 +53,8 @@ class RunningCommandServiceTest {
     @Mock CourseService courseService;
     @Mock MemberService memberService;
     @Mock CourseReadModelWriter courseReadModelWriter;
+    @Mock MemberVdotUpdater memberVdotUpdater;
+    @Mock CourseSubscriptionService courseSubscriptionService;
 
     RunningCommandService sut;
 
@@ -65,7 +69,7 @@ class RunningCommandServiceTest {
                 mapper, runningRepository,
                 telemetryProcessor, runningFileUploader, applicationEventPublisher,
                 pathSimplificationService, runningQueryService, courseService, memberService,
-                courseReadModelWriter
+                courseReadModelWriter, memberVdotUpdater, courseSubscriptionService
         );
     }
 
@@ -153,6 +157,8 @@ class RunningCommandServiceTest {
         when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
         when(runningRepository.save(running)).thenReturn(running);
         when(running.getId()).thenReturn(1L);
+        when(running.getRunningRecord()).thenReturn(
+                RunningRecord.of(5.2, 30.0, 40.0, -20.0, 6.1, 4.9, 6.9, 1800L, 302, 120, 56));
 
         CreateCourseAndRunResponse response = new CreateCourseAndRunResponse(null, null);
         when(mapper.toResponse(running, course)).thenReturn(response);
@@ -211,6 +217,8 @@ class RunningCommandServiceTest {
         when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
         when(runningRepository.save(any())).thenReturn(running);
         when(running.getId()).thenReturn(100L);
+        when(running.getRunningRecord()).thenReturn(
+                RunningRecord.of(5.2, 30.0, 40.0, -20.0, 6.1, 4.9, 6.9, 1800L, 302, 120, 56));
 
         // when
         Long id = sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
@@ -242,6 +250,8 @@ class RunningCommandServiceTest {
         when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
         when(runningRepository.save(any())).thenReturn(running);
         when(running.getId()).thenReturn(200L);
+        when(running.getRunningRecord()).thenReturn(
+                RunningRecord.of(5.2, 30.0, 40.0, -20.0, 6.1, 4.9, 6.9, 1800L, 302, 120, 56));
 
         // when
         Long id = sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
@@ -340,6 +350,9 @@ class RunningCommandServiceTest {
 
         // then : 저장된 러닝 객체를 그대로 위임한다 (집계 대상 판정·필드 추출은 Writer 책임)
         verify(courseReadModelWriter, times(1)).applyRun(running);
+        // 같은 트랜잭션 동기 로직 — 이벤트가 아닌 직접 호출로 위임된다 (설계 04 §6)
+        verify(memberVdotUpdater, times(1)).updateVdotFromRun(any(), any());
+        verify(courseSubscriptionService, times(1)).subscribeIfAbsent(eq(courseId), any());
     }
 
     @Test

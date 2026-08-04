@@ -12,6 +12,8 @@ import soma.ghostrunner.domain.running.application.dto.*;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
+import soma.ghostrunner.domain.member.application.MemberVdotUpdater;
+import soma.ghostrunner.domain.course.application.CourseSubscriptionService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.path.TelemetryProcessor;
@@ -41,6 +43,8 @@ public class RunningCommandService {
     private final CourseService courseService;
     private final MemberService memberService;
     private final CourseReadModelWriter courseReadModelWriter;
+    private final MemberVdotUpdater memberVdotUpdater;
+    private final CourseSubscriptionService courseSubscriptionService;
 
     @Transactional
     public CreateCourseAndRunResponse createRunAndCourse(
@@ -58,7 +62,8 @@ public class RunningCommandService {
         Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
 
         courseReadModelWriter.applyRun(running);   // 집계 대상 판정은 Writer 책임 (신규 코스는 리드모델 부재로 내부 스킵)
-        eventPublisher.publishEvent(running.createFinishedEvent());
+        memberVdotUpdater.updateVdotFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
+        eventPublisher.publishEvent(running.createFinishedEvent());   // 소비자: 코스 캐시 무효화(AFTER_COMMIT)만
         return mapper.toResponse(running, course);
     }
 
@@ -106,15 +111,19 @@ public class RunningCommandService {
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
 
         courseReadModelWriter.applyRun(running);   // 집계 대상 판정은 Writer 책임
+        memberVdotUpdater.updateVdotFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
+        courseSubscriptionService.subscribeIfAbsent(courseId, member.getId());
         publishCourseRunEvents(running);
         return running.getId();
     }
 
     /**
-     * 코스를 따라 뛴 러닝의 종료 이벤트를 발행한다.
+     * 코스를 따라 뛴 러닝의 종료 이벤트를 발행한다. (남은 소비자는 전부 AFTER_COMMIT 부수효과)
      *
-     * - RunFinishedEvent → 멤버 VDOT 갱신(RunFinishedEventListener) · 코스 캐시 무효화(CourseCacheEventListener)
-     * - CourseRunEvent   → 코스 구독 생성(CourseSubscriptionEventListener) · 푸시 발송(PushEventListener)
+     * - RunFinishedEvent → 코스 캐시 무효화(CourseCacheEventListener) — 구경로 캐시 제거 시 함께 삭제 예정
+     * - CourseRunEvent   → 푸시 발송(PushEventListener)
+     *
+     * VDOT 갱신·구독 생성은 같은 트랜잭션 동기 로직이라 직접 호출로 전환됨 (설계 04 §6).
      */
     private void publishCourseRunEvents(Running running) {
         eventPublisher.publishEvent(running.createFinishedEvent());
