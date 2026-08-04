@@ -50,6 +50,8 @@ class CourseMapPathParityTest extends IntegrationTestSupport {
     private static final double LAT = 37.5480;
     private static final double LNG = 127.0731;
 
+    private Member courseOwner;
+
     @DisplayName("구경로와 신경로가 같은 데이터에서 동일한 지도 응답을 낸다 (checkpointsUrl/createdAt null 차이만 허용)")
     @Test
     void oldAndNewMapPaths_returnSameResponses() {
@@ -73,7 +75,7 @@ class CourseMapPathParityTest extends IntegrationTestSupport {
         List<CourseMapResponse> oldPath = courseFacade.findCoursesByPositionCached(
                 LAT, LNG, 2000, CourseSortType.DISTANCE, noFilters, viewer.getUuid());
         List<CourseMapResponse> newPath = courseFacade.findCoursesByPosition(
-                LAT, LNG, 2000, CourseSortType.DISTANCE, noFilters, viewer.getUuid());
+                LAT, LNG, 2000, CourseSortType.DISTANCE, noFilters, null, viewer.getUuid());
 
         // then : 코스 2개 ≤ 응답 상한이라 랜덤 선별과 무관하게 두 경로 모두 전량 포함 — courseId 기준 비교
         Map<Long, CourseMapResponse> oldById = byId(oldPath);
@@ -132,7 +134,7 @@ class CourseMapPathParityTest extends IntegrationTestSupport {
 
     private Course savePublicCourse(String name, double lat, double lng) {
         return courseRepository.save(Course.of(
-                null_safe_owner(), name,
+                courseOwner(), name,
                 CourseProfile.of(5.0, 10.0, 100.0, 50.0),
                 Coordinate.of(lat, lng),
                 CourseSource.USER, true,
@@ -141,13 +143,12 @@ class CourseMapPathParityTest extends IntegrationTestSupport {
                         "https://example.com/thumb.jpg")));
     }
 
-    private Member owner;
-
-    private Member null_safe_owner() {
-        if (owner == null) {
-            owner = saveMember("코스주인");
+    /** 코스 주인은 파리티 검증의 관심사가 아니라 코스 생성에 필요한 값일 뿐이므로 첫 요청 시 한 번만 만든다. */
+    private Member courseOwner() {
+        if (courseOwner == null) {
+            courseOwner = saveMember("코스주인");
         }
-        return owner;
+        return courseOwner;
     }
 
     private void saveRunning(Member member, Course course, Long durationSeconds) {

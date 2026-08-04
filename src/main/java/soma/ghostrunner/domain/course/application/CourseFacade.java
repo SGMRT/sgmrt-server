@@ -16,6 +16,7 @@ import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
+import soma.ghostrunner.domain.course.exception.RegionNotFoundException;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
@@ -24,6 +25,7 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,6 +33,17 @@ import java.util.*;
 public class CourseFacade {
 
     private static final int MAX_COURSES_PER_MAP_RESPONSE = 10;
+
+    /**
+     * 지역 캐시 경로를 허용하는 요청 반경 상한.
+     *
+     * <p>지역 캐시 값은 대표좌표 기준 <b>고정 2km</b>다(설계 cache/05 §4). 그보다 넓은 뷰포트 요청에
+     * 2km 결과를 돌려주면 예외도 로그도 없는 침묵 오답이 되므로, 상한을 넘는 요청은 캐시 경로 자체를 포기한다.
+     * 3000 = 고정값 2km + 뷰포트 오차 여유. FE의 "지도 중심 ≈ 사용자 GPS" 규율에 정확성을 의존하지 않기 위한
+     * 서버 자체 방어이며, 상한 초과는 에러가 아니라 정상 폴백이다.</p>
+     */
+    private static final int MAX_CACHEABLE_RADIUS_M = 3000;
+
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
     private final CourseCacheRepository courseCacheRepository;
@@ -137,21 +150,23 @@ public class CourseFacade {
     }
 
     /**
-     * 주변 코스 지도 조회 — 리드모델 + Spring Cache 경로. (설계 04 §0-2)
+     * 주변 코스 지도 조회 — 리드모델 + Spring Cache 경로. (설계 04 §0-2, cache/05 §5-2·§6-6)
      *
-     * 흐름: Reader(캐시/리드모델 쿼리) → 랜덤 선별(매 요청, 캐시 밖) → 내 고스트 조회(선별분만)
-     * → 응답 조립. checkpointsUrl/createdAt 은 클라 미사용으로 null.
-     * 정렬/필터 파라미터는 하위호환으로 받되 적용하지 않는다(클라 미사용 확인 — 설계 §1 확정)
-     * — 기본값이 아닌 요청은 캐시만 우회한다.
+     * <p>흐름: Reader(캐시/리드모델 쿼리) → 랜덤 선별(매 요청, 캐시 밖) → 내 고스트 조회(선별분만)
+     * → 응답 조립. checkpointsUrl/createdAt 은 클라 미사용으로 null.</p>
+     *
+     * <p>{@code regionId}(선택 파라미터) 경우별 동작은 설계 cache/05 §5-2 참고.</p>
+     *
+     * <p>정렬/필터 파라미터는 하위호환으로 받되 적용하지 않는다(클라 미사용 확인 — 설계 §1 확정).
+     * 기본값이 아닌 요청은 캐시만 우회한다.</p>
      */
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
-                                                         CourseSearchFilterDto filters, String viewerUuid) {
-        boolean cacheable = isDefaultMapRequest(sort, filters);
-        List<CourseMapDto> nearbyCourses = courseReadModelReader.findCoursesForMap(lat, lng, radiusM, cacheable);
+                                                         CourseSearchFilterDto filters, Long regionId, String viewerUuid) {
+        List<CourseMapDto> candidateCourses = findCandidateCourses(lat, lng, radiusM, sort, filters, regionId);
 
         // 랜덤 선별 — 사용자별 다양성이 목적이므로 캐시된 원본 리스트 위에서 매 요청 수행한다.
-        List<CoursePreviewDto> previews = nearbyCourses.stream()
+        List<CoursePreviewDto> previews = candidateCourses.stream()
                 .map(CourseMapDto::toPreviewDto)
                 .toList();
         List<CoursePreviewDto> selectedCourses = limitCoursesForViewer(previews, viewerUuid, MAX_COURSES_PER_MAP_RESPONSE);
@@ -160,16 +175,51 @@ public class CourseFacade {
         List<Long> selectedCourseIds = selectedCourses.stream().map(CoursePreviewDto::id).toList();
         Map<Long, Running> memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(selectedCourseIds, viewerUuid);
 
-        Map<Long, CourseMapDto> courseById = nearbyCourses.stream()
-                .collect(java.util.stream.Collectors.toMap(CourseMapDto::courseId, dto -> dto));
-        return selectedCourses.stream()
-                .map(preview -> {
-                    CourseGhostResponse myGhost = memberBestRuns.containsKey(preview.id())
-                            ? runningApiMapper.toGhostResponse(memberBestRuns.get(preview.id()))
-                            : null;
-                    return courseById.get(preview.id()).toResponse(myGhost);
-                })
-                .toList();
+        Map<Long, CourseMapDto> candidateCourseById = candidateCourses.stream()
+                .collect(Collectors.toMap(CourseMapDto::courseId, dto -> dto));
+
+        List<CourseMapResponse> responses = new ArrayList<>();
+        for (CoursePreviewDto selectedCourse : selectedCourses) {
+            Running myBestRun = memberBestRuns.get(selectedCourse.id());
+            CourseGhostResponse myGhost = myBestRun != null ? runningApiMapper.toGhostResponse(myBestRun) : null;
+            responses.add(candidateCourseById.get(selectedCourse.id()).toResponse(myGhost));
+        }
+        return responses;
+    }
+
+    /**
+     * 조회 경로 선택 — 지역 캐시 경로, 그리고 실패 시 요청 좌표 폴백.
+     *
+     * <p>미발급 regionId는 홈 화면을 막지 않는다(설계 §5-1). dev는 {@code ddl-auto: create}라 배포마다
+     * region 테이블이 비워지는 반면 FE는 regionId를 persist하므로, "발급된 적 없는 regionId"는 확정 재현된다.
+     * 좌표 폴백이라는 완전한 복구 경로가 이미 있으므로 조용히 강등한다.</p>
+     *
+     * <p>catch를 <b>Facade(= {@code @Cacheable} 프록시 바깥)</b>에 두는 것이 핵심이다. Reader 안에서 잡으면
+     * 캐시 프록시가 폴백 결과를 {@code course-map::{regionId}}에 적재해, 없는 지역의 좌표 기반 결과가
+     * 캐시에 오염 적재된다. 예외가 프록시를 뚫고 나가면 Spring Cache는 적재하지 않는다.</p>
+     */
+    private List<CourseMapDto> findCandidateCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
+                                                    CourseSearchFilterDto filters, Long regionId) {
+        if (!useRegionCache(regionId, radiusM, sort, filters)) {
+            return courseReadModelReader.findCoursesForMap(lat, lng, radiusM);
+        }
+        try {
+            return courseReadModelReader.findCoursesForMapByRegion(regionId);
+        } catch (RegionNotFoundException unknownRegion) {
+            log.warn("CourseFacade::findCoursesByPosition() - unknown regionId {}, fallback to coordinates", regionId);
+            return courseReadModelReader.findCoursesForMap(lat, lng, radiusM);
+        }
+    }
+
+    /**
+     * 지역 캐시 경로 판정 — 세 조건을 모두 만족해야 캐시를 읽고 적재한다.
+     * ① regionId 첨부 ② 요청 반경이 캐시 값의 고정 2km와 어긋나지 않을 만큼 좁음({@link #MAX_CACHEABLE_RADIUS_M})
+     * ③ 기본 요청(정렬·필터 기본값) — 비기본 요청까지 같은 키에 실으면 캐시 값의 결정성이 깨진다.
+     */
+    private boolean useRegionCache(Long regionId, Integer radiusM, CourseSortType sort, CourseSearchFilterDto filters) {
+        return regionId != null
+                && (radiusM == null || radiusM <= MAX_CACHEABLE_RADIUS_M)
+                && isDefaultMapRequest(sort, filters);
     }
 
     /** 캐시 대상 판정 — 클라이언트가 실제로 쓰는 기본 요청(거리 정렬 + 필터 없음)만 캐싱한다. */
