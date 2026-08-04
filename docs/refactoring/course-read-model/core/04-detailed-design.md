@@ -308,6 +308,8 @@ public class CourseReadModel extends BaseTimeEntity {
 ### 2-2. ✅ 확정 (2026-08-04 문답): 옵션 ② 결과셋 캐시 + TTL 60초
 
 > **재검토 기록 (2026-08-04)**: 반올림 키의 히트율 한계(핫스팟 한정, 경계 분절, 인접 키 간 ~90% 중복 저장)를 인지한 상태로 ② 유지 확정. **regionId/타일(①) 전환은 추후 별도 사이클**에서 진행 — 그때 FE(클라이언트의 지역 단위 요청) 연동까지 함께 변경 검토. 전환 트리거: 캐시 히트율이 유의미(>30%)한데 DB CPU 재상승, 또는 스테일 관련 실사용 문제 발생 시.
+>
+> 🔄 **대체됨 (2026-08-04, 캐시키 재설계 사이클)**: 위 "추후 사이클"이 실제 진행되어 이 섹션의 반올림 키 설계(키 형식·60초 TTL·무효화 없음·기본 요청 condition)는 **역사 기록**이다. 최종 설계는 [../cache/05-cache-key-design.md](../cache/05-cache-key-design.md) — 키=regionId, 값=대표좌표 기준 고정 2km, TTL 600초, 완주·러닝 공개 전환 시 AFTER_COMMIT 이빅트, 경로 분기는 Facade의 `useRegionCache`(regionId 존재 ∧ radiusM≤3000).
 
 | 항목 | 결정 |
 |---|---|
@@ -389,9 +391,11 @@ WHERE r.is_public = TRUE AND r.deleted = FALSE AND r.has_paused = FALSE  -- Q1: 
   AND r.course_id = :courseId
 GROUP BY r.member_id
 ORDER BY best ASC
-LIMIT 4        -- idx_record_course 루즈 인덱스 스캔
+LIMIT 4        -- idx_record_course 활용 (아래 주의)
 -- runnersCount = 같은 조건 COUNT(DISTINCT member_id) (재계산 시 보정)
 ```
+
+> ⚠️ **인덱스 주의**: `idx_record_course(is_public, deleted, course_id, member_id, duration_sec)`에는 `has_paused`가 **포함되어 있지 않다**. 따라서 이 쿼리는 인덱스 완전 커버링/루즈 스캔이 아니라, 인덱스 구간 스캔 후 `has_paused` 필터에 테이블 접근(또는 인덱스 조건 후 필터)이 필요하다. 코스당 러닝 수가 작아 실부하는 미미하지만, 대량 코스에서 재계산이 느려지면 `has_paused`를 포함한 인덱스로 교체를 검토하고 **`EXPLAIN ANALYZE`로 실행 계획을 실측 후 판단**할 것.
 
 ### 3-4. 조회 쿼리 확장 (`findCoursesForMap`)
 
