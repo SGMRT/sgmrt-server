@@ -30,7 +30,7 @@ import sys
 
 random.seed(42)
 
-REGIONS = 400
+REGIONS = 400            # 기본: 서울 유사 (국민앱 스케일에서는 make_world가 전국으로 확장)
 GRID = 20
 SPACING_M = 1200
 SIGMA_M = 400
@@ -56,25 +56,42 @@ POLICIES = {
     "D: TTL60+evict":  dict(ttl=60, evict=True),
 }
 
-# ---- 세계 ----
+# ---- 세계 (규모별 생성) ----
 region_centers = []
-for i in range(REGIONS):
-    gx, gy = i % GRID, i // GRID
-    lat = BASE_LAT + (gy * SPACING_M + random.uniform(-300, 300)) / M_PER_DEG_LAT
-    lng = BASE_LNG + (gx * SPACING_M + random.uniform(-300, 300)) / M_PER_DEG_LNG
-    region_centers.append((lat, lng))
+zipf_w = []
+mismatch_regions = set()
+_bucket = {}                       # 공간 버킷(2km 셀) → region id 목록 — 역산 O(1)화
 
-zipf_w = [1 / (r + 1) ** ZIPF_A for r in range(REGIONS)]
-random.shuffle(zipf_w)
-mismatch_regions = set(random.sample(range(REGIONS), int(REGIONS * NAME_MISMATCH_REGION_RATIO)))
+
+def make_world(n_regions, grid):
+    """국민앱 스케일(DAU 10만+)은 전국 행정동 ~3,500개로 세계를 넓혀 밀도 왜곡을 막는다."""
+    global region_centers, zipf_w, mismatch_regions, _bucket
+    region_centers, _bucket = [], {}
+    for i in range(n_regions):
+        gx, gy = i % grid, i // grid
+        lat = BASE_LAT + (gy * SPACING_M + random.uniform(-300, 300)) / M_PER_DEG_LAT
+        lng = BASE_LNG + (gx * SPACING_M + random.uniform(-300, 300)) / M_PER_DEG_LNG
+        region_centers.append((lat, lng))
+        _bucket.setdefault(_cell(lat, lng), []).append(i)
+    zipf_w = [1 / (r + 1) ** ZIPF_A for r in range(n_regions)]
+    random.shuffle(zipf_w)
+    mismatch_regions = set(random.sample(range(n_regions), int(n_regions * NAME_MISMATCH_REGION_RATIO)))
+
+
+def _cell(lat, lng):
+    return (int(lat * M_PER_DEG_LAT // BOX_M), int(lng * M_PER_DEG_LNG // BOX_M))
 
 
 def regions_covering(lat, lng):
     """이 좌표의 데이터 변경이 영향을 주는 region 목록 (±2km 박스 — 실서버 역산 쿼리와 동일)"""
+    cx, cy = _cell(lat, lng)
     out = []
-    for rid, (clat, clng) in enumerate(region_centers):
-        if abs(lat - clat) * M_PER_DEG_LAT <= BOX_M and abs(lng - clng) * M_PER_DEG_LNG <= BOX_M:
-            out.append(rid)
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            for rid in _bucket.get((cx + dx, cy + dy), ()):
+                clat, clng = region_centers[rid]
+                if abs(lat - clat) * M_PER_DEG_LAT <= BOX_M and abs(lng - clng) * M_PER_DEG_LNG <= BOX_M:
+                    out.append(rid)
     return out
 
 
@@ -94,7 +111,7 @@ def build_events(dau):
     """이벤트: (t, uid, kind, ...) — kind: query(홈/탐색) | run_finish | post_run_check"""
     events = []
     for uid in range(dau):
-        rid = random.choices(range(REGIONS), weights=zipf_w, k=1)[0]
+        rid = random.choices(range(len(region_centers)), weights=zipf_w, k=1)[0]
         clat, clng = region_centers[rid]
         home_lat = clat + random.gauss(0, SIGMA_M) / M_PER_DEG_LAT
         home_lng = clng + random.gauss(0, SIGMA_M) / M_PER_DEG_LNG
@@ -179,8 +196,13 @@ def simulate(dau):
 
 if __name__ == "__main__":
     dau_list = [int(x) for x in sys.argv[1:]] or [10000, 30000]
-    print("모델: v3 세계 + 러닝(세션 40%, 20~60분) + 완주 후 90%가 10~120s 내 등수 확인\n")
+    print("모델: v3 세계 + 러닝(세션 40%, 20~60분) + 완주 후 90%가 10~120s 내 등수 확인")
+    print("(DAU 10만 미만: 동네 400개(서울 유사) / 이상: 전국 3,600개 — 국민앱 가정)\n")
     for dau in dau_list:
+        if dau >= 100_000:
+            make_world(3600, 60)
+        else:
+            make_world(REGIONS, GRID)
         r = simulate(dau)
         any_p = next(iter(r.values()))
         print(f"◆ DAU {dau:,} (조회 {any_p['n_q']:,}건, 완주 확인 {any_p['n_check']:,}건)")
