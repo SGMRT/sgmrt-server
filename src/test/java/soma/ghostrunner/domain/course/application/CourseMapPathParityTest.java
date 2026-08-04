@@ -4,7 +4,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.PlatformTransactionManager;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.DatabaseCleanserExtension;
 import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
@@ -34,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 조회 전환 파리티 검증 — 구경로(수동 캐시)와 신경로(리드모델+Spring Cache)가 같은 데이터에서
- * 같은 응답을 내는지 확인한다. 리드모델은 백필 러너로 생성해 백필 경로도 함께 검증한다.
+ * 같은 응답을 내는지 확인한다. 리드모델은 Writer 생성 경로(syncPublicity)로 채운다.
  *
  * 허용된 차이 (설계 확정): 신경로의 checkpointsUrl/createdAt 은 null.
  */
@@ -47,7 +46,6 @@ class CourseMapPathParityTest extends IntegrationTestSupport {
     @Autowired MemberRepository memberRepository;
     @Autowired RunningRepository runningRepository;
     @Autowired CourseReadModelWriter readModelWriter;
-    @Autowired PlatformTransactionManager transactionManager;
 
     private static final double LAT = 37.5480;
     private static final double LNG = 127.0731;
@@ -64,8 +62,9 @@ class CourseMapPathParityTest extends IntegrationTestSupport {
         saveRunning(rival, courseA, 1500L);
         saveRunning(rival, courseB, 2000L);
 
-        // 백필 — 리드모델 없는 공개 코스를 생성 + 집계 (백필 러너 경로 그대로)
-        new CourseReadModelBackfillRunner(courseRepository, readModelWriter, transactionManager).run(null);
+        // 백필 — 리드모델 없는 공개 코스를 생성 + 전체 집계 (운영 백필은 ddl/migration-backfill.sql로 수행됨)
+        readModelWriter.syncPublicity(courseA.getId(), true);
+        readModelWriter.syncPublicity(courseB.getId(), true);
         assertThat(readModelRepository.findByCourseId(courseA.getId())).isPresent();
         assertThat(readModelRepository.findByCourseId(courseB.getId())).isPresent();
 
