@@ -5,6 +5,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.running.application.dto.*;
@@ -21,6 +22,7 @@ import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +40,7 @@ public class RunningCommandService {
     private final RunningQueryService runningQueryService;
     private final CourseService courseService;
     private final MemberService memberService;
+    private final CourseReadModelWriter courseReadModelWriter;
 
     @Transactional
     public CreateCourseAndRunResponse createRunAndCourse(
@@ -54,6 +57,8 @@ public class RunningCommandService {
         Course course = createAndSaveCourse(member, command, telemetryStatistics, dataUrlsDto);
         Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
 
+        applyRunToReadModel(running);
+        // RunFinishedEvent → 멤버 VDOT 갱신(RunFinishedEventListener) · 코스 캐시 무효화(CourseCacheEventListener)
         eventPublisher.publishEvent(running.createFinishedEvent());
         return mapper.toResponse(running, course);
     }
@@ -101,11 +106,46 @@ public class RunningCommandService {
         RunningDataUrlsDto runningDataUrlsDto = upload(rawTelemetry, processedTelemetries, screenShotImage, member);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
 
-        publicCourseRunEvents(running);
+        applyRunToReadModel(running);
+        publishCourseRunEvents(running);
         return running.getId();
     }
 
-    private void publicCourseRunEvents(Running running) {
+    /**
+     * 저장된 러닝을 코스 리드모델에 증분 반영한다.
+     *
+     * - 집계 대상 러닝만 반영한다. ({@link #isReadModelAggregationTarget})
+     * - 신규 코스 생성 경로(createRunAndCourse)도 같은 헬퍼를 타지만, 신규 코스는 비공개로 만들어져
+     *   리드모델이 없으므로 CourseReadModelWriter 내부에서 스킵된다.
+     * - runningId 는 첫 러닝 판정 EXISTS 에서 자기 자신을 제외하기 위해 방금 저장한 러닝의 ID 를 넘긴다.
+     */
+    private void applyRunToReadModel(Running running) {
+        if (!isReadModelAggregationTarget(running)) {
+            return;
+        }
+        courseReadModelWriter.applyRun(
+                running.getCourse().getId(),
+                running.getMember().getId(),
+                running.getRunningRecord().getDuration().intValue(),
+                running.getId());
+    }
+
+    /**
+     * 리드모델 집계 대상 러닝인지 판단한다. (공개 + 일시정지 아님 + 코스에 속함)
+     */
+    private boolean isReadModelAggregationTarget(Running running) {
+        return running.isPublic()
+                && !running.isHasPaused()
+                && running.getCourse() != null;
+    }
+
+    /**
+     * 코스를 따라 뛴 러닝의 종료 이벤트를 발행한다.
+     *
+     * - RunFinishedEvent → 멤버 VDOT 갱신(RunFinishedEventListener) · 코스 캐시 무효화(CourseCacheEventListener)
+     * - CourseRunEvent   → 코스 구독 생성(CourseSubscriptionEventListener) · 푸시 발송(PushEventListener)
+     */
+    private void publishCourseRunEvents(Running running) {
         eventPublisher.publishEvent(running.createFinishedEvent());
         eventPublisher.publishEvent(running.createCourseRunEvent());
     }
@@ -136,6 +176,7 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updateName(name);
+        // RunUpdatedEvent → 코스 캐시 무효화(CourseCacheEventListener)
         eventPublisher.publishEvent(running.createUpdatedEvent());
     }
 
@@ -144,7 +185,14 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updatePublicStatus();
+        // RunUpdatedEvent → 코스 캐시 무효화(CourseCacheEventListener)
         eventPublisher.publishEvent(running.createUpdatedEvent());
+
+        // 공개 여부가 바뀌면 집계 모집단이 달라지므로 해당 코스의 리드모델을 다시 계산한다
+        Course course = running.getCourse();
+        if (course != null) {
+            courseReadModelWriter.recalculate(List.of(course.getId()));
+        }
     }
 
     private Running findRunning(Long runningId) {
@@ -153,9 +201,26 @@ public class RunningCommandService {
 
     @Transactional
     public void deleteRunnings(List<Long> runningIds, String memberUuid) {
-        List<Running> runnings = runningRepository.findByIds(runningIds);
-        runnings.forEach(running -> running.verifyMember(memberUuid));
+        List<Running> runningsToDelete = runningRepository.findByIds(runningIds);
+        runningsToDelete.forEach(running -> running.verifyMember(memberUuid));
+
+        // 삭제 전에 모아둬야 어떤 코스의 리드모델을 다시 계산할지 알 수 있다
+        List<Long> affectedCourseIds = distinctCourseIdsOf(runningsToDelete);
+
         runningRepository.deleteInRunningIds(runningIds);
+        courseReadModelWriter.recalculate(affectedCourseIds);
+    }
+
+    /**
+     * 러닝들이 속한 코스 ID 를 중복 없이 모은다. (코스에 속하지 않은 러닝은 제외)
+     */
+    private List<Long> distinctCourseIdsOf(List<Running> runnings) {
+        return runnings.stream()
+                .map(Running::getCourse)
+                .filter(Objects::nonNull)
+                .map(Course::getId)
+                .distinct()
+                .toList();
     }
 
 }

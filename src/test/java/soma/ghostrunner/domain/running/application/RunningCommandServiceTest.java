@@ -4,12 +4,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
@@ -17,14 +19,17 @@ import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.dto.RunningDataUrlsDto;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
+import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Running;
+import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.domain.path.*;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +50,7 @@ class RunningCommandServiceTest {
     @Mock RunningQueryService runningQueryService;
     @Mock CourseService courseService;
     @Mock MemberService memberService;
+    @Mock CourseReadModelWriter courseReadModelWriter;
 
     RunningCommandService sut;
 
@@ -58,7 +64,8 @@ class RunningCommandServiceTest {
         sut = new RunningCommandService(
                 mapper, runningRepository,
                 telemetryProcessor, runningFileUploader, applicationEventPublisher,
-                pathSimplificationService, runningQueryService, courseService, memberService
+                pathSimplificationService, runningQueryService, courseService, memberService,
+                courseReadModelWriter
         );
     }
 
@@ -84,6 +91,30 @@ class RunningCommandServiceTest {
 
     private TelemetryStatistics statsMock() {
         return mock(TelemetryStatistics.class, RETURNS_DEEP_STUBS);
+    }
+
+    /** createRun 진입점에서 조회되는 코스 */
+    private Course givenFoundCourse(long courseId) {
+        Course course = mock(Course.class);
+        when(course.getId()).thenReturn(courseId);
+        when(courseService.findCourseByIdFetchJoinMember(courseId)).thenReturn(course);
+        return course;
+    }
+
+    /** createRun 진입점에서 조회되는 러너 */
+    private Member givenFoundRunner(long memberId) {
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(memberId);
+        when(member.getUuid()).thenReturn(memberUuid);
+        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
+        return member;
+    }
+
+    /** 시계열 가공 결과 */
+    private TelemetryStatistics givenProcessedTelemetry() {
+        TelemetryStatistics stats = statsMock();
+        when(telemetryProcessor.process(any(MultipartFile.class), eq(startedAt))).thenReturn(stats);
+        return stats;
     }
 
     // ====== createRunAndCourse ======
@@ -164,14 +195,9 @@ class RunningCommandServiceTest {
     void createRun_normal_success() {
         // given
         long courseId = 77L;
-        Course course = mock(Course.class);
-        when(courseService.findCourseById(courseId)).thenReturn(course);
-
-        Member member = Member.of("러너", "profile");
-        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
-
-        var stats = statsMock();
-        when(telemetryProcessor.process(any(MultipartFile.class), eq(startedAt))).thenReturn(stats);
+        Course course = givenFoundCourse(courseId);
+        Member member = givenFoundRunner(5L);
+        TelemetryStatistics stats = givenProcessedTelemetry();
 
         when(runningFileUploader.uploadRawTelemetry(any(), eq(memberUuid))).thenReturn("s3://raw");
         when(runningFileUploader.uploadInterpolatedTelemetry(anyList(), eq(memberUuid))).thenReturn("s3://interp");
@@ -199,14 +225,9 @@ class RunningCommandServiceTest {
     void createRun_ghostMode_validatesBelongsToCourse() {
         // given
         long courseId = 88L;
-        Course course = mock(Course.class);
-        when(courseService.findCourseById(courseId)).thenReturn(course);
-
-        Member member = Member.of("러너", "profile");
-        when(memberService.findMemberByUuid(memberUuid)).thenReturn(member);
-
-        var stats = statsMock();
-        when(telemetryProcessor.process(any(MultipartFile.class), eq(startedAt))).thenReturn(stats);
+        Course course = givenFoundCourse(courseId);
+        Member member = givenFoundRunner(5L);
+        TelemetryStatistics stats = givenProcessedTelemetry();
 
         CreateRunCommand cmd = mock(CreateRunCommand.class);
         when(cmd.getStartedAt()).thenReturn(startedAt);
@@ -290,6 +311,145 @@ class RunningCommandServiceTest {
         verify(r2).verifyMember(memberUuid);
         verify(r3).verifyMember(memberUuid);
         verify(runningRepository).deleteInRunningIds(ids);
+    }
+
+    // ====== 코스 리드모델 동기화 ======
+    // 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §0-3, §3-2
+    // 러닝 쓰기 유즈케이스가 CourseReadModelWriter 를 직접 호출한다 (이벤트 경유 X).
+
+    @Test
+    @DisplayName("createRun: 공개 + 일시정지 아닌 러닝이면 저장된 러닝 정보로 리드모델을 증분 갱신한다")
+    void createRun_publicRun_appliesRunToReadModel() {
+        // given
+        long courseId = 77L;
+        long memberId = 5L;
+        long runningId = 100L;
+        long durationSeconds = 1800L;
+
+        Course course = givenFoundCourse(courseId);
+        Member member = givenFoundRunner(memberId);
+        TelemetryStatistics stats = givenProcessedTelemetry();
+
+        CreateRunCommand cmd = publicRunCommand(durationSeconds, false);
+        Running running = savedPublicRunning(runningId, durationSeconds, member, course);
+        when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
+        when(runningRepository.save(any())).thenReturn(running);
+
+        // when
+        sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
+
+        // then : 저장된 러닝의 id 로 호출해야 첫 러닝 판정(EXISTS 자기 제외)이 성립한다
+        verify(courseReadModelWriter, times(1))
+                .applyRun(courseId, memberId, (int) durationSeconds, runningId);
+    }
+
+    @Test
+    @DisplayName("createRun: 일시정지된 러닝은 집계 대상이 아니므로 리드모델을 갱신하지 않는다")
+    void createRun_pausedRun_doesNotApplyRunToReadModel() {
+        // given
+        long courseId = 77L;
+        long memberId = 5L;
+        long runningId = 101L;
+        long durationSeconds = 1800L;
+
+        Course course = givenFoundCourse(courseId);
+        Member member = givenFoundRunner(memberId);
+        TelemetryStatistics stats = givenProcessedTelemetry();
+
+        CreateRunCommand cmd = publicRunCommand(durationSeconds, true);
+        Running running = savedPausedRunning(runningId, durationSeconds, member, course);
+        when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
+        when(runningRepository.save(any())).thenReturn(running);
+
+        // when
+        sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
+
+        // then
+        verify(courseReadModelWriter, never()).applyRun(anyLong(), anyLong(), anyInt(), anyLong());
+    }
+
+    @Test
+    @DisplayName("deleteRunnings: 삭제된 러닝들의 코스를 중복 없이 모아 한 번에 재계산한다")
+    void deleteRunnings_recalculatesDistinctCourses() {
+        // given : 같은 코스의 러닝 2건 + 다른 코스의 러닝 1건
+        List<Long> ids = List.of(1L, 2L, 3L);
+
+        Course courseA = mock(Course.class);
+        when(courseA.getId()).thenReturn(10L);
+        Course courseB = mock(Course.class);
+        when(courseB.getId()).thenReturn(20L);
+
+        Running r1 = mock(Running.class);
+        when(r1.getCourse()).thenReturn(courseA);
+        Running r2 = mock(Running.class);
+        when(r2.getCourse()).thenReturn(courseA);
+        Running r3 = mock(Running.class);
+        when(r3.getCourse()).thenReturn(courseB);
+
+        when(runningRepository.findByIds(ids)).thenReturn(List.of(r1, r2, r3));
+
+        // when
+        sut.deleteRunnings(ids, memberUuid);
+
+        // then
+        ArgumentCaptor<Collection<Long>> captor = ArgumentCaptor.forClass(Collection.class);
+        verify(courseReadModelWriter, times(1)).recalculate(captor.capture());
+        assertThat(captor.getValue()).containsExactlyInAnyOrder(10L, 20L);
+    }
+
+    @Test
+    @DisplayName("updateRunningPublicStatus: 공개 여부가 바뀐 러닝의 코스를 재계산한다")
+    void updateRunningPublicStatus_recalculatesCourse() {
+        // given
+        Long runningId = 11L;
+        Course course = mock(Course.class);
+        when(course.getId()).thenReturn(30L);
+
+        Running running = mock(Running.class);
+        when(running.getCourse()).thenReturn(course);
+        when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
+
+        // when
+        sut.updateRunningPublicStatus(runningId, memberUuid);
+
+        // then
+        ArgumentCaptor<Collection<Long>> captor = ArgumentCaptor.forClass(Collection.class);
+        verify(courseReadModelWriter, times(1)).recalculate(captor.capture());
+        assertThat(captor.getValue()).containsExactly(30L);
+    }
+
+    private CreateRunCommand publicRunCommand(long durationSeconds, boolean hasPaused) {
+        CreateRunCommand cmd = mock(CreateRunCommand.class);
+        when(cmd.getStartedAt()).thenReturn(startedAt);
+        when(cmd.getMode()).thenReturn("NORMAL");
+        when(cmd.getIsPublic()).thenReturn(true);
+        when(cmd.getHasPaused()).thenReturn(hasPaused);
+        when(cmd.getRecord()).thenReturn(
+                new RunRecordCommand(5.2, 40.0, -20.0, durationSeconds, 6.1, 302, 120, 56));
+        return cmd;
+    }
+
+    /** 집계 대상 러닝 (공개 + 일시정지 아님) */
+    private Running savedPublicRunning(long runningId, long durationSeconds, Member member, Course course) {
+        return savedRunning(runningId, durationSeconds, true, false, member, course);
+    }
+
+    /** 집계 제외 러닝 (공개지만 일시정지함) */
+    private Running savedPausedRunning(long runningId, long durationSeconds, Member member, Course course) {
+        return savedRunning(runningId, durationSeconds, true, true, member, course);
+    }
+
+    private Running savedRunning(long runningId, long durationSeconds, boolean isPublic, boolean hasPaused,
+                                 Member member, Course course) {
+        Running running = mock(Running.class);
+        when(running.getId()).thenReturn(runningId);
+        when(running.isPublic()).thenReturn(isPublic);
+        when(running.isHasPaused()).thenReturn(hasPaused);
+        when(running.getMember()).thenReturn(member);
+        when(running.getCourse()).thenReturn(course);
+        when(running.getRunningRecord()).thenReturn(
+                RunningRecord.of(5.2, 30.0, 40.0, -20.0, 6.1, 4.9, 6.9, durationSeconds, 302, 120, 56));
+        return running;
     }
 
     // ====== 예외 가드(한 예시) ======
