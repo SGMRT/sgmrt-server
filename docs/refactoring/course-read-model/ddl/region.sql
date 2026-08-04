@@ -21,7 +21,11 @@ CREATE TABLE IF NOT EXISTS region (
     created_at  DATETIME(6)  NULL,
     updated_at  DATETIME(6)  NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_region_name (name)     -- 동시 등록 경쟁의 최종 심판 (RegionService 복구 로직의 근거)
+    UNIQUE KEY uk_region_name (name),    -- 동시 등록 경쟁의 최종 심판 (RegionService 복구 로직의 근거)
+    KEY idx_region_center (center_lat, center_lng)
+    -- 완주 이빅트의 역산 쿼리용: WHERE center_lat BETWEEN ? AND ? AND center_lng BETWEEN ? AND ?
+    -- (CourseMapCacheEvictListener — 코스 좌표 ±2.1km 박스). 선두 center_lat 범위로 스캔을 좁히고
+    -- center_lng는 인덱스 내 필터. 행 수백~수천에선 풀스캔도 무방하나 전국 스케일 대비 선제 적용.
 );
 
 -- 검증: 배포 후 행이 쌓이는지 확인

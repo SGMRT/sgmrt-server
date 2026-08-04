@@ -21,7 +21,8 @@ import soma.ghostrunner.global.common.BaseTimeEntity;
 @Entity
 @Table(
     name = "region",
-    uniqueConstraints = @UniqueConstraint(name = "uk_region_name", columnNames = "name")
+    uniqueConstraints = @UniqueConstraint(name = "uk_region_name", columnNames = "name"),
+    indexes = @Index(name = "idx_region_center", columnList = "center_lat, center_lng")
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
