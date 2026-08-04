@@ -2,30 +2,33 @@ package soma.ghostrunner.domain.member.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
-import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
+import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.pacemaker.application.VdotService;
-import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 
 import java.util.Optional;
 
+/**
+ * 러닝 종료에 따른 회원 VDOT 갱신.
+ *
+ * (구) RunFinishedEvent 리스너(BEFORE_COMMIT)를 직접 호출로 전환한 것 — 같은 트랜잭션 동기 로직은
+ * 이벤트의 실질 이득이 없어 호출 흐름이 드러나는 직접 호출로 통일한다. (설계 04 §6)
+ * 호출자(러닝 저장 트랜잭션) 안에서 실행되어 원자성이 유지된다.
+ */
 @Service
 @RequiredArgsConstructor
-public class RunFinishedEventListener {
+public class MemberVdotUpdater {
 
     private final MemberMapper mapper;
     private final MemberVdotRepository memberVdotRepository;
     private final MemberService memberService;
     private final VdotService vdotService;
 
-    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
-    public void handleRunFinished(RunFinishedEvent event) {
-        Member member = memberService.findMemberByUuid(event.memberUuid());
-        int vdot = vdotService.calculateVdot(event.averagePace());
+    public void updateVdotFromRun(String memberUuid, Double averagePace) {
+        Member member = memberService.findMemberByUuid(memberUuid);
+        int vdot = vdotService.calculateVdot(averagePace);
         upsertMemberVdot(member, vdot);
     }
 
@@ -38,5 +41,4 @@ public class RunFinishedEventListener {
             memberVdotRepository.save(newMemberVdot);
         }
     }
-
 }

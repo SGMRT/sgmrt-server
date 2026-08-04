@@ -11,7 +11,6 @@ import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
 import soma.ghostrunner.domain.pacemaker.application.VdotService;
-import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 
 import java.util.Optional;
 
@@ -19,7 +18,7 @@ import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class RunFinishedEventListenerTest {
+class MemberVdotUpdaterTest {
 
     @Mock
     private MemberService memberService;
@@ -31,21 +30,13 @@ class RunFinishedEventListenerTest {
     private MemberMapper mapper;
 
     @InjectMocks
-    private RunFinishedEventListener runFinishedEventListener;
+    private MemberVdotUpdater memberVdotUpdater;
 
     @DisplayName("VDOT가 기존에 없다면 새롭게 VDOT가 저장된다.")
     @Test
     void handleRunFinishedAndSaveNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(
-            1L,           // runId
-            1L,           // courseId
-            memberUuid,   // memberUuid
-            100L,         // memberId
-            1800,         // durationSeconds
-            6.0           // averagePace
-        );
 
         Member mockMember = mock(Member.class);
 
@@ -58,7 +49,7 @@ class RunFinishedEventListenerTest {
         given(mapper.toMemberVdot(mockMember, 50)).willReturn(mapped);
 
         // when
-        runFinishedEventListener.handleRunFinished(event);
+        memberVdotUpdater.updateVdotFromRun(memberUuid, 6.0);
 
         // then
         verify(memberVdotRepository, times(1)).save(mapped);
@@ -69,14 +60,6 @@ class RunFinishedEventListenerTest {
     void handleRunFinishedAndUpdateNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(
-            1L,           // runId
-            1L,           // courseId
-            memberUuid,   // memberUuid
-            100L,         // memberId
-            1800,         // durationSeconds
-            6.0           // averagePace
-        );
 
         Member mockMember = mock(Member.class);
         MemberVdot mockMemberVdot = mock(MemberVdot.class);
@@ -86,7 +69,7 @@ class RunFinishedEventListenerTest {
         given(memberVdotRepository.findByMemberUuid(mockMember.getUuid())).willReturn(Optional.of(mockMemberVdot));
 
         // when
-        runFinishedEventListener.handleRunFinished(event);
+        memberVdotUpdater.updateVdotFromRun(memberUuid, 6.0);
 
         // then
         verify(mockMemberVdot, times(1)).updateVdot(50);
