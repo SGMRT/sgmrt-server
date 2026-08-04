@@ -61,7 +61,7 @@ public class RunningCommandService {
         Course course = createAndSaveCourse(member, command, telemetryStatistics, dataUrlsDto);
         Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
 
-        courseReadModelWriter.applyRun(running);   // 집계 대상 판정은 Writer 책임 (신규 코스는 리드모델 부재로 내부 스킵)
+        courseReadModelWriter.applyRun(running);
         memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
         eventPublisher.publishEvent(running.createFinishedEvent());   // 소비자: 코스 캐시 무효화(AFTER_COMMIT)만
         return mapper.toResponse(running, course);
@@ -110,7 +110,7 @@ public class RunningCommandService {
         RunningDataUrlsDto runningDataUrlsDto = upload(rawTelemetry, processedTelemetries, screenShotImage, member);
         Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
 
-        courseReadModelWriter.applyRun(running);   // 집계 대상 판정은 Writer 책임
+        courseReadModelWriter.applyRun(running);
         memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
         courseSubscriptionService.subscribeIfAbsent(courseId, member.getId());
         publishCourseRunEvents(running);

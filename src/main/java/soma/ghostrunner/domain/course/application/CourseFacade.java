@@ -7,7 +7,6 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.dao.CourseCacheRepository;
-import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.query.CourseMapDto;
@@ -30,16 +29,24 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class CourseFacade {
+
+    private static final int MAX_COURSES_PER_MAP_RESPONSE = 10;
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
     private final CourseCacheRepository courseCacheRepository;
-    private final CourseReadModelRepository readModelRepository;
+    private final CourseReadModelReader courseReadModelReader;
   
     private final MemberService memberService;
 
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
 
+    /**
+     * @deprecated 수동 Redis 캐시(course:{id}) 기반 구 조회 경로. {@link #findCoursesByPosition}(리드모델 +
+     *             Spring Cache)로 대체되었다. 신경로 안정화 후 {@link soma.ghostrunner.domain.course.dao.CourseCacheRepository},
+     *             {@link CourseCacheEventListener}와 함께 제거 예정.
+     */
+    @Deprecated
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPositionCached(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                                CourseSearchFilterDto filters, String viewerUuid) {
@@ -129,54 +136,49 @@ public class CourseFacade {
         }).toList();
     }
 
+    /**
+     * 주변 코스 지도 조회 — 리드모델 + Spring Cache 경로. (설계 04 §0-2)
+     *
+     * 흐름: Reader(캐시/리드모델 쿼리) → 랜덤 선별(매 요청, 캐시 밖) → 내 고스트 조회(선별분만)
+     * → 응답 조립. checkpointsUrl/createdAt 은 클라 미사용으로 null.
+     * 정렬/필터 파라미터는 하위호환으로 받되 적용하지 않는다(클라 미사용 확인 — 설계 §1 확정)
+     * — 기본값이 아닌 요청은 캐시만 우회한다.
+     */
     @Transactional(readOnly = true)
-    public List<CourseMapResponse> findCoursesByPosition(
-        Double lat, 
-        Double lng, 
-        Integer radiusM,
-        String viewerUuid,
-        int limit
-    ) {
-        // 1. 범위 계산
-        CourseService.LatLngs bounds = CourseService.getBoundingBoxLatLngs(lat, lng, radiusM);
-        
-        // 2. 리드모델 조회 (넉넉하게 50개)
-        List<CourseMapDto> allCourses = readModelRepository.findCoursesForMap(
-            bounds.minLat(),
-            bounds.maxLat(),
-            bounds.minLng(),
-            bounds.maxLng(),
-            50
-        );
-        
-        log.info("Found {} courses using read model", allCourses.size());
-        
-        // 3. CoursePreviewDto로 변환
-        List<CoursePreviewDto> previewDtos = allCourses.stream()
-            .map(CourseMapDto::toPreviewDto)
-            .toList();
-        
-        // 4. 랜덤 선별 (기존 로직 재사용)
-        List<CoursePreviewDto> selectedCourses = limitCoursesForViewer(previewDtos, viewerUuid, limit);
-        
-        // 5. 선택된 코스의 ID로 원본 CourseMapDto 찾아서 응답 변환
-        var courseIds = selectedCourses.stream().map(CoursePreviewDto::id).toList();
-        var courseMap = allCourses.stream()
-            .filter(dto -> courseIds.contains(dto.courseId()))
-            .collect(java.util.stream.Collectors.toMap(CourseMapDto::courseId, dto -> dto));
-        
-        // 6. 최종 응답 생성 (순서 유지, 고스트 정보 없음)
+    public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
+                                                         CourseSearchFilterDto filters, String viewerUuid) {
+        boolean cacheable = isDefaultMapRequest(sort, filters);
+        List<CourseMapDto> nearbyCourses = courseReadModelReader.findCoursesForMap(lat, lng, radiusM, cacheable);
+
+        // 랜덤 선별 — 사용자별 다양성이 목적이므로 캐시된 원본 리스트 위에서 매 요청 수행한다.
+        List<CoursePreviewDto> previews = nearbyCourses.stream()
+                .map(CourseMapDto::toPreviewDto)
+                .toList();
+        List<CoursePreviewDto> selectedCourses = limitCoursesForViewer(previews, viewerUuid, MAX_COURSES_PER_MAP_RESPONSE);
+
+        // 내 고스트는 개인화 데이터라 캐싱 대상이 아니다 — 선별된 코스에 대해서만 조회한다.
+        List<Long> selectedCourseIds = selectedCourses.stream().map(CoursePreviewDto::id).toList();
+        Map<Long, Running> memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(selectedCourseIds, viewerUuid);
+
+        Map<Long, CourseMapDto> courseById = nearbyCourses.stream()
+                .collect(java.util.stream.Collectors.toMap(CourseMapDto::courseId, dto -> dto));
         return selectedCourses.stream()
-            .map(preview -> {
-                CourseMapDto dto = courseMap.get(preview.id());
-                if (dto == null) {
-                    log.warn("CourseMapDto not found for id: {}", preview.id());
-                    return null;
-                }
-                return dto.toResponse(null); // 고스트 정보 없이 변환
-            })
-            .filter(java.util.Objects::nonNull)
-            .toList();
+                .map(preview -> {
+                    CourseGhostResponse myGhost = memberBestRuns.containsKey(preview.id())
+                            ? runningApiMapper.toGhostResponse(memberBestRuns.get(preview.id()))
+                            : null;
+                    return courseById.get(preview.id()).toResponse(myGhost);
+                })
+                .toList();
+    }
+
+    /** 캐시 대상 판정 — 클라이언트가 실제로 쓰는 기본 요청(거리 정렬 + 필터 없음)만 캐싱한다. */
+    private boolean isDefaultMapRequest(CourseSortType sort, CourseSearchFilterDto filters) {
+        boolean noFilters = filters == null
+                || (filters.getMinDistanceM() == null && filters.getMaxDistanceM() == null
+                    && filters.getMinElevationM() == null && filters.getMaxElevationM() == null
+                    && filters.getOwnerUuid() == null);
+        return (sort == null || sort == CourseSortType.DISTANCE) && noFilters;
     }
 
     /** 본인 코스 > RECOMMENDED 지정 코스 > 타 러너 코스 > 더미 코스 순으로 limit개 이하를 선택한다. */

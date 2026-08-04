@@ -11,6 +11,11 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/**
+ * @deprecated 구 조회 경로(findCoursesByPositionCached)의 수동 코스 단위 캐시(course:{id}).
+ *             리드모델 + Spring Cache(course-map 결과셋 캐시)로 대체됨 — 신경로 안정화 후 제거 예정.
+ */
+@Deprecated
 @Repository
 @RequiredArgsConstructor
 public class CourseCacheRepository {
