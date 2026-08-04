@@ -41,6 +41,9 @@ public enum ErrorCode {
     COURSE_NAME_NOT_VALID("C-002", BAD_REQUEST, "올바르지 않은 코스명"),
     COURSE_ALREADY_PUBLIC("C-003", BAD_REQUEST, "코스가 이미 public이므로 수정 불가"),
     COURSE_RUN_NOT_FOUND("C-004", BAD_REQUEST, "해당 코스를 달린 기록이 없음"),
+    // C-005는 외부로 노출되지 않는 내부 신호다 — Reader가 던지고 CourseFacade가 잡아 좌표 폴백으로 강등한다 (설계 cache/05 §5-2)
+    REGION_NOT_FOUND("C-005", NOT_FOUND, "존재하지 않는 지역"),
+    REGION_COORDINATE_NOT_VALID("C-006", BAD_REQUEST, "서비스 영역 밖의 지역 좌표"),
 
     // Running
 
