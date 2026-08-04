@@ -7,11 +7,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import soma.ghostrunner.domain.member.application.dto.MemberMapper;
+import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.member.infra.dao.MemberVdotRepository;
+import soma.ghostrunner.domain.member.exception.InvalidMemberException;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.domain.MemberVdot;
 import soma.ghostrunner.domain.pacemaker.application.VdotService;
-import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 
 import java.util.Optional;
 
@@ -19,10 +20,10 @@ import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class RunFinishedEventListenerTest {
+class MemberVdotWriterTest {
 
     @Mock
-    private MemberService memberService;
+    private MemberRepository memberRepository;
     @Mock
     private VdotService vdotService;
     @Mock
@@ -31,25 +32,17 @@ class RunFinishedEventListenerTest {
     private MemberMapper mapper;
 
     @InjectMocks
-    private RunFinishedEventListener runFinishedEventListener;
+    private MemberVdotWriter memberVdotWriter;
 
     @DisplayName("VDOT가 기존에 없다면 새롭게 VDOT가 저장된다.")
     @Test
     void handleRunFinishedAndSaveNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(
-            1L,           // runId
-            1L,           // courseId
-            memberUuid,   // memberUuid
-            100L,         // memberId
-            1800,         // durationSeconds
-            6.0           // averagePace
-        );
 
         Member mockMember = mock(Member.class);
 
-        given(memberService.findMemberByUuid(memberUuid)).willReturn(mockMember);
+        given(memberRepository.findByUuid(memberUuid)).willReturn(Optional.of(mockMember));
         given(vdotService.calculateVdot(6.0)).willReturn(50);
 
         given(memberVdotRepository.findByMemberUuid(mockMember.getUuid())).willReturn(Optional.empty());
@@ -58,7 +51,7 @@ class RunFinishedEventListenerTest {
         given(mapper.toMemberVdot(mockMember, 50)).willReturn(mapped);
 
         // when
-        runFinishedEventListener.handleRunFinished(event);
+        memberVdotWriter.updateFromRun(memberUuid, 6.0);
 
         // then
         verify(memberVdotRepository, times(1)).save(mapped);
@@ -69,27 +62,54 @@ class RunFinishedEventListenerTest {
     void handleRunFinishedAndUpdateNewVdot() {
         // given
         String memberUuid = "18923u1uhfaiu";
-        RunFinishedEvent event = new RunFinishedEvent(
-            1L,           // runId
-            1L,           // courseId
-            memberUuid,   // memberUuid
-            100L,         // memberId
-            1800,         // durationSeconds
-            6.0           // averagePace
-        );
 
         Member mockMember = mock(Member.class);
         MemberVdot mockMemberVdot = mock(MemberVdot.class);
 
-        given(memberService.findMemberByUuid(memberUuid)).willReturn(mockMember);
+        given(memberRepository.findByUuid(memberUuid)).willReturn(Optional.of(mockMember));
         given(vdotService.calculateVdot(6.0)).willReturn(50);
         given(memberVdotRepository.findByMemberUuid(mockMember.getUuid())).willReturn(Optional.of(mockMemberVdot));
 
         // when
-        runFinishedEventListener.handleRunFinished(event);
+        memberVdotWriter.updateFromRun(memberUuid, 6.0);
 
         // then
         verify(mockMemberVdot, times(1)).updateVdot(50);
     }
 
+
+    @DisplayName("레벨 기반 초기 설정: VDOT가 없으면 계산해서 저장한다.")
+    @Test
+    void initializeFromRunningLevel_savesWhenAbsent() {
+        // given
+        String memberUuid = "18923u1uhfaiu";
+        Member mockMember = mock(Member.class);
+        given(memberRepository.findByUuid(memberUuid)).willReturn(Optional.of(mockMember));
+        given(memberVdotRepository.existsByMemberUuid(memberUuid)).willReturn(false);
+        given(vdotService.calculateVdotFromRunningLevel("입문자")).willReturn(38);
+        MemberVdot mapped = mock(MemberVdot.class);
+        given(mapper.toMemberVdot(mockMember, 38)).willReturn(mapped);
+
+        // when
+        memberVdotWriter.initializeFromRunningLevel(memberUuid, "입문자");
+
+        // then
+        verify(memberVdotRepository, times(1)).save(mapped);
+    }
+
+    @DisplayName("레벨 기반 초기 설정: 이미 VDOT가 있으면 예외를 던진다.")
+    @Test
+    void initializeFromRunningLevel_rejectsWhenAlreadyExists() {
+        // given
+        String memberUuid = "18923u1uhfaiu";
+        Member mockMember = mock(Member.class);
+        given(memberRepository.findByUuid(memberUuid)).willReturn(Optional.of(mockMember));
+        given(memberVdotRepository.existsByMemberUuid(memberUuid)).willReturn(true);
+
+        // when & then
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> memberVdotWriter.initializeFromRunningLevel(memberUuid, "입문자"))
+                .isInstanceOf(InvalidMemberException.class);
+        verify(memberVdotRepository, never()).save(any());
+    }
 }

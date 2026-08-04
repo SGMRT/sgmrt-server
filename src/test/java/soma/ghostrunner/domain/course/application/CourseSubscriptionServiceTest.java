@@ -12,7 +12,6 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 
 import java.util.Optional;
 
@@ -20,11 +19,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("CourseSubscriptionEventListener 테스트")
-class CourseSubscriptionEventListenerTest {
+@DisplayName("CourseSubscriptionService 테스트")
+class CourseSubscriptionServiceTest {
 
     @InjectMocks
-    private CourseSubscriptionEventListener listener;
+    private CourseSubscriptionService subscriptionService;
 
     @Mock
     private CourseSubscriptionRepository subscriptionRepository;
@@ -41,11 +40,6 @@ class CourseSubscriptionEventListenerTest {
         // given
         Long courseId = 1L;
         Long memberId = 2L;
-        CourseRunEvent event = new CourseRunEvent(
-                courseId, "테스트 코스", 100L,
-                1L, System.currentTimeMillis(), 3600L,
-                memberId, "러너닉네임"
-        );
 
         Course mockCourse = mock(Course.class);
         Member mockMember = mock(Member.class);
@@ -56,7 +50,7 @@ class CourseSubscriptionEventListenerTest {
                 .thenReturn(Optional.empty());
 
         // when
-        listener.handleCourseRun(event);
+        subscriptionService.subscribeIfAbsent(courseId, memberId);
 
         // then
         verify(subscriptionRepository).findByCourseIdAndMemberId(courseId, memberId);
@@ -69,11 +63,6 @@ class CourseSubscriptionEventListenerTest {
         // given
         Long courseId = 1L;
         Long memberId = 2L;
-        CourseRunEvent event = new CourseRunEvent(
-                courseId, "테스트 코스", 100L,
-                1L, System.currentTimeMillis(), 3600L,
-                memberId, "러너닉네임"
-        );
 
         CourseSubscription mockSubscription = mock(CourseSubscription.class);
 
@@ -81,7 +70,7 @@ class CourseSubscriptionEventListenerTest {
                 .thenReturn(Optional.of(mockSubscription));
 
         // when
-        listener.handleCourseRun(event);
+        subscriptionService.subscribeIfAbsent(courseId, memberId);
 
         // then
         verify(subscriptionRepository).findByCourseIdAndMemberId(courseId, memberId);
