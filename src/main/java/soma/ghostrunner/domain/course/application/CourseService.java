@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
+import soma.ghostrunner.domain.course.domain.BoundingBox;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.*;
@@ -63,10 +64,7 @@ public class CourseService {
 
     public List<CoursePreviewDto> findNearbyCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                     CourseSearchFilterDto filters, Long memberId) {
-        // 코스 검색할 직사각형 반경 계산
-        // - 1도 위도 당 111km 가정 (지구 둘레 40,075km / 360도 = 약 111.3km)
-        // - 근사치이며, 적도에서 멀어질 수록 경도 거리 오차가 커짐 -> TODO: 추후 Haversine 공식이나 DB 공간 데이터 타입 활용하도록 변경
-        LatLngs boundingBox = getBoundingBoxLatLngs(lat, lng, radiusM);
+        BoundingBox boundingBox = BoundingBox.of(lat, lng, radiusM);
 
         List<Course> nearbyCourses = courseRepository.findCoursesWithFilters(lat, lng,
                 boundingBox.minLat(), boundingBox.maxLat(), boundingBox.minLng(), boundingBox.maxLng(),
@@ -202,23 +200,6 @@ public class CourseService {
                     subscriptionRepository.save(subscription);
                     log.info("Unregistered subscription for course={}, member={}", courseId, ownerId);
                 });
-    }
-
-    /** (lat, lng)을 radiusM로 둘러싼 직사각형의 네 꼭지점 좌표를 반환한다 */
-    public static LatLngs getBoundingBoxLatLngs(Double lat, Double lng, double radiusM) {
-        double radiusKm = radiusM / 1000d;
-        double latDelta = radiusKm / 111.0;
-        double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
-
-        double minLat = lat - latDelta;
-        double maxLat = lat + latDelta;
-        double minLng = lng - lngDelta;
-        double maxLng = lng + lngDelta;
-
-        return new LatLngs(minLat, maxLat, minLng, maxLng);
-    }
-
-    public record LatLngs(double minLat, double maxLat, double minLng, double maxLng) {
     }
 
 }

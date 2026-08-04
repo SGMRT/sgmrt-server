@@ -8,10 +8,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.dao.RegionRepository;
+import soma.ghostrunner.domain.course.domain.BoundingBox;
 import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.domain.Region;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
+import soma.ghostrunner.global.config.CacheType;
 
 import java.util.List;
 
@@ -59,7 +61,7 @@ public class CourseMapCacheEvictListener {
                 return;
             }
             List<Region> regions = findRegionsCoveringCourse(readModel.getStartLat(), readModel.getStartLng());
-            Cache cache = cacheManager.getCache(CourseReadModelReader.COURSE_MAP_CACHE);
+            Cache cache = cacheManager.getCache(CacheType.COURSE_MAP.getCacheName());
             if (cache == null || regions.isEmpty()) {
                 return;
             }
@@ -80,7 +82,7 @@ public class CourseMapCacheEvictListener {
 
     /** 코스가 값에 포함되는 캐시 엔트리의 역산 — 대표좌표가 코스 시작점 ±(조회 반경+마진) 박스 안인 region 전부 */
     private List<Region> findRegionsCoveringCourse(Double courseLat, Double courseLng) {
-        CourseService.LatLngs box = CourseService.getBoundingBoxLatLngs(
+        BoundingBox box = BoundingBox.of(
                 courseLat, courseLng, CourseReadModelReader.REGION_MAP_RADIUS_M + EVICT_BOX_MARGIN_M);
         return regionRepository.findByCenterLatBetweenAndCenterLngBetween(
                 box.minLat(), box.maxLat(), box.minLng(), box.maxLng());
