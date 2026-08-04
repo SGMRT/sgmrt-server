@@ -8,6 +8,7 @@ import soma.ghostrunner.domain.course.dao.RegionRepository;
 import soma.ghostrunner.domain.course.domain.Region;
 import soma.ghostrunner.domain.course.dto.query.CourseMapDto;
 import soma.ghostrunner.domain.course.exception.RegionNotFoundException;
+import soma.ghostrunner.global.config.CacheType;
 
 import java.util.List;
 
@@ -30,8 +31,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CourseReadModelReader {
 
-    public static final String COURSE_MAP_CACHE = "course-map";
-
     /** 랜덤 선별의 모집단 확보를 위해 응답 개수(10)보다 넉넉히 조회한다. */
     private static final int MAP_QUERY_LIMIT = 50;
 
@@ -52,7 +51,7 @@ public class CourseReadModelReader {
      * <p>대표좌표 조회를 캐시 메서드 <b>안</b>에 두는 것이 핵심이다 — 히트 시 본문이 실행되지 않으므로
      * region 조회를 포함해 DB 접근이 0회가 된다.</p>
      */
-    @Cacheable(cacheNames = COURSE_MAP_CACHE, key = "#regionId")
+    @Cacheable(cacheNames = CacheType.Names.COURSE_MAP, key = "#regionId")
     public List<CourseMapDto> findCoursesForMapByRegion(Long regionId) {
         Region region = regionRepository.findById(regionId)
                 .orElseThrow(() -> new RegionNotFoundException(regionId));

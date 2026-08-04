@@ -12,6 +12,7 @@ import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.domain.Region;
 import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
+import soma.ghostrunner.global.config.CacheType;
 
 import java.util.List;
 
@@ -59,7 +60,7 @@ public class CourseMapCacheEvictListener {
                 return;
             }
             List<Region> regions = findRegionsCoveringCourse(readModel.getStartLat(), readModel.getStartLng());
-            Cache cache = cacheManager.getCache(CourseReadModelReader.COURSE_MAP_CACHE);
+            Cache cache = cacheManager.getCache(CacheType.COURSE_MAP.getCacheName());
             if (cache == null || regions.isEmpty()) {
                 return;
             }
