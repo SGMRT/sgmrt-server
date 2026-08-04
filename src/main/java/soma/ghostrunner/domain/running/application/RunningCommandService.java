@@ -57,7 +57,7 @@ public class RunningCommandService {
         Course course = createAndSaveCourse(member, command, telemetryStatistics, dataUrlsDto);
         Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
 
-        courseReadModelWriter.applyRun(running);   // 집계 대상 판정은 Writer 책임 (신규 코스는 리드모델 부재로 내부 스킵)
+        courseReadModelWriter.applyRun(running);
         eventPublisher.publishEvent(running.createFinishedEvent());
         return mapper.toResponse(running, course);
     }
@@ -95,7 +95,6 @@ public class RunningCommandService {
     @Transactional
     public Long createRun(CreateRunCommand command, String memberUuid, Long courseId,
                           MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry, MultipartFile screenShotImage) {
-
         Member member = findMember(memberUuid);
         Course course = findCourse(courseId);
 
