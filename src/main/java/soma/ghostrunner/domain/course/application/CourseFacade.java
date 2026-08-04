@@ -44,6 +44,9 @@ public class CourseFacade {
      */
     private static final int MAX_CACHEABLE_RADIUS_M = 3000;
 
+    /** 하한 — 캐시 값이 고정 2km라, 그보다 훨씬 좁은(또는 음수·0) 반경 요청에 태우면 요청 반경 밖 코스를 돌려주는 침묵 오답이 된다. */
+    private static final int MIN_CACHEABLE_RADIUS_M = 1000;
+
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
     private final CourseCacheRepository courseCacheRepository;
@@ -221,7 +224,8 @@ public class CourseFacade {
      */
     private boolean useRegionCache(Long regionId, Integer radiusM) {
         return regionId != null
-                && (radiusM == null || radiusM <= MAX_CACHEABLE_RADIUS_M);
+                && (radiusM == null
+                    || (radiusM >= MIN_CACHEABLE_RADIUS_M && radiusM <= MAX_CACHEABLE_RADIUS_M));
     }
 
     /** 본인 코스 > RECOMMENDED 지정 코스 > 타 러너 코스 > 더미 코스 순으로 limit개 이하를 선택한다. */

@@ -40,6 +40,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(DatabaseCleanserExtension.class)
 class CourseMapPathParityTest extends IntegrationTestSupport {
 
+    /**
+     * 구경로의 수동 캐시(course:{id}, TTL 60분)는 DatabaseCleanserExtension(테이블 truncate)이 지우지 못한다.
+     * ID 재사용 시 다른 테스트의 캐시를 읽어 파리티가 오염되는 플래키를 막기 위해 매 테스트 전 정리한다.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void clearLegacyCourseCache() {
+        java.util.Set<String> keys = redisTemplate.keys("course:*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
+
+    @Autowired org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
     @Autowired CourseFacade courseFacade;
     @Autowired CourseRepository courseRepository;
     @Autowired CourseReadModelRepository readModelRepository;

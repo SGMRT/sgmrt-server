@@ -170,6 +170,7 @@ class CourseReadModelRepositoryTest extends IntegrationTestSupport {
         // Then: 탈퇴 멤버의 프로필도 그대로 조회된다 (member 소프트삭제 — uuid/사진 유지)
         CourseMapDto dto = results.get(0);
         assertThat(dto.top1Uuid()).isEqualTo(deletedMember.getUuid()); // 탈퇴해도 1위 유지
+        assertThat(dto.top1ProfileUrl()).isNotNull();                  // 사진도 유지 — 소프트삭제 조인이 프로필을 비우면 안 됨
         assertThat(dto.top2Uuid()).isEqualTo(activeMember.getUuid());
     }
     

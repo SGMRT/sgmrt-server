@@ -71,10 +71,17 @@ public class CourseMapCacheEvictListener {
         }
     }
 
-    /** 코스가 값에 포함되는 캐시 엔트리의 역산 — 대표좌표가 코스 시작점 ±조회 반경 박스 안인 region 전부 */
+    /**
+     * 이빅트 역산 박스의 여유 마진 — 조회 박스(대표좌표 앵커)와 역산 박스(코스 좌표 앵커)는 경도 반폭을
+     * 서로 다른 위도의 cos 로 계산해 미세하게 어긋날 수 있다. 역산이 조회의 상위집합(superset)이 되도록
+     * 마진을 더해, 경계에 걸친 코스의 캐시가 이빅트에서 누락되는 일이 없게 한다.
+     */
+    private static final int EVICT_BOX_MARGIN_M = 100;
+
+    /** 코스가 값에 포함되는 캐시 엔트리의 역산 — 대표좌표가 코스 시작점 ±(조회 반경+마진) 박스 안인 region 전부 */
     private List<Region> findRegionsCoveringCourse(Double courseLat, Double courseLng) {
         CourseService.LatLngs box = CourseService.getBoundingBoxLatLngs(
-                courseLat, courseLng, CourseReadModelReader.REGION_MAP_RADIUS_M);
+                courseLat, courseLng, CourseReadModelReader.REGION_MAP_RADIUS_M + EVICT_BOX_MARGIN_M);
         return regionRepository.findByCenterLatBetweenAndCenterLngBetween(
                 box.minLat(), box.maxLat(), box.minLng(), box.maxLng());
     }

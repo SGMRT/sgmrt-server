@@ -277,7 +277,7 @@ sum(rate(cache_gets_total{cache="course-map",result="hit"}[5m]))
 
 | 경우 | 동작 |
 |------|------|
-| `regionId` 있음 + `radiusM <= 3000` | **캐시 경로** — 대표좌표 기준 2km 결과셋 (히트 시 DB 0회) |
+| `regionId` 있음 + `radiusM` 1,000~3,000 | **캐시 경로** — 대표좌표 기준 2km 결과셋 (히트 시 DB 0회) |
 | `regionId` 있음 + `radiusM > 3000` | 비캐시 폴백 (**광역 줌 방어** — 캐시 값은 고정 2km라 광역 뷰포트에 주면 침묵 오답, §4) |
 | `regionId` 없음 | 기존과 완전 동일 (요청 좌표 bbox 직접 조회, 캐시 없음) |
 | 발급된 적 없는 `regionId` | 서버가 **WARN 로그 후 요청 좌표 폴백으로 강등** (아래 참고) |
@@ -494,10 +494,12 @@ private List<CourseMapDto> findCandidateCourses(Double lat, Double lng, Integer 
     }
 }
 
-/** ① regionId 첨부 ② 요청 반경이 고정 2km와 어긋나지 않을 만큼 좁음 — 둘 다 만족해야 캐시 */
+/** ① regionId 첨부 ② 요청 반경이 고정 2km 값과 호환되는 범위(1,000~3,000) — 둘 다 만족해야 캐시 */
 private boolean useRegionCache(Long regionId, Integer radiusM) {
     return regionId != null
-            && (radiusM == null || radiusM <= MAX_CACHEABLE_RADIUS_M);  // 3000 = 고정 2km + 뷰포트 오차 여유
+            && (radiusM == null
+                || (radiusM >= MIN_CACHEABLE_RADIUS_M && radiusM <= MAX_CACHEABLE_RADIUS_M));
+    // 상한 3000 = 광역 줌 방어, 하한 1000 = 좁은 반경(음수·0 포함)에 2km 결과를 주는 침묵 오답 방어
 }
 ```
 
