@@ -41,7 +41,7 @@ public class CourseReadModelReader {
      * 요청의 radiusM은 뷰포트 유래 연속값(기기마다 다름)이라 값에 반영하면 같은 키에 다른 결과가 실린다.
      * regionId가 첨부되는 요청은 홈 기본 뷰(≈2km)뿐이므로 서버가 반경을 고정해 결정성을 확보한다 (설계 §4).
      */
-    private static final int REGION_MAP_RADIUS_M = 2000;
+    public static final int REGION_MAP_RADIUS_M = 2000;   // 이빅트 역산(CourseMapCacheEvictListener)과 공유
 
     private final CourseReadModelRepository readModelRepository;
     private final RegionRepository regionRepository;

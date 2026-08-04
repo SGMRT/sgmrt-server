@@ -17,14 +17,15 @@ import java.time.Duration;
  * Spring Cache(Redis) 구성.
  *
  * 캐시별 TTL:
- * - course-map: 60초 — 지도 결과셋 캐시. 무효화 없이 TTL 만료에만 의존하므로
- *   데이터 변경 후 스테일 상한이 곧 이 값이다. (설계 04 §2-2)
+ * - course-map: 600초 — 지도 결과셋 캐시. 완주·러닝 공개 전환은 AFTER_COMMIT 이빅트로 즉시 반영되고
+ *   (CourseMapCacheEvictListener), 그 외 변경(코스 공개 전환 등)의 스테일 상한이 이 값이다.
+ *   (설계 cache/05 §4 — 이빅트가 있어야 TTL을 늘려 히트율을 확보할 수 있다, 시뮬레이션 v4)
  */
 @Configuration
 @EnableCaching
 public class CacheConfig {
 
-    private static final Duration COURSE_MAP_TTL = Duration.ofSeconds(60);
+    private static final Duration COURSE_MAP_TTL = Duration.ofSeconds(600);
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {

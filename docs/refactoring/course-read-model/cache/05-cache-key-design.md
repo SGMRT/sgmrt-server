@@ -1,6 +1,6 @@
 # 코스 지도 캐시키 재설계 — regionId(행정구역 그리드) 상세 설계
 
-> 상태: **설계 완료, 구현 대기** (확정 사항 §10)
+> 상태: **구현 완료** — 리뷰 iter2(91/S) 통과 + 성장 실험(v4)으로 TTL 600s·완주 이빅트 반영 (확정 사항 §10)
 > 전제: PR-2에서 결과셋 캐시(반올림 키, TTL 60s)가 구현되어 있고, 이번 사이클에서 키 전략을 regionId로 교체한다. FE(sgmrt-app)도 함께 수정한다.
 > 관련: 리드모델 본 설계는 `../core/04-detailed-design.md`, 히트율 시뮬레이션은 `../scripts/cache_hit_sim.py`
 
@@ -28,6 +28,10 @@ flowchart LR
         RD -->|regionId 경로| RC[(Redis<br/>course-map::regionId)]
         RD -->|캐시 미스·폴백| RM[(course_read_model)]
         RD -.대표좌표 조회 (미스 시에만).-> RR
+
+        RCS[RunningCommandService<br/>완주 저장] -->|"RunFinishedEvent<br/>(AFTER_COMMIT)"| EV[CourseMapCacheEvictListener]
+        EV -.코스 좌표 ±2km 박스로 region 역산.-> RR
+        EV -->|"해당 키 DEL — 완주 즉시 반영"| RC
     end
 
     NM -->|"POST {name, lat, lng}"| RA
@@ -71,6 +75,14 @@ sequenceDiagram
     Note over FE: [지도 팬/줌 — regionId 미첨부]
     FE->>BE: GET /v1/courses?lat&lng&radiusM
     BE->>DB: 요청 좌표 기준 bbox 직접 조회 (캐시 미적용)
+
+    Note over FE,DB: [완주 — 지도 카드 즉시 반영]
+    FE->>BE: 러닝 종료 저장
+    BE->>DB: Running 저장 + 리드모델 갱신 (같은 트랜잭션, Writer)
+    Note over BE: 커밋 후 RunFinishedEvent (AFTER_COMMIT)
+    BE->>DB: 코스 좌표 ±2km 박스 안 region 역산
+    BE->>R: 해당 course-map::{id} 전부 DEL
+    Note over FE: 완주 직후 홈 확인 → 미스 → 최신 TOP4 재적재 (본인 등수 반영)
 ```
 
 핵심 성질:
@@ -81,7 +93,8 @@ sequenceDiagram
 | 같은 키 = 같은 값 (결정성) | 값을 요청자 좌표가 아닌 **region 대표좌표 + 고정 반경 2km** 기준으로 정의 (§4) |
 | 새로고침마다 다른 코스 조합 | 캐시 경계는 쿼리 결과 50개까지 — 랜덤 선별(10개)·내 고스트는 캐시 밖에서 매 요청 수행 |
 | 구버전 앱·지오코딩 실패 무영향 | `regionId`는 선택 파라미터 — 없으면 기존과 동일한 비캐시 경로 (기존 API 스펙 불변) |
-| 쓰기 경로와 무결합 | Writer는 캐시를 모름 — 무효화 없이 TTL 60s 자가 치유 (core/04 §2 결정 유지) |
+| 완주 즉시 반영 | 완주·러닝 공개 전환은 AFTER_COMMIT 이빅트로 해당 지역 키 DEL — 다음 조회가 최신 재적재 (시뮬레이션 v4: 본인 미반영 0%) |
+| 쓰기 경로와 무결합 | Writer는 여전히 캐시를 모름 — 이빅트는 이벤트 리스너로 격리 ("커밋 후 부수효과 = 이벤트" 규칙). 이빅트 실패는 최대 TTL 지연으로 강등 |
 
 ---
 
@@ -211,15 +224,15 @@ erDiagram
 | 캐시 이름 | `course-map` (기존 재사용) | CacheConfig의 TTL 설정 그대로 |
 | 키 | `course-map::{regionId}` | 카디널리티 = 활성 지역 수 (수백~수천) |
 | 값 | region **대표좌표 기준 고정 반경 2km** bbox 쿼리 결과 (LIMIT 50, `List<CourseMapDto>`) | 요청자 좌표·반경을 쓰면 같은 키에 다른 값이 적재돼 결정성이 깨진다 |
-| TTL | 60초 | core/04 §2 결정 유지. 러닝 종료→TOP4 변경이 최대 60초 내 노출 |
-| 무효화 | **없음 (TTL만)** | regionId→좌표 역산으로 가능은 하나 Writer가 캐시를 알게 되어 결합 증가. 필요해지면 후속 |
+| TTL | **600초** | 이빅트가 즉시성을 담당하므로 TTL은 히트율용으로 연장 (v4: 이빅트 없인 TTL 연장 불가 — 본인 미반영 57%) |
+| 무효화 | **완주·러닝 공개 전환 시 이빅트** (AFTER_COMMIT 리스너) | "완주 직후 지도 카드에서 내 등수 확인" 요구사항 (v4: TTL 60s만으로도 미반영 14~29%). 코스 ±2km 박스로 region 역산 후 DEL. 그 외 변경(코스 공개 전환·이름 변경 등)은 TTL 상한 수용 |
 | 직렬화 | GenericJackson2JsonRedisSerializer (기존 CacheConfig) | 변경 없음 |
 
 **고정 반경 2km인 이유** — FE의 radiusM은 뷰포트 유래 연속값(기기마다 다름)이라 키에 포함하면 히트율이 파편화된다. regionId가 첨부되는 요청은 홈 기본 뷰(≈2km)뿐이므로 서버가 반경을 2km로 고정해 결정성을 확보한다. 요청의 radiusM은 regionId 경로에서 무시된다. 단, 상한(3,000m) 초과 요청은 캐시 경로 자체를 타지 않는다(§5-2) — **무시와 오답은 다르다**. 광역 뷰포트에 2km 결과를 돌려주는 것은 침묵 오답이므로 서버가 스스로 폴백으로 내린다.
 
 **스냅 오차 허용 근거** — 사용자 실제 위치 ↔ 대표좌표는 같은 동 안에서 평균 ~500m (시뮬레이션). 조회 반경 2km 대비 허용 범위이고, FE 지도는 계속 사용자 위치 중심으로 그려지므로 UX 변화 없음.
 
-**메모리 추정** — 엔트리당 50개 DTO ≈ 30~50KB. TTL 60초 내 활성 지역이 1,000개여도 ≤50MB. 상한은 활성 지역 수로 자연 형성된다 (반올림 키의 무한 좌표 조합과 대비).
+**메모리 추정** — 엔트리당 50개 DTO ≈ 30~50KB. TTL 600초 내 활성 지역이 1,000개여도 ≤50MB. 상한은 활성 지역 수로 자연 형성된다 (반올림 키의 무한 좌표 조합과 대비).
 
 ### 관측 (운영 히트율 실측)
 
@@ -515,6 +528,52 @@ public class RegionNotFoundException extends EntityNotFoundException {
 
 ---
 
+### 6-9. `CourseMapCacheEvictListener` — 완주 시 이빅트 (성장 실험 v4 반영)
+
+```java
+@Component
+@RequiredArgsConstructor
+public class CourseMapCacheEvictListener {
+
+    private final CourseReadModelRepository readModelRepository;
+    private final RegionRepository regionRepository;
+    private final CacheManager cacheManager;
+
+    @TransactionalEventListener   // 기본 phase = AFTER_COMMIT
+    public void handleRunFinishedEvent(RunFinishedEvent event) { evictMapCacheAroundCourse(event.courseId()); }
+
+    @TransactionalEventListener
+    public void handleRunUpdatedEvent(RunUpdatedEvent event) { evictMapCacheAroundCourse(event.courseId()); }
+
+    private void evictMapCacheAroundCourse(Long courseId) {
+        CourseReadModel readModel = readModelRepository.findByCourseId(courseId).orElse(null);
+        if (readModel == null) return;                       // 비공개 코스 — 지도에 없으므로 스킵
+        LatLngs box = getBoundingBoxLatLngs(readModel.getStartLat(), readModel.getStartLng(), REGION_MAP_RADIUS_M);
+        regionRepository.findByCenterLatBetweenAndCenterLngBetween(...)   // 코스 → 영향 캐시 역산
+                .forEach(region -> cache.evict(region.getId()));
+        // 실패는 log.warn — 이빅트 실패 = 정합성 사고가 아니라 최대 TTL 지연으로 강등
+    }
+}
+```
+
+설계 결정과 이유:
+
+| 결정 | 이유 |
+|------|------|
+| Writer가 아니라 **AFTER_COMMIT 리스너** | "같은 트랜잭션 동기 로직 = 직접 호출, 커밋 후 부수효과 = 이벤트" 규칙(core/04 §6). Writer는 계속 캐시를 모름. 커밋 **전** 이빅트는 지운 자리에 커밋 전 데이터가 재적재되는 레이스가 있어 불가 |
+| 이빅트 대상 = 코스 시작점 **±2km 박스 안 대표좌표를 가진 모든 region** | 캐시 값이 "대표좌표 기준 2km bbox"이므로 이 역산이 곧 "이 코스가 보이는 모든 엔트리". 코스가 여러 region에 걸치는 문제를 자연 해결. regionId 키라서 가능 (반올림 키는 역산 불가) |
+| 소비 이벤트 = `RunFinishedEvent` + `RunUpdatedEvent` | 완주와 러닝 공개 전환이 TOP4/러너 수를 바꾸는 두 경로. **이 이벤트들은 구경로 정리 후에도 존치** (신규 소비자 생김) |
+| 예외는 삼키고 WARN | 이빅트 실패의 결과는 "최대 TTL 지연"뿐 — 정합성 사고 아님. AFTER_COMMIT 리스너의 예외는 어차피 원 트랜잭션에 영향 없음 |
+| 커버 범위 밖: 코스 공개 전환·이름 변경 | 완주 대비 빈도 낮고 본인 즉시 확인 요구 약함 — TTL(10분) 수용. 필요해지면 같은 리스너에 이벤트만 추가 |
+
+**시뮬레이션 근거** (`../scripts/cache_evict_sim.py`, cache/06 §6.6): DAU 1만 기준 —
+
+| 정책 | 전체 히트 | 본인 미반영 |
+|---|---|---|
+| TTL60 (구) | 45.6% | 14.1% |
+| TTL600 단독 | 61.9% | 57.3% ❌ |
+| **TTL600+이빅트 (채택)** | **51.4%** | **0.0%** |
+
 ## 7. FE 변경 설계 (sgmrt-app)
 
 ### 7-1. FE 전체 구조 (FE 개발자 공유용)
@@ -626,4 +685,5 @@ DDL 실행: 배포 전 `region` CREATE TABLE 1개 (기존 테이블 무변경, �
 - **Q4. 반올림 캐시 제거 시점**: 이번 브랜치에서 즉시 교체 (두 체계 공존 방지). ✅
 - **Q5. resolve 시 기온 연계**: 이번엔 캐시키만. 날씨 캐시 공유는 후속. ✅
 - **랜덤 다양성 유지 확인**: 캐시 경계는 쿼리 결과(50개), 랜덤 선별(10개)은 캐시 밖 매 요청 — 같은 위치 새로고침에도 조합이 달라지는 기존 구조 그대로. ✅
+- **성장 실험 v4 반영 (2026-08-04)**: TTL 60s→600s + 완주·러닝 공개 전환 시 AFTER_COMMIT 이빅트 채택 — "완주 직후 지도 카드 등수 확인" 요구사항을 본인 미반영 0%로 보장하면서 히트율 확보 (§4, §6-9). 기본 요청(정렬·필터) 가드는 죽은 분기라 제거 (복원 조건 §6-6). ✅
 - **리뷰 iter1 반영 (2026-08-04)**: 미발급 regionId를 404 → **좌표 폴백 강등**(§5-2), 지역 이름 **NFC 정규화**(§3-2·§6-3), 신규 등록 시 **서비스 영역 검증** + 이탈 재요청 WARN(§3-2·§5-1), 캐시 판정에 **radiusM 상한 3,000m 가드**(§4·§5-2·§6-6), `RegionService`에 **`@Transactional(NEVER)`**로 트랜잭션 합류 금지 런타임 강제(§6-3). 근거: `docs/reviews/course-map-cache-iter1.md`. ✅

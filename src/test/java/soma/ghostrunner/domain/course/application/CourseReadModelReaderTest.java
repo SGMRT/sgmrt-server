@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 설계 문서: docs/refactoring/course-read-model/cache/05-cache-key-design.md §4, §6-5, §8
  *
  * 이 경로가 지켜야 할 불변식은 세 가지다.
- * 1. 같은 regionId는 하나의 캐시 엔트리를 공유하고, TTL(60초) 안에서는 옛 결과를 재사용한다 (스테일 수용).
+ * 1. 같은 regionId는 하나의 캐시 엔트리를 공유하고, TTL(600초) 안에서는 옛 결과를 재사용한다 (완주 이빅트가 즉시성 담당).
  * 2. 값은 요청자 좌표가 아니라 <b>region 대표좌표 + 고정 반경 2km</b>로 정해진다 — 같은 키에 다른 값이
  *    적재되면 캐시가 사용자마다 다른 답을 주게 되므로, 결정성이 캐시의 정합성 근거다.
  * 3. 발급된 적 없는 regionId는 조용히 폴백하지 않고 예외로 드러낸다 (빈 결과의 캐시 오염 방지).
@@ -75,7 +75,7 @@ class CourseReadModelReaderTest extends IntegrationTestSupport {
         }
     }
 
-    @DisplayName("같은 지역을 다시 조회하면 TTL(60초) 안에서는 캐시된 옛 결과를 재사용하고, 키는 course-map::{regionId} 하나뿐이다")
+    @DisplayName("같은 지역을 다시 조회하면 TTL(600초) 안에서는 캐시된 옛 결과를 재사용하고, 키는 course-map::{regionId} 하나뿐이다")
     @Test
     void sameRegion_reusesCachedResult_withinTtl() {
         // given : 지역 하나와 그 안의 공개 코스 1개
@@ -92,11 +92,11 @@ class CourseReadModelReaderTest extends IntegrationTestSupport {
         assertThat(second).hasSize(1);
         assertThat(second.get(0).name()).isEqualTo("한강 코스");
 
-        // 키는 regionId 하나로 뭉치고, TTL 60초가 스테일 상한이다
+        // 키는 regionId 하나로 뭉치고, TTL 600초가 이빅트 밖 변경의 스테일 상한이다
         String expectedKey = "course-map::" + region.getId();
         assertThat(redisTemplate.keys(COURSE_MAP_KEY_PATTERN)).containsExactly(expectedKey);
         Long ttl = redisTemplate.getExpire(expectedKey, TimeUnit.SECONDS);
-        assertThat(ttl).isBetween(1L, 60L);
+        assertThat(ttl).isBetween(1L, 600L);
     }
 
     @DisplayName("결과셋은 대표좌표 기준 고정 반경 2km로 정해진다 - 2km 밖 코스는 제외된다")
