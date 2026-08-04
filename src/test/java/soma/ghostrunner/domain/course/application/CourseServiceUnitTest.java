@@ -8,17 +8,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
+import org.mockito.InOrder;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.util.Optional;
 
@@ -40,16 +38,16 @@ class CourseServiceUnitTest {
     private CourseSubscriptionRepository subscriptionRepository;
 
     @Mock
-    private CourseReadModelRepository readModelRepository;
-
-    @Mock
-    private RunningRepository runningRepository;
+    private CourseReadModelWriter readModelWriter;
 
     @Mock
     private CourseMapper courseMapper;
 
     @InjectMocks
     private CourseService courseService;
+
+    private static final Long COURSE_ID = 1L;
+    private static final Long MEMBER_ID = 1L;
 
     private Member owner;
     private Course course;
@@ -60,6 +58,22 @@ class CourseServiceUnitTest {
         course = Course.of(owner, 5.0, 10.0, 100.0, -50.0,
                 37.123, 127.123, "route.url", "checkpoint.url", "thumb.url");
         course.setName("테스트 코스");
+        setIds(course, COURSE_ID, owner, MEMBER_ID);
+
+        // 모든 테스트가 수정/삭제 대상 코스를 조회한다
+        given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
+    }
+
+    private CoursePatchRequest nameRequest(String name) {
+        CoursePatchRequest request = new CoursePatchRequest();
+        request.setName(name);
+        return request;
+    }
+
+    private CoursePatchRequest publicityRequest(boolean isPublic) {
+        CoursePatchRequest request = new CoursePatchRequest();
+        request.setIsPublic(isPublic);
+        return request;
     }
 
     @Nested
@@ -70,21 +84,12 @@ class CourseServiceUnitTest {
         @DisplayName("처음 등록하는 경우 CourseSubscription을 새로 생성한다")
         void registerCourse_CreatesNewSubscription() {
             // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
-            given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
+            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
                     .willReturn(Optional.empty());
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setIsPublic(true);
-
             // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -96,24 +101,15 @@ class CourseServiceUnitTest {
         @DisplayName("재등록하는 경우 (deleted=true) CourseSubscription을 복원한다")
         void registerCourse_RestoresDeletedSubscription() {
             // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
             CourseSubscription deletedSubscription = CourseSubscription.create(course, owner);
             deletedSubscription.unregister(); // deleted = true
 
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
-            given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
+            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
                     .willReturn(Optional.of(deletedSubscription));
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setIsPublic(true);
-
             // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -126,23 +122,14 @@ class CourseServiceUnitTest {
         @DisplayName("이미 활성화된 CourseSubscription이 있으면 그대로 유지한다")
         void registerCourse_KeepsActiveSubscription() {
             // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
             CourseSubscription activeSubscription = CourseSubscription.create(course, owner);
 
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
-            given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
+            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
                     .willReturn(Optional.of(activeSubscription));
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setIsPublic(true);
-
             // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -166,22 +153,14 @@ class CourseServiceUnitTest {
         @DisplayName("등록 해제 시 CourseSubscription의 deleted가 true가 된다")
         void unregisterCourse_SoftDeletesSubscription() {
             // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
             CourseSubscription activeSubscription = CourseSubscription.create(course, owner);
 
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
+            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
                     .willReturn(Optional.of(activeSubscription));
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setIsPublic(false);
-
             // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isFalse();
@@ -194,20 +173,12 @@ class CourseServiceUnitTest {
         @DisplayName("CourseSubscription이 없어도 등록 해제가 정상 동작한다")
         void unregisterCourse_WithoutSubscription() {
             // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
+            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
                     .willReturn(Optional.empty());
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setIsPublic(false);
-
             // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isFalse();
@@ -224,21 +195,13 @@ class CourseServiceUnitTest {
         @DisplayName("등록 → 해제 → 재등록 시나리오가 정상 동작한다")
         void fullCycle_RegisterUnregisterReregister() {
             // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
             // when 1 - 등록
-            given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
+            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
                     .willReturn(Optional.empty());
 
-            CoursePatchRequest registerRequest = new CoursePatchRequest();
-            registerRequest.setIsPublic(true);
-            courseService.updateCourse(courseId, registerRequest, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then 1
             assertThat(course.isPublic()).isTrue();
@@ -246,21 +209,17 @@ class CourseServiceUnitTest {
 
             // when 2 - 등록 해제
             CourseSubscription subscription = CourseSubscription.create(course, owner);
-            given(subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId))
+            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
                     .willReturn(Optional.of(subscription));
 
-            CoursePatchRequest unregisterRequest = new CoursePatchRequest();
-            unregisterRequest.setIsPublic(false);
-            courseService.updateCourse(courseId, unregisterRequest, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
 
             // then 2
             assertThat(course.isPublic()).isFalse();
             assertThat(subscription.isDeleted()).isTrue();
 
             // when 3 - 재등록
-            CoursePatchRequest reregisterRequest = new CoursePatchRequest();
-            reregisterRequest.setIsPublic(true);
-            courseService.updateCourse(courseId, reregisterRequest, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then 3
             assertThat(course.isPublic()).isTrue();
@@ -277,18 +236,10 @@ class CourseServiceUnitTest {
         @DisplayName("코스 소유자가 수정하면 정상 동작한다")
         void updateCourse_ByOwner_Success() {
             // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setName("새로운 이름");
-
             // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());
 
             // then
             then(courseRepository).should().save(course);
@@ -298,18 +249,11 @@ class CourseServiceUnitTest {
         @DisplayName("코스 소유자가 아닌 사람이 수정하면 CourseAccessDeniedException이 발생한다")
         void updateCourse_ByNonOwner_ThrowsException() {
             // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setName("새로운 이름");
+            CoursePatchRequest request = nameRequest("새로운 이름");
             String otherMemberUuid = "other-member-uuid";
 
             // when & then
-            assertThatThrownBy(() -> courseService.updateCourse(courseId, request, otherMemberUuid))
+            assertThatThrownBy(() -> courseService.updateCourse(COURSE_ID, request, otherMemberUuid))
                     .isInstanceOf(CourseAccessDeniedException.class)
                     .hasMessageContaining("소유자가 아닙니다");
         }
@@ -318,163 +262,61 @@ class CourseServiceUnitTest {
         @DisplayName("코스 삭제 시 소유자가 아니면 CourseAccessDeniedException이 발생한다")
         void deleteCourse_ByNonOwner_ThrowsException() {
             // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-
             String otherMemberUuid = "other-member-uuid";
 
             // when & then
-            assertThatThrownBy(() -> courseService.deleteCourse(courseId, otherMemberUuid))
+            assertThatThrownBy(() -> courseService.deleteCourse(COURSE_ID, otherMemberUuid))
                     .isInstanceOf(CourseAccessDeniedException.class)
                     .hasMessageContaining("소유자가 아닙니다");
         }
     }
 
+    /**
+     * 리드모델 조작은 CourseService가 직접 하지 않고 {@link CourseReadModelWriter}에 위임한다.
+     * (설계 문서 §3-2 유즈케이스 표 — 코스명 변경/공개 전환/삭제)
+     *
+     * 리드모델 자체의 동작(생성·재계산·X락 등)은 CourseReadModelWriterTest가 검증하므로,
+     * 여기서는 "무엇을 몇 번 위임하는가"만 본다.
+     */
     @Nested
-    @DisplayName("리드모델 동기화")
+    @DisplayName("리드모델 동기화 위임")
     class ReadModelSync {
 
         @Test
-        @DisplayName("코스 공개 시 리드모델이 없으면 생성한다")
-        void updateCourse_toPublic_createsReadModel() {
-            // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(courseRepository.findByIdFetchJoinMember(courseId)).willReturn(Optional.of(course));
-            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.empty());
-            given(courseRepository.save(any(Course.class))).willReturn(course);
-
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setIsPublic(true);
-
+        @DisplayName("코스명을 변경하면 Writer에 이름 동기화를 위임한다")
+        void updateCourse_name_delegatesRenameToWriter() {
             // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
+            courseService.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());
 
             // then
-            then(readModelRepository).should().save(any(CourseReadModel.class));
+            assertThat(course.getName()).isEqualTo("새로운 이름");
+            then(readModelWriter).should(times(1)).rename(COURSE_ID, "새로운 이름");
+            then(readModelWriter).shouldHaveNoMoreInteractions();
+        }
+
+        @Test
+        @DisplayName("코스 공개 여부를 변경하면 Writer에 공개 상태 동기화를 위임한다")
+        void updateCourse_isPublic_delegatesSyncPublicityToWriter() {
+            // when
+            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
+
+            // then
             assertThat(course.isPublic()).isTrue();
+            then(readModelWriter).should(times(1)).syncPublicity(COURSE_ID, true);
+            then(readModelWriter).shouldHaveNoMoreInteractions();
         }
 
         @Test
-        @DisplayName("코스 공개 시 리드모델이 있으면 공개 상태로 변경한다")
-        void updateCourse_toPublic_updatesReadModel() {
-            // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            CourseReadModel existingReadModel = CourseReadModel.create(course);
-            existingReadModel.makePrivate(); // 비공개 상태
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.of(existingReadModel));
-            given(courseRepository.save(any(Course.class))).willReturn(course);
-
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setIsPublic(true);
-
+        @DisplayName("코스를 삭제하면 리드모델 삭제를 Writer에 위임한 뒤 코스를 삭제한다")
+        void deleteCourse_delegatesDeleteToWriterBeforeDeletingCourse() {
             // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
+            courseService.deleteCourse(COURSE_ID, owner.getUuid());
 
             // then
-            then(readModelRepository).should().save(existingReadModel);
-            assertThat(existingReadModel.getIsPublic()).isTrue();
-        }
-
-        @Test
-        @DisplayName("코스 비공개 시 리드모델이 있으면 비공개 상태로 변경한다")
-        void updateCourse_toPrivate_updatesReadModel() {
-            // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-            course.setIsPublic(true); // 공개 상태로 시작
-
-            CourseReadModel existingReadModel = CourseReadModel.create(course);
-            existingReadModel.makePublic();
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.of(existingReadModel));
-            given(courseRepository.save(any(Course.class))).willReturn(course);
-
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setIsPublic(false);
-
-            // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
-
-            // then
-            then(readModelRepository).should().save(existingReadModel);
-            assertThat(existingReadModel.getIsPublic()).isFalse();
-        }
-
-        @Test
-        @DisplayName("코스 비공개 시 리드모델이 없으면 아무 동작도 하지 않는다")
-        void updateCourse_toPrivate_noReadModel_doesNothing() {
-            // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-            course.setIsPublic(true);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.empty());
-            given(courseRepository.save(any(Course.class))).willReturn(course);
-
-            CoursePatchRequest request = new CoursePatchRequest();
-            request.setIsPublic(false);
-
-            // when
-            courseService.updateCourse(courseId, request, owner.getUuid());
-
-            // then
-            then(readModelRepository).should(never()).save(any(CourseReadModel.class));
-        }
-
-        @Test
-        @DisplayName("코스 삭제 시 리드모델도 함께 삭제한다")
-        void deleteCourse_deletesReadModel() {
-            // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            CourseReadModel existingReadModel = CourseReadModel.create(course);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.of(existingReadModel));
-
-            // when
-            courseService.deleteCourse(courseId, owner.getUuid());
-
-            // then
-            then(courseRepository).should().delete(course);
-            then(readModelRepository).should().delete(existingReadModel);
-        }
-
-        @Test
-        @DisplayName("코스 삭제 시 리드모델이 없어도 정상 동작한다")
-        void deleteCourse_noReadModel_success() {
-            // given
-            Long courseId = 1L;
-            Long memberId = 1L;
-            setIds(course, courseId, owner, memberId);
-
-            given(courseRepository.findById(courseId)).willReturn(Optional.of(course));
-            given(readModelRepository.findByCourseId(courseId)).willReturn(Optional.empty());
-
-            // when
-            courseService.deleteCourse(courseId, owner.getUuid());
-
-            // then
-            then(courseRepository).should().delete(course);
-            then(readModelRepository).should(never()).delete(any(CourseReadModel.class));
+            InOrder inOrder = inOrder(readModelWriter, courseRepository);
+            inOrder.verify(readModelWriter).delete(COURSE_ID);
+            inOrder.verify(courseRepository).delete(course);
+            then(readModelWriter).shouldHaveNoMoreInteractions();
         }
     }
 

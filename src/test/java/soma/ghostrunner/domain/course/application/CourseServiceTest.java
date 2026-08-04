@@ -12,7 +12,6 @@ import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseProfile;
 import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.dto.CourseSearchFilterDto;
 import soma.ghostrunner.domain.course.dto.CoursePreviewDto;
@@ -43,11 +42,8 @@ class CourseServiceTest extends IntegrationTestSupport {
     @Autowired private CourseReadModelRepository readModelRepository;
 
     private Member dummyMember;
-    private final CourseProfile dummyCourseInfo = CourseProfile.of(100d, 0d,0d, 0d);
     private final double LAT = 37.54324;
     private final double LNG = 126.94979;
-    private final double KM_PER_LAT = 111; // 위도 1도 당 약 111km
-    private final double KM_PER_LNG = 89; // 한국 기준 1도 당 약 89km
 
     @BeforeEach
     void setUp() {
@@ -302,20 +298,16 @@ class CourseServiceTest extends IntegrationTestSupport {
     }
 
     // --- Helper Methods ---
-    private Course createPublicCourse(String name, double lat, double lng, CourseProfile courseProfile) {
-        return createCourse(name, dummyMember, lat, lng, courseProfile, true);
-    }
-
     private Course createPublicCourse(String name, double lat, double lng) {
-        return createCourse(name, dummyMember, lat, lng, dummyCourseInfo, true);
+        return createCourse(name, lat, lng, true);
     }
 
     private Course createPrivateCourse(String name, double lat, double lng) {
-        return createCourse(name, dummyMember, lat, lng, dummyCourseInfo, false);
+        return createCourse(name, lat, lng, false);
     }
 
-    private Course createCourse(String name, Member member, double lat, double lng, CourseProfile courseProfile, boolean isPublic) {
-        Course course = Course.of(member, 0d, 0d, 0d, 0d, lat, lng, "url", "url", "url");
+    private Course createCourse(String name, double lat, double lng, boolean isPublic) {
+        Course course = Course.of(dummyMember, 0d, 0d, 0d, 0d, lat, lng, "url", "url", "url");
         course.setName(name);
         course.setIsPublic(isPublic);
         return course;
@@ -328,7 +320,6 @@ class CourseServiceTest extends IntegrationTestSupport {
     void registerCourse_createsReadModelWithOwnerBestRecord() {
         // given
         Course course = createPrivateCourse("테스트 코스", LAT, LNG);
-        course.setName("테스트 코스");
         courseRepository.save(course);
 
         // 코스 주인의 러닝 기록 생성 (최고기록: 100초)
@@ -346,14 +337,14 @@ class CourseServiceTest extends IntegrationTestSupport {
                 .orElseThrow(() -> new AssertionError("리드모델이 생성되지 않았습니다."));
 
         assertThat(readModel.getIsPublic()).isTrue();
-        assertThat(readModel.getTop1MemberId()).isEqualTo(dummyMember.getId());
-        assertThat(readModel.getTop1TimeSeconds()).isEqualTo(100); // 최고기록
+        assertThat(readModel.getTop1().getMemberId()).isEqualTo(dummyMember.getId());
+        assertThat(readModel.getTop1().getTimeSeconds()).isEqualTo(100); // 최고기록
         assertThat(readModel.getRunnersCount()).isEqualTo(1L);
 
         // TOP2, TOP3, TOP4는 null
-        assertThat(readModel.getTop2MemberId()).isNull();
-        assertThat(readModel.getTop3MemberId()).isNull();
-        assertThat(readModel.getTop4MemberId()).isNull();
+        assertThat(readModel.getTop2()).isNull();
+        assertThat(readModel.getTop3()).isNull();
+        assertThat(readModel.getTop4()).isNull();
     }
 
     @DisplayName("코스 재등록 시 기존 리드모델의 isPublic만 true로 변경된다.")
@@ -361,7 +352,6 @@ class CourseServiceTest extends IntegrationTestSupport {
     void reRegisterCourse_onlyUpdatesIsPublic() {
         // given
         Course course = createPrivateCourse("테스트 코스", LAT, LNG);
-        course.setName("테스트 코스");
         courseRepository.save(course);
 
         Running run = createRunning(course, dummyMember, 100L, false);
@@ -389,8 +379,8 @@ class CourseServiceTest extends IntegrationTestSupport {
 
         assertThat(readModel.getIsPublic()).isTrue();
         // 기존 TOP1 데이터 유지
-        assertThat(readModel.getTop1MemberId()).isEqualTo(dummyMember.getId());
-        assertThat(readModel.getTop1TimeSeconds()).isEqualTo(100);
+        assertThat(readModel.getTop1().getMemberId()).isEqualTo(dummyMember.getId());
+        assertThat(readModel.getTop1().getTimeSeconds()).isEqualTo(100);
     }
 
     @DisplayName("코스 이름이 없는 상태에서 등록하려고 하면 예외가 발생한다.")
@@ -416,7 +406,6 @@ class CourseServiceTest extends IntegrationTestSupport {
     void registerCourse_excludesPausedRunFromTop1() {
         // given
         Course course = createPrivateCourse("테스트 코스", LAT, LNG);
-        course.setName("테스트 코스");
         courseRepository.save(course);
 
         // hasPaused=true인 기록은 제외
@@ -434,15 +423,65 @@ class CourseServiceTest extends IntegrationTestSupport {
                 .orElseThrow();
 
         // 일시정지하지 않은 기록(100초)이 TOP1
-        assertThat(readModel.getTop1TimeSeconds()).isEqualTo(100);
+        assertThat(readModel.getTop1().getTimeSeconds()).isEqualTo(100);
     }
 
-    @DisplayName("코스 등록 시 일시정지한 기록만 있으면 TOP1은 null이지만 runnersCount는 정상 집계된다.")
+    @DisplayName("코스명을 변경하면 리드모델의 이름도 함께 변경된다.")
+    @Test
+    void updateCourseName_syncsReadModelName() {
+        // given - 공개 전환으로 리드모델이 만들어진 코스
+        Course course = createPrivateCourse("옛 이름", LAT, LNG);
+        courseRepository.save(course);
+        runningRepository.save(createRunning(course, dummyMember, 100L, false));
+
+        courseService.updateCourse(course.getId(),
+                new CoursePatchRequest(null, true, Set.of(IS_PUBLIC)), dummyMember.getUuid());
+        assertThat(readModelRepository.findByCourseId(course.getId()).orElseThrow().getName())
+                .isEqualTo("옛 이름");
+
+        // when
+        courseService.updateCourse(course.getId(),
+                new CoursePatchRequest("새 이름", null, Set.of(NAME)), dummyMember.getUuid());
+
+        // then
+        assertThat(courseRepository.findById(course.getId()).orElseThrow().getName()).isEqualTo("새 이름");
+        assertThat(readModelRepository.findByCourseId(course.getId()).orElseThrow().getName())
+                .isEqualTo("새 이름");
+    }
+
+    @DisplayName("코스 등록 시 주인보다 빠른 타인의 기록이 있으면 그 기록이 TOP1이 되고 러너 수도 전부 집계된다.")
+    @Test
+    void registerCourse_initializesReadModelFromAllRunners() {
+        // given - 주인(2000초)보다 빠른 타인(1500초)의 공개 러닝이 이미 존재
+        Member otherRunner = memberRepository.save(Member.of("윈터", "winter.png"));
+
+        Course course = createPrivateCourse("테스트 코스", LAT, LNG);
+        courseRepository.save(course);
+        runningRepository.saveAll(List.of(
+                createRunning(course, dummyMember, 2000L, false),
+                createRunning(course, otherRunner, 1500L, false)));
+
+        CoursePatchRequest request = new CoursePatchRequest(null, true, Set.of(IS_PUBLIC));
+
+        // when
+        courseService.updateCourse(course.getId(), request, dummyMember.getUuid());
+
+        // then - 주인 기록만 채우는 것이 아니라 전체 러닝으로 초기화된다
+        CourseReadModel readModel = readModelRepository.findByCourseId(course.getId())
+                .orElseThrow(() -> new AssertionError("리드모델이 생성되지 않았습니다."));
+
+        assertThat(readModel.getTop1().getMemberId()).isEqualTo(otherRunner.getId());
+        assertThat(readModel.getTop1().getTimeSeconds()).isEqualTo(1500);
+        assertThat(readModel.getTop2().getMemberId()).isEqualTo(dummyMember.getId());
+        assertThat(readModel.getTop2().getTimeSeconds()).isEqualTo(2000);
+        assertThat(readModel.getRunnersCount()).isEqualTo(2L);
+    }
+
+    @DisplayName("코스 등록 시 일시정지한 기록만 있으면 TOP1도 null이고 runnersCount도 0이다.")
     @Test
     void registerCourse_onlyPausedRuns_top1NullButRunnersCountCorrect() {
         // given
         Course course = createPrivateCourse("테스트 코스", LAT, LNG);
-        course.setName("테스트 코스");
         courseRepository.save(course);
 
         // hasPaused=true인 기록만 존재
@@ -459,11 +498,10 @@ class CourseServiceTest extends IntegrationTestSupport {
                 .orElseThrow();
 
         // TOP1은 null (hasPaused=false인 기록이 없으므로)
-        assertThat(readModel.getTop1MemberId()).isNull();
-        assertThat(readModel.getTop1TimeSeconds()).isNull();
+        assertThat(readModel.getTop1()).isNull();
 
-        // runnersCount는 1 (isPublic=true인 기록이 있으므로)
-        assertThat(readModel.getRunnersCount()).isEqualTo(1L);
+        // runnersCount도 0 — 재계산(Q1/Q4)은 TOP4와 러너 수를 같은 모집단(일시정지 제외)에서 뽑는다
+        assertThat(readModel.getRunnersCount()).isZero();
     }
 
     private Running createRunning(Course course, Member member, Long durationSeconds, boolean hasPaused) {
