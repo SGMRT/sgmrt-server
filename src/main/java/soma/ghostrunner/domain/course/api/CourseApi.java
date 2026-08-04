@@ -25,6 +25,14 @@ public class CourseApi {
 
     private final CourseFacade courseFacade;
 
+    /**
+     * 주변 코스 지도 조회.
+     *
+     * <p>{@code regionId}는 {@code POST /v1/regions}로 발급받는 선택 파라미터다 (설계 cache/05 §5-2).
+     * 첨부하면 지역(동네) 단위 공유 캐시 경로를, 없으면 기존과 동일하게 요청 좌표 기준으로 조회한다 —
+     * 미첨부 요청의 동작은 변하지 않으므로 구버전 앱과 하위호환된다. 경로 판정은
+     * {@link CourseFacade#findCoursesByPosition} 참고.</p>
+     */
     @GetMapping("/courses")
     public List<CourseMapResponse> getCoursesByPosition(
             @RequestParam Double lat,
@@ -36,11 +44,11 @@ public class CourseApi {
             @RequestParam(required = false) Integer maxDistanceM,
             @RequestParam(required = false) Integer minElevationM,
             @RequestParam(required = false) Integer maxElevationM,
+            @RequestParam(required = false) Long regionId,
             @AuthenticationPrincipal JwtUserDetails userDetails) {
-//        return courseFacade.findCoursesByPosition(lat, lng, radiusM, sort,
-        return courseFacade.findCoursesByPositionCached(lat, lng, radiusM, sort,
+        return courseFacade.findCoursesByPosition(lat, lng, radiusM, sort,
                 CourseSearchFilterDto.of(minDistanceM, maxDistanceM, minElevationM, maxElevationM, ownerUuid),
-                userDetails.getUserId());
+                regionId, userDetails.getUserId());
     }
 
     @GetMapping("/courses/{courseId}")

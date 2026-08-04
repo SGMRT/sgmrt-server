@@ -1,0 +1,85 @@
+@access-token = REPLACE_WITH_JWT
+@regionName = 서울특별시 강남구 역삼동
+
+### [해피] 지역 등록 - 신규 이름
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "{{regionName}}", "lat": 37.5008, "lng": 127.0365}
+
+### [해피] 지역 등록 - 같은 이름 재요청 시 동일 regionId (멱등)
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "{{regionName}}", "lat": 37.5008, "lng": 127.0365}
+
+### [해피] 지역 등록 - NFD(자모 분해) 이름도 동일 regionId (정규화)
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "서울특별시 강남구 역삼동", "lat": 37.5008, "lng": 127.0365}
+
+### [에러] 지역 등록 - 빈 이름
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "", "lat": 37.5008, "lng": 127.0365}
+
+### [에러] 지역 등록 - 위도 범위 초과
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "테스트 지역 A", "lat": 91, "lng": 127.0365}
+
+### [에러] 지역 등록 - 경도 범위 초과
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "테스트 지역 B", "lat": 37.5008, "lng": 181}
+
+### [에러] 지역 등록 - 이름에 특수문자 포함
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "서울특별시 강남구 역삼동!@#", "lat": 37.5008, "lng": 127.0365}
+
+### [에러] 지역 등록 - 서비스 영역(한국 bbox) 밖 좌표로 신규 등록 (C-006)
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "뉴욕시 맨해튼", "lat": 40.7128, "lng": -74.0060}
+
+### [에러] 지역 등록 - 인증 헤더 누락
+POST {{host}}/v1/regions
+Content-Type: application/json
+
+{"name": "테스트 지역 C", "lat": 37.5008, "lng": 127.0365}
+
+### [에러] 지역 등록 - 이름 100자 초과
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가", "lat": 37.5008, "lng": 127.0365}
+
+### [에러] 지역 등록 - 필수 필드 누락 (lat 없음)
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "테스트 지역 D", "lng": 127.0365}
+
+### [에러] 지역 등록 - 잘못된 JSON 형식
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "테스트 지역 E", "lat": 37.5008, "lng":}

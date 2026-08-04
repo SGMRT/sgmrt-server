@@ -1,0 +1,33 @@
+@access-token = REPLACE_WITH_JWT
+@regionId = 1
+
+### [해피] 코스 지도 조회 - regionId 첨부 + 기본 요청 (캐시 경로)
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}
+Authorization: Bearer {{access-token}}
+
+### [해피] 코스 지도 조회 - regionId 없이 (기존 폴백 경로)
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365
+Authorization: Bearer {{access-token}}
+
+### [해피] 코스 지도 조회 - regionId 첨부 + 비기본 요청(정렬 변경) → 비캐시 폴백
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}&sort=POPULARITY
+Authorization: Bearer {{access-token}}
+
+### [에러] 코스 지도 조회 - 인증 헤더 누락
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}
+
+### [경계] 코스 지도 조회 - regionId + radiusM=10000(광역) → 캐시 우회, 요청 반경 그대로 폴백
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}&radiusM=10000
+Authorization: Bearer {{access-token}}
+
+### [경계] 코스 지도 조회 - 미발급 regionId → 예외 없이 좌표 폴백 (500/404 아님)
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId=999999999
+Authorization: Bearer {{access-token}}
+
+### [에러] 코스 지도 조회 - radiusM 상한(20000) 초과
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}&radiusM=20001
+Authorization: Bearer {{access-token}}
+
+### [경계] 코스 지도 조회 - regionId=0 (미존재) → 폴백 정상 응답
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId=0
+Authorization: Bearer {{access-token}}

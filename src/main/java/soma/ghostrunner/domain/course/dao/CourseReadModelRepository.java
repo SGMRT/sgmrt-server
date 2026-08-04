@@ -37,42 +37,47 @@ public interface CourseReadModelRepository extends JpaRepository<CourseReadModel
      * @return 코스 + TOP4 러너 정보
      */
     @Query(nativeQuery = true, value = """
-        SELECT 
+        SELECT
             rm.course_id AS courseId,
             rm.name AS name,
             rm.owner_uuid AS ownerUuid,
             rm.source AS source,
             rm.route_url AS routeUrl,
+            rm.thumbnail_url AS thumbnailUrl,
+            rm.distance_km AS distanceKm,
+            rm.elevation_average_m AS elevationAverageM,
+            rm.elevation_gain_m AS elevationGainM,
+            rm.elevation_loss_m AS elevationLossM,
             rm.start_lat AS startLat,
             rm.start_lng AS startLng,
             rm.runners_count AS runnersCount,
-            
+
             rm.top1_time_seconds AS top1TimeSeconds,
             m1.uuid AS top1Uuid,
             m1.profile_picture_url AS top1ProfileUrl,
-            
+
             rm.top2_time_seconds AS top2TimeSeconds,
             m2.uuid AS top2Uuid,
             m2.profile_picture_url AS top2ProfileUrl,
-            
+
             rm.top3_time_seconds AS top3TimeSeconds,
             m3.uuid AS top3Uuid,
             m3.profile_picture_url AS top3ProfileUrl,
-            
+
             rm.top4_time_seconds AS top4TimeSeconds,
             m4.uuid AS top4Uuid,
             m4.profile_picture_url AS top4ProfileUrl
-            
+
         FROM course_read_model rm
-        LEFT JOIN member m1 ON rm.top1_member_id = m1.id AND m1.deleted_at IS NULL
-        LEFT JOIN member m2 ON rm.top2_member_id = m2.id AND m2.deleted_at IS NULL
-        LEFT JOIN member m3 ON rm.top3_member_id = m3.id AND m3.deleted_at IS NULL
-        LEFT JOIN member m4 ON rm.top4_member_id = m4.id AND m4.deleted_at IS NULL
-        
+        LEFT JOIN member m1 ON rm.top1_member_id = m1.id
+        LEFT JOIN member m2 ON rm.top2_member_id = m2.id
+        LEFT JOIN member m3 ON rm.top3_member_id = m3.id
+        LEFT JOIN member m4 ON rm.top4_member_id = m4.id
+
         WHERE rm.is_public = true
           AND rm.start_lat BETWEEN :minLat AND :maxLat
           AND rm.start_lng BETWEEN :minLng AND :maxLng
-        
+
         ORDER BY rm.start_lat, rm.start_lng
         LIMIT :limit
     """)

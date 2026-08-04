@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.course.dto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.Region;
 import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -107,6 +108,9 @@ public interface CourseMapper {
 
     @Mapping(source = "ghosts", target = "topRunners")
     CourseQueryModel toCourseQueryModel(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts, long runnerCount);
+
+    @Mapping(source = "id", target = "regionId")
+    RegionResolveResponse toRegionResolveResponse(Region region);
 
 
 }
