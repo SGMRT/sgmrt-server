@@ -28,8 +28,6 @@ import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
-import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
-import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
 import soma.ghostrunner.domain.running.domain.path.*;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
@@ -428,39 +426,6 @@ class RunningCommandServiceTest {
         verify(courseMapCacheEvictor, times(1)).evictCourseCellAfterCommit(courseId);
     }
 
-    /**
-     * 이 발행의 남은 소비자는 구경로 코스 캐시 무효화(CourseCacheEventListener) 하나뿐이다(설계 결정 10).
-     * 구경로가 사라지면 이 발행도 함께 사라지지만, <b>그 전에 먼저 지우면 구경로 무효화가 죽는다.</b>
-     * 그 삭제 사고를 사람의 기억이 아니라 이 테스트가 잡는다.
-     */
-    @Test
-    @DisplayName("createRun: 구경로 캐시 무효화가 소비하는 RunFinishedEvent 발행은 유지한다")
-    void createRun_publishesRunFinishedEventForMapCacheEviction() {
-        // given
-        long courseId = 77L;
-        long memberId = 5L;
-        long runningId = 100L;
-        long durationSeconds = 1800L;
-
-        Course course = givenFoundCourse(courseId);
-        Member member = givenFoundRunner(memberId);
-        TelemetryStatistics stats = givenProcessedTelemetry();
-
-        CreateRunCommand cmd = publicRunCommand(durationSeconds, false);
-        Running running = savedPublicRunning(runningId, durationSeconds, member, course);
-        RunFinishedEvent finishedEvent =
-                new RunFinishedEvent(runningId, courseId, memberUuid, memberId, (int) durationSeconds, 6.1);
-        when(running.createFinishedEvent()).thenReturn(finishedEvent);
-        when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
-        when(runningRepository.save(any())).thenReturn(running);
-
-        // when
-        sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
-
-        // then : 완주 이벤트가 그대로 발행된다
-        verify(applicationEventPublisher).publishEvent(finishedEvent);
-    }
-
     @Test
     @DisplayName("deleteRunnings: 삭제된 러닝들의 코스를 중복 없이 모아 한 번에 재계산한다")
     void deleteRunnings_recalculatesDistinctCourses() {
@@ -575,9 +540,6 @@ class RunningCommandServiceTest {
         when(running.getCourse()).thenReturn(course);
         when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
 
-        RunUpdatedEvent updatedEvent = new RunUpdatedEvent(runningId, 30L, memberUuid, "러닝", true);
-        when(running.createUpdatedEvent()).thenReturn(updatedEvent);
-
         // when
         sut.updateRunningPublicStatus(runningId, memberUuid);
 
@@ -588,8 +550,6 @@ class RunningCommandServiceTest {
 
         // 지도 셀 이빅트는 직접 호출로 예약된다
         verify(courseMapCacheEvictor, times(1)).evictCourseCellAfterCommit(30L);
-        // 이 발행은 구경로 캐시 무효화가 소비한다 — 구경로가 사라질 때까지는 함께 지우면 안 된다.
-        verify(applicationEventPublisher).publishEvent(updatedEvent);
     }
 
     private CreateRunCommand publicRunCommand(long durationSeconds, boolean hasPaused) {

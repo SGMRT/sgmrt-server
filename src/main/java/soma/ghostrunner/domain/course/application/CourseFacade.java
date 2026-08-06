@@ -6,18 +6,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import soma.ghostrunner.domain.course.dao.CourseCacheRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.query.CourseMapDto;
-import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
-import soma.ghostrunner.domain.member.application.MemberService;
-import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.domain.running.domain.Running;
@@ -35,108 +31,10 @@ public class CourseFacade {
 
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
-    private final CourseCacheRepository courseCacheRepository;
     private final CourseReadModelReader courseReadModelReader;
-  
-    private final MemberService memberService;
 
     private final CourseMapper courseMapper;
     private final RunningApiMapper runningApiMapper;
-
-    /**
-     * @deprecated 수동 Redis 캐시(course:{id}) 기반 구 조회 경로. 리드모델 기반
-     *             {@link #findCoursesByPosition}으로 대체되었다. 신경로 안정화 후 {@link soma.ghostrunner.domain.course.dao.CourseCacheRepository},
-     *             {@link CourseCacheEventListener}와 함께 제거 예정.
-     */
-    @Deprecated
-    @Transactional(readOnly = true)
-    public List<CourseMapResponse> findCoursesByPositionCached(Double lat, Double lng, Integer radiusM, CourseSortType sort,
-                                                               CourseSearchFilterDto filters, String viewerUuid) {
-        // 범위 내 코스 리스트 조회
-        Member viewer = findMemberByUuid(viewerUuid);
-        List<CoursePreviewDto> courses = courseService.findNearbyCourses(lat, lng, radiusM, sort, filters, viewer.getId());
-        List<Long> courseIds = courses.stream().map(CoursePreviewDto::id).toList();
-
-        // 캐시에서 코스 정보 조회
-        Map<Long, CourseQueryModel> cachedCourseInfos = courseCacheRepository.findAllById(courseIds);
-
-        // 캐시 히트 여부에 따라 처리 분기
-        List<CoursePreviewDto> filteredCourses = limitCoursesForViewer(courses, viewerUuid, 10);
-        List<CourseMapResponse> responses;
-        List<Long> cacheMissedIds = filterCacheMissedIds(cachedCourseInfos);
-        if(!cacheMissedIds.isEmpty()) {
-            log.info("CourseFacade::findCoursesByPositionCached() - found cache miss for {} courses", cacheMissedIds.size());
-            var cacheMissedCourses = filteredCourses.stream().filter(
-                    c -> cacheMissedIds.contains(c.id())).toList();
-            responses = handleCourseCacheMiss(viewerUuid, filteredCourses, cacheMissedCourses, cachedCourseInfos);
-        } else {
-            log.info("CourseFacade::findCoursesByPositionCached() - all {} courses cache hit. querying ghost", filteredCourses.size());
-            responses = handleCourseCacheHit(viewerUuid, filteredCourses, courseIds, cachedCourseInfos);
-        }
-
-        return responses;
-    }
-
-    private List<CourseMapResponse> handleCourseCacheMiss(String viewerUuid, List<CoursePreviewDto> totalCourses,
-                                                          List<CoursePreviewDto> cacheMissedCourses, Map<Long, CourseQueryModel> cachedCourses) {
-        var totalCourseIds = totalCourses.stream().map(CoursePreviewDto::id).toList();
-        var cacheMissedIds = cacheMissedCourses.stream().map(CoursePreviewDto::id).toList();
-        // 코스 별 Top 4 러너 프로필 & 러너 수 & 본인 최고 기록 조회
-        Map<Long, List<CourseRunDto>> topRunnersForCourse = runningQueryService.findTopRankingDistinctGhostsByCourseIds(cacheMissedIds, 4);
-        Map<Long, Long> runnerCountsForCourse = runningQueryService.findPublicRunnersCountByCourseIds(cacheMissedIds);
-        Map<Long, Running> memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(totalCourseIds, viewerUuid); // 본인 최고 기록은 캐싱되지 않으므로, 모든 코스에 대해 조회
-        // 캐시 저장
-        Map<Long, CourseQueryModel> newlyCachedCourses = saveCoursesToCache(cacheMissedCourses, topRunnersForCourse, runnerCountsForCourse);
-        // 기존 코스 순서에 맞춰 응답 반환
-        List<CourseMapResponse> ret = new ArrayList<>();
-        for (var course: totalCourses) {
-            CourseQueryModel courseModel;
-            if (newlyCachedCourses.containsKey(course.id())) {
-                courseModel = newlyCachedCourses.get(course.id());
-            } else if (cachedCourses.containsKey(course.id()) && cachedCourses.get(course.id()) != null) {
-                courseModel = cachedCourses.get(course.id());
-            } else {
-                log.warn("CourseFacade::handleCourseCacheMiss() - course id {} not found in both cache and newly queried", course.id());
-                continue;
-            }
-            // 코스 별 본인 고스트 매핑
-            CourseGhostResponse ghostForUser = memberBestRuns.get(course.id()) != null
-                    ? runningApiMapper.toGhostResponse(memberBestRuns.get(course.id()))
-                    : null;
-            ret.add(courseMapper.toCourseMapResponse(course, courseModel.topRunners(), courseModel.runnerCount(), ghostForUser));
-        }
-        return ret;
-    }
-
-    private Map<Long, CourseQueryModel> saveCoursesToCache(List<CoursePreviewDto> cacheMissedCourses,
-                                                               Map<Long, List<CourseRunDto>> topRunnersForCourse,
-                                                               Map<Long, Long> runnerCountsForCourse) {
-        Map<Long, CourseQueryModel> coursesToBeCached = new HashMap<>();
-        for (var course: cacheMissedCourses) {
-            List<CourseRunDto> runners = topRunnersForCourse.getOrDefault(course.id(), List.of());
-            Long runnersCount = runnerCountsForCourse.getOrDefault(course.id(), 0L);
-            coursesToBeCached.put(course.id(), new CourseQueryModel(course.id(), course.name(),
-                    runners.stream().map(RunnerProfile::from).toList(), Math.toIntExact(runnersCount)));
-        }
-        log.info("CourseFacade::saveCoursesToCache() - saving {} courses to cache", coursesToBeCached.size());
-        courseCacheRepository.saveAll(coursesToBeCached.values().stream().toList());
-        return coursesToBeCached;
-    }
-
-    private List<CourseMapResponse> handleCourseCacheHit(String viewerUuid, List<CoursePreviewDto> courses,
-                                                         List<Long> courseIds, Map<Long, CourseQueryModel> cachedCourses) {
-        // 코스 별 본인 고스트 조회
-        Map<Long, Running> memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(courseIds, viewerUuid);
-        return courses.stream().map(course -> {
-            CourseGhostResponse ghostForUser = null;
-            if (memberBestRuns.containsKey(course.id())) {
-                ghostForUser = runningApiMapper.toGhostResponse(memberBestRuns.get(course.id()));
-            }
-
-            CourseQueryModel cachedCourse = cachedCourses.get(course.id());
-            return courseMapper.toCourseMapResponse(course, cachedCourse.topRunners(), cachedCourse.runnerCount(), ghostForUser);
-        }).toList();
-    }
 
     /**
      * 주변 코스 지도 조회 — 리드모델 기반 경로.
@@ -306,10 +204,6 @@ public class CourseFacade {
         return new PageImpl<>(results, pageable, courseDetails.getTotalElements());
     }
 
-    private Member findMemberByUuid(String memberUuid) {
-        return memberService.findMemberByUuid(memberUuid);
-    }
-
     // totalRunsCount 대신 uniqueRunnersCount를 할당하여 반환 (프론트 요청)
     private CourseRunStatisticsDto switchTotalRunsCountToUniqueRunnersCount(CourseRunStatisticsDto courseStatistics) {
         int uniqueRunnersCount = courseStatistics.getUniqueRunnersCount();
@@ -349,11 +243,5 @@ public class CourseFacade {
                 });
     }
 
-    private static List<Long> filterCacheMissedIds(Map<Long, CourseQueryModel> cachedCourses) {
-        return cachedCourses.entrySet().stream()
-                .filter(entry -> entry.getValue() == null)
-                .map(Map.Entry::getKey)
-                .toList();
-    }
 
 }

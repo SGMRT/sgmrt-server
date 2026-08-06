@@ -64,14 +64,10 @@ public class RunningCommandService {
 
         Course course = createAndSaveCourse(member, command, telemetryStatistics, dataUrlsDto);
         Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
-
         courseReadModelWriter.applyRun(running);
         memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
         // 지도 셀 캐시 이빅트는 직접 호출로 예약한다 (커밋 후 실행)
         courseMapCacheEvictor.evictCourseCellAfterCommit(course.getId());
-        // 남은 소비자(AFTER_COMMIT)는 구경로 코스 캐시 무효화(CourseCacheEventListener) 하나뿐이다.
-        // 구경로가 사라지면 이 발행도 함께 사라진다 — 자세한 이유는 publishCourseRunEvents javadoc 참고
-        eventPublisher.publishEvent(running.createFinishedEvent());
         return mapper.toResponse(running, course);
     }
 
@@ -123,27 +119,18 @@ public class RunningCommandService {
         courseSubscriptionService.subscribeIfAbsent(courseId, member.getId());
         // "완주 직후 지도에서 내 등수를 본다"(설계 §1-2) — 커밋 후 셀 하나를 지우도록 직접 예약한다
         courseMapCacheEvictor.evictCourseCellAfterCommit(courseId);
-        publishCourseRunEvents(running);
+        publishCourseRunEvent(running);
         return running.getId();
     }
 
     /**
-     * 코스를 따라 뛴 러닝의 종료 이벤트를 발행한다. (소비자는 전부 AFTER_COMMIT 부수효과)
+     * 코스를 따라 뛴 러닝의 완주 이벤트를 발행한다. 소비자는 푸시 발송({@code PushEventListener}) 하나이며,
+     * AFTER_COMMIT 부수효과다.
      *
-     * <pre>
-     * - RunFinishedEvent → 구경로 코스 캐시 무효화(CourseCacheEventListener) — 구경로 제거 시 함께 삭제
-     * - CourseRunEvent   → 푸시 발송(PushEventListener)
-     * </pre>
-     *
-     * <p>지도 셀 캐시 이빅트는 더 이상 이 발행에 걸려 있지 않다 — {@link CourseMapCacheEvictor} 직접 호출로 빠졌다.
-     * 따라서 구경로 정리(설계 결정 10)로 {@code CourseCacheEventListener}가 사라지면 {@code RunFinishedEvent}
-     * 발행도 소비자가 0이 되어 <b>함께 사라진다.</b> 그때까지는 남겨야 하며, 지금 지우면 구경로 캐시 무효화가 죽는다.
-     * ({@code RunningCommandServiceTest}가 이 발행을 계약으로 고정하고 있다.)</p>
-     *
-     * <p>VDOT 갱신·구독 생성은 같은 트랜잭션 동기 로직이라 직접 호출로 전환됨 (설계 04 §6).</p>
+     * <p>지도 셀 캐시 이빅트는 이 발행에 걸려 있지 않다 — {@link CourseMapCacheEvictor} 직접 호출이 담당한다.
+     * VDOT 갱신·구독 생성도 같은 트랜잭션 동기 로직이라 직접 호출로 전환됐다 (설계 04 §6).</p>
      */
-    private void publishCourseRunEvents(Running running) {
-        eventPublisher.publishEvent(running.createFinishedEvent());
+    private void publishCourseRunEvent(Running running) {
         eventPublisher.publishEvent(running.createCourseRunEvent());
     }
 
@@ -175,9 +162,6 @@ public class RunningCommandService {
         running.updateName(name);
         // 지도 셀 캐시 이빅트는 직접 호출로 예약한다 (커밋 후 실행)
         courseMapCacheEvictor.evictCourseCellAfterCommit(courseIdOf(running));
-        // RunUpdatedEvent 소비자(AFTER_COMMIT): 구경로 코스 캐시 무효화(CourseCacheEventListener)
-        //                                    — 구경로가 사라지면 이 발행도 함께 사라진다
-        eventPublisher.publishEvent(running.createUpdatedEvent());
     }
 
     @Transactional
@@ -187,9 +171,6 @@ public class RunningCommandService {
         running.updatePublicStatus();
         // 지도 셀 캐시 이빅트는 직접 호출로 예약한다 (커밋 후 실행)
         courseMapCacheEvictor.evictCourseCellAfterCommit(courseIdOf(running));
-        // RunUpdatedEvent 소비자(AFTER_COMMIT): 구경로 코스 캐시 무효화(CourseCacheEventListener)
-        //                                    — 구경로가 사라지면 이 발행도 함께 사라진다
-        eventPublisher.publishEvent(running.createUpdatedEvent());
 
         // 공개 여부가 바뀌면 집계 모집단이 달라지므로 해당 코스의 리드모델을 다시 계산한다
         Course course = running.getCourse();

@@ -4,14 +4,13 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.Region;
-import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.domain.Running;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = { CourseSubMapper.class})
+@Mapper(componentModel = "spring")
 public interface CourseMapper {
 
     @Mapping(source = "member.uuid", target = "ownerUuid")
@@ -106,18 +105,8 @@ public interface CourseMapper {
     @Mapping(source = "avgCaloriesBurned", target = "averageCaloriesBurned")
     CourseStatisticsResponse toCourseStatisticsResponse(CourseRunStatisticsDto stats);
 
-    @Mapping(source = "ghosts", target = "topRunners")
-    CourseQueryModel toCourseQueryModel(CoursePreviewDto courseDto, List<CourseGhostResponse> ghosts, long runnerCount);
-
     @Mapping(source = "id", target = "regionId")
     RegionResolveResponse toRegionResolveResponse(Region region);
 
 
-}
-
-@Mapper(componentModel = "spring")
-interface CourseSubMapper {
-    @Mapping(source = "ghost.runnerUuid", target = "uuid")
-    @Mapping(source = "ghost.runnerProfileUrl", target = "profileUrl")
-    RunnerProfile toMemberRecordDto(CourseGhostResponse ghost);
 }

@@ -7,8 +7,6 @@ import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
-import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
-import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.error.ErrorCode;
@@ -58,56 +56,6 @@ public class Running extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id")
     private Course course;
-
-    /**
-     * 러닝 생성 이벤트 생성
-     * 
-     * - Service에서 save() 후 호출하여 이벤트 객체를 생성
-     * - ApplicationEventPublisher로 직접 발행
-     * - 순수 도메인 객체 (JPA 의존 없음)
-     * 
-     * @return RunFinishedEvent
-     * @throws IllegalStateException ID가 없는 경우
-     */
-    public RunFinishedEvent createFinishedEvent() {
-        if (this.id == null) {
-            throw new IllegalStateException("ID가 없으면 이벤트를 생성할 수 없습니다. save() 후에 호출하세요.");
-        }
-        
-        return new RunFinishedEvent(
-                id,
-                course != null ? course.getId() : null,
-                member != null ? member.getUuid() : null,
-                member != null ? member.getId() : null,
-                runningRecord != null && runningRecord.getDuration() != null 
-                    ? runningRecord.getDuration().intValue() : null,
-                runningRecord != null ? runningRecord.getAveragePace() : null
-        );
-    }
-
-    /**
-     * 러닝 수정 이벤트 생성
-     * 
-     * - Service에서 엔티티 수정 후 호출하여 이벤트 객체를 생성
-     * - ApplicationEventPublisher로 직접 발행
-     * - 이름 변경, 공개여부 변경 시 사용
-     * 
-     * @return RunUpdatedEvent
-     * @throws IllegalStateException ID가 없는 경우
-     */
-    public RunUpdatedEvent createUpdatedEvent() {
-        if (this.id == null) {
-            throw new IllegalStateException("ID가 없으면 이벤트를 생성할 수 없습니다.");
-        }
-
-        return new RunUpdatedEvent(
-                id,
-                course != null ? course.getId() : null,
-                member != null ? member.getUuid() : null,
-                runningName,
-                isPublic
-        );
-    }
 
     /**
      * 코스 러닝 이벤트 생성
