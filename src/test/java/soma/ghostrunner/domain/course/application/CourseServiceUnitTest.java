@@ -5,14 +5,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.InOrder;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
+import soma.ghostrunner.domain.course.domain.events.CourseMapDataChangedEvent;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
@@ -43,6 +47,9 @@ class CourseServiceUnitTest {
     @Mock
     private CourseMapper courseMapper;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private CourseService courseService;
 
@@ -58,7 +65,7 @@ class CourseServiceUnitTest {
         course = Course.of(owner, 5.0, 10.0, 100.0, -50.0,
                 37.123, 127.123, "route.url", "checkpoint.url", "thumb.url");
         course.setName("테스트 코스");
-        setIds(course, COURSE_ID, owner, MEMBER_ID);
+        assignIds(course, COURSE_ID, owner, MEMBER_ID);
 
         // 모든 테스트가 수정/삭제 대상 코스를 조회한다
         given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
@@ -321,20 +328,63 @@ class CourseServiceUnitTest {
     }
 
     /**
-     * 테스트를 위한 ID 설정 헬퍼 메서드
+     * 셀 버킷 캐시의 이빅트는 커밋 후 좌표만으로 이뤄진다. 코스 삭제 후에는 리드모델이 없어
+     * courseId로 셀을 역산할 수 없으므로(M2), 이벤트가 좌표를 실어 나르는 것이 계약의 핵심이다.
+     *
+     * 설계 문서: docs/design/course-cell-bucket-cache-design.md §3-5 · §4(경로 a·b~d) · D4
      */
-    private void setIds(Course course, Long courseId, Member member, Long memberId) {
-        try {
-            // Reflection을 사용해 private id 필드에 접근
-            java.lang.reflect.Field courseIdField = Course.class.getDeclaredField("id");
-            courseIdField.setAccessible(true);
-            courseIdField.set(course, courseId);
+    @Nested
+    @DisplayName("지도 데이터 변경 이벤트 발행")
+    class MapDataChangedEventPublishing {
 
-            java.lang.reflect.Field memberIdField = Member.class.getDeclaredField("id");
-            memberIdField.setAccessible(true);
-            memberIdField.set(member, memberId);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set IDs via reflection", e);
+        private static final Double START_LAT = 37.123;
+        private static final Double START_LNG = 127.123;
+
+        @Test
+        @DisplayName("코스 삭제와 코스 수정은 지도 데이터 변경 이벤트를 코스 시작점 좌표와 함께 발행한다")
+        void publishesMapDataChangedEventWithStartCoordinate() {
+            // when
+            courseService.deleteCourse(COURSE_ID, owner.getUuid());                          // 경로 a
+            courseService.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());  // 경로 b~d (이름)
+            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());  // 경로 b~d (공개)
+
+            // then
+            ArgumentCaptor<CourseMapDataChangedEvent> captor =
+                    ArgumentCaptor.forClass(CourseMapDataChangedEvent.class);
+            then(eventPublisher).should(times(3)).publishEvent(captor.capture());
+
+            assertThat(captor.getAllValues())
+                    .allSatisfy(event -> {
+                        assertThat(event.courseId()).isEqualTo(COURSE_ID);
+                        assertThat(event.startLat()).isEqualTo(START_LAT);
+                        assertThat(event.startLng()).isEqualTo(START_LNG);
+                    });
         }
+
+        @Test
+        @DisplayName("이름과 공개 여부를 동시에 바꿔도 이벤트는 정확히 한 번만 발행한다")
+        void publishesExactlyOnceWhenNameAndPublicityChangeTogether() {
+            // given
+            CoursePatchRequest request = new CoursePatchRequest();
+            request.setName("새로운 이름");
+            request.setIsPublic(true);
+
+            // when
+            courseService.updateCourse(COURSE_ID, request, owner.getUuid());
+
+            // then
+            assertThat(course.getName()).isEqualTo("새로운 이름");
+            assertThat(course.isPublic()).isTrue();
+            then(eventPublisher).should(times(1)).publishEvent(any(CourseMapDataChangedEvent.class));
+            then(eventPublisher).shouldHaveNoMoreInteractions();
+        }
+    }
+
+    /**
+     * 영속화되지 않은 엔티티에 ID를 심는다. (id는 DB가 채우는 값이라 팩토리로는 넣을 수 없다)
+     */
+    private void assignIds(Course course, Long courseId, Member member, Long memberId) {
+        ReflectionTestUtils.setField(course, "id", courseId);
+        ReflectionTestUtils.setField(member, "id", memberId);
     }
 }

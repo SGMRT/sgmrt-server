@@ -2,6 +2,7 @@ package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final CourseSubscriptionRepository subscriptionRepository;
     private final CourseReadModelWriter readModelWriter;
+    private final ApplicationEventPublisher eventPublisher;
 
     public Long save(Course course) {
         return courseRepository.save(course).getId();
@@ -87,6 +89,9 @@ public class CourseService {
         Course course = findCourseById(courseId);
         course.verifyOwner(memberUuid);
 
+        // 삭제 후에는 좌표를 되찾을 수 없으므로, 코스가 아직 살아 있는 지금 이벤트를 만들어 발행한다.
+        eventPublisher.publishEvent(course.createMapDataChangedEvent());
+
         readModelWriter.delete(courseId);
         courseRepository.delete(course);
     }
@@ -94,6 +99,12 @@ public class CourseService {
     /**
      * 요청에 담긴 필드만 부분 수정한다. (null 인 필드는 건드리지 않는다)
      * 각 수정은 코스 본체를 바꾼 뒤 곧바로 리드모델에 동기화한다.
+     *
+     * <p><b>이 메서드는 지도에 노출되는 코스 카드(코스명·공개 여부)를 바꾸는 유일한 진입점이다.</b>
+     * 그러므로 지도 데이터 변경 이벤트는 개별 수정 메서드가 아니라 여기서 한 번만 발행한다. 이름과 공개 여부가
+     * 함께 바뀌어도 캐시 이빅트는 한 번이면 충분하고, 중복 발행은 이빅트 메트릭을 부풀려 관측을 왜곡한다.
+     *
+     * <p>설계 문서: docs/design/course-cell-bucket-cache-design.md §4(경로 b~d) · D4
      */
     @Transactional
     public void updateCourse(Long courseId, CoursePatchRequest request, String memberUuid) {
@@ -101,20 +112,27 @@ public class CourseService {
         course.verifyOwner(memberUuid);
 
         String newName = request.getName();
+        Boolean newPublicity = request.getIsPublic();
+        boolean courseCardChangeRequested = (newName != null || newPublicity != null);
+
         if (newName != null) {
             updateCourseName(course, newName);
         }
-
-        Boolean newPublicity = request.getIsPublic();
         if (newPublicity != null) {
             updateCoursePublicity(course, newPublicity);
         }
 
         courseRepository.save(course);
+
+        if (courseCardChangeRequested) {
+            eventPublisher.publishEvent(course.createMapDataChangedEvent());
+        }
     }
 
     /**
      * 코스명을 바꾸고 리드모델에도 반영한다. (빈 이름은 허용하지 않는다)
+     *
+     * <p>지도 데이터 변경 이벤트는 발행하지 않는다 — 발행은 호출자인 {@link #updateCourse}가 1회만 담당한다. (D4)
      */
     private void updateCourseName(Course course, String name) {
         if (!StringUtils.hasText(name)) {
@@ -127,6 +145,8 @@ public class CourseService {
     /**
      * 코스 공개 여부를 바꾸고 리드모델에도 반영한다.
      * 이미 원하는 상태라면 등록/해제는 건너뛰되, 리드모델 동기화는 멱등하게 그대로 수행한다.
+     *
+     * <p>지도 데이터 변경 이벤트는 발행하지 않는다 — 발행은 호출자인 {@link #updateCourse}가 1회만 담당한다. (D4)
      */
     private void updateCoursePublicity(Course course, boolean isPublic) {
         if (course.isPublic() != isPublic) {

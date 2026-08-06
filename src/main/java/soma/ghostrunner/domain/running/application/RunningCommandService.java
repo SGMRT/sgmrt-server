@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.events.CourseMapDataChangedEvent;
 import soma.ghostrunner.domain.running.application.dto.*;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -23,8 +24,9 @@ import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -63,7 +65,9 @@ public class RunningCommandService {
 
         courseReadModelWriter.applyRun(running);
         memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
-        eventPublisher.publishEvent(running.createFinishedEvent());   // 소비자: 코스 캐시 무효화(AFTER_COMMIT)만
+        // 소비자(AFTER_COMMIT): 지도 셀 캐시 이빅트(CourseCellCacheEvictListener) + 구경로 코스 캐시 무효화(CourseCacheEventListener)
+        // 구경로 정리 시 후자의 리스너만 지우고 이 발행 자체는 남긴다 — 자세한 이유는 publishCourseRunEvents javadoc 참고
+        eventPublisher.publishEvent(running.createFinishedEvent());
         return mapper.toResponse(running, course);
     }
 
@@ -118,12 +122,21 @@ public class RunningCommandService {
     }
 
     /**
-     * 코스를 따라 뛴 러닝의 종료 이벤트를 발행한다. (남은 소비자는 전부 AFTER_COMMIT 부수효과)
+     * 코스를 따라 뛴 러닝의 종료 이벤트를 발행한다. (소비자는 전부 AFTER_COMMIT 부수효과)
      *
-     * - RunFinishedEvent → 코스 캐시 무효화(CourseCacheEventListener) — 구경로 캐시 제거 시 함께 삭제 예정
+     * <pre>
+     * - RunFinishedEvent → (1) 지도 셀 캐시 이빅트(CourseCellCacheEvictListener) — <b>존치</b>.
+     *                          "완주 직후 지도에서 내 등수를 본다"(설계 course-cell-bucket-cache-design §1-2)가
+     *                          이 발행에 걸려 있다.
+     *                      (2) 구경로 코스 캐시 무효화(CourseCacheEventListener) — 구경로 제거 시 함께 삭제
      * - CourseRunEvent   → 푸시 발송(PushEventListener)
+     * </pre>
      *
-     * VDOT 갱신·구독 생성은 같은 트랜잭션 동기 로직이라 직접 호출로 전환됨 (설계 04 §6).
+     * <p>구경로 정리(설계 결정 10) 시 (2)의 리스너만 지우고 <b>이 발행 자체는 남겨야 한다.</b>
+     * 발행을 지우면 컴파일도 테스트도 통과하지만 지도 이빅트가 사라져 완주 반영이 최대 TTL(600초)까지 지연된다.
+     * ({@code RunningCommandServiceTest}가 이 발행을 계약으로 고정하고 있다.)</p>
+     *
+     * <p>VDOT 갱신·구독 생성은 같은 트랜잭션 동기 로직이라 직접 호출로 전환됨 (설계 04 §6).</p>
      */
     private void publishCourseRunEvents(Running running) {
         eventPublisher.publishEvent(running.createFinishedEvent());
@@ -156,7 +169,8 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updateName(name);
-        // RunUpdatedEvent → 코스 캐시 무효화(CourseCacheEventListener)
+        // RunUpdatedEvent 소비자(AFTER_COMMIT): 지도 셀 캐시 이빅트(CourseCellCacheEvictListener) — 존치
+        //                                    + 구경로 코스 캐시 무효화(CourseCacheEventListener) — 구경로 제거 시 함께 삭제
         eventPublisher.publishEvent(running.createUpdatedEvent());
     }
 
@@ -165,7 +179,8 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updatePublicStatus();
-        // RunUpdatedEvent → 코스 캐시 무효화(CourseCacheEventListener)
+        // RunUpdatedEvent 소비자(AFTER_COMMIT): 지도 셀 캐시 이빅트(CourseCellCacheEvictListener) — 존치
+        //                                    + 구경로 코스 캐시 무효화(CourseCacheEventListener) — 구경로 제거 시 함께 삭제
         eventPublisher.publishEvent(running.createUpdatedEvent());
 
         // 공개 여부가 바뀌면 집계 모집단이 달라지므로 해당 코스의 리드모델을 다시 계산한다
@@ -179,28 +194,53 @@ public class RunningCommandService {
         return runningQueryService.findRunningByRunningId(runningId);
     }
 
+    /**
+     * 러닝들을 삭제하고 영향받은 코스를 동기화한다. 수집 → 삭제 → 재계산 → 발행 순서로 진행한다.
+     *
+     * <p>수집이 반드시 삭제보다 앞서야 한다. {@code deleteInRunningIds}는
+     * {@code @Modifying(clearAutomatically = true)}라 벌크 삭제 직후 영속성 컨텍스트가 비워지고,
+     * LAZY인 {@code Running.course} 프록시는 미초기화 상태로 detach 된다.
+     * 그 뒤에 좌표를 읽으면 {@code LazyInitializationException}이 나 러닝 삭제 API가 항상 500이 된다.
+     * (설계: docs/design/course-cell-bucket-cache-design.md §4 경로 e · [R2] · D5)
+     */
     @Transactional
     public void deleteRunnings(List<Long> runningIds, String memberUuid) {
         List<Running> runningsToDelete = runningRepository.findByIds(runningIds);
         runningsToDelete.forEach(running -> running.verifyMember(memberUuid));
 
-        // 삭제 전에 모아둬야 어떤 코스의 리드모델을 다시 계산할지 알 수 있다
-        List<Long> affectedCourseIds = distinctCourseIdsOf(runningsToDelete);
+        // 1. 수집 — 삭제하면 알아낼 수 없는 정보(재계산 대상 코스, 지도 이빅트용 시작점 좌표)를 미리 확보한다
+        List<Course> affectedCourses = distinctCoursesOf(runningsToDelete);
+        List<Long> affectedCourseIds = affectedCourses.stream()
+                .map(Course::getId)
+                .toList();
+        List<CourseMapDataChangedEvent> mapDataChanges = affectedCourses.stream()
+                .map(Course::createMapDataChangedEvent)  // LAZY 프록시가 초기화되는 지점 — 아직 영속성 컨텍스트가 살아있어야 한다
+                .toList();
 
+        // 2. 삭제
         runningRepository.deleteInRunningIds(runningIds);
+
+        // 3. 재계산 — 남은 러닝만으로 코스 집계를 다시 계산한다
         courseReadModelWriter.recalculate(affectedCourseIds);
+
+        // 4. 발행 — 리드모델 최종 상태가 확정된 뒤 발행한다 (구독자는 AFTER_COMMIT 지도 캐시 이빅트)
+        mapDataChanges.forEach(eventPublisher::publishEvent);
     }
 
     /**
-     * 러닝들이 속한 코스 ID 를 중복 없이 모은다. (코스에 속하지 않은 러닝은 제외)
+     * 러닝들이 속한 코스를 중복 없이 모은다. 같은 코스의 러닝이 여러 건이어도 코스는 1건이다.
+     * 어느 코스에도 속하지 않은 러닝은 재계산·이빅트 대상이 아니므로 제외한다.
      */
-    private List<Long> distinctCourseIdsOf(List<Running> runnings) {
-        return runnings.stream()
-                .map(Running::getCourse)
-                .filter(Objects::nonNull)
-                .map(Course::getId)
-                .distinct()
-                .toList();
+    private List<Course> distinctCoursesOf(List<Running> runnings) {
+        Map<Long, Course> coursesById = new LinkedHashMap<>();
+        for (Running running : runnings) {
+            Course course = running.getCourse();
+            if (course == null) {
+                continue;
+            }
+            coursesById.putIfAbsent(course.getId(), course);  // 식별자 게터라 프록시를 초기화하지 않는다
+        }
+        return List.copyOf(coursesById.values());
     }
 
 }

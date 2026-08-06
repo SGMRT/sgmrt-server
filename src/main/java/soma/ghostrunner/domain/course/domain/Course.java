@@ -3,6 +3,7 @@ package soma.ghostrunner.domain.course.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SoftDelete;
+import soma.ghostrunner.domain.course.domain.events.CourseMapDataChangedEvent;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -145,5 +146,32 @@ public class Course extends BaseTimeEntity {
                     ErrorCode.ACCESS_DENIED, "해당 코스의 소유자가 아닙니다"
             );
         }
+    }
+
+    /**
+     * 지도 데이터 변경 이벤트 생성
+     *
+     * - Service에서 코스 상태를 바꾼 뒤 호출하여 이벤트 객체를 생성
+     * - ApplicationEventPublisher로 직접 발행
+     * - 순수 도메인 객체 (JPA 의존 없음)
+     *
+     * 시작점 좌표를 함께 싣는 이유: 코스를 삭제하면 커밋 후에는 리드모델도 코스도 남지 않아
+     * courseId만으로는 어느 셀을 이빅트해야 하는지 역산할 수 없다(M2). 좌표는 이미 로드된
+     * 자기 자신에게서 읽으므로 추가 쿼리가 없다.
+     *
+     * 설계 문서: docs/design/course-cell-bucket-cache-design.md §3-5
+     *
+     * @return CourseMapDataChangedEvent
+     * @throws IllegalStateException ID가 없는 경우
+     */
+    public CourseMapDataChangedEvent createMapDataChangedEvent() {
+        if (this.id == null) {
+            throw new IllegalStateException("ID가 없으면 이벤트를 생성할 수 없습니다. save() 후에 호출하세요.");
+        }
+
+        Double startLat = startCoordinate != null ? startCoordinate.getLatitude() : null;
+        Double startLng = startCoordinate != null ? startCoordinate.getLongitude() : null;
+
+        return new CourseMapDataChangedEvent(id, startLat, startLng);
     }
 }

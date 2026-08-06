@@ -1,5 +1,6 @@
 package soma.ghostrunner.domain.running.application;
 
+import org.hibernate.LazyInitializationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.events.CourseMapDataChangedEvent;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.application.MemberVdotWriter;
 import soma.ghostrunner.domain.course.application.CourseSubscriptionService;
@@ -25,17 +27,22 @@ import soma.ghostrunner.domain.running.application.dto.request.RunRecordCommand;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
+import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
+import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
 import soma.ghostrunner.domain.running.domain.path.*;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -380,6 +387,45 @@ class RunningCommandServiceTest {
         verify(courseReadModelWriter, times(1)).applyRun(running);
     }
 
+    /**
+     * 이 발행이 지도 셀 캐시 이빅트(CourseCellCacheEvictListener)의 유일한 트리거다 —
+     * "완주 직후 지도에서 내 등수를 본다"(설계 §1-2)가 여기에 걸려 있다.
+     *
+     * <p>발행부 주석은 오랫동안 소비자를 구경로 캐시(CourseCacheEventListener) 하나로만 적고 있었고,
+     * 그 리스너는 제거가 예정되어 있다(설계 결정 10). 발행까지 함께 지워도 컴파일과 리스너 테스트는 초록이고
+     * (리스너 테스트는 핸들러를 직접 호출한다) 프로덕션에서만 완주 반영이 최대 TTL(600초)까지 지연된다.
+     * 그 삭제 사고를 사람의 기억이 아니라 이 테스트가 잡는다.
+     *
+     * 설계 문서: docs/design/course-cell-bucket-cache-design.md §1-2 · §4
+     */
+    @Test
+    @DisplayName("createRun: 코스 따라 러닝 완주는 지도 셀 이빅트를 트리거할 RunFinishedEvent를 발행한다")
+    void createRun_publishesRunFinishedEventForMapCacheEviction() {
+        // given
+        long courseId = 77L;
+        long memberId = 5L;
+        long runningId = 100L;
+        long durationSeconds = 1800L;
+
+        Course course = givenFoundCourse(courseId);
+        Member member = givenFoundRunner(memberId);
+        TelemetryStatistics stats = givenProcessedTelemetry();
+
+        CreateRunCommand cmd = publicRunCommand(durationSeconds, false);
+        Running running = savedPublicRunning(runningId, durationSeconds, member, course);
+        RunFinishedEvent finishedEvent =
+                new RunFinishedEvent(runningId, courseId, memberUuid, memberId, (int) durationSeconds, 6.1);
+        when(running.createFinishedEvent()).thenReturn(finishedEvent);
+        when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
+        when(runningRepository.save(any())).thenReturn(running);
+
+        // when
+        sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
+
+        // then : 이빅트 대상 코스를 실은 완주 이벤트가 그대로 발행된다
+        verify(applicationEventPublisher).publishEvent(finishedEvent);
+    }
+
     @Test
     @DisplayName("deleteRunnings: 삭제된 러닝들의 코스를 중복 없이 모아 한 번에 재계산한다")
     void deleteRunnings_recalculatesDistinctCourses() {
@@ -391,14 +437,7 @@ class RunningCommandServiceTest {
         Course courseB = mock(Course.class);
         when(courseB.getId()).thenReturn(20L);
 
-        Running r1 = mock(Running.class);
-        when(r1.getCourse()).thenReturn(courseA);
-        Running r2 = mock(Running.class);
-        when(r2.getCourse()).thenReturn(courseA);
-        Running r3 = mock(Running.class);
-        when(r3.getCourse()).thenReturn(courseB);
-
-        when(runningRepository.findByIds(ids)).thenReturn(List.of(r1, r2, r3));
+        givenRunningsOnCourses(ids, courseA, courseA, courseB);
 
         // when
         sut.deleteRunnings(ids, memberUuid);
@@ -409,8 +448,80 @@ class RunningCommandServiceTest {
         assertThat(captor.getValue()).containsExactlyInAnyOrder(10L, 20L);
     }
 
+    /**
+     * 셀 버킷 캐시는 좌표로만 이빅트하므로, 삭제로 TOP4가 바뀐 코스는 좌표를 실은 이벤트를 발행해야 한다(M1).
+     * 좌표 수집은 반드시 벌크 삭제 이전이어야 한다 — deleteInRunningIds 가
+     * {@code @Modifying(clearAutomatically = true)} 라 그 뒤에는 LAZY Course 프록시가
+     * 미초기화 상태로 detach 되어 초기화할 수 없다([R2]). 아래 좌표 assert 가 그 회귀를 잡는다.
+     *
+     * 설계 문서: docs/design/course-cell-bucket-cache-design.md §4(경로 e) · [R2] · D5
+     */
     @Test
-    @DisplayName("updateRunningPublicStatus: 공개 여부가 바뀐 러닝의 코스를 재계산한다")
+    @DisplayName("deleteRunnings: 영향받은 코스마다 시작점 좌표를 실은 지도 데이터 변경 이벤트를 1건씩 발행한다")
+    void deleteRunnings_publishesMapDataChangedEventPerDistinctCourse() {
+        // given : 같은 코스의 러닝 2건 + 다른 코스의 러닝 1건 → 이벤트는 코스당 1건씩 총 2건
+        List<Long> ids = List.of(1L, 2L, 3L);
+
+        AtomicBoolean persistenceContextCleared = new AtomicBoolean(false);
+        Course courseA = lazyCourse(10L, 37.5665, 126.9780, persistenceContextCleared);
+        Course courseB = lazyCourse(20L, 35.1796, 129.0756, persistenceContextCleared);
+
+        givenRunningsOnCourses(ids, courseA, courseA, courseB);
+
+        // 벌크 삭제가 영속성 컨텍스트를 비운다 (clearAutomatically = true)
+        doAnswer(invocation -> {
+            persistenceContextCleared.set(true);
+            return null;
+        }).when(runningRepository).deleteInRunningIds(ids);
+
+        // when
+        sut.deleteRunnings(ids, memberUuid);
+
+        // then
+        ArgumentCaptor<CourseMapDataChangedEvent> captor =
+                ArgumentCaptor.forClass(CourseMapDataChangedEvent.class);
+        verify(applicationEventPublisher, times(2)).publishEvent(captor.capture());
+
+        assertThat(captor.getAllValues())
+                .extracting(CourseMapDataChangedEvent::courseId,
+                        CourseMapDataChangedEvent::startLat,
+                        CourseMapDataChangedEvent::startLng)
+                .containsExactlyInAnyOrder(
+                        tuple(10L, 37.5665, 126.9780),
+                        tuple(20L, 35.1796, 129.0756));
+    }
+
+    /** 삭제 대상 러닝들을 준비한다 — 각 러닝은 인자로 준 코스에 순서대로 매달린다 (같은 코스 반복 가능) */
+    private void givenRunningsOnCourses(List<Long> runningIds, Course... coursesOfEachRunning) {
+        List<Running> runningsToDelete = new ArrayList<>();
+        for (Course course : coursesOfEachRunning) {
+            Running running = mock(Running.class);
+            when(running.getCourse()).thenReturn(course);
+            runningsToDelete.add(running);
+        }
+        when(runningRepository.findByIds(runningIds)).thenReturn(runningsToDelete);
+    }
+
+    /**
+     * LAZY Course 프록시를 흉내 낸다 — 식별자 게터는 초기화 없이 동작하지만,
+     * 영속성 컨텍스트가 비워진 뒤의 초기화는 LazyInitializationException 이다.
+     */
+    private Course lazyCourse(long courseId, double startLat, double startLng,
+                              AtomicBoolean persistenceContextCleared) {
+        Course course = mock(Course.class);
+        when(course.getId()).thenReturn(courseId);  // 식별자 게터는 프록시를 초기화하지 않는다
+        when(course.createMapDataChangedEvent()).thenAnswer(invocation -> {
+            if (persistenceContextCleared.get()) {
+                throw new LazyInitializationException(
+                        "could not initialize proxy [Course#" + courseId + "] - no Session");
+            }
+            return new CourseMapDataChangedEvent(courseId, startLat, startLng);
+        });
+        return course;
+    }
+
+    @Test
+    @DisplayName("updateRunningPublicStatus: 공개 여부가 바뀐 러닝의 코스를 재계산하고, 지도 셀 이빅트용 RunUpdatedEvent를 발행한다")
     void updateRunningPublicStatus_recalculatesCourse() {
         // given
         Long runningId = 11L;
@@ -421,6 +532,9 @@ class RunningCommandServiceTest {
         when(running.getCourse()).thenReturn(course);
         when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
 
+        RunUpdatedEvent updatedEvent = new RunUpdatedEvent(runningId, 30L, memberUuid, "러닝", true);
+        when(running.createUpdatedEvent()).thenReturn(updatedEvent);
+
         // when
         sut.updateRunningPublicStatus(runningId, memberUuid);
 
@@ -428,6 +542,9 @@ class RunningCommandServiceTest {
         ArgumentCaptor<Collection<Long>> captor = ArgumentCaptor.forClass(Collection.class);
         verify(courseReadModelWriter, times(1)).recalculate(captor.capture());
         assertThat(captor.getValue()).containsExactly(30L);
+
+        // 이 발행이 지도 셀 이빅트를 트리거한다 — 구경로 정리 시 함께 지우면 안 된다(RunningCommandService:182-183 주석).
+        verify(applicationEventPublisher).publishEvent(updatedEvent);
     }
 
     private CreateRunCommand publicRunCommand(long durationSeconds, boolean hasPaused) {
