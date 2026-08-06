@@ -6,19 +6,14 @@ import lombok.Getter;
 import java.time.Duration;
 
 /**
- * 캐시 레지스트리 — 캐시 이름과 TTL을 한곳에서 관리한다.
- * Spring Cache(@Cacheable)와 RedisTemplate 기반 캐시가 모두 여기서 이름·TTL을 읽는다.
+ * RedisTemplate 기반 캐시의 이름·TTL 단일 출처 레지스트리. (Spring Cache 애노테이션과 무관)
+ *
+ * <p>이 프로젝트는 {@code @EnableCaching}/{@code CacheManager}를 쓰지 않는다 (설계 D9).
+ * 캐시 어댑터가 이 enum에서 이름과 TTL을 읽어 직접 Redis에 읽고 쓴다.</p>
  */
 @AllArgsConstructor
 @Getter
 public enum CacheType {
-
-    /**
-     * 지도 결과셋 캐시 (key: regionId). 완주·러닝 공개 전환은 AFTER_COMMIT 이빅트로 즉시 반영되고
-     * (CourseMapCacheEvictListener), 그 외 변경(코스 공개 전환 등)의 스테일 상한이 TTL이다.
-     * (설계 cache/05 §4 — 이빅트가 있어야 TTL을 늘려 히트율을 확보할 수 있다, 시뮬레이션 v4)
-     */
-    COURSE_MAP(Names.COURSE_MAP, Duration.ofSeconds(600)),
 
     /**
      * 셀 버킷 캐시 (key: geohash p6 셀). 값은 그 셀에 시작점을 둔 코스 카드 목록이며,
@@ -31,9 +26,8 @@ public enum CacheType {
     private final String cacheName;
     private final Duration ttl;
 
-    /** &#64;Cacheable 등 애노테이션 속성은 컴파일 타임 상수만 허용하므로 이름을 상수로도 노출한다. */
+    /** 키 접두사를 컴파일 타임 상수로 써야 하는 곳(테스트 키 패턴 등)을 위해 이름을 상수로도 노출한다. */
     public static final class Names {
-        public static final String COURSE_MAP = "course-map";
         public static final String COURSE_CELLS = "course-cells";
         private Names() {}
     }

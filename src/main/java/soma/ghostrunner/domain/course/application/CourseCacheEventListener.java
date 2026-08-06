@@ -9,8 +9,8 @@ import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
 import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
 
 /**
- * @deprecated 구 수동 캐시(course:{id})의 무효화 리스너. 신경로(course-map 결과셋 캐시)는 무효화 없이
- *             TTL(60초)에만 의존하므로 대체 리스너가 없다 — 구경로 제거 시 함께 삭제 예정.
+ * @deprecated 구 수동 캐시(course:{id})의 무효화 리스너. 신경로(셀 버킷 캐시)는
+ *             {@code CourseCellCacheEvictListener}가 무효화를 담당한다 — 구경로 제거 시 함께 삭제 예정.
  */
 @Deprecated
 @Slf4j
