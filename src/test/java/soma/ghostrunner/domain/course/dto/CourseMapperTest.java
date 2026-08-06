@@ -3,13 +3,10 @@ package soma.ghostrunner.domain.course.dto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
-import org.springframework.test.util.ReflectionTestUtils;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseDataUrls;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
-import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -25,16 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CourseMapperTest {
 
     private CourseMapper courseMapper;
-    private CourseSubMapper courseSubMapper;
 
     private final LocalDateTime FAKE_NOW = LocalDateTime.of(2025, 9, 1, 10, 0, 0);
 
     @BeforeEach
     void setUp() {
         courseMapper = new CourseMapperImpl();
-        courseSubMapper = Mappers.getMapper(CourseSubMapper.class);
-        // courseMapper에 courseSubMapper 주입
-        ReflectionTestUtils.setField(courseMapper, "courseSubMapper", courseSubMapper);
     }
 
     @DisplayName("Course 엔티티를 CoursePreviewDto로 변환한다.")
@@ -250,43 +243,6 @@ class CourseMapperTest {
         assertThat(response.lowestFinisherPace()).isEqualTo(stats.getLowestFinisherPace());
         assertThat(response.uniqueRunnersCount()).isEqualTo(stats.getUniqueRunnersCount());
         assertThat(response.totalRunsCount()).isEqualTo(stats.getTotalRunsCount());
-    }
-
-    @DisplayName("(SubMapper) CourseGhostResponse를 MemberRecord로 변환한다.")
-    @Test
-    void toMemberRecordDto() {
-        // given
-        CourseGhostResponse ghost = createCourseGhostResponse();
-
-        // when
-        RunnerProfile memberRecord = courseSubMapper.toMemberRecordDto(ghost);
-
-        // then
-        assertThat(memberRecord.uuid()).isEqualTo(ghost.runnerUuid());
-        assertThat(memberRecord.profileUrl()).isEqualTo(ghost.runnerProfileUrl());
-    }
-
-    @DisplayName("CoursePreviewDto와 CourseGhostResponse 리스트를 CourseQueryModel로 변환한다.")
-    @Test
-    void toCourseQueryModel() {
-        // given
-        CoursePreviewDto courseDto = createCoursePreviewDto();
-        List<CourseGhostResponse> ghosts = List.of(createCourseGhostResponse(), createCourseGhostResponse());
-        long runnerCount = 2L;
-
-        // when
-        CourseQueryModel queryModel = courseMapper.toCourseQueryModel(courseDto, ghosts, runnerCount);
-
-        // then
-        assertThat(queryModel.id()).isEqualTo(courseDto.id());
-        assertThat(queryModel.name()).isEqualTo(courseDto.name());
-        assertThat(queryModel.runnerCount()).isEqualTo((int) runnerCount);
-        assertThat(queryModel.topRunners()).hasSize(ghosts.size());
-        for (int i = 0; i < ghosts.size(); i++) {
-            assertThat(queryModel.topRunners().get(i).uuid()).isEqualTo(ghosts.get(i).runnerUuid());
-            assertThat(queryModel.topRunners().get(i).profileUrl()).isEqualTo(ghosts.get(i).runnerProfileUrl());
-        }
-
     }
 
     private Member createMember() {

@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.InOrder;
+import org.springframework.test.util.ReflectionTestUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -43,6 +44,9 @@ class CourseServiceUnitTest {
     @Mock
     private CourseMapper courseMapper;
 
+    @Mock
+    private CourseMapCacheEvictor mapCacheEvictor;
+
     @InjectMocks
     private CourseService courseService;
 
@@ -58,7 +62,7 @@ class CourseServiceUnitTest {
         course = Course.of(owner, 5.0, 10.0, 100.0, -50.0,
                 37.123, 127.123, "route.url", "checkpoint.url", "thumb.url");
         course.setName("테스트 코스");
-        setIds(course, COURSE_ID, owner, MEMBER_ID);
+        assignIds(course, COURSE_ID, owner, MEMBER_ID);
 
         // 모든 테스트가 수정/삭제 대상 코스를 조회한다
         given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
@@ -321,20 +325,57 @@ class CourseServiceUnitTest {
     }
 
     /**
-     * 테스트를 위한 ID 설정 헬퍼 메서드
+     * 셀 버킷 캐시의 이빅트는 커밋 후 좌표만으로 이뤄진다. 코스 삭제 후에는 리드모델이 없어
+     * courseId로 셀을 역산할 수 없으므로(M2), 코스가 아직 살아 있는 동안 좌표를 넘기는 것이 계약의 핵심이다.
+     *
+     * 설계 문서: docs/design/course-cell-bucket-cache-design.md §3-5 · §4(경로 a·b~d) · D4
      */
-    private void setIds(Course course, Long courseId, Member member, Long memberId) {
-        try {
-            // Reflection을 사용해 private id 필드에 접근
-            java.lang.reflect.Field courseIdField = Course.class.getDeclaredField("id");
-            courseIdField.setAccessible(true);
-            courseIdField.set(course, courseId);
+    @Nested
+    @DisplayName("지도 셀 캐시 이빅트 예약")
+    class MapCellEviction {
 
-            java.lang.reflect.Field memberIdField = Member.class.getDeclaredField("id");
-            memberIdField.setAccessible(true);
-            memberIdField.set(member, memberId);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set IDs via reflection", e);
+        private static final Double START_LAT = 37.123;
+        private static final Double START_LNG = 127.123;
+
+        @Test
+        @DisplayName("코스 삭제와 코스 수정은 코스 시작점 좌표와 함께 지도 셀 이빅트를 예약한다")
+        void schedulesEvictionWithStartCoordinate() {
+            // when
+            courseService.deleteCourse(COURSE_ID, owner.getUuid());                          // 경로 a
+            courseService.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());  // 경로 b~d (이름)
+            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());  // 경로 b~d (공개)
+
+            // then : 삭제 후에는 되찾을 수 없는 좌표가 그대로 실려 나가야 한다
+            then(mapCacheEvictor).should(times(3))
+                    .evictCellAfterCommit(COURSE_ID, START_LAT, START_LNG);
+            then(mapCacheEvictor).shouldHaveNoMoreInteractions();
         }
+
+        @Test
+        @DisplayName("이름과 공개 여부를 동시에 바꿔도 이빅트는 정확히 한 번만 예약한다")
+        void schedulesExactlyOnceWhenNameAndPublicityChangeTogether() {
+            // given
+            CoursePatchRequest request = new CoursePatchRequest();
+            request.setName("새로운 이름");
+            request.setIsPublic(true);
+
+            // when
+            courseService.updateCourse(COURSE_ID, request, owner.getUuid());
+
+            // then
+            assertThat(course.getName()).isEqualTo("새로운 이름");
+            assertThat(course.isPublic()).isTrue();
+            then(mapCacheEvictor).should(times(1))
+                    .evictCellAfterCommit(COURSE_ID, START_LAT, START_LNG);
+            then(mapCacheEvictor).shouldHaveNoMoreInteractions();
+        }
+    }
+
+    /**
+     * 영속화되지 않은 엔티티에 ID를 심는다. (id는 DB가 채우는 값이라 팩토리로는 넣을 수 없다)
+     */
+    private void assignIds(Course course, Long courseId, Member member, Long memberId) {
+        ReflectionTestUtils.setField(course, "id", courseId);
+        ReflectionTestUtils.setField(member, "id", memberId);
     }
 }

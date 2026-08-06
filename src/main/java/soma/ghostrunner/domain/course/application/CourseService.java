@@ -10,6 +10,7 @@ import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.BoundingBox;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.*;
@@ -47,6 +48,7 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final CourseSubscriptionRepository subscriptionRepository;
     private final CourseReadModelWriter readModelWriter;
+    private final CourseMapCacheEvictor mapCacheEvictor;
 
     public Long save(Course course) {
         return courseRepository.save(course).getId();
@@ -87,6 +89,9 @@ public class CourseService {
         Course course = findCourseById(courseId);
         course.verifyOwner(memberUuid);
 
+        // 삭제 후에는 좌표를 되찾을 수 없으므로, 코스가 아직 살아 있는 지금 좌표를 읽어 커밋 후 이빅트를 예약한다.
+        scheduleMapCellEvict(course);
+
         readModelWriter.delete(courseId);
         courseRepository.delete(course);
     }
@@ -94,6 +99,12 @@ public class CourseService {
     /**
      * 요청에 담긴 필드만 부분 수정한다. (null 인 필드는 건드리지 않는다)
      * 각 수정은 코스 본체를 바꾼 뒤 곧바로 리드모델에 동기화한다.
+     *
+     * <p><b>이 메서드는 지도에 노출되는 코스 카드(코스명·공개 여부)를 바꾸는 유일한 진입점이다.</b>
+     * 그러므로 지도 셀 캐시 이빅트는 개별 수정 메서드가 아니라 여기서 한 번만 요청한다. 이름과 공개 여부가
+     * 함께 바뀌어도 캐시 이빅트는 한 번이면 충분하고, 중복 요청은 이빅트 메트릭을 부풀려 관측을 왜곡한다.
+     *
+     * <p>설계 문서: docs/design/course-cell-bucket-cache-design.md §4(경로 b~d) · D4
      */
     @Transactional
     public void updateCourse(Long courseId, CoursePatchRequest request, String memberUuid) {
@@ -101,20 +112,41 @@ public class CourseService {
         course.verifyOwner(memberUuid);
 
         String newName = request.getName();
+        Boolean newPublicity = request.getIsPublic();
+        boolean courseCardChangeRequested = (newName != null || newPublicity != null);
+
         if (newName != null) {
             updateCourseName(course, newName);
         }
-
-        Boolean newPublicity = request.getIsPublic();
         if (newPublicity != null) {
             updateCoursePublicity(course, newPublicity);
         }
 
         courseRepository.save(course);
+
+        if (courseCardChangeRequested) {
+            scheduleMapCellEvict(course);
+        }
+    }
+
+    /**
+     * 이 코스가 속한 지도 셀의 캐시를 커밋 후 지우도록 예약한다.
+     *
+     * <p>좌표는 이미 로드된 {@link Course}에서 읽으므로 추가 쿼리가 없다. 시작점이 없는 코스라면 좌표가
+     * {@code null}이고, 그때는 지울 셀을 정할 수 없으므로 이빅터가 건너뛴다.
+     */
+    private void scheduleMapCellEvict(Course course) {
+        Coordinate startCoordinate = course.getStartCoordinate();
+        mapCacheEvictor.evictCellAfterCommit(
+                course.getId(),
+                startCoordinate != null ? startCoordinate.getLatitude() : null,
+                startCoordinate != null ? startCoordinate.getLongitude() : null);
     }
 
     /**
      * 코스명을 바꾸고 리드모델에도 반영한다. (빈 이름은 허용하지 않는다)
+     *
+     * <p>지도 데이터 변경 이벤트는 발행하지 않는다 — 발행은 호출자인 {@link #updateCourse}가 1회만 담당한다. (D4)
      */
     private void updateCourseName(Course course, String name) {
         if (!StringUtils.hasText(name)) {
@@ -127,6 +159,8 @@ public class CourseService {
     /**
      * 코스 공개 여부를 바꾸고 리드모델에도 반영한다.
      * 이미 원하는 상태라면 등록/해제는 건너뛰되, 리드모델 동기화는 멱등하게 그대로 수행한다.
+     *
+     * <p>지도 데이터 변경 이벤트는 발행하지 않는다 — 발행은 호출자인 {@link #updateCourse}가 1회만 담당한다. (D4)
      */
     private void updateCoursePublicity(Course course, boolean isPublic) {
         if (course.isPublic() != isPublic) {

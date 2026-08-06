@@ -7,14 +7,11 @@ import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
-import soma.ghostrunner.domain.running.domain.events.RunFinishedEvent;
-import soma.ghostrunner.domain.running.domain.events.RunUpdatedEvent;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @Entity
 @Table(name = "running_record")
@@ -58,56 +55,6 @@ public class Running extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id")
     private Course course;
-
-    /**
-     * 러닝 생성 이벤트 생성
-     * 
-     * - Service에서 save() 후 호출하여 이벤트 객체를 생성
-     * - ApplicationEventPublisher로 직접 발행
-     * - 순수 도메인 객체 (JPA 의존 없음)
-     * 
-     * @return RunFinishedEvent
-     * @throws IllegalStateException ID가 없는 경우
-     */
-    public RunFinishedEvent createFinishedEvent() {
-        if (this.id == null) {
-            throw new IllegalStateException("ID가 없으면 이벤트를 생성할 수 없습니다. save() 후에 호출하세요.");
-        }
-        
-        return new RunFinishedEvent(
-                id,
-                course != null ? course.getId() : null,
-                member != null ? member.getUuid() : null,
-                member != null ? member.getId() : null,
-                runningRecord != null && runningRecord.getDuration() != null 
-                    ? runningRecord.getDuration().intValue() : null,
-                runningRecord != null ? runningRecord.getAveragePace() : null
-        );
-    }
-
-    /**
-     * 러닝 수정 이벤트 생성
-     * 
-     * - Service에서 엔티티 수정 후 호출하여 이벤트 객체를 생성
-     * - ApplicationEventPublisher로 직접 발행
-     * - 이름 변경, 공개여부 변경 시 사용
-     * 
-     * @return RunUpdatedEvent
-     * @throws IllegalStateException ID가 없는 경우
-     */
-    public RunUpdatedEvent createUpdatedEvent() {
-        if (this.id == null) {
-            throw new IllegalStateException("ID가 없으면 이벤트를 생성할 수 없습니다.");
-        }
-
-        return new RunUpdatedEvent(
-                id,
-                course != null ? course.getId() : null,
-                member != null ? member.getUuid() : null,
-                runningName,
-                isPublic
-        );
-    }
 
     /**
      * 코스 러닝 이벤트 생성
@@ -159,7 +106,10 @@ public class Running extends BaseTimeEntity {
         RunningDataUrls runningDataUrls = RunningDataUrls.of(
                 rawTelemetrySavedUrl, interpolatedTelemetrySavedUrl, screenShotSavedUrl);
 
-        Running running = Running.builder()
+        // 역방향 컬렉션(member.getRuns())에는 담지 않는다.
+        // contains()가 PersistentBag 를 강제 초기화해 러닝 생성마다 그 회원의 전체 러닝을 SELECT 했고,
+        // member 가 detached 면 LazyInitializationException 이 났다. 저장은 runningRepository.save 가 직접 한다.
+        return Running.builder()
                 .runningName(runningName)
                 .runningMode(runningMode)
                 .ghostRunningId(ghostRunningId)
@@ -171,13 +121,6 @@ public class Running extends BaseTimeEntity {
                 .member(member)
                 .course(course)
                 .build();
-
-        List<Running> runs = running.member.getRuns();
-        if (runs != null && !runs.contains(running)) {
-            runs.add(running);
-        }
-
-        return running;
     }
 
     public void updateName(String name) {

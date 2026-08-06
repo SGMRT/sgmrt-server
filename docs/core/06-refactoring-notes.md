@@ -30,21 +30,23 @@
 
 **목표**: `CourseReadModel` 재설계, 읽기/쓰기 경로 재정립, Redis 기반 **Spring Cache**(`@Cacheable` 등) 도입.
 
-> **진행 상황 (2026-08-04)**: 상세 설계·구현은 `docs/refactoring/course-read-model/` 참조. PR-1(쓰기 측: RankSlot/TopRunners VO, 엔티티 재설계, CourseReadModelWriter 직접 호출, ReadModelSyncListener 삭제) 구현 완료 단계. PR-2(조회 전환+캐시+백필) 예정.
+> **진행 상황 (2026-08-06)**: 상세 설계·구현은 `docs/refactoring/course-read-model/` 참조. PR-1(쓰기 측: RankSlot/TopRunners VO, 엔티티 재설계, CourseReadModelWriter 직접 호출, ReadModelSyncListener 삭제) 완료. 조회 전환·캐시는 셀 버킷 전환(#168)으로 마무리 — 설계는 `docs/design/course-cell-bucket-cache-design.md`, 캐시키 선택 근거는 `docs/refactoring/course-read-model/cache/07·08`.
+>
+> **결론이 뒤집힌 항목**: 목표에 적힌 "Spring Cache(`@Cacheable`) 도입"은 채택하지 않았다. 지도 조회는 반경을 덮는 셀 여러 개를 읽고 **미스인 셀만 채우는 부분 히트**가 이득의 실체인데, 결과셋 하나를 통째로 캐싱하는 `@Cacheable` 추상화로는 그 동작을 표현할 수 없다. `RedisTemplate` 기반 어댑터(`CourseCellCache`)로 직접 다루기로 하고, `@Cacheable` 사용처가 0이 되면서 `CacheConfig`·`@EnableCaching`도 제거했다.
 
 ### 현재 상태 (문제점)
 - `CourseReadModel`(379줄, main 최대 파일): courseId(unique) + **top1~top4 멤버ID/기록 8컬럼 역정규화** + runnersCount. `insertIfBetter()`/`shiftDown()` 수동 배열 시프트 로직 내장
 - 쓰기: `ReadModelSyncListener`가 `CourseRunEvent`를 **BEFORE_COMMIT**으로 수신 → `findByCourseIdForUpdate`(X락) → 증분 갱신. 러닝 생성 트랜잭션이 그만큼 길어지고 락 경합 지점
 - 읽기: `CourseFacade`(357줄)가 Redis 캐시(`course:{id}`, TTL 60분, MSET/MGET)를 **수동으로** 히트/미스 분기 — 캐시 로직과 비즈니스 로직 혼재
-- 캐시 무효화: `CourseCacheEventListener`(AFTER_COMMIT)가 RunFinished/RunUpdated 시 수동 삭제
+- 캐시 무효화: `CourseCacheEventListener`(AFTER_COMMIT)가 RunFinished/RunUpdated 시 수동 삭제 — 이 리스너와 두 이벤트는 #168에서 구경로와 함께 제거됐다(아래 참조)
 - 코스 삭제/공개전환 시 읽기모델·구독 동기화가 `CourseService`에 절차적으로 흩어져 있음
 
 ### 검토 과제
 - [ ] TOP4 8컬럼 → 정규화(별도 랭킹 테이블) vs 유지 결정. 랭킹 조회 패턴(`/top-ranking`, `/ranking`, `/top-percentage`)과 함께 재설계
 - [ ] 쓰기 경로: BEFORE_COMMIT 동기 갱신 유지 vs AFTER_COMMIT/비동기 전환(정합성 요구 수준 결정)
-- [ ] 읽기 경로: `CourseFacade`의 수동 캐시 분기 → Spring Cache 추상화(`@Cacheable`/`@CacheEvict`, `RedisCacheManager`)로 이관
-- [ ] 캐시 키/TTL 전략, 무효화 이벤트 정리 (RunFinished/RunUpdated/코스 수정·삭제·공개전환)
-- [ ] `CourseFacade` 책임 분리 (캐시 / 랜덤 선별 / DTO 조립)
+- [x] 읽기 경로: `CourseFacade`의 수동 캐시 분기 제거 → 캐시 판정·부분 채움을 `CourseReadModelReader`로 이관 (#168). Spring Cache 추상화 대신 `CourseCellCache` 어댑터 채택 — 위 "결론이 뒤집힌 항목" 참조
+- [x] 캐시 키/TTL 전략, 무효화 경로 정리 (#168) — 키는 코스 시작점의 geohash p6 셀, TTL 600초. 무효화는 **이벤트가 아니라 직접 호출**로 정리했다: 리드모델을 바꾸는 쓰기 경로(러닝 완주·기록 수정·기록 삭제, 코스 수정·삭제·공개전환)가 `CourseMapCacheEvictor`를 직접 불러 셀 1개 DEL을 예약하고, 실행만 `TransactionSynchronizationManager`로 커밋 후에 일어난다. `RunFinishedEvent`/`RunUpdatedEvent`는 구경로 캐시 리스너가 유일한 소비자였고, 구경로 제거로 소비자가 0이 되어 **함께 삭제**했다. `RunningCommandService`에 남은 이벤트는 푸시(`PushEventListener`)가 소비하는 `CourseRunEvent` 하나뿐이다
+- [x] `CourseFacade` 책임 분리 (#168) — 캐시는 Reader, Facade에는 랜덤 선별과 DTO 조립만 남음. 구경로(`findCoursesByPositionCached`)는 `@Deprecated` 존치로 계획했으나, **프로덕션 호출자가 0인 죽은 코드로 확인돼 같은 PR에서 제거**했다(`CourseCacheRepository`·`CourseCacheEventListener`·`CourseQueryModel`·`CourseSubMapper` 동반 제거). 근거는 `docs/design/course-cell-bucket-cache-design.md` D13
 - [ ] 관련 데드코드 정리: Redisson 분산락, `RedisRateLimiterRepository`
 
 ---
@@ -70,7 +72,7 @@
 **목표**: 도메인 간 직접 의존 제거, 일관성 회복.
 
 ### 도메인 결합 해제
-- [ ] `member` → `pacemaker.VdotService` (RunFinishedEventListener의 VDOT 계산) — VDOT의 소속 도메인 결정 후 의존 방향 정리
+- [ ] `member` → `pacemaker.VdotService` (`MemberVdotWriter`·`MemberService`가 주입) — VDOT의 소속 도메인 결정 후 의존 방향 정리. 이 계산을 수행하던 `RunFinishedEventListener`는 #165에서 이미 사라졌고(`MemberVdotWriter` 직접 호출로 전환), **의존 방향 문제 자체는 그대로 남아 있다**
 - [ ] `pacemaker` → `running.infra.redis.RedisRunningRepository` — 레이트리밋 저장소를 pacemaker 소유로 이동 (2번과 연계)
 - [ ] `pacemaker`가 `running` 예외를 던지는 문제 — 자기 도메인 예외로
 - [ ] `Member.toStringForPacemakerPrompt()` — 엔티티의 LLM 프롬프트 생성을 pacemaker 쪽 프롬프트 생성기로 이동
@@ -81,7 +83,7 @@
 - [ ] 소프트삭제 4방식 → 1방식 통일 ([02-domain-model.md](02-domain-model.md))
 - [ ] 리포지토리 패키지 명명 통일: `infra/persistence` vs `dao`
 - [ ] 페이스 표현 VO 도입 — `"5:30"` ↔ `5.30(Double)` 손실 인코딩 반복 제거
-- [ ] `Running.of()`의 `member.getRuns().contains()` 제거 — 전체 컬렉션 지연로딩 + O(n)
+- [x] `Running.of()`의 `member.getRuns().contains()` 제거 — 전체 컬렉션 지연로딩 + O(n). (러닝 저장 트랜잭션 좁히기와 함께 제거. 저장은 `runningRepository.save`가 하므로 역방향 add가 불필요했고, 제거 덕에 detached `Member`를 넘겨도 `LazyInitializationException`이 나지 않는다)
 - [ ] `Member.runs`의 `cascade = ALL` 재검토 — 같은 영속성 컨텍스트에서 `runningRepository.delete(entity)` 호출 시 컬렉션 cascade PERSIST가 REMOVED 상태를 되돌려 **소프트삭제가 조용히 무효화됨** (2026-08-04 리드모델 테스트 중 실증. 현재 프로덕션은 벌크 삭제만 써서 미발현 — 엔티티 삭제 경로가 추가되면 발현하는 지뢰)
 - [ ] `RunningCommandService` `upload()` 오버로드 중복 정리
 - [ ] `NoticeApi` v1/v2/admin 컨트롤러 분리
