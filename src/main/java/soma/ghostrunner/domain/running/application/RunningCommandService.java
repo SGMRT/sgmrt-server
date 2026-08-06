@@ -5,10 +5,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.domain.course.application.CourseMapCacheEvictor;
 import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
 import soma.ghostrunner.domain.course.application.CourseService;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.events.CourseMapDataChangedEvent;
 import soma.ghostrunner.domain.running.application.dto.*;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -47,6 +48,7 @@ public class RunningCommandService {
     private final CourseReadModelWriter courseReadModelWriter;
     private final MemberVdotWriter memberVdotWriter;
     private final CourseSubscriptionService courseSubscriptionService;
+    private final CourseMapCacheEvictor courseMapCacheEvictor;
 
     @Transactional
     public CreateCourseAndRunResponse createRunAndCourse(
@@ -65,8 +67,10 @@ public class RunningCommandService {
 
         courseReadModelWriter.applyRun(running);
         memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
-        // 소비자(AFTER_COMMIT): 지도 셀 캐시 이빅트(CourseCellCacheEvictListener) + 구경로 코스 캐시 무효화(CourseCacheEventListener)
-        // 구경로 정리 시 후자의 리스너만 지우고 이 발행 자체는 남긴다 — 자세한 이유는 publishCourseRunEvents javadoc 참고
+        // 지도 셀 캐시 이빅트는 직접 호출로 예약한다 (커밋 후 실행)
+        courseMapCacheEvictor.evictCourseCellAfterCommit(course.getId());
+        // 남은 소비자(AFTER_COMMIT)는 구경로 코스 캐시 무효화(CourseCacheEventListener) 하나뿐이다.
+        // 구경로가 사라지면 이 발행도 함께 사라진다 — 자세한 이유는 publishCourseRunEvents javadoc 참고
         eventPublisher.publishEvent(running.createFinishedEvent());
         return mapper.toResponse(running, course);
     }
@@ -117,6 +121,8 @@ public class RunningCommandService {
         courseReadModelWriter.applyRun(running);
         memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
         courseSubscriptionService.subscribeIfAbsent(courseId, member.getId());
+        // "완주 직후 지도에서 내 등수를 본다"(설계 §1-2) — 커밋 후 셀 하나를 지우도록 직접 예약한다
+        courseMapCacheEvictor.evictCourseCellAfterCommit(courseId);
         publishCourseRunEvents(running);
         return running.getId();
     }
@@ -125,15 +131,13 @@ public class RunningCommandService {
      * 코스를 따라 뛴 러닝의 종료 이벤트를 발행한다. (소비자는 전부 AFTER_COMMIT 부수효과)
      *
      * <pre>
-     * - RunFinishedEvent → (1) 지도 셀 캐시 이빅트(CourseCellCacheEvictListener) — <b>존치</b>.
-     *                          "완주 직후 지도에서 내 등수를 본다"(설계 course-cell-bucket-cache-design §1-2)가
-     *                          이 발행에 걸려 있다.
-     *                      (2) 구경로 코스 캐시 무효화(CourseCacheEventListener) — 구경로 제거 시 함께 삭제
+     * - RunFinishedEvent → 구경로 코스 캐시 무효화(CourseCacheEventListener) — 구경로 제거 시 함께 삭제
      * - CourseRunEvent   → 푸시 발송(PushEventListener)
      * </pre>
      *
-     * <p>구경로 정리(설계 결정 10) 시 (2)의 리스너만 지우고 <b>이 발행 자체는 남겨야 한다.</b>
-     * 발행을 지우면 컴파일도 테스트도 통과하지만 지도 이빅트가 사라져 완주 반영이 최대 TTL(600초)까지 지연된다.
+     * <p>지도 셀 캐시 이빅트는 더 이상 이 발행에 걸려 있지 않다 — {@link CourseMapCacheEvictor} 직접 호출로 빠졌다.
+     * 따라서 구경로 정리(설계 결정 10)로 {@code CourseCacheEventListener}가 사라지면 {@code RunFinishedEvent}
+     * 발행도 소비자가 0이 되어 <b>함께 사라진다.</b> 그때까지는 남겨야 하며, 지금 지우면 구경로 캐시 무효화가 죽는다.
      * ({@code RunningCommandServiceTest}가 이 발행을 계약으로 고정하고 있다.)</p>
      *
      * <p>VDOT 갱신·구독 생성은 같은 트랜잭션 동기 로직이라 직접 호출로 전환됨 (설계 04 §6).</p>
@@ -169,8 +173,10 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updateName(name);
-        // RunUpdatedEvent 소비자(AFTER_COMMIT): 지도 셀 캐시 이빅트(CourseCellCacheEvictListener) — 존치
-        //                                    + 구경로 코스 캐시 무효화(CourseCacheEventListener) — 구경로 제거 시 함께 삭제
+        // 지도 셀 캐시 이빅트는 직접 호출로 예약한다 (커밋 후 실행)
+        courseMapCacheEvictor.evictCourseCellAfterCommit(courseIdOf(running));
+        // RunUpdatedEvent 소비자(AFTER_COMMIT): 구경로 코스 캐시 무효화(CourseCacheEventListener)
+        //                                    — 구경로가 사라지면 이 발행도 함께 사라진다
         eventPublisher.publishEvent(running.createUpdatedEvent());
     }
 
@@ -179,8 +185,10 @@ public class RunningCommandService {
         Running running = findRunning(runningId);
         running.verifyMember(memberUuid);
         running.updatePublicStatus();
-        // RunUpdatedEvent 소비자(AFTER_COMMIT): 지도 셀 캐시 이빅트(CourseCellCacheEvictListener) — 존치
-        //                                    + 구경로 코스 캐시 무효화(CourseCacheEventListener) — 구경로 제거 시 함께 삭제
+        // 지도 셀 캐시 이빅트는 직접 호출로 예약한다 (커밋 후 실행)
+        courseMapCacheEvictor.evictCourseCellAfterCommit(courseIdOf(running));
+        // RunUpdatedEvent 소비자(AFTER_COMMIT): 구경로 코스 캐시 무효화(CourseCacheEventListener)
+        //                                    — 구경로가 사라지면 이 발행도 함께 사라진다
         eventPublisher.publishEvent(running.createUpdatedEvent());
 
         // 공개 여부가 바뀌면 집계 모집단이 달라지므로 해당 코스의 리드모델을 다시 계산한다
@@ -194,8 +202,14 @@ public class RunningCommandService {
         return runningQueryService.findRunningByRunningId(runningId);
     }
 
+    /** 어느 코스에도 속하지 않은 러닝은 지울 셀이 없다. (식별자 게터라 프록시를 초기화하지 않는다) */
+    private Long courseIdOf(Running running) {
+        Course course = running.getCourse();
+        return course != null ? course.getId() : null;
+    }
+
     /**
-     * 러닝들을 삭제하고 영향받은 코스를 동기화한다. 수집 → 삭제 → 재계산 → 발행 순서로 진행한다.
+     * 러닝들을 삭제하고 영향받은 코스를 동기화한다. 수집 → 삭제 → 재계산 → 이빅트 예약 순서로 진행한다.
      *
      * <p>수집이 반드시 삭제보다 앞서야 한다. {@code deleteInRunningIds}는
      * {@code @Modifying(clearAutomatically = true)}라 벌크 삭제 직후 영속성 컨텍스트가 비워지고,
@@ -213,8 +227,8 @@ public class RunningCommandService {
         List<Long> affectedCourseIds = affectedCourses.stream()
                 .map(Course::getId)
                 .toList();
-        List<CourseMapDataChangedEvent> mapDataChanges = affectedCourses.stream()
-                .map(Course::createMapDataChangedEvent)  // LAZY 프록시가 초기화되는 지점 — 아직 영속성 컨텍스트가 살아있어야 한다
+        List<CourseMapCell> mapCells = affectedCourses.stream()
+                .map(RunningCommandService::mapCellOf)  // LAZY 프록시가 초기화되는 지점 — 아직 영속성 컨텍스트가 살아있어야 한다
                 .toList();
 
         // 2. 삭제
@@ -223,8 +237,22 @@ public class RunningCommandService {
         // 3. 재계산 — 남은 러닝만으로 코스 집계를 다시 계산한다
         courseReadModelWriter.recalculate(affectedCourseIds);
 
-        // 4. 발행 — 리드모델 최종 상태가 확정된 뒤 발행한다 (구독자는 AFTER_COMMIT 지도 캐시 이빅트)
-        mapDataChanges.forEach(eventPublisher::publishEvent);
+        // 4. 이빅트 예약 — 리드모델 최종 상태가 확정된 뒤 예약한다 (실행은 커밋 후)
+        mapCells.forEach(cell ->
+                courseMapCacheEvictor.evictCellAfterCommit(cell.courseId(), cell.startLat(), cell.startLng()));
+    }
+
+    /** 코스의 시작점 좌표를 값으로 뽑아 둔다. 벌크 삭제 이후에는 이 초기화가 불가능하다([R2]). */
+    private static CourseMapCell mapCellOf(Course course) {
+        Coordinate startCoordinate = course.getStartCoordinate();
+        return new CourseMapCell(
+                course.getId(),
+                startCoordinate != null ? startCoordinate.getLatitude() : null,
+                startCoordinate != null ? startCoordinate.getLongitude() : null);
+    }
+
+    /** 이빅트에 필요한 값만 담은 스냅샷. 엔티티를 커밋 후까지 들고 가지 않기 위한 것이다([R2]). */
+    private record CourseMapCell(Long courseId, Double startLat, Double startLng) {
     }
 
     /**

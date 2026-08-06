@@ -12,10 +12,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.multipart.MultipartFile;
+import soma.ghostrunner.domain.course.application.CourseMapCacheEvictor;
 import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
 import soma.ghostrunner.domain.course.application.CourseService;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.events.CourseMapDataChangedEvent;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.application.MemberVdotWriter;
 import soma.ghostrunner.domain.course.application.CourseSubscriptionService;
@@ -62,6 +63,7 @@ class RunningCommandServiceTest {
     @Mock CourseReadModelWriter courseReadModelWriter;
     @Mock MemberVdotWriter memberVdotWriter;
     @Mock CourseSubscriptionService courseSubscriptionService;
+    @Mock CourseMapCacheEvictor courseMapCacheEvictor;
 
     RunningCommandService sut;
 
@@ -76,7 +78,8 @@ class RunningCommandServiceTest {
                 mapper, runningRepository,
                 telemetryProcessor, runningFileUploader, applicationEventPublisher,
                 pathSimplificationService, runningQueryService, courseService, memberService,
-                courseReadModelWriter, memberVdotWriter, courseSubscriptionService
+                courseReadModelWriter, memberVdotWriter, courseSubscriptionService,
+                courseMapCacheEvictor
         );
     }
 
@@ -158,6 +161,7 @@ class RunningCommandServiceTest {
         when(cmd.getStartedAt()).thenReturn(startedAt);
 
         Course course = mock(Course.class);
+        when(course.getId()).thenReturn(500L);
         when(mapper.toCourse(eq(member), eq(cmd), eq(stats), any(RunningDataUrlsDto.class))).thenReturn(course);
 
         Running running = mock(Running.class);
@@ -196,6 +200,9 @@ class RunningCommandServiceTest {
         inOrder.verify(runningRepository).save(running);
         // 이벤트 발행은 스프링 테스트하지 않음 (생략)
         inOrder.verify(mapper).toResponse(running, course);
+
+        // 새 코스도 지도에 오르므로 그 셀의 캐시를 커밋 후 지운다
+        verify(courseMapCacheEvictor, times(1)).evictCourseCellAfterCommit(500L);
 
         verifyNoMoreInteractions(memberService, telemetryProcessor, pathSimplificationService,
                 runningFileUploader, courseService, runningRepository, mapper);
@@ -272,11 +279,15 @@ class RunningCommandServiceTest {
     // ====== 업데이트 계열 ======
 
     @Test
-    @DisplayName("updateRunningName: 본인 검증 후 이름을 변경한다")
+    @DisplayName("updateRunningName: 본인 검증 후 이름을 변경하고, 코스의 지도 셀 이빅트를 예약한다")
     void updateRunningName_updatesAfterOwnershipCheck() {
         // given
         Long runningId = 10L;
+        Course course = mock(Course.class);
+        when(course.getId()).thenReturn(40L);
+
         Running running = mock(Running.class);
+        when(running.getCourse()).thenReturn(course);
         when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
 
         // when
@@ -287,6 +298,9 @@ class RunningCommandServiceTest {
         inOrder.verify(runningQueryService).findRunningByRunningId(runningId);
         inOrder.verify(running).verifyMember(memberUuid);
         inOrder.verify(running).updateName("새 이름");
+
+        // 러닝 이름은 지도 카드에 노출되므로 셀 캐시도 커밋 후 지워야 한다
+        verify(courseMapCacheEvictor, times(1)).evictCourseCellAfterCommit(40L);
     }
 
     @Test
@@ -388,18 +402,39 @@ class RunningCommandServiceTest {
     }
 
     /**
-     * 이 발행이 지도 셀 캐시 이빅트(CourseCellCacheEvictListener)의 유일한 트리거다 —
-     * "완주 직후 지도에서 내 등수를 본다"(설계 §1-2)가 여기에 걸려 있다.
-     *
-     * <p>발행부 주석은 오랫동안 소비자를 구경로 캐시(CourseCacheEventListener) 하나로만 적고 있었고,
-     * 그 리스너는 제거가 예정되어 있다(설계 결정 10). 발행까지 함께 지워도 컴파일과 리스너 테스트는 초록이고
-     * (리스너 테스트는 핸들러를 직접 호출한다) 프로덕션에서만 완주 반영이 최대 TTL(600초)까지 지연된다.
-     * 그 삭제 사고를 사람의 기억이 아니라 이 테스트가 잡는다.
+     * "완주 직후 지도에서 내 등수를 본다"(설계 §1-2) — 지도 셀 이빅트는 이제 이벤트가 아니라
+     * {@code CourseMapCacheEvictor} 직접 호출이 담당한다. 커밋 후 타이밍 자체는 이빅터가 지킨다.
      *
      * 설계 문서: docs/design/course-cell-bucket-cache-design.md §1-2 · §4
      */
     @Test
-    @DisplayName("createRun: 코스 따라 러닝 완주는 지도 셀 이빅트를 트리거할 RunFinishedEvent를 발행한다")
+    @DisplayName("createRun: 코스 따라 러닝 완주는 그 코스의 지도 셀 이빅트를 커밋 후로 예약한다")
+    void createRun_schedulesMapCellEviction() {
+        // given
+        long courseId = 77L;
+        Course course = givenFoundCourse(courseId);
+        Member member = givenFoundRunner(5L);
+        TelemetryStatistics stats = givenProcessedTelemetry();
+
+        CreateRunCommand cmd = publicRunCommand(1800L, false);
+        Running running = savedPublicRunning(100L, 1800L, member, course);
+        when(mapper.toRunning(eq(cmd), eq(stats), any(RunningDataUrlsDto.class), eq(member), eq(course))).thenReturn(running);
+        when(runningRepository.save(any())).thenReturn(running);
+
+        // when
+        sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
+
+        // then : 커밋 후 리드모델이 남아 있으므로 좌표는 courseId로 역산한다
+        verify(courseMapCacheEvictor, times(1)).evictCourseCellAfterCommit(courseId);
+    }
+
+    /**
+     * 이 발행의 남은 소비자는 구경로 코스 캐시 무효화(CourseCacheEventListener) 하나뿐이다(설계 결정 10).
+     * 구경로가 사라지면 이 발행도 함께 사라지지만, <b>그 전에 먼저 지우면 구경로 무효화가 죽는다.</b>
+     * 그 삭제 사고를 사람의 기억이 아니라 이 테스트가 잡는다.
+     */
+    @Test
+    @DisplayName("createRun: 구경로 캐시 무효화가 소비하는 RunFinishedEvent 발행은 유지한다")
     void createRun_publishesRunFinishedEventForMapCacheEviction() {
         // given
         long courseId = 77L;
@@ -422,7 +457,7 @@ class RunningCommandServiceTest {
         // when
         sut.createRun(cmd, memberUuid, courseId, raw(), interp(), shot());
 
-        // then : 이빅트 대상 코스를 실은 완주 이벤트가 그대로 발행된다
+        // then : 완주 이벤트가 그대로 발행된다
         verify(applicationEventPublisher).publishEvent(finishedEvent);
     }
 
@@ -449,17 +484,17 @@ class RunningCommandServiceTest {
     }
 
     /**
-     * 셀 버킷 캐시는 좌표로만 이빅트하므로, 삭제로 TOP4가 바뀐 코스는 좌표를 실은 이벤트를 발행해야 한다(M1).
+     * 셀 버킷 캐시는 좌표로만 이빅트하므로, 삭제로 TOP4가 바뀐 코스는 좌표와 함께 이빅트를 예약해야 한다(M1).
      * 좌표 수집은 반드시 벌크 삭제 이전이어야 한다 — deleteInRunningIds 가
      * {@code @Modifying(clearAutomatically = true)} 라 그 뒤에는 LAZY Course 프록시가
-     * 미초기화 상태로 detach 되어 초기화할 수 없다([R2]). 아래 좌표 assert 가 그 회귀를 잡는다.
+     * 미초기화 상태로 detach 되어 초기화할 수 없다([R2]). 좌표 추출을 삭제 뒤로 옮기면 이 테스트가 빨개진다.
      *
      * 설계 문서: docs/design/course-cell-bucket-cache-design.md §4(경로 e) · [R2] · D5
      */
     @Test
-    @DisplayName("deleteRunnings: 영향받은 코스마다 시작점 좌표를 실은 지도 데이터 변경 이벤트를 1건씩 발행한다")
-    void deleteRunnings_publishesMapDataChangedEventPerDistinctCourse() {
-        // given : 같은 코스의 러닝 2건 + 다른 코스의 러닝 1건 → 이벤트는 코스당 1건씩 총 2건
+    @DisplayName("deleteRunnings: 영향받은 코스마다 시작점 좌표와 함께 지도 셀 이빅트를 1건씩 예약한다 [R2]")
+    void deleteRunnings_schedulesMapCellEvictionPerDistinctCourse() {
+        // given : 같은 코스의 러닝 2건 + 다른 코스의 러닝 1건 → 이빅트는 코스당 1건씩 총 2건
         List<Long> ids = List.of(1L, 2L, 3L);
 
         AtomicBoolean persistenceContextCleared = new AtomicBoolean(false);
@@ -478,17 +513,25 @@ class RunningCommandServiceTest {
         sut.deleteRunnings(ids, memberUuid);
 
         // then
-        ArgumentCaptor<CourseMapDataChangedEvent> captor =
-                ArgumentCaptor.forClass(CourseMapDataChangedEvent.class);
-        verify(applicationEventPublisher, times(2)).publishEvent(captor.capture());
+        ArgumentCaptor<Long> courseIdCaptor = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Double> latCaptor = ArgumentCaptor.forClass(Double.class);
+        ArgumentCaptor<Double> lngCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(courseMapCacheEvictor, times(2))
+                .evictCellAfterCommit(courseIdCaptor.capture(), latCaptor.capture(), lngCaptor.capture());
 
-        assertThat(captor.getAllValues())
-                .extracting(CourseMapDataChangedEvent::courseId,
-                        CourseMapDataChangedEvent::startLat,
-                        CourseMapDataChangedEvent::startLng)
+        assertThat(zip(courseIdCaptor.getAllValues(), latCaptor.getAllValues(), lngCaptor.getAllValues()))
                 .containsExactlyInAnyOrder(
                         tuple(10L, 37.5665, 126.9780),
                         tuple(20L, 35.1796, 129.0756));
+    }
+
+    /** 캡터 세 개를 (courseId, lat, lng) 튜플로 맞춰 본다. */
+    private List<org.assertj.core.groups.Tuple> zip(List<Long> courseIds, List<Double> lats, List<Double> lngs) {
+        List<org.assertj.core.groups.Tuple> tuples = new ArrayList<>();
+        for (int i = 0; i < courseIds.size(); i++) {
+            tuples.add(tuple(courseIds.get(i), lats.get(i), lngs.get(i)));
+        }
+        return tuples;
     }
 
     /** 삭제 대상 러닝들을 준비한다 — 각 러닝은 인자로 준 코스에 순서대로 매달린다 (같은 코스 반복 가능) */
@@ -504,24 +547,24 @@ class RunningCommandServiceTest {
 
     /**
      * LAZY Course 프록시를 흉내 낸다 — 식별자 게터는 초기화 없이 동작하지만,
-     * 영속성 컨텍스트가 비워진 뒤의 초기화는 LazyInitializationException 이다.
+     * 영속성 컨텍스트가 비워진 뒤의 초기화(좌표 접근)는 LazyInitializationException 이다.
      */
     private Course lazyCourse(long courseId, double startLat, double startLng,
                               AtomicBoolean persistenceContextCleared) {
         Course course = mock(Course.class);
         when(course.getId()).thenReturn(courseId);  // 식별자 게터는 프록시를 초기화하지 않는다
-        when(course.createMapDataChangedEvent()).thenAnswer(invocation -> {
+        when(course.getStartCoordinate()).thenAnswer(invocation -> {
             if (persistenceContextCleared.get()) {
                 throw new LazyInitializationException(
                         "could not initialize proxy [Course#" + courseId + "] - no Session");
             }
-            return new CourseMapDataChangedEvent(courseId, startLat, startLng);
+            return Coordinate.of(startLat, startLng);
         });
         return course;
     }
 
     @Test
-    @DisplayName("updateRunningPublicStatus: 공개 여부가 바뀐 러닝의 코스를 재계산하고, 지도 셀 이빅트용 RunUpdatedEvent를 발행한다")
+    @DisplayName("updateRunningPublicStatus: 공개 여부가 바뀐 러닝의 코스를 재계산하고, 지도 셀 이빅트를 예약한다")
     void updateRunningPublicStatus_recalculatesCourse() {
         // given
         Long runningId = 11L;
@@ -543,7 +586,9 @@ class RunningCommandServiceTest {
         verify(courseReadModelWriter, times(1)).recalculate(captor.capture());
         assertThat(captor.getValue()).containsExactly(30L);
 
-        // 이 발행이 지도 셀 이빅트를 트리거한다 — 구경로 정리 시 함께 지우면 안 된다(RunningCommandService:182-183 주석).
+        // 지도 셀 이빅트는 직접 호출로 예약된다
+        verify(courseMapCacheEvictor, times(1)).evictCourseCellAfterCommit(30L);
+        // 이 발행은 구경로 캐시 무효화가 소비한다 — 구경로가 사라질 때까지는 함께 지우면 안 된다.
         verify(applicationEventPublisher).publishEvent(updatedEvent);
     }
 
