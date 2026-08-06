@@ -16,7 +16,6 @@ import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.enums.CourseSource;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
-import soma.ghostrunner.domain.course.exception.RegionNotFoundException;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
@@ -34,19 +33,6 @@ public class CourseFacade {
 
     private static final int MAX_COURSES_PER_MAP_RESPONSE = 10;
 
-    /**
-     * 지역 캐시 경로를 허용하는 요청 반경 상한.
-     *
-     * <p>지역 캐시 값은 대표좌표 기준 <b>고정 2km</b>다(설계 cache/05 §4). 그보다 넓은 뷰포트 요청에
-     * 2km 결과를 돌려주면 예외도 로그도 없는 침묵 오답이 되므로, 상한을 넘는 요청은 캐시 경로 자체를 포기한다.
-     * 3000 = 고정값 2km + 뷰포트 오차 여유. FE의 "지도 중심 ≈ 사용자 GPS" 규율에 정확성을 의존하지 않기 위한
-     * 서버 자체 방어이며, 상한 초과는 에러가 아니라 정상 폴백이다.</p>
-     */
-    private static final int MAX_CACHEABLE_RADIUS_M = 3000;
-
-    /** 하한 — 캐시 값이 고정 2km라, 그보다 훨씬 좁은(또는 음수·0) 반경 요청에 태우면 요청 반경 밖 코스를 돌려주는 침묵 오답이 된다. */
-    private static final int MIN_CACHEABLE_RADIUS_M = 1000;
-
     private final CourseService courseService;
     private final RunningQueryService runningQueryService;
     private final CourseCacheRepository courseCacheRepository;
@@ -58,8 +44,8 @@ public class CourseFacade {
     private final RunningApiMapper runningApiMapper;
 
     /**
-     * @deprecated 수동 Redis 캐시(course:{id}) 기반 구 조회 경로. {@link #findCoursesByPosition}(리드모델 +
-     *             Spring Cache)로 대체되었다. 신경로 안정화 후 {@link soma.ghostrunner.domain.course.dao.CourseCacheRepository},
+     * @deprecated 수동 Redis 캐시(course:{id}) 기반 구 조회 경로. 리드모델 기반
+     *             {@link #findCoursesByPosition}으로 대체되었다. 신경로 안정화 후 {@link soma.ghostrunner.domain.course.dao.CourseCacheRepository},
      *             {@link CourseCacheEventListener}와 함께 제거 예정.
      */
     @Deprecated
@@ -153,28 +139,33 @@ public class CourseFacade {
     }
 
     /**
-     * 주변 코스 지도 조회 — 리드모델 + Spring Cache 경로. (설계 04 §0-2, cache/05 §5-2·§6-6)
+     * 주변 코스 지도 조회 — 리드모델 기반 경로.
+     * (설계 문서: docs/design/course-cell-bucket-cache-design.md §3-10 · §3-12)
      *
-     * <p>흐름: Reader(캐시/리드모델 쿼리) → 랜덤 선별(매 요청, 캐시 밖) → 내 고스트 조회(선별분만)
-     * → 응답 조립. checkpointsUrl/createdAt 은 클라 미사용으로 null.</p>
+     * <p>흐름: Reader(리드모델 조회) → 랜덤 선별(매 요청) → 내 고스트 조회(선별분만) → 응답 조립.
+     * checkpointsUrl/createdAt 은 클라 미사용으로 null.</p>
      *
-     * <p>{@code regionId}(선택 파라미터) 경우별 동작은 설계 cache/05 §5-2 참고.</p>
+     * <p>이 메서드는 캐시를 알지 못한다 — 캐시 적중 여부·경로 판정은 전적으로
+     * {@link CourseReadModelReader}의 책임이고, Facade에는 선별과 조립만 남는다 (설계 §3-12).</p>
      *
-     * <p>정렬/필터 파라미터는 하위호환으로 받되 적용하지 않는다(클라 미사용 확인 — 설계 §1 확정).
-     * 기본값이 아닌 요청은 캐시만 우회한다.</p>
+     * <p>{@code regionId}는 배포된 FE가 계속 실어 보내므로 시그니처에 남기되(외부 API 불변),
+     * 조회에는 사용하지 않는다 — 결과는 오직 요청 좌표·반경으로 결정된다 (설계 §3-10).</p>
+     *
+     * <p>정렬/필터 파라미터도 하위호환으로 받되 적용하지 않는다
+     * (클라 미사용 확인 — docs/refactoring/course-read-model/core/04-detailed-design.md §1).</p>
      */
     @Transactional(readOnly = true)
     public List<CourseMapResponse> findCoursesByPosition(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                          CourseSearchFilterDto filters, Long regionId, String viewerUuid) {
-        List<CourseMapDto> candidateCourses = findCandidateCourses(lat, lng, radiusM, regionId);
+        List<CourseMapDto> candidateCourses = courseReadModelReader.findCoursesForMap(lat, lng, radiusM);
 
-        // 랜덤 선별 — 사용자별 다양성이 목적이므로 캐시된 원본 리스트 위에서 매 요청 수행한다.
+        // 랜덤 선별 — 사용자별 다양성이 목적이므로 조회 결과 위에서 매 요청 수행한다.
         List<CoursePreviewDto> previews = candidateCourses.stream()
                 .map(CourseMapDto::toPreviewDto)
                 .toList();
         List<CoursePreviewDto> selectedCourses = limitCoursesForViewer(previews, viewerUuid, MAX_COURSES_PER_MAP_RESPONSE);
 
-        // 내 고스트는 개인화 데이터라 캐싱 대상이 아니다 — 선별된 코스에 대해서만 조회한다.
+        // 내 고스트는 뷰어별 개인화 데이터다 — 선별된 코스에 대해서만 조회한다.
         List<Long> selectedCourseIds = selectedCourses.stream().map(CoursePreviewDto::id).toList();
         Map<Long, Running> memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(selectedCourseIds, viewerUuid);
 
@@ -188,44 +179,6 @@ public class CourseFacade {
             responses.add(candidateCourseById.get(selectedCourse.id()).toResponse(myGhost));
         }
         return responses;
-    }
-
-    /**
-     * 조회 경로 선택 — 지역 캐시 경로, 그리고 실패 시 요청 좌표 폴백.
-     *
-     * <p>미발급 regionId는 홈 화면을 막지 않는다(설계 §5-1). dev는 {@code ddl-auto: create}라 배포마다
-     * region 테이블이 비워지는 반면 FE는 regionId를 persist하므로, "발급된 적 없는 regionId"는 확정 재현된다.
-     * 좌표 폴백이라는 완전한 복구 경로가 이미 있으므로 조용히 강등한다.</p>
-     *
-     * <p>catch를 <b>Facade(= {@code @Cacheable} 프록시 바깥)</b>에 두는 것이 핵심이다. Reader 안에서 잡으면
-     * 캐시 프록시가 폴백 결과를 {@code course-map::{regionId}}에 적재해, 없는 지역의 좌표 기반 결과가
-     * 캐시에 오염 적재된다. 예외가 프록시를 뚫고 나가면 Spring Cache는 적재하지 않는다.</p>
-     */
-    private List<CourseMapDto> findCandidateCourses(Double lat, Double lng, Integer radiusM, Long regionId) {
-        if (!useRegionCache(regionId, radiusM)) {
-            return courseReadModelReader.findCoursesForMap(lat, lng, radiusM);
-        }
-        try {
-            return courseReadModelReader.findCoursesForMapByRegion(regionId);
-        } catch (RegionNotFoundException unknownRegion) {
-            log.warn("CourseFacade::findCoursesByPosition() - unknown regionId {}, fallback to coordinates", regionId);
-            return courseReadModelReader.findCoursesForMap(lat, lng, radiusM);
-        }
-    }
-
-    /**
-     * 지역 캐시 경로 판정 —
-     * ① regionId 첨부 ② 요청 반경이 캐시 값의 고정 2km와 어긋나지 않을 만큼 좁음({@link #MAX_CACHEABLE_RADIUS_M})
-     *
-     * <p>sort/filters는 판정에 넣지 않는다 — 이 경로는 정렬·필터를 애초에 적용하지 않으므로(클라 미사용,
-     * 설계 core/04 §1) 어떤 요청이든 결과가 같아 캐시 공유가 안전하다. <b>단, 필터를 실제로 적용하게
-     * 바뀌는 날에는 기본 요청 판정을 이 조건에 복원해야 한다</b> — 안 하면 필터 요청이 무필터 캐시 값을
-     * 받는 버그가 된다.</p>
-     */
-    private boolean useRegionCache(Long regionId, Integer radiusM) {
-        return regionId != null
-                && (radiusM == null
-                    || (radiusM >= MIN_CACHEABLE_RADIUS_M && radiusM <= MAX_CACHEABLE_RADIUS_M));
     }
 
     /** 본인 코스 > RECOMMENDED 지정 코스 > 타 러너 코스 > 더미 코스 순으로 limit개 이하를 선택한다. */

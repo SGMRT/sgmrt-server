@@ -32,6 +32,7 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
+import soma.ghostrunner.global.config.CacheType;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -70,16 +71,16 @@ class CourseFacadeTest extends IntegrationTestSupport {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    /** course-map 캐시가 쓰는 Redis 키 전부를 훑는 패턴 (CourseReadModelReaderTest와 동일) */
-    private static final String COURSE_MAP_KEY_PATTERN = "course-map*";
+    /** 셀 버킷 캐시가 쓰는 Redis 키 전부를 훑는 패턴 (CourseReadModelReaderTest와 동일) */
+    private static final String CELL_KEY_PATTERN = CacheType.Names.COURSE_CELLS + "*";
 
     private Member defaultMember;
 
     @BeforeEach
     void setUp() {
         defaultMember = memberRepository.save(Member.of("기본 회원", "test-url"));
-        // course-map 캐시는 Redis에 남아 테스트 간 순서 의존을 만든다 — 캐시 관련 테스트가 여럿이므로 진입 시점에 공통 정리한다.
-        clearCourseMapCache();
+        // 셀 버킷 캐시는 Redis에 남아 테스트 간 순서 의존을 만든다 — 캐시 관련 테스트가 여럿이므로 진입 시점에 공통 정리한다.
+        clearCellCache();
     }
 
     @DisplayName("주변 코스를 검색하면, 각 코스별 상위 최대 4명의 러너 정보가 함께 조회된다.")
@@ -374,62 +375,39 @@ class CourseFacadeTest extends IntegrationTestSupport {
     }
 
     /**
-     * 미발급 regionId는 홈 화면을 막지 않는다 (설계 §5-1 "실패해도 폴백으로 코스 조회 가능").
+     * regionId는 하위호환으로 수용만 하고 조회에 사용하지 않는다 (설계 §3-10).
      *
-     * dev 환경은 ddl-auto: create라 배포마다 region 테이블이 비워지는 반면 FE는 regionId를 로컬에 보관한다.
-     * 즉 "발급된 적 없는 regionId"는 배포마다 확정 재현되며, 이때 404로 응답하면 QA 기기 전원의 홈이 백지가 된다.
-     * 좌표 폴백이라는 완전한 복구 경로가 이미 있으므로 조용히 강등한다.
+     * regionId를 실은 요청이 대표좌표 기준 결과를 받게 되면, 사용자가 그 지역 어디에 서 있든 같은 답이 돌아온다.
+     * 예외도 로그도 없는 침묵 오답이라 관측되지 않는다. 결과가 오직 요청 좌표로만 결정된다는 것을 고정한다 —
+     * region 대표좌표를 요청 좌표에서 멀리 떼어 두어, 두 경로가 갈리면 반드시 드러나게 한다.
      */
-    @DisplayName("발급된 적 없는 regionId로 기본 요청이 와도 예외 없이 요청 좌표 기준 결과를 반환하고 캐시도 오염되지 않는다")
+    @DisplayName("regionId를 실어 보내도 좌표 기반 경로와 동일한 결과를 반환한다")
     @Test
-    void findCoursesByPosition_withUnknownRegionId_fallsBackToRequestCoordinate() {
-        // given : region 테이블에 없는 regionId와, 요청 좌표 위의 코스
-        Long unknownRegionId = 999_999L;
-        savePublicCourseWithReadModel("요청 좌표 코스", DEFAULT_LAT, DEFAULT_LNG);
-
-        // when : FE가 보관하던 옛 regionId를 실어 보낸 기본 요청
-        List<CourseMapResponse> courses = courseFacade.findCoursesByPosition(
-                DEFAULT_LAT, DEFAULT_LNG, 2000, CourseSortType.DISTANCE, null,
-                unknownRegionId, defaultMember.getUuid());
-
-        // then : 홈이 죽지 않는다 — 요청 좌표 기준 결과가 그대로 내려온다
-        assertThat(courses).extracting(CourseMapResponse::name).containsExactly("요청 좌표 코스");
-
-        // 없는 지역의 좌표 기반 결과가 course-map::{regionId}에 실리면 안 된다
-        assertThat(redisTemplate.keys(COURSE_MAP_KEY_PATTERN)).isEmpty();
-    }
-
-    /**
-     * 지역 캐시 값은 대표좌표 기준 고정 2km다 (설계 §4). 광역 줌 요청에 regionId가 실려 오면
-     * 서버가 2km 결과를 조용히 돌려주게 되는데, 이는 예외도 로그도 없는 침묵 오답이다.
-     * "지도 중심 ≈ 사용자 GPS"라는 FE 규율에 정확성을 의존하지 않도록 서버가 스스로 캐시 경로를 포기한다.
-     */
-    @DisplayName("regionId가 붙은 기본 요청이라도 광역 반경(10km)이면 캐시 경로를 타지 않고 요청 좌표·반경 기준으로 조회한다")
-    @Test
-    void findCoursesByPosition_withRegionIdAndWideRadius_bypassesCache() {
-        // given : 요청 좌표에서 멀리 떨어진 지역(대표좌표)과 그 동네 코스, 요청 좌표 위의 코스,
-        //         그리고 고정 2km 밖이지만 요청 반경 10km 안에 있는 코스
+    void findCoursesByPosition_withRegionId_returnsSameResultAsCoordinatePath() {
+        // given : 요청 좌표에서 멀리 떨어진 대표좌표를 가진 지역과, 각 좌표 위의 코스
         Region farRegion = regionRepository.save(
                 Region.of("서울특별시 강남구 역삼동", DEFAULT_LAT + 0.5, DEFAULT_LNG + 0.5));
-        savePublicCourseWithReadModel("옆 동네 코스", DEFAULT_LAT + 0.5, DEFAULT_LNG + 0.5);
         savePublicCourseWithReadModel("요청 좌표 코스", DEFAULT_LAT, DEFAULT_LNG);
-        savePublicCourseWithReadModel("광역 반경 코스", DEFAULT_LAT + 0.045, DEFAULT_LNG);
+        savePublicCourseWithReadModel("옆 동네 코스", DEFAULT_LAT + 0.5, DEFAULT_LNG + 0.5);
 
-        // when : regionId를 실었지만 뷰포트가 광역(10km)인 기본 요청
-        List<CourseMapResponse> courses = courseFacade.findCoursesByPosition(
-                DEFAULT_LAT, DEFAULT_LNG, 10000, CourseSortType.DISTANCE, null,
+        // when : 같은 좌표·반경으로 regionId만 실어 보낸 요청과 실지 않은 요청
+        List<CourseMapResponse> withRegionId = courseFacade.findCoursesByPosition(
+                DEFAULT_LAT, DEFAULT_LNG, 2000, CourseSortType.DISTANCE, null,
                 farRegion.getId(), defaultMember.getUuid());
+        List<CourseMapResponse> withoutRegionId = courseFacade.findCoursesByPosition(
+                DEFAULT_LAT, DEFAULT_LNG, 2000, CourseSortType.DISTANCE, null,
+                null, defaultMember.getUuid());
 
-        // then : 대표좌표 기준 2km가 아니라 요청 좌표 기준 10km 결과가 나온다
-        assertThat(courses).extracting(CourseMapResponse::name)
-                .containsExactlyInAnyOrder("요청 좌표 코스", "광역 반경 코스");
-
-        // 캐시 키 공간도 오염되지 않는다 (캐시 경로 자체를 타지 않으므로 적재가 없어야 한다)
-        assertThat(redisTemplate.keys(COURSE_MAP_KEY_PATTERN)).isEmpty();
+        // then : 결과는 요청 좌표로만 결정된다
+        assertThat(withRegionId).extracting(CourseMapResponse::name)
+                .containsExactlyElementsOf(
+                        withoutRegionId.stream().map(CourseMapResponse::name).toList());
+        assertThat(withRegionId).extracting(CourseMapResponse::name)
+                .containsExactly("요청 좌표 코스");
     }
 
-    private void clearCourseMapCache() {
-        Set<String> keys = redisTemplate.keys(COURSE_MAP_KEY_PATTERN);
+    private void clearCellCache() {
+        Set<String> keys = redisTemplate.keys(CELL_KEY_PATTERN);
         if (keys != null && !keys.isEmpty()) {
             redisTemplate.delete(keys);
         }

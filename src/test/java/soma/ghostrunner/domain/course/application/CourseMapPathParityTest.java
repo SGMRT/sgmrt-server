@@ -1,9 +1,11 @@
 package soma.ghostrunner.domain.course.application;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.DatabaseCleanserExtension;
 import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
@@ -23,36 +25,32 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
+import soma.ghostrunner.global.config.CacheType;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 조회 전환 파리티 검증 — 구경로(수동 캐시)와 신경로(리드모델+Spring Cache)가 같은 데이터에서
+ * 조회 전환 파리티 검증 — 구경로(수동 캐시)와 신경로(리드모델+셀 버킷 캐시)가 같은 데이터에서
  * 같은 응답을 내는지 확인한다. 리드모델은 Writer 생성 경로(syncPublicity)로 채운다.
  *
- * 허용된 차이 (설계 확정): 신경로의 checkpointsUrl/createdAt 은 null.
+ * <p>허용된 차이 (설계 확정): 신경로의 checkpointsUrl/createdAt 은 null.</p>
+ *
+ * <p><b>bbox 모서리에서는 두 경로가 의도적으로 갈린다.</b> 신경로는 마지막에 실좌표 원 필터를 걸지만
+ * (설계 D1), 구경로는 bbox만으로 거른다({@code CustomCourseRepositoryImpl:105}). 박스 모서리에 놓인 코스는
+ * 구경로에만 잡힌다 — 원 ⊆ 박스이므로 차이는 언제나 이 방향 하나다. 이 테스트가 검증하려는 것은 모서리 동작이
+ * 아니라 "같은 코스가 같은 필드로 조립되는가"이므로 픽스처를 원 안쪽(중심에서 약 142m)에 고정한다.
+ * 구경로는 제거 예정이며(설계 결정 10 — 이번 범위 밖), 제거 시 이 테스트도 함께 사라진다.</p>
  */
 @ExtendWith(DatabaseCleanserExtension.class)
 class CourseMapPathParityTest extends IntegrationTestSupport {
 
-    /**
-     * 구경로의 수동 캐시(course:{id}, TTL 60분)는 DatabaseCleanserExtension(테이블 truncate)이 지우지 못한다.
-     * ID 재사용 시 다른 테스트의 캐시를 읽어 파리티가 오염되는 플래키를 막기 위해 매 테스트 전 정리한다.
-     */
-    @org.junit.jupiter.api.BeforeEach
-    void clearLegacyCourseCache() {
-        java.util.Set<String> keys = redisTemplate.keys("course:*");
-        if (keys != null && !keys.isEmpty()) {
-            redisTemplate.delete(keys);
-        }
-    }
-
-    @Autowired org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
+    @Autowired RedisTemplate<String, Object> redisTemplate;
     @Autowired CourseFacade courseFacade;
     @Autowired CourseRepository courseRepository;
     @Autowired CourseReadModelRepository readModelRepository;
@@ -63,6 +61,30 @@ class CourseMapPathParityTest extends IntegrationTestSupport {
     private static final double LAT = 37.5480;
     private static final double LNG = 127.0731;
 
+    /**
+     * Redis는 테스트 간 공유 자원이다 — 컨테이너가 static이고 DatabaseCleanserExtension은 테이블만 지운다.
+     * 구경로 캐시(course:{id}, TTL 60분)와 신경로 셀 버킷 캐시(course-cells::{cell}, TTL 600초)를
+     * <b>둘 다</b> 지워야 한다. 특히 CourseCellCacheEvictListenerTest는 같은 좌표(37.5480, 127.0731)를 쓰고
+     * "아무것도 지우지 않음"을 검증하는 테스트가 빈 배열 값을 남기므로, 정리하지 않으면 이 클래스가 그 셀을
+     * 히트로 읽어 코스가 응답에서 사라진다(= 메서드 실행 순서에 따라 깨지는 플래키).
+     *
+     * <p>{@code "course:*"} 패턴은 {@code course-cells::...}를 매칭하지 않는다(7번째 문자가 {@code :}가 아니라 {@code -}).
+     * 두 패턴을 모두 지워야 하는 이유다.</p>
+     */
+    @BeforeEach
+    void clearSharedRedisCaches() {
+        deleteKeys("course:*");
+        deleteKeys(CacheType.Names.COURSE_CELLS + "*");
+    }
+
+    /** redisTemplate의 keySerializer가 StringRedisSerializer라 StringRedisTemplate이 쓴 셀 키도 그대로 매칭·삭제된다. */
+    private void deleteKeys(String pattern) {
+        Set<String> keys = redisTemplate.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
+
     private Member courseOwner;
 
     @DisplayName("구경로와 신경로가 같은 데이터에서 동일한 지도 응답을 낸다 (checkpointsUrl/createdAt null 차이만 허용)")
@@ -72,6 +94,7 @@ class CourseMapPathParityTest extends IntegrationTestSupport {
         Member viewer = saveMember("조회자");
         Member rival = saveMember("경쟁자");
         Course courseA = savePublicCourse("한강 코스", LAT, LNG);
+        // 중심에서 약 142m — 반경 2km 원 안쪽에 넉넉히 들어와 bbox 모서리 차이에 걸리지 않는다 (클래스 주석 참고)
         Course courseB = savePublicCourse("올림픽 코스", LAT + 0.001, LNG + 0.001);
         saveRunning(viewer, courseA, 1800L);
         saveRunning(rival, courseA, 1500L);

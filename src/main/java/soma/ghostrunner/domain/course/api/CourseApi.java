@@ -28,10 +28,10 @@ public class CourseApi {
     /**
      * 주변 코스 지도 조회.
      *
-     * <p>{@code regionId}는 {@code POST /v1/regions}로 발급받는 선택 파라미터다 (설계 cache/05 §5-2).
-     * 첨부하면 지역(동네) 단위 공유 캐시 경로를, 없으면 기존과 동일하게 요청 좌표 기준으로 조회한다 —
-     * 미첨부 요청의 동작은 변하지 않으므로 구버전 앱과 하위호환된다. 경로 판정은
-     * {@link CourseFacade#findCoursesByPosition} 참고.</p>
+     * <p>{@code regionId}는 구 지역 캐시 설계의 잔재이자 <b>서버가 사용하지 않는</b> 파라미터다.
+     * 배포된 앱이 계속 실어 보내므로 하위호환을 위해 수용만 하고 조회에는 반영하지 않는다 —
+     * 첨부 여부와 무관하게 결과는 오직 요청 좌표({@code lat}·{@code lng})와 {@code radiusM}으로
+     * 결정된다 (설계 문서: docs/design/course-cell-bucket-cache-design.md §3-10).</p>
      */
     @GetMapping("/courses")
     public List<CourseMapResponse> getCoursesByPosition(
