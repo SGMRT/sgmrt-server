@@ -83,3 +83,16 @@ Content-Type: application/json
 Authorization: Bearer {{access-token}}
 
 {"name": "테스트 지역 E", "lat": 37.5008, "lng":}
+
+### [회귀] 지역 등록 - 코스 지도 캐시가 셀 버킷으로 전환된 이후에도 API 존치 확인 (docs/design/course-cell-bucket-cache-design.md 결정 7)
+POST {{host}}/v1/regions
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"name": "테스트 지역 F", "lat": 37.5008, "lng": 127.0365}
+
+> {%
+client.test("200 OK, regionId 반환 (Region 도메인은 캐시 전환과 무관하게 존치)", () => {
+    client.assert(response.status === 200, "status is " + response.status);
+});
+%}

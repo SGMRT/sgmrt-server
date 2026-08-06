@@ -1,0 +1,129 @@
+@access-token = REPLACE_WITH_JWT
+@boundary = WebAppBoundary
+
+### 아래는 셀 버킷 캐시 전환의 "완주 → 재조회" 흐름을 검증한다 (docs/design/course-cell-bucket-cache-design.md §1-2, §4).
+### 순서 의존: [연계-1]→[연계-2]→[연계-3]→[연계-4]→[연계-5] 순으로 반드시 이어서 실행해야 한다.
+### [연계-1]·[연계-2]는 courseId를 전역변수로 저장해 이후 요청이 재사용한다.
+### rawTelemetry/interpolatedTelemetry는 ../src/test/resources/data7.jsonl(실제 GPS 포맷, 시작점 lat=37.55758240409912 / lng=126.95640883755522)을 재사용하고,
+### screenShotImage는 ./fixtures/tiny.png(1x1 더미 PNG)를 재사용한다.
+
+### [연계-1] 코스 생성 + 러닝 등록 - 지도에 노출될 새 코스를 만든다 (신규 코스는 항상 비공개로 생성됨)
+POST {{host}}/v1/runs
+Authorization: Bearer {{access-token}}
+Content-Type: multipart/form-data; boundary={{boundary}}
+
+--{{boundary}}
+Content-Disposition: form-data; name="req"
+Content-Type: application/json
+
+{"runningName": "캐시 검증용 러닝 1", "startedAt": 1735689600000, "record": {"distance": 5.0, "elevationGain": 10.0, "elevationLoss": 8.0, "duration": 1500, "avgPace": 5.0, "calories": 300, "avgBpm": 150, "avgCadence": 170}, "hasPaused": false, "isPublic": true}
+--{{boundary}}
+Content-Disposition: form-data; name="rawTelemetry"; filename="data7.jsonl"
+Content-Type: application/jsonl
+
+< ../src/test/resources/data7.jsonl
+--{{boundary}}
+Content-Disposition: form-data; name="interpolatedTelemetry"; filename="data7.jsonl"
+Content-Type: application/jsonl
+
+< ../src/test/resources/data7.jsonl
+--{{boundary}}
+Content-Disposition: form-data; name="screenShotImage"; filename="tiny.png"
+Content-Type: image/png
+
+< ./fixtures/tiny.png
+--{{boundary}}--
+
+> {%
+client.test("200 OK, courseId/runningId 반환", () => {
+    client.assert(response.status === 200, "status is " + response.status);
+    client.assert(response.body.courseId, "courseId missing in response");
+    client.assert(response.body.runningId, "runningId missing in response");
+});
+client.global.set("courseId", response.body.courseId);
+client.global.set("runningId1", response.body.runningId);
+%}
+
+### [연계-2] 코스 공개 전환 - 리드모델 생성의 유일한 트리거 (신규 코스가 지도에 노출되는 유일한 경로, 설계 M3)
+PATCH {{host}}/v1/courses/{{courseId}}
+Content-Type: application/json
+Authorization: Bearer {{access-token}}
+
+{"isPublic": true}
+
+> {%
+client.test("200 OK", () => client.assert(response.status === 200, "status is " + response.status));
+%}
+
+### [연계-3] 코스 지도 조회 - 공개 직후 첫 조회(콜드 채움), 내 기록(myGhostInfo) 확인
+GET {{host}}/v1/courses?lat=37.55758240409912&lng=126.95640883755522&radiusM=2000
+Authorization: Bearer {{access-token}}
+
+> {%
+client.test("200 OK", () => client.assert(response.status === 200, "status is " + response.status));
+const courseId = Number(client.global.get("courseId"));
+const created = response.body.find(c => c.id === courseId);
+client.test("방금 공개 전환한 코스가 지도 응답에 포함됨", () => {
+    client.assert(created !== undefined, "course " + courseId + " not found in map response");
+});
+if (created) {
+    client.test("myGhostInfo가 러닝1의 기록(averagePace=5.0)", () => {
+        client.assert(created.myGhostInfo !== null, "myGhostInfo is null");
+        client.assert(created.myGhostInfo.averagePace === 5.0, "averagePace is " + created.myGhostInfo.averagePace);
+    });
+}
+%}
+
+### [연계-4] 같은 코스로 더 빠른 기록 완주 - RunFinishedEvent 발행 → 셀 이빅트 트리거
+POST {{host}}/v1/runs/courses/{{courseId}}
+Authorization: Bearer {{access-token}}
+Content-Type: multipart/form-data; boundary={{boundary}}
+
+--{{boundary}}
+Content-Disposition: form-data; name="req"
+Content-Type: application/json
+
+{"runningName": "캐시 검증용 러닝 2 (더 빠름)", "mode": "SOLO", "ghostRunningId": null, "startedAt": 1735689600000, "record": {"distance": 5.0, "elevationGain": 10.0, "elevationLoss": 8.0, "duration": 1200, "avgPace": 4.0, "calories": 300, "avgBpm": 160, "avgCadence": 180}, "hasPaused": false, "isPublic": true}
+--{{boundary}}
+Content-Disposition: form-data; name="rawTelemetry"; filename="data7.jsonl"
+Content-Type: application/jsonl
+
+< ../src/test/resources/data7.jsonl
+--{{boundary}}
+Content-Disposition: form-data; name="interpolatedTelemetry"; filename="data7.jsonl"
+Content-Type: application/jsonl
+
+< ../src/test/resources/data7.jsonl
+--{{boundary}}
+Content-Disposition: form-data; name="screenShotImage"; filename="tiny.png"
+Content-Type: image/png
+
+< ./fixtures/tiny.png
+--{{boundary}}--
+
+> {%
+client.test("200 OK, runningId 반환", () => {
+    client.assert(response.status === 200, "status is " + response.status);
+});
+client.global.set("runningId2", response.body);
+%}
+
+### [연계-5] 코스 지도 재조회 - 이빅트가 동작해 갱신된 myGhostInfo가 TTL(600s) 만료 전 즉시 보임
+GET {{host}}/v1/courses?lat=37.55758240409912&lng=126.95640883755522&radiusM=2000
+Authorization: Bearer {{access-token}}
+
+> {%
+client.test("200 OK", () => client.assert(response.status === 200, "status is " + response.status));
+const courseId = Number(client.global.get("courseId"));
+const found = response.body.find(c => c.id === courseId);
+client.test("코스가 여전히 지도 응답에 포함됨", () => {
+    client.assert(found !== undefined, "course " + courseId + " not found in map response");
+});
+if (found) {
+    client.test("myGhostInfo가 러닝2의 기록(averagePace=4.0)으로 갱신됨 - 셀 이빅트 확인", () => {
+        client.assert(found.myGhostInfo !== null, "myGhostInfo is null");
+        client.assert(found.myGhostInfo.averagePace === 4.0,
+            "averagePace가 4.0으로 갱신되지 않음(현재: " + found.myGhostInfo.averagePace + ") - 이빅트 미동작 의심");
+    });
+}
+%}
