@@ -30,7 +30,9 @@
 
 **목표**: `CourseReadModel` 재설계, 읽기/쓰기 경로 재정립, Redis 기반 **Spring Cache**(`@Cacheable` 등) 도입.
 
-> **진행 상황 (2026-08-04)**: 상세 설계·구현은 `docs/refactoring/course-read-model/` 참조. PR-1(쓰기 측: RankSlot/TopRunners VO, 엔티티 재설계, CourseReadModelWriter 직접 호출, ReadModelSyncListener 삭제) 구현 완료 단계. PR-2(조회 전환+캐시+백필) 예정.
+> **진행 상황 (2026-08-06)**: 상세 설계·구현은 `docs/refactoring/course-read-model/` 참조. PR-1(쓰기 측: RankSlot/TopRunners VO, 엔티티 재설계, CourseReadModelWriter 직접 호출, ReadModelSyncListener 삭제) 완료. 조회 전환·캐시는 셀 버킷 전환(#168)으로 마무리 — 설계는 `docs/design/course-cell-bucket-cache-design.md`, 캐시키 선택 근거는 `docs/refactoring/course-read-model/cache/07·08`.
+>
+> **결론이 뒤집힌 항목**: 목표에 적힌 "Spring Cache(`@Cacheable`) 도입"은 채택하지 않았다. 지도 조회는 반경을 덮는 셀 여러 개를 읽고 **미스인 셀만 채우는 부분 히트**가 이득의 실체인데, 결과셋 하나를 통째로 캐싱하는 `@Cacheable` 추상화로는 그 동작을 표현할 수 없다. `RedisTemplate` 기반 어댑터(`CourseCellCache`)로 직접 다루기로 하고, `@Cacheable` 사용처가 0이 되면서 `CacheConfig`·`@EnableCaching`도 제거했다.
 
 ### 현재 상태 (문제점)
 - `CourseReadModel`(379줄, main 최대 파일): courseId(unique) + **top1~top4 멤버ID/기록 8컬럼 역정규화** + runnersCount. `insertIfBetter()`/`shiftDown()` 수동 배열 시프트 로직 내장
@@ -42,9 +44,9 @@
 ### 검토 과제
 - [ ] TOP4 8컬럼 → 정규화(별도 랭킹 테이블) vs 유지 결정. 랭킹 조회 패턴(`/top-ranking`, `/ranking`, `/top-percentage`)과 함께 재설계
 - [ ] 쓰기 경로: BEFORE_COMMIT 동기 갱신 유지 vs AFTER_COMMIT/비동기 전환(정합성 요구 수준 결정)
-- [ ] 읽기 경로: `CourseFacade`의 수동 캐시 분기 → Spring Cache 추상화(`@Cacheable`/`@CacheEvict`, `RedisCacheManager`)로 이관
-- [ ] 캐시 키/TTL 전략, 무효화 이벤트 정리 (RunFinished/RunUpdated/코스 수정·삭제·공개전환)
-- [ ] `CourseFacade` 책임 분리 (캐시 / 랜덤 선별 / DTO 조립)
+- [x] 읽기 경로: `CourseFacade`의 수동 캐시 분기 제거 → 캐시 판정·부분 채움을 `CourseReadModelReader`로 이관 (#168). Spring Cache 추상화 대신 `CourseCellCache` 어댑터 채택 — 위 "결론이 뒤집힌 항목" 참조
+- [x] 캐시 키/TTL 전략, 무효화 이벤트 정리 (#168) — 키는 코스 시작점의 geohash p6 셀, TTL 600초, 무효화는 RunFinished/RunUpdated + 신규 `CourseMapDataChangedEvent`(코스 수정·삭제·공개전환, 러닝 삭제)로 셀 1개 DEL
+- [x] `CourseFacade` 책임 분리 (#168) — 캐시는 Reader, Facade에는 랜덤 선별과 DTO 조립만 남음. 구경로(`findCoursesByPositionCached`)는 `@Deprecated`로 존치, 제거는 별도 PR
 - [ ] 관련 데드코드 정리: Redisson 분산락, `RedisRateLimiterRepository`
 
 ---
