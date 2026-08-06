@@ -345,20 +345,18 @@ private static final int MAP_QUERY_LIMIT = 50;          // 직행 DB 안전판 (
 private static final int MAX_CACHEABLE_RADIUS_M = 3000; // 광역 가드 (Facade에서 이동)
 private static final int MAX_COVERING_CELLS = 128;      // 극단 좌표 가드
 
-@Value("${course.cache.cell-bucket.enabled:true}")   private boolean cellBucketEnabled;
 @Value("${course.cache.cell-bucket.fill-limit:500}") private int cellFillLimit;
 ```
 
 ```
 findCoursesForMap(lat, lng, radiusM):
-    if (!cellBucketEnabled)                 return queryDirect(...)   # 강등①
-    if (radiusM > MAX_CACHEABLE_RADIUS_M)   return queryDirect(...)   # 강등②
+    if (radiusM > MAX_CACHEABLE_RADIUS_M)   return queryDirect(...)   # 강등①
     if (GeoCell.coveringCount(lat, lng, radiusM) > MAX_COVERING_CELLS):   # [R1] 열거 전에 판정
         log.warn("covering cells over limit, degrade to direct query. lat={}, lng={}, r={}", ...)
-        return queryDirect(...)                                       # 강등③
+        return queryDirect(...)                                       # 강등②
     covering = GeoCell.covering(lat, lng, radiusM)
     lookup = cellCache.lookup(covering)
-    if (lookup.degraded())                  return queryDirect(...)   # 강등④
+    if (lookup.degraded())                  return queryDirect(...)   # 강등③
     candidates = lookup.cachedCourses()
                + (lookup.missedCells().isEmpty() ? [] : fillMissedCells(lookup.missedCells()))
     return withinRadius(candidates, lat, lng, radiusM)
@@ -396,7 +394,8 @@ withinRadius(rows, lat, lng, radiusM):
 
 **설계 이유**
 
-- **강등 4갈래가 전부 `queryDirect` 한 곳으로 수렴한다.** 강등 결과는 언제나 현행 직행 경로와 완전히 동일하므로, 롤백이 플래그 하나로 끝난다.
+- **강등 3갈래(광역 요청 · 커버링 폭발 · Redis 장애)가 전부 `queryDirect` 한 곳으로 수렴한다.** 강등 결과는 언제나 현행 직행 경로와 완전히 동일하다. 판정 순서는 싼 것부터다 — 광역(비교 1회) → 커버링 수(산술 [R1]) → Redis 장애(1왕복).
+- **끄는 스위치는 없다 (D14).** 롤백 플래그를 두지 않으므로 **재배포 없이 새 캐시를 끌 방법이 없고, 문제 시 대응은 PR 리버트 + 재배포다.** 다만 `queryDirect` 폴백 자체는 위 3갈래가 계속 쓰므로 Redis 장애 같은 런타임 실패에는 여전히 자동으로 직행한다. 즉 **인프라 장애 대응은 코드가 런타임에 하고, 로직 결함 대응은 리버트가 한다** — 두 대응은 성격이 다르며 서로를 대신하지 못한다.
 - **미스 셀 합집합 박스를 쓰는 이유** — 미스 셀이 흩어져 있어도 쿼리는 1회다. 박스에 딸려온 히트 셀 소속 행은 `groupByStartCell`이 버려서, 히트 셀의 캐시 값과 충돌하지 않는다.
 - **빈 셀도 빈 리스트로 적재하는 이유(네거티브 캐싱)** — 코스가 없는 셀을 적재하지 않으면 그 셀은 TTL 내내 영구 미스가 되어, 도심 외곽 요청이 매번 채움 쿼리를 돌린다.
 - **`rows`가 아니라 `buckets`를 평면화해 반환하는 이유** — `rows`에는 히트 셀 소속 행이 섞여 있어 그대로 합치면 `cachedCourses`와 중복된다.
@@ -445,15 +444,13 @@ evictByCourseId(courseId):                                  # 커밋 후 실행 
 afterCommit(courseId, evict):                               # 커밋 후 실행 예약
     guarded = () -> try { evict.run() }
                     catch (Exception e) { log.warn("evict failed for course {} (stale up to TTL)", courseId, e) }   # [R3]
-    if (!TransactionSynchronizationManager.isSynchronizationActive()):
-        guarded.run(); return                               # 미룰 커밋이 없다 → 즉시 실행
-    TransactionSynchronizationManager.registerSynchronization(
+    TransactionSynchronizationManager.registerSynchronization(   # 활성 트랜잭션 필수 — 없으면 IllegalStateException
         new TransactionSynchronization() { afterCommit() { guarded.run(); } })
 ```
 
 **커밋 후인 이유** — 커밋 전에 DEL하면, 지운 자리에 다른 요청이 **커밋 전 데이터**를 재적재해 TTL까지 잔존한다(자가 치유가 없다). 커밋 후 DEL은 "이미 반영된 값을 한 번 더 지우는" 안전한 방향으로만 틀린다. 이벤트를 걷어내면서도 이 타이밍만은 그대로 가져와야 했던 이유이고, 그래서 `@TransactionalEventListener` 대신 `TransactionSynchronizationManager.registerSynchronization`을 직접 쓴다.
 
-**동기화가 비활성이면 즉시 실행하는 이유** — 트랜잭션 밖에서 불렸다면 기다릴 커밋이 없다. 예약을 건너뛰면 이빅트가 조용히 사라지므로, 그 자리에서 지우는 쪽이 안전한 방향으로 틀린다.
+**호출 계약: 반드시 활성 트랜잭션 안이어야 한다 (교정)** — 초안은 동기화가 비활성이면 즉시 실행하는 폴백을 뒀다. 그 분기는 프로덕션 호출부 7곳이 전부 `@Transactional` 안이라 **도달 불가능한 죽은 코드**였고, 더 중요하게는 안전하지도 않았다. 트랜잭션 밖에서 즉시 DEL하면 아직 커밋되지 않은 변경 앞에서 캐시를 지우는 셈이라, 바로 위 "커밋 후인 이유"가 설명하는 그 레이스를 스스로 만든다. 그래서 폴백을 제거하고 항상 `registerSynchronization`한다. 트랜잭션 밖 호출은 `IllegalStateException`으로 즉시 드러나며, 조용한 레이스보다 그 편이 안전하다.
 
 **[R3] 커밋 후 콜백 전체를 try/catch로 감싸는 이유 (리뷰 교정 — WARNING)**
 `AbstractPlatformTransactionManager.triggerAfterCommit`은 afterCommit 동기화에서 던져진 예외를 **호출자에게 전파한다**. 즉 커밋은 이미 성공했는데 사용자에게는 500이 나가는, 가장 나쁜 형태의 실패가 된다. 삭제된 `CourseMapCacheEvictListener`가 전체를 try/catch로 감싼 이유가 이것이므로 그 관례를 그대로 유지한다. `CourseCellCache.evict`가 Redis 예외를 이미 흡수하므로 이 catch가 잡을 것은 좌표 null 같은 프로그래밍 오류뿐이지만, 이빅트 실패는 **정합성 사고가 아니라 최대 TTL(600s) 지연**이므로 밖으로 던질 이유가 없다.
@@ -522,7 +519,7 @@ dto/query/   CellBucket, CellCacheLookup, CourseMapDto(불변)
 
 **조회**
 ```
-① 플래그·광역 판정 (싼 것 먼저)
+① 광역 판정 (싼 것 먼저)
 ② coveringCount 산술 판정 [R1]
 ③ covering 열거
 ④ MGET 1왕복 → degraded면 즉시 직행
@@ -556,8 +553,8 @@ CourseService.updateCourse @Transactional {
 
 | # | 쓰기 경로 | 이빅트 호출 | 좌표 출처 |
 |---|---|---|---|
-| — | `applyRun` ← `RunningCommandService:68` (일반 러닝) | `evictCourseCellAfterCommit(course.getId())` :71 | 커밋 후 리드모델 조회 |
-| — | `applyRun` ← `RunningCommandService:121` (코스 따라 러닝) | `evictCourseCellAfterCommit(courseId)` :125 | 커밋 후 리드모델 조회 |
+| — | `applyRun` ← `RunningCreationWriter.saveRunAndCourse` (일반 러닝) | `evictCourseCellAfterCommit(course.getId())` | 커밋 후 리드모델 조회 |
+| — | `applyRun` ← `RunningCreationWriter.saveRun` (코스 따라 러닝) | `evictCourseCellAfterCommit(courseId)` | 커밋 후 리드모델 조회 |
 | — | `recalculate` ← `:197` (러닝 공개 전환) | `evictCourseCellAfterCommit(courseIdOf(running))` :189 | 커밋 후 리드모델 조회 |
 | **a** | `delete` ← `CourseService.deleteCourse:95` | `evictCellAfterCommit(...)` :93 — `readModelWriter.delete()` **직전** | 로드된 `Course` (삭제 후엔 되찾을 수 없다) |
 | **b~d** | `rename`/`syncPublicity` ← `CourseService.updateCourse:156,173` | `evictCellAfterCommit(...)` :128 — 메서드 **끝**, 이름·공개 중 하나라도 바뀌었으면 **1회** | 로드된 `Course` |
@@ -570,7 +567,9 @@ CourseService.updateCourse @Transactional {
 
 ### `CourseRunEvent` 발행만 존치한다
 
-셀 캐시 이빅트는 어떤 이벤트 구독에도 걸려 있지 않다. `RunningCommandService`에 남은 이벤트 발행은 **`CourseRunEvent` 하나뿐**이고, 소비자는 푸시 발송(`PushEventListener.notifyCourseRunEvent`·`notifyCourseTopPersonalRecordUpdate`)이다. `ApplicationEventPublisher` 의존이 이 클래스에 남아 있는 이유가 그것이다. 발행 지점은 코스를 따라 뛴 러닝의 완주 한 곳이라 메서드명도 `publishCourseRunEvents` → `publishCourseRunEvent`(단수)로 바뀌었다.
+셀 캐시 이빅트는 어떤 이벤트 구독에도 걸려 있지 않다. 러닝 쓰기 경로에 남은 이벤트 발행은 **`CourseRunEvent` 하나뿐**이고, 소비자는 푸시 발송(`PushEventListener.notifyCourseRunEvent`·`notifyCourseTopPersonalRecordUpdate`)이다. 발행 지점은 코스를 따라 뛴 러닝의 완주 한 곳이라 메서드명도 `publishCourseRunEvents` → `publishCourseRunEvent`(단수)로 바뀌었다.
+
+**발행 위치는 트랜잭션 경계 안이다** — 러닝 저장 트랜잭션을 좁히면서(S3 업로드·VDOT를 밖으로) 발행은 `RunningCommandService`가 아니라 저장 경계인 `RunningCreationWriter.saveRun` 안에 남겼다. 소비자가 `@TransactionalEventListener(AFTER_COMMIT)`라, 트랜잭션 밖에서 발행하면 이벤트가 **조용히 버려져 푸시 알림이 죽는다.** `ApplicationEventPublisher` 의존이 writer 쪽에 있는 이유가 그것이다.
 
 `RunFinishedEvent`/`RunUpdatedEvent`는 더 이상 없다. 구경로 캐시 리스너(`CourseCacheEventListener`)가 **유일한** 소비자였고 그 구경로가 죽은 코드로 확인돼 함께 제거되면서, 두 이벤트도 소비자 0이 되어 record·팩토리(`Running.createFinishedEvent()`/`createUpdatedEvent()`)·발행 4곳이 모두 사라졌다 (D13).
 
@@ -648,7 +647,9 @@ private List<Course> distinctCoursesOf(List<Running> runnings) {
 
 ### 변경
 
-`CourseReadModelReader`, `CourseFacade`, `CourseService`(+`CourseMapCacheEvictor` 주입), `RunningCommandService`(+`CourseMapCacheEvictor` 주입, `CourseMapCell` private record), `BoundingBox`(+`union`, javadoc), `CacheType`, `CourseApi`(javadoc), `RedisConfig`(+`redisTimeoutCustomizer` 신설 — Redis 응답/연결/재시도 기본값. **영향 반경이 course 도메인 밖**이라 §8-1·§8-2에 함께 기록), `src/test/resources/application.yml`(플래그 명시)
+`CourseReadModelReader`, `CourseFacade`, `CourseService`(+`CourseMapCacheEvictor` 주입), `RunningCommandService`(+`CourseMapCacheEvictor` 주입, `CourseMapCell` private record), `BoundingBox`(+`union`, javadoc), `CacheType`, `CourseApi`(javadoc), `RedisConfig`(+`redisTimeoutCustomizer` 신설 — Redis 응답/연결/재시도 기본값. **영향 반경이 course 도메인 밖**이라 §8-1·§8-2에 함께 기록)
+
+프로퍼티 파일은 손대지 않는다. 롤백 플래그를 두지 않으므로(D14) `src/test/resources/application.yml`에 명시할 캐시 스위치가 없고, `fill-limit`은 기본값(500)이 코드에 있어 필요한 테스트만 `@TestPropertySource`로 덮어쓴다.
 
 ### 신규
 
@@ -681,8 +682,8 @@ Region 일체(`Region`, `RegionApi`, `RegionService`, `POST /v1/regions`, `regio
 | 9 | `ReaderTest` 부분 채움 | 히트 셀은 갱신되지 않고, 미스 셀만 적재되며, 결과에 중복 0 | 통합 |
 | 10 | `ReaderTest` 네거티브 캐싱 | 빈 영역 조회 후 빈 배열 키가 생기고, 재조회 시 미스 0 | 통합 |
 | 11 | `ReaderTest` 적재 스킵 | `fill-limit=2` + 코스 3개 → 응답은 정상, `course-cells*` 키는 0개 | 통합(`@TestPropertySource`) |
-| 12 | `ReaderTest` 강등 4종 | 플래그 off / r=3001 / 셀 수 초과 / Redis 장애 → 키 미생성 + 직행과 동일 결과 | 통합 |
-| 13 | `ReaderTest` 파리티 | 캐시 on/off의 후보 집합이 동일(선별 이전) / bbox 모서리 코스는 양쪽 모두 제외 | 통합 |
+| 12 | `ReaderTest` 강등 | r=3001 / 셀 수 초과 → 키 미생성 + 직행과 동일 결과. **남은 강등은 3갈래이고**(플래그가 없다 — D14) 그중 Redis 장애는 mock이 필요해 테스트 8이 담당한다 — 여기서 중복하지 않는다 | 통합 |
+| 13 | `ReaderTest` 파리티 | DB 채움 경로와 캐시 히트 경로의 후보 집합이 동일(선별 이전) / bbox 모서리 코스는 양쪽 모두 제외 | 통합 |
 | 14 | `CourseMapCacheEvictorTest` | **커밋 전에는 지우지 않고 커밋 후에 지운다** / `evictCellAfterCommit` → 해당 셀만 DEL(**리드모델 없이도 성립**) / `evictCourseCellAfterCommit` → 리드모델 좌표로 DEL / 리드모델 부재 → no-op / 이빅트 실패가 커밋한 호출자에게 전파되지 않음 [R3] | 통합 |
 | 15 | `CourseServiceUnitTest` 보강 | `deleteCourse`·`updateCourse`가 좌표와 함께 이빅트를 예약 / 이름+공개 동시 변경 시 **1회만** | 단위 |
 | 16 | `RunningCommandServiceTest` 보강 | `deleteRunnings` → 영향 코스마다 이빅트 1건, **좌표가 채워져 있음**(= 벌크 삭제 후 LazyInitializationException 없음) [R2] | 단위(mock) |
@@ -718,12 +719,13 @@ Region 일체(`Region`, `RegionApi`, `RegionService`, `POST /v1/regions`, `regio
 | D5 | `deleteRunnings`에서 LAZY `Course` 초기화 허용 (단, **벌크 삭제 이전에** [R2]) | `findByIds`에 fetch join / 좌표를 nullable로 | 공용 쿼리를 바꿔 다른 호출자에 영향을 주거나 이빅트 계약을 이완하는 것보다, "좌표는 항상 있다"는 단일 계약이 낫다. 비용은 실질 SELECT 1회 |
 | D6 | 이빅트 트리거를 **전용 경로**로 신설, `Run*` 이벤트 불변 | 기존 이벤트에 좌표 필드 추가 | 기존 계약 파급 최소화. `Run*`의 다른 구독자에 영향 0 |
 | D7 | `CourseCellCacheMetrics` 별도 클래스 | 각 클래스에서 `MeterRegistry` 직접 사용 | 코드베이스 첫 커스텀 메트릭 — 이름·태그 규약을 한곳에 응집해야 후속 메트릭이 표류하지 않는다 |
-| D8 | fill-limit·플래그를 `@Value`로 | `private static final` 상수 | 상수면 이 경로 테스트에 코스 500개가 필요하다. 운영 튜닝 레버는 부수 효과 |
+| D8 | fill-limit을 `@Value`로 | `private static final` 상수 | 상수면 이 경로 테스트에 코스 500개가 필요하다. 운영 튜닝 레버는 부수 효과. **롤백 스위치가 아니다** — D14로 플래그가 사라진 뒤에도 이 주입값은 성격이 달라 그대로 남는다 |
 | D9 | `CacheConfig` 완전 제거 | `@EnableCaching`만 남기기 | 죽은 인프라를 남기면 미래에 "아무도 이빅트하지 않는 캐시"가 조용히 생긴다 |
 | D10 | `StringRedisTemplate` + 순수 JSON | `RedisTemplate<String,Object>` + GenericJackson2 | `@class` 타입 정보를 값에 심지 않아 패키지 이동에 안전하고, 파이프라인 바이트 제어가 가능 |
 | D11 | antimeridian은 clamp만, wrap 없음 | ±180 wrap 처리 | r≤3km에서 해당 지역은 태평양 무인 해역. 분기 실익 0, 테스트 부담만 발생 |
 | D12 | 이빅트를 **도메인 이벤트가 아니라 직접 호출**로 (`CourseMapCacheEvictor`). 커밋 후 타이밍은 `TransactionSynchronizationManager`로 유지 | `CourseMapDataChangedEvent` + `@TransactionalEventListener` (초안·1차 구현) | 아래 서술 참조 |
 | D13 | **구경로 완전 제거** — `findCoursesByPositionCached`·`CourseCacheRepository`·`CourseCacheEventListener`와 딸린 `CourseQueryModel`·`CourseSubMapper`·`RunFinishedEvent`·`RunUpdatedEvent`까지 | 결정 10대로 `@Deprecated` 존치 | 아래 서술 참조 |
+| D14 | **롤백 플래그 제거** — `course.cache.cell-bucket.enabled`와 강등① 분기를 없앴다. 남는 강등은 광역·커버링 폭발·Redis 장애 **3갈래** | 플래그 존치(초안·1차 구현) — 재배포 없는 킬스위치 | 아래 서술 참조 |
 
 ### D12 — 이벤트에서 직접 호출로 (판단 변경)
 
@@ -748,6 +750,16 @@ Region 일체(`Region`, `RegionApi`, `RegionService`, `POST /v1/regions`, `regio
 - **`CourseRunEvent`는 남는다.** 이쪽은 소비자가 실재한다 — `PushEventListener`가 받아 푸시를 보낸다. 두 이벤트와 운명이 갈리는 기준은 "이벤트라서"가 아니라 **소비자가 있는가**다.
 
 죽은 코드를 `@Deprecated`로 남겨 두면 다음 사람이 "왜 캐시 경로가 둘인가"를 매번 다시 조사해야 하고, D9(`CacheConfig` 완전 제거)에서 든 것과 같은 이유로 언젠가 누군가 그 경로를 되살린다. 제거 비용이 죽은 코드 확인 한 번뿐이라 미룰 이유가 없었다.
+
+### D14 — 롤백 플래그 제거 (판단 변경)
+
+초안·1차 구현은 `course.cache.cell-bucket.enabled`(기본 true) 플래그를 두고 그것을 강등①로 삼았다. **사용자 판단으로 플래그와 그 분기를 제거했다.**
+
+- **트레이드오프는 "쓰지 않을 스위치를 남겨두는 비용 vs 재배포 없는 킬스위치의 가치"였다.** 플래그가 있으면 강등 갈래가 하나 늘고, 그 갈래를 유지하는 테스트·문서·`@Value` 필드가 따라붙는다. 그 비용을 계속 지불하는 대신 리버트로 대응하는 쪽을 택했다.
+- **잃는 것을 정확히 적어 둔다 — 재배포 없이 새 캐시를 끄는 수단이 사라졌다.** 캐시 로직 자체가 잘못된 것으로 드러나면 대응은 **PR 리버트 + 재배포**뿐이다.
+- **잃지 않는 것 — 직행 폴백은 그대로다.** 남은 강등 3갈래(광역 요청·커버링 폭발·Redis 장애)가 `queryDirect`를 계속 쓰므로, Redis 장애 같은 런타임 실패에는 여전히 자동으로 직행한다. 정리하면 **인프라 장애 대응은 유지되고, 로직 결함 대응만 리버트로 옮겨간 것**이다. 이 둘을 뭉뚱그리면 "폴백이 있으니 안전하다"는 잘못된 안도로 이어진다.
+- **§3-2·M8의 "직행 경로에도 원 필터"는 그대로 유효하다.** 원래 근거는 "플래그를 내려도 응답이 바뀌지 않게"였지만, 플래그가 사라진 지금의 근거는 더 강하다 — 강등 3갈래가 여전히 직행으로 빠지므로, **같은 요청이 Redis 상태에 따라 다른 결과를 내면 안 되기 때문**이다. 파리티는 롤백 편의가 아니라 정확도 요구(§1-2)에 걸려 있다.
+- `course.cache.cell-bucket.fill-limit`은 **남는다.** 이것은 롤백 스위치가 아니라 "적재 스킵 경로를 코스 수백 개 없이 테스트하기 위한 주입값"(D8)이라 성격이 다르다.
 
 ---
 
@@ -774,7 +786,7 @@ Region 일체(`Region`, `RegionApi`, `RegionService`, `POST /v1/regions`, `regio
 1. Redis `maxmemory-policy` 확인 — 셀 키 수가 기존 결과셋 키보다 많다(리플레이 기준 24,028 vs 5,245).
 2. `/actuator/prometheus`에 `ghostrunner_course_cell_cache_*` 노출 확인.
 3. 배포 후 `cells{hit} / cells{sum}`을 리플레이 예측(22%)과 대조. 크게 어긋나면 트래픽 패턴 변화 신호다.
-4. 롤백은 `course.cache.cell-bucket.enabled=false` — 재배포 없이 직행 전환.
+4. **롤백은 PR 리버트 + 재배포다.** 롤백 플래그를 두지 않으므로(D14) 재배포 없이 새 캐시를 끄는 수단은 없다. 단 Redis 장애·광역 요청·커버링 폭발은 강등 3갈래가 런타임에 직행으로 빼주므로, 인프라 장애에 리버트를 기다릴 필요는 없다 — 리버트는 **캐시 로직 자체가 잘못됐을 때**의 수단이다.
 5. `fills{skipped_over_limit}`이 관측되면 `course.cache.cell-bucket.fill-limit`을 상향.
 6. `lookups{degraded}` 급증은 Redis 장애 신호 — 서비스는 직행으로 정상 동작하지만 DB 부하가 오른다.
 7. 배포 순서 제약 없음. FE 수정 없음. 콜드 스타트 무해(미스 비용 = 현행 직행과 같은 bbox 쿼리)라 프리로드 불필요.

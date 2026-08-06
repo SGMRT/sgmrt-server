@@ -23,7 +23,7 @@
 | 커버링 | 요청 반경 bbox의 셀 전부를 **인덱스 산술로 열거**(관대 수집) + **응답 시 실좌표 거리 필터** | 수집은 관대하게(누락 방지), 최종 판정은 정확하게 |
 | 광역 가드 | radiusM > 3,000이면 캐시 우회 (리드모델 직행) | 커버링 셀 수 폭증 방지. 탐색(스크롤) 요청도 좌표만 있으면 캐시 가능하므로 별도 홈 판정 불필요 |
 | 커버링 상한 가드 | `MAX_COVERING_CELLS = 128` — **열거 전에 `coveringCount()` O(1) 산술로 판정** | 좌표에 검증 애노테이션이 없어 극단 좌표가 그대로 들어온다 (**초안에 없던 가드**) |
-| 롤백 스위치 | `course.cache.cell-bucket.enabled` 플래그 | 배포 후 이상 시 플래그로 직행 전환 |
+| 롤백 스위치 | ~~`course.cache.cell-bucket.enabled` 플래그~~ → **없다. 제거했다** | 초안·1차 구현은 "배포 후 이상 시 플래그로 직행 전환"이었다. **[이후 판단 변경]** 쓰지 않을 스위치를 남겨두는 비용을 지불하지 않기로 했다 — 롤백은 **PR 리버트 + 재배포**다. 단 Redis 장애 같은 런타임 실패는 남은 강등 3갈래가 그대로 직행으로 뺀다 (§3-5, 설계 D14) |
 | Redis 타임아웃 | 응답 500ms · 재시도 1회 × 200ms (`RedisConfig.redisTimeoutCustomizer`) | 타임아웃이 없으면 "Redis 장애 시 강등"이 성립하지 않는다 (**초안에 없던 사실** — §3-10) |
 | regionId 인프라 | 파라미터 **수용하되 미사용**, `POST /v1/regions`·`region` 테이블 존치 | 외부 API 불변 (배포된 FE가 호출 중) + 지역 기능 자산 |
 
@@ -91,7 +91,7 @@ flowchart LR
 | `CellBucket` / `CellCacheLookup` | 적재 단위 / 조회 결과. `degraded`를 **타입에 강제** | 로직 |
 | `CourseCellCache` | 셀 키 조립, MGET / 파이프라인 SET / DEL, JSON 직렬화, **실패 흡수 + 신호화** | 어떤 셀을 읽을지 결정 (호출자 몫) |
 | `CourseCellCacheMetrics` | 미터명·태그 규약 응집. `result` 태그로 결과 표현 | 판정 (호출자가 결과를 넘긴다) |
-| `CourseReadModelReader` | 조회 오케스트레이션: 커버링 → 캐시 → 부분 채움 → 필터. **강등 4갈래 판정** | 랜덤 선별·응답 조립 (Facade 몫 — 기존 그대로) |
+| `CourseReadModelReader` | 조회 오케스트레이션: 커버링 → 캐시 → 부분 채움 → 필터. **강등 3갈래 판정**(광역 요청 · 커버링 폭발 · Redis 장애) | 랜덤 선별·응답 조립 (Facade 몫 — 기존 그대로) |
 | `CourseMapCacheEvictor` | 커밋 후 코스 셀 1개 DEL을 예약·실행. 콜백 전체 try/catch | 리드모델 갱신 (Writer 몫 — 같은 트랜잭션), 언제 지울지 판단 (호출자 몫) |
 
 **기존 코드 정리 결과:**
@@ -326,25 +326,26 @@ private List<String> fetchCellValues(List<GeoCell> covering) {
 
 ```java
 public List<CourseMapDto> findCoursesForMap(double lat, double lng, int radiusM) {
-    if (!cellBucketEnabled) {                        // 강등① 롤백 플래그 off
+    if (radiusM > MAX_CACHEABLE_RADIUS_M) {          // 강등① 광역 요청
         return queryDirect(lat, lng, radiusM);
     }
-    if (radiusM > MAX_CACHEABLE_RADIUS_M) {          // 강등② 광역 요청
-        return queryDirect(lat, lng, radiusM);
-    }
-    if (isCoveringTooLarge(lat, lng, radiusM)) {     // 강등③ 커버링 폭발(극단 좌표) — coveringCount O(1) 판정
+    if (isCoveringTooLarge(lat, lng, radiusM)) {     // 강등② 커버링 폭발(극단 좌표) — coveringCount O(1) 판정
         return queryDirect(lat, lng, radiusM);
     }
 
     CellCacheLookup lookup = cellCache.lookup(GeoCell.covering(lat, lng, radiusM));
-    if (lookup.degraded()) {                         // 강등④ Redis 장애
+    if (lookup.degraded()) {                         // 강등③ Redis 장애
         return queryDirect(lat, lng, radiusM);
     }
     return withinRadius(candidatesOf(lookup), lat, lng, radiusM);
 }
 ```
 
-**강등 4갈래가 전부 `queryDirect` 한 곳으로 수렴한다.** 강등 결과가 언제나 현행 직행 경로와 같아야 롤백이 플래그 하나로 끝나기 때문이다. 판정 순서는 **싼 것부터**다 — 플래그(필드 읽기) → 광역(비교 1회) → 커버링 수(산술) → Redis 장애(1왕복). 걸러질 요청일수록 적은 비용으로 빠진다.
+> **[이후 판단 변경] 강등①은 원래 롤백 플래그(`course.cache.cell-bucket.enabled`) off였다.** 플래그와 그 분기를 제거하면서 **4갈래가 3갈래로 줄었고** 나머지가 ①②③으로 당겨졌다. 위 코드가 현재 사실이다 (설계 D14).
+
+**강등 3갈래가 전부 `queryDirect` 한 곳으로 수렴한다.** 강등 결과가 언제나 직행 경로와 같아야 **같은 요청이 Redis 상태에 따라 다른 결과를 내지 않는다.** 판정 순서는 **싼 것부터**다 — 광역(비교 1회) → 커버링 수(산술) → Redis 장애(1왕복). 걸러질 요청일수록 적은 비용으로 빠진다.
+
+**플래그가 사라졌으므로 "끄는 수단"과 "폴백"이 갈린다.** 재배포 없이 새 캐시를 끌 방법은 없다 — 캐시 로직 자체가 잘못됐다면 **PR 리버트 + 재배포**다. 반면 `queryDirect` 폴백은 위 3갈래가 계속 쓰므로 **Redis 장애 같은 런타임 실패에는 여전히 자동으로 직행한다.** 인프라 장애 대응은 유지되고, 로직 결함 대응만 리버트로 옮겨간 것이다.
 
 **초안에 없던 결정 — 직행 경로에도 원 거리 필터를 적용한다.**
 
@@ -359,7 +360,9 @@ private List<CourseMapDto> queryDirect(double lat, double lng, int radiusM) {
 
 초안은 직행을 "기존 bbox 조회 그대로(변경 없음)"로 뒀다. 그러면 **박스 모서리에 있는 코스가 캐시 경로에서는 빠지고 직행에서는 나온다.** 플래그를 내리는 순간 응답 내용이 바뀌는 롤백은 롤백이 아니다. 두 경로가 같은 필터로 끝나야 §3-2의 "원 ⊆ 박스"가 파리티로 완성된다. (부수 효과로 현행 API의 반경 정확도가 올라간다 — 모서리 오검출이 사라진다.)
 
-**강등④에서 메트릭을 다시 세지 않는다.** `CourseCellCache`가 이미 `LookupResult.DEGRADED`를 기록했다. 여기서 또 세면 이중 계수로 degraded 비율이 부풀어 장애 신호가 오염된다.
+> **[이후 판단 변경] 근거가 바뀌었고, 결정은 유지된다.** 위 "플래그를 내리는 순간…"은 롤백 플래그가 있던 시점의 서술이다. 플래그는 제거됐지만(설계 D14) **결정 자체는 그대로 유효하다** — 남은 강등 3갈래(광역·커버링 폭발·Redis 장애)가 여전히 직행으로 빠지므로, 두 경로의 필터가 다르면 **같은 요청이 Redis 상태에 따라 다른 결과를 내게 된다.** 즉 이 결정을 떠받치는 것은 롤백 편의가 아니라 정확도 요구다. 플래그가 사라져 오히려 근거가 강해졌다.
+
+**강등③에서 메트릭을 다시 세지 않는다.** `CourseCellCache`가 이미 `LookupResult.DEGRADED`를 기록했다. 여기서 또 세면 이중 계수로 degraded 비율이 부풀어 장애 신호가 오염된다.
 
 **적재는 언제나 원 필터보다 앞이다.**
 
@@ -609,7 +612,7 @@ public enum CacheType {
 ## 4. 롤아웃
 
 1. **배포 순서 없음** — 서버 단독 배포. 콜드 스타트 무해 (미스 비용 = 현행 직행과 동일한 bbox 쿼리). 프리로드 불필요.
-2. **롤백** — `course.cache.cell-bucket.enabled=false`로 직행 전환. 직행에도 원 필터를 적용했으므로(§3-5) **플래그를 내려도 응답 내용이 바뀌지 않는다.**
+2. **롤백** — ~~`course.cache.cell-bucket.enabled=false`로 직행 전환~~ → **[판단 변경] 플래그를 제거했다(설계 D14). 롤백은 PR 리버트 + 재배포다** — 재배포 없이 새 캐시를 끄는 수단은 없다. 다만 Redis 장애·광역 요청·커버링 폭발은 강등 3갈래가 런타임에 직행으로 빼주므로, **인프라 장애에 리버트를 기다릴 필요는 없다.** 리버트는 캐시 로직 자체가 잘못됐을 때의 수단이다. 직행에도 원 필터를 적용했으므로(§3-5) **어느 경로로 빠지든 응답 내용은 같다.**
 3. **관측** — §3-7의 메트릭. `cells{hit}/(hit+miss)`를 리플레이 예측(×1 회피 22%)과 대조하고, `lookups{degraded}`와 auth 5xx 비율을 함께 본다.
 
 ## 5. 테스트 (구현 결과)
@@ -622,7 +625,7 @@ public enum CacheType {
 | `GeoDistanceTest` | **원 안으로 판정된 점은 반드시 같은 중심·반경의 `BoundingBox` 안에 있다** — 원 ⊆ 박스를 테스트로 못박았다 |
 | `CourseCellCacheTest` (Testcontainers) | 25필드 왕복 복원, 빈 배열 셀도 히트, TTL 600초, **값이 깨진 셀만 미스가 되고 나머지는 히트** |
 | `CourseCellCacheDegradeTest` | MGET 실패·null·**크기 불일치가 미스가 아니라 강등**, 적재·이빅트는 예외를 전파하지 않음 |
-| `CourseReadModelReaderTest` (Testcontainers) | 히트 셀은 갱신되지 않고 미스 셀만 적재(중복 없음), **빈 셀 네거티브 캐싱 재사용**, 광역·극단 좌표 강등, **fill-limit 도달 시 응답은 내되 적재 전체 스킵**, 플래그 off |
+| `CourseReadModelReaderTest` (Testcontainers) | 히트 셀은 갱신되지 않고 미스 셀만 적재(중복 없음), **빈 셀 네거티브 캐싱 재사용**, 광역·극단 좌표 강등, **fill-limit 도달 시 응답은 내되 적재 전체 스킵**, ~~플래그 off~~<br>**[이후 삭제]** 플래그가 제거되면서(설계 D14) `CellBucketDisabled` 중첩 클래스도 함께 지웠다. **남은 강등 3갈래 중 광역·극단 좌표는 이 파일이, Redis 장애는 mock이 필요해 `CourseCellCacheDegradeTest`가 담당한다** |
 | ~~`CourseMapPathParityTest`~~ | **DB 채움 경로와 캐시 히트 경로의 후보가 같고, 박스 모서리(반경 밖) 코스는 양쪽 모두에서 빠진다** — §3-5의 직행 필터 결정을 고정<br>**[이후 삭제]** 구경로가 제거되면서 비교 대상이 사라졌다. **§3-5의 결정(직행 경로에도 원 필터) 자체는 그대로 유효하고**, 그 근거인 원 ⊆ 박스는 `GeoDistanceTest`가, 두 경로의 후보 동일성은 `CourseReadModelReaderTest`의 파리티 테스트가 이어받아 **일원화됐다** |
 | `CourseMapCacheEvictorTest` (Testcontainers) | **커밋 전에는 지우지 않고 커밋 후에 지운다**(`TransactionTemplate`으로 진짜 커밋 — 이벤트 시절에는 검증할 수 없던 불변식), **리드모델이 없어도 호출자가 넘긴 좌표로 해당 셀만 삭제**(코스 삭제 케이스), `courseId` 경로의 리드모델 역산, 이웃 셀 생존, **이빅트가 실패해도 커밋한 호출자에게 예외가 전파되지 않음** [R3] |
 | `RedisConfigTest` | single·cluster·sentinel 세 토폴로지에 타임아웃·재시도가 모두 적용되고, 미지원 토폴로지에서 **기동을 깨뜨리지 않음** |

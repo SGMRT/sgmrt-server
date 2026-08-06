@@ -83,7 +83,7 @@
 - [ ] 소프트삭제 4방식 → 1방식 통일 ([02-domain-model.md](02-domain-model.md))
 - [ ] 리포지토리 패키지 명명 통일: `infra/persistence` vs `dao`
 - [ ] 페이스 표현 VO 도입 — `"5:30"` ↔ `5.30(Double)` 손실 인코딩 반복 제거
-- [ ] `Running.of()`의 `member.getRuns().contains()` 제거 — 전체 컬렉션 지연로딩 + O(n)
+- [x] `Running.of()`의 `member.getRuns().contains()` 제거 — 전체 컬렉션 지연로딩 + O(n). (러닝 저장 트랜잭션 좁히기와 함께 제거. 저장은 `runningRepository.save`가 하므로 역방향 add가 불필요했고, 제거 덕에 detached `Member`를 넘겨도 `LazyInitializationException`이 나지 않는다)
 - [ ] `Member.runs`의 `cascade = ALL` 재검토 — 같은 영속성 컨텍스트에서 `runningRepository.delete(entity)` 호출 시 컬렉션 cascade PERSIST가 REMOVED 상태를 되돌려 **소프트삭제가 조용히 무효화됨** (2026-08-04 리드모델 테스트 중 실증. 현재 프로덕션은 벌크 삭제만 써서 미발현 — 엔티티 삭제 경로가 추가되면 발현하는 지뢰)
 - [ ] `RunningCommandService` `upload()` 오버로드 중복 정리
 - [ ] `NoticeApi` v1/v2/admin 컨트롤러 분리
