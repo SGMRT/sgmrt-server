@@ -45,7 +45,7 @@
 - [ ] TOP4 8컬럼 → 정규화(별도 랭킹 테이블) vs 유지 결정. 랭킹 조회 패턴(`/top-ranking`, `/ranking`, `/top-percentage`)과 함께 재설계
 - [ ] 쓰기 경로: BEFORE_COMMIT 동기 갱신 유지 vs AFTER_COMMIT/비동기 전환(정합성 요구 수준 결정)
 - [x] 읽기 경로: `CourseFacade`의 수동 캐시 분기 제거 → 캐시 판정·부분 채움을 `CourseReadModelReader`로 이관 (#168). Spring Cache 추상화 대신 `CourseCellCache` 어댑터 채택 — 위 "결론이 뒤집힌 항목" 참조
-- [x] 캐시 키/TTL 전략, 무효화 이벤트 정리 (#168) — 키는 코스 시작점의 geohash p6 셀, TTL 600초, 무효화는 RunFinished/RunUpdated + 신규 `CourseMapDataChangedEvent`(코스 수정·삭제·공개전환, 러닝 삭제)로 셀 1개 DEL
+- [x] 캐시 키/TTL 전략, 무효화 경로 정리 (#168) — 키는 코스 시작점의 geohash p6 셀, TTL 600초. 무효화는 **이벤트가 아니라 직접 호출**로 정리했다: 리드모델을 바꾸는 쓰기 경로(러닝 완주·기록 수정·기록 삭제, 코스 수정·삭제·공개전환)가 `CourseMapCacheEvictor`를 직접 불러 셀 1개 DEL을 예약하고, 실행만 `TransactionSynchronizationManager`로 커밋 후에 일어난다. `RunFinishedEvent`/`RunUpdatedEvent` 발행은 구경로 캐시 리스너가 아직 소비 중이라 존치 — 구경로 제거 시 함께 삭제
 - [x] `CourseFacade` 책임 분리 (#168) — 캐시는 Reader, Facade에는 랜덤 선별과 DTO 조립만 남음. 구경로(`findCoursesByPositionCached`)는 `@Deprecated`로 존치, 제거는 별도 PR
 - [ ] 관련 데드코드 정리: Redisson 분산락, `RedisRateLimiterRepository`
 

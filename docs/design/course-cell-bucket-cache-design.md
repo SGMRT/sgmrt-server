@@ -5,7 +5,9 @@
 > - 설계 근거·실측 리플레이: [`../refactoring/course-read-model/cache/07-cell-bucket-design.md`](../refactoring/course-read-model/cache/07-cell-bucket-design.md)
 > - 구현 초안(이 문서가 수정·확정함): [`../refactoring/course-read-model/cache/08-cell-bucket-implementation.md`](../refactoring/course-read-model/cache/08-cell-bucket-implementation.md)
 >
-> **08 초안과 다른 지점은 이 문서가 확정이다.** 커버링을 샘플링에서 산술 열거로 교체, 셀 수 정정(25~30 → 35~48), `GeoDistance` 신설, `CellCacheLookup` 타입 도입, `CacheConfig` 완전 제거, 이벤트 발행 5경로가 그것이다.
+> **08 초안과 다른 지점은 이 문서가 확정이다.** 커버링을 샘플링에서 산술 열거로 교체, 셀 수 정정(25~30 → 35~48), `GeoDistance` 신설, `CellCacheLookup` 타입 도입, `CacheConfig` 완전 제거, 이빅트 호출 5경로가 그것이다.
+>
+> **이빅트 경로는 이벤트가 아니라 직접 호출이다(D12).** 초안·1차 구현은 `CourseMapDataChangedEvent` + `@TransactionalEventListener`였으나 `CourseMapCacheEvictor` 직접 호출로 전환했다. 커밋 후 실행이라는 타이밍만 `TransactionSynchronizationManager`로 그대로 가져왔다. 판단이 바뀐 이력은 08 §3-6에 남아 있다.
 >
 > **리뷰 반영(R1~R4)**은 §3·§9에 `[R#]`로 표시했다. Architect 설계 원안에 실제 코드와 어긋나는 지점이 있어 검증 단계에서 교정한 항목이며, 12건 확정 의사결정·컴포넌트 분해·레이어 배치는 그대로 유지한다.
 
@@ -35,9 +37,9 @@
 
 | # | 결함 | 해소 |
 |---|---|---|
-| M1 | `RunningCommandService.deleteRunnings`(:183)가 이벤트를 발행하지 않아 TOP4 변경에 이빅트가 없다 | 이벤트 경로 e (§4) |
-| M2 | 코스 삭제는 리드모델 하드 삭제 → 커밋 후 courseId로 좌표 역산 불가 | 이벤트에 좌표 동봉 (§3-5) |
-| M3 | 코스 공개 전환(`syncPublicity`)이 리드모델 생성의 **유일** 경로인데 트리거가 없어 신규 코스가 최대 10분 미노출 | 이벤트 경로 b~d (§4) |
+| M1 | `RunningCommandService.deleteRunnings`가 TOP4를 바꾸면서 이빅트를 트리거하지 않는다 | 이빅트 경로 e (§4) |
+| M2 | 코스 삭제는 리드모델 하드 삭제 → 커밋 후 courseId로 좌표 역산 불가 | 호출자가 좌표를 넘기는 이빅트 (§3-5) |
+| M3 | 코스 공개 전환(`syncPublicity`)이 리드모델 생성의 **유일** 경로인데 트리거가 없어 신규 코스가 최대 10분 미노출 | 이빅트 경로 b~d (§4) |
 | M4 | 샘플링 커버링은 경계 셀 누락 가능(조용한 코스 소실) | 산술 열거로 대체 (§3-1) |
 | M5 | 08 문서의 "셀 25~30개"는 오기 | 실측 정정 — r=2000 → 35~48 (§3-1) |
 | M6 | putAll 개별 SET은 콜드 시 최대 ~80 RTT | `executePipelined` (§3-6) |
@@ -61,7 +63,7 @@
 | 3 | 채움 LIMIT 도달 | fill-limit=500(`@Value`). 도달 시 응답은 반환하되 **적재는 전체 스킵** + warn + 메트릭 |
 | 4 | 채움-이빅트 레이스 | putAll을 `executePipelined`로 묶어 창을 최소화한 뒤 수용 (마커 없음) |
 | 5 | Thundering herd | 수용 (분산락 없음) |
-| 6 | 이빅트 트리거 보강 | 좌표를 실은 **신규 이벤트 1종**. 기존 `RunFinishedEvent`/`RunUpdatedEvent` 구독은 유지 |
+| 6 | 이빅트 트리거 보강 | 리드모델을 바꾸는 쓰기 경로가 **커밋 후 이빅트를 직접 예약**한다. 좌표를 되찾을 수 없는 경로(코스·러닝 삭제)는 좌표를 함께 넘긴다. `RunFinishedEvent`/`RunUpdatedEvent` **발행**은 구경로 리스너를 위해 존치하되, 셀 캐시 이빅트는 더 이상 그 구독에 걸려 있지 않다 (D12) |
 | 7 | C-005 | `RegionNotFoundException`·`ErrorCode.REGION_NOT_FOUND` 제거. Region 도메인·API·테이블·`RegionService`는 존치, `RegionRepository.findByCenterLatBetweenAndCenterLngBetween`만 제거 |
 | 8 | 캐시 레지스트리 | `CacheType` 존치(이름·TTL 단일 출처로 역할 재정의). `CacheConfig` + `@EnableCaching` 제거 |
 | 9 | 커버링 | 셀 인덱스 산술 열거(샘플링 금지). `MAX_COVERING_CELLS=128` 초과 시 직행 강등. 4xx 신설 금지 |
@@ -88,8 +90,8 @@ flowchart TB
     end
     subgraph WRITE["쓰기"]
         W["CourseService · RunningCommandService"] -->|"같은 트랜잭션"| WM["CourseReadModelWriter (X락)"]
-        W -.->|"AFTER_COMMIT"| EV["CourseCellCacheEvictListener"]
-        EV -->|"소속 셀 1개 DEL"| RC
+        W -->|"이빅트 예약 (직접 호출)"| EV["CourseMapCacheEvictor"]
+        EV -.->|"커밋 후 실행 → 소속 셀 1개 DEL"| RC
     end
 ```
 
@@ -221,19 +223,24 @@ public record CellCacheLookup(List<GeoCell> missedCells,
 
 ---
 
-### 3-5. `CourseMapDataChangedEvent` (신규) — `domain/course/domain/events/CourseMapDataChangedEvent.java`
+### 3-5. 이빅트 좌표 스냅샷 — `RunningCommandService.CourseMapCell` (private record)
+
+이빅트에 필요한 입력은 `(courseId, startLat, startLng)` 세 값뿐이고, 이 값들이 **언제 확보되는가**가 유일한 설계 쟁점이다.
+
+- 코스 삭제는 커밋 후 리드모델이 없어 `courseId`로 셀을 역산할 수 없다(M2) → 호출자가 좌표를 함께 넘긴다.
+- 커밋 후 콜백은 영속성 컨텍스트가 정리된 뒤에 실행된다 → 콜백에 엔티티·LAZY 프록시를 담으면 안 되고, **값만** 캡처해야 한다.
+- `deleteRunnings`는 벌크 삭제가 컨텍스트를 비우므로 좌표를 **삭제 이전에** 뽑아 둬야 한다([R2]).
+
+이 셋을 한 번에 만족시키는 것이 값 스냅샷이다. 코스 여러 개를 다루는 `deleteRunnings`만 묶음이 필요해 그 안에 private record로 둔다.
 
 ```java
-/**
- * 지도에 노출되는 코스 데이터(노출 여부 또는 카드 내용)가 바뀌었다.
- *
- * 좌표를 동봉하는 이유: 코스 삭제는 커밋 후 리드모델이 없어 courseId로 셀을 역산할 수 없다(M2).
- * 좌표는 발행 시점 트랜잭션 안에서 이미 로드된 Course에서 얻는다(추가 쿼리 없음 — 예외는 deleteRunnings).
- */
-public record CourseMapDataChangedEvent(Long courseId, Double startLat, Double startLng) {}
+/** 이빅트에 필요한 값만 담은 스냅샷. 엔티티를 커밋 후까지 들고 가지 않기 위한 것이다([R2]). */
+private record CourseMapCell(Long courseId, Double startLat, Double startLng) {}
 ```
 
-생성 팩토리는 `Course.createMapDataChangedEvent()`로 엔티티에 둔다 — `Running.createFinishedEvent()`(Running.java:72)와 동일한 기존 관례다. `id == null`이면 `IllegalStateException`을 던지는 가드도 같은 관례를 따른다.
+`CourseService`는 코스가 하나뿐이라 별도 타입 없이 이미 로드된 `Course`에서 좌표를 읽어 그대로 넘긴다(추가 쿼리 없음). 시작점이 없는 코스는 좌표가 `null`이고, 그때는 지울 셀을 정할 수 없으므로 이빅터가 건너뛴다.
+
+**초안·1차 구현은 이 자리에 `CourseMapDataChangedEvent`(좌표 동봉 도메인 이벤트)와 `Course.createMapDataChangedEvent()` 팩토리를 두었다.** 직접 호출로 바뀌면서 좌표를 이벤트에 동봉할 이유가 사라졌다 — 호출 지점이 곧 좌표를 아는 지점이기 때문이다 (D12, 08 §3-6).
 
 기존 `RunFinishedEvent`/`RunUpdatedEvent`는 **변경하지 않는다** (D6).
 
@@ -398,54 +405,62 @@ withinRadius(rows, lat, lng, radiusM):
 
 ---
 
-### 3-9. `CourseCellCacheEvictListener` (신규) — `domain/course/application/CourseCellCacheEvictListener.java`
+### 3-9. `CourseMapCacheEvictor` (신규) — `domain/course/application/CourseMapCacheEvictor.java`
 
-`CourseMapCacheEvictListener`를 삭제하고 대체한다.
+`CourseMapCacheEvictListener`(region ±2km 역산)를 삭제하고 대체한다. **이벤트 리스너가 아니라 쓰기 경로가 직접 부르는 협력자**다 (D12).
 
 ```java
 @Slf4j @Component @RequiredArgsConstructor
-public class CourseCellCacheEvictListener {
+public class CourseMapCacheEvictor {
 
     private final CourseReadModelRepository readModelRepository;
     private final CourseCellCache cellCache;
     private final CourseCellCacheMetrics metrics;
 
-    @TransactionalEventListener   // 기본 페이즈 = AFTER_COMMIT
-    public void handleCourseMapDataChanged(CourseMapDataChangedEvent event) { ... }
+    /** 좌표를 아는 호출자용 — DB 조회 0회. 코스 삭제는 커밋 후 리드모델이 없어 이 경로만 성립한다(M2). */
+    public void evictCellAfterCommit(Long courseId, Double startLat, Double startLng);
 
-    @TransactionalEventListener
-    public void handleRunFinished(RunFinishedEvent event) { evictByCourseId(event.courseId()); }
-
-    @TransactionalEventListener
-    public void handleRunUpdated(RunUpdatedEvent event) { evictByCourseId(event.courseId()); }
+    /** courseId만 아는 호출자용 — 완주·러닝 수정은 커밋 후에도 리드모델이 남아 좌표를 되찾을 수 있다. */
+    public void evictCourseCellAfterCommit(Long courseId);
 }
 ```
 
 ```
-handleCourseMapDataChanged(event):                     # DB 조회 0회
-    try:
-        if (event.startLat() == null || event.startLng() == null): return   # [R3]
-        cellCache.evict(GeoCell.of(event.startLat(), event.startLng()))
-    catch Exception e:
-        log.warn("evict failed for course {} (stale up to TTL)", event.courseId(), e)   # [R3]
+evictCellAfterCommit(courseId, startLat, startLng):
+    if (startLat == null || startLng == null): return       # 시작점이 없으면 지울 셀도 없다
+    lat = startLat; lng = startLng                          # [R2] 콜백에는 값만 싣는다
+    afterCommit(courseId, () -> cellCache.evict(GeoCell.of(lat, lng)))
 
-evictByCourseId(courseId):
-    try:
-        readModel = readModelRepository.findByCourseId(courseId).orElse(null)
-        if (readModel == null):
-            metrics.recordEviction(READ_MODEL_ABSENT)  # 비공개 코스 = 지도에 없음. 정상
-            return
-        cellCache.evict(GeoCell.of(readModel.getStartLat(), readModel.getStartLng()))
-    catch Exception e:
-        log.warn("evict failed for course {} (stale up to TTL)", courseId, e)
+evictCourseCellAfterCommit(courseId):
+    if (courseId == null): return                           # 어느 코스에도 속하지 않은 러닝
+    afterCommit(courseId, () -> evictByCourseId(courseId))
+
+evictByCourseId(courseId):                                  # 커밋 후 실행 — 리드모델 SELECT 1회
+    readModel = readModelRepository.findByCourseId(courseId).orElse(null)
+    if (readModel == null):
+        metrics.recordEviction(READ_MODEL_ABSENT)           # 비공개 코스 = 지도에 없음. 정상
+        return
+    cellCache.evict(GeoCell.of(readModel.getStartLat(), readModel.getStartLng()))
+
+afterCommit(courseId, evict):                               # 커밋 후 실행 예약
+    guarded = () -> try { evict.run() }
+                    catch (Exception e) { log.warn("evict failed for course {} (stale up to TTL)", courseId, e) }   # [R3]
+    if (!TransactionSynchronizationManager.isSynchronizationActive()):
+        guarded.run(); return                               # 미룰 커밋이 없다 → 즉시 실행
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() { afterCommit() { guarded.run(); } })
 ```
 
-**AFTER_COMMIT인 이유** — 커밋 전에 DEL하면, 지운 자리에 다른 요청이 **커밋 전 데이터**를 재적재해 TTL까지 잔존한다(자가 치유가 없다). 커밋 후 DEL은 "이미 반영된 값을 한 번 더 지우는" 안전한 방향으로만 틀린다.
+**커밋 후인 이유** — 커밋 전에 DEL하면, 지운 자리에 다른 요청이 **커밋 전 데이터**를 재적재해 TTL까지 잔존한다(자가 치유가 없다). 커밋 후 DEL은 "이미 반영된 값을 한 번 더 지우는" 안전한 방향으로만 틀린다. 이벤트를 걷어내면서도 이 타이밍만은 그대로 가져와야 했던 이유이고, 그래서 `@TransactionalEventListener` 대신 `TransactionSynchronizationManager.registerSynchronization`을 직접 쓴다.
 
-**[R3] 세 핸들러 전부에 try/catch를 두는 이유 (리뷰 교정 — WARNING)**
-Architect 원안은 `handleCourseMapDataChanged`를 `evict(GeoCell.of(...))` 한 줄로만 두었다. `AbstractPlatformTransactionManager.triggerAfterCommit`은 AFTER_COMMIT 동기화에서 던져진 예외를 **호출자에게 전파한다**. 즉 커밋은 이미 성공했는데 사용자에게는 500이 나가는, 가장 나쁜 형태의 실패가 된다. 기존 `CourseMapCacheEvictListener`가 전체를 try/catch로 감싼 이유가 이것이므로 그 관례를 그대로 유지한다. `CourseCellCache.evict`가 Redis 예외를 이미 흡수하므로 이 catch가 잡을 것은 좌표 null 같은 프로그래밍 오류뿐이지만, 이빅트 실패는 **정합성 사고가 아니라 최대 TTL(600s) 지연**이므로 밖으로 던질 이유가 없다.
+**동기화가 비활성이면 즉시 실행하는 이유** — 트랜잭션 밖에서 불렸다면 기다릴 커밋이 없다. 예약을 건너뛰면 이빅트가 조용히 사라지므로, 그 자리에서 지우는 쪽이 안전한 방향으로 틀린다.
 
-**리드모델 조회가 AFTER_COMMIT에서 동작하는 근거** — `afterCommit` 동기화는 리소스가 언바인드되기 전에 호출되므로 바인드된 `EntityManager`로 읽기 쿼리가 나간다. 현행 `CourseMapCacheEvictListener`가 같은 방식으로 이미 운영 중이다.
+**[R3] 커밋 후 콜백 전체를 try/catch로 감싸는 이유 (리뷰 교정 — WARNING)**
+`AbstractPlatformTransactionManager.triggerAfterCommit`은 afterCommit 동기화에서 던져진 예외를 **호출자에게 전파한다**. 즉 커밋은 이미 성공했는데 사용자에게는 500이 나가는, 가장 나쁜 형태의 실패가 된다. 삭제된 `CourseMapCacheEvictListener`가 전체를 try/catch로 감싼 이유가 이것이므로 그 관례를 그대로 유지한다. `CourseCellCache.evict`가 Redis 예외를 이미 흡수하므로 이 catch가 잡을 것은 좌표 null 같은 프로그래밍 오류뿐이지만, 이빅트 실패는 **정합성 사고가 아니라 최대 TTL(600s) 지연**이므로 밖으로 던질 이유가 없다.
+
+**[R2] 콜백이 primitive만 캡처하는 이유** — 커밋 시점에는 영속성 컨텍스트가 정리되어 있어, 클로저에 담긴 엔티티·LAZY 프록시를 만지면 `LazyInitializationException`이 난다. 좌표·식별자처럼 값만 캡처한다.
+
+**리드모델 조회가 커밋 후에도 동작하는 근거** — `afterCommit` 동기화는 리소스가 언바인드되기 전에 호출되므로 바인드된 `EntityManager`로 읽기 쿼리가 나간다. 삭제 대상인 `CourseMapCacheEvictListener`가 같은 방식으로 이미 운영 중이었다.
 
 ---
 
@@ -487,11 +502,9 @@ public enum CacheType {
 api/         CourseApi                         — 변경 없음 (javadoc만)
 application/ CourseFacade                      — 선별·조립. 캐시를 모른다
              CourseReadModelReader             — 캐시 판정 + 오케스트레이션
-             CourseCellCacheEvictListener      — AFTER_COMMIT 이빅트
-             CourseService                     — + 이벤트 발행
+             CourseMapCacheEvictor             — 커밋 후 이빅트 예약·실행
+             CourseService                     — + 이빅트 예약 호출
 domain/      GeoCell, GeoDistance, BoundingBox — 순수 산수, I/O 0
-             events/CourseMapDataChangedEvent
-             Course                            — + 이벤트 팩토리
 dao/         CourseCellCache, CourseCellCacheMetrics  — Redis 어댑터
              CourseReadModelRepository         — 불변
 dto/query/   CellBucket, CellCacheLookup, CourseMapDto(불변)
@@ -501,7 +514,7 @@ dto/query/   CellBucket, CellCacheLookup, CourseMapDto(불변)
 
 `CourseCellCacheMetrics`는 `dao/`에 있지만 `CourseReadModelReader`(application)도 사용한다. application → dao 방향이라 규약 위반은 아니다.
 
-`running` 도메인이 `course` 도메인의 이벤트를 발행하는 것은, `RunningCommandService`가 이미 `CourseService`·`CourseReadModelWriter`를 직접 호출하고 있는 기존 결합과 같은 수준이다.
+`running` 도메인이 `course` 도메인의 `CourseMapCacheEvictor`를 주입받는 것은, `RunningCommandService`가 이미 `CourseService`·`CourseReadModelWriter`·`CourseSubscriptionService`를 직접 주입받아 쓰고 있는 기존 결합과 같은 수준이다. 오히려 그 사실이 D12의 근거다 — 이벤트는 이 결합을 줄인 게 아니라 일부만 가리고 있었다.
 
 ---
 
@@ -523,10 +536,10 @@ dto/query/   CellBucket, CellCacheLookup, CourseMapDto(불변)
 ```
 CourseService.updateCourse @Transactional {
     makePublic → readModelWriter.syncPublicity(MANDATORY, X락, 리드모델 생성)
-    → eventPublisher.publishEvent(course.createMapDataChangedEvent())
+    → mapCacheEvictor.evictCellAfterCommit(courseId, startLat, startLng)   # 예약만 한다
 }
 → COMMIT
-→ CourseCellCacheEvictListener AFTER_COMMIT → evict(GeoCell.of(좌표))   # DEL 1회, DB 조회 0회
+→ 등록된 afterCommit 동기화 실행 → evict(GeoCell.of(좌표))   # DEL 1회, DB 조회 0회
 ```
 
 ---
@@ -537,33 +550,38 @@ CourseService.updateCourse @Transactional {
 
 ---
 
-## 4. 이벤트 발행 5경로
+## 4. 이빅트 호출 경로
 
-리드모델을 바꾸는 쓰기 경로는 `CourseReadModelWriter` 호출 7곳이 전부다. 아래 표가 그 전수와 이빅트 커버리지다.
+리드모델을 바꾸는 쓰기 경로는 `CourseReadModelWriter` 호출 7곳이 전부다. 아래 표가 그 전수와 이빅트 커버리지다. 모든 경로가 **같은 트랜잭션 안에서 `CourseMapCacheEvictor`를 직접 부르고**, 실행은 커밋 후로 미뤄진다.
 
-| # | 쓰기 경로 | 발행 지점 | 기존 이벤트 | 조치 | 좌표 출처 |
-|---|---|---|---|---|---|
-| — | `applyRun` ← `RunningCommandService:64` (일반 러닝) | — | `RunFinishedEvent` :66 | 구독 유지 | 리스너가 리드모델 조회 |
-| — | `applyRun` ← `RunningCommandService:113` (코스 따라 러닝) | — | `RunFinishedEvent` :129 | 구독 유지 | 리스너가 리드모델 조회 |
-| — | `recalculate` ← `:174` (러닝 공개 전환) | — | `RunUpdatedEvent` :169 | 구독 유지 | 리스너가 리드모델 조회 |
-| **a** | `delete` ← `CourseService.deleteCourse:90` | `readModelWriter.delete()` **직전** | 없음 | **신규 발행** | 로드된 `Course` |
-| **b~d** | `rename`/`syncPublicity` ← `CourseService.updateCourse:99` | 메서드 **끝**, 이름·공개 중 하나라도 바뀌었으면 **1회** | 없음 | **신규 발행** | 로드된 `Course` |
-| **e** | `recalculate` ← `RunningCommandService.deleteRunnings:191` | `recalculate` 후 | 없음 | **신규 발행** | **벌크 삭제 전에 수집** [R2] |
+| # | 쓰기 경로 | 이빅트 호출 | 좌표 출처 |
+|---|---|---|---|
+| — | `applyRun` ← `RunningCommandService:68` (일반 러닝) | `evictCourseCellAfterCommit(course.getId())` :71 | 커밋 후 리드모델 조회 |
+| — | `applyRun` ← `RunningCommandService:121` (코스 따라 러닝) | `evictCourseCellAfterCommit(courseId)` :125 | 커밋 후 리드모델 조회 |
+| — | `recalculate` ← `:197` (러닝 공개 전환) | `evictCourseCellAfterCommit(courseIdOf(running))` :189 | 커밋 후 리드모델 조회 |
+| **a** | `delete` ← `CourseService.deleteCourse:95` | `evictCellAfterCommit(...)` :93 — `readModelWriter.delete()` **직전** | 로드된 `Course` (삭제 후엔 되찾을 수 없다) |
+| **b~d** | `rename`/`syncPublicity` ← `CourseService.updateCourse:156,173` | `evictCellAfterCommit(...)` :128 — 메서드 **끝**, 이름·공개 중 하나라도 바뀌었으면 **1회** | 로드된 `Course` |
+| **e** | `recalculate` ← `RunningCommandService.deleteRunnings:238` | `evictCellAfterCommit(...)` :241 — `recalculate` 후 | **벌크 삭제 전에 스냅샷** [R2] |
 
-- **b~d를 `updateCourse` 한 곳에서 1회만 발행하는 이유 (D4)** — 이름과 공개 여부가 동시에 바뀌어도 DEL은 한 번이면 충분하다. 개별 private 메서드에서 발행하면 중복 DEL이 나고 `evictions` 메트릭이 부풀어 관측이 왜곡된다. "`updateCourse`가 코스 카드 변경의 유일 진입점"이라는 전제를 javadoc으로 고정한다.
-- **코스 신규 생성은 발행 대상이 아니다** — 프로덕션의 유일한 생성 경로인 `RunningApplicationMapper:84`의 `Course.of(...)`가 `isPublic(false)`을 하드코딩하므로, 새 코스는 항상 비공개이고 리드모델이 없다. 최초 공개 전환은 b~d가 커버한다.
-- `updateRunningName:160`도 `RunUpdatedEvent`를 발행하지만 리드모델을 건드리지 않는다. 카드에는 코스 이름만 나가므로 DEL 1회가 헛돌 뿐 무해하다.
+- **좌표를 넘기는 경로와 `courseId`만 넘기는 경로가 갈리는 기준은 "커밋 후에 리드모델이 남아 있는가"다.** 코스 삭제·러닝 삭제는 남지 않거나 남는다는 보장이 없어 호출자가 좌표를 싣고(M2), 완주·러닝 수정은 남아 있어 이빅터가 커밋 후 SELECT 1회로 되찾는다. 후자를 좌표 경로로 통일하지 않는 이유는 호출자가 좌표를 알려면 LAZY `Course`를 초기화해야 하고, 그 값이 커밋 후 시점의 진실이라는 보장도 없기 때문이다.
+- **b~d를 `updateCourse` 한 곳에서 1회만 부르는 이유 (D4)** — 이름과 공개 여부가 동시에 바뀌어도 DEL은 한 번이면 충분하다. 개별 private 메서드에서 부르면 중복 DEL이 나고 `evictions` 메트릭이 부풀어 관측이 왜곡된다. "`updateCourse`가 코스 카드 변경의 유일 진입점"이라는 전제를 javadoc으로 고정한다.
+- **코스 신규 생성은 이빅트 대상이 아니다** — 프로덕션의 유일한 생성 경로인 `RunningApplicationMapper:84`의 `Course.of(...)`가 `isPublic(false)`을 하드코딩하므로, 새 코스는 항상 비공개이고 리드모델이 없다. 최초 공개 전환은 b~d가 커버한다.
+- `updateRunningName:172`도 이빅트를 예약하지만 리드모델을 건드리지 않는다. 카드에는 코스 이름만 나가므로 DEL 1회가 헛돌 뿐 무해하다.
 
-### [R2] 경로 e의 발행 순서 (리뷰 교정 — BLOCKER급)
+### `RunFinishedEvent`/`RunUpdatedEvent`/`CourseRunEvent` 발행은 존치한다
 
-Architect 원안은 "`recalculate` 후, distinct 코스별로 LAZY `Course`를 초기화해 발행"이었다. **그대로 구현하면 `LazyInitializationException`이 난다.**
+셀 캐시 이빅트가 이 이벤트들의 구독에서 빠져나왔을 뿐, **발행 자체는 지우지 않는다.** `@Deprecated CourseCacheEventListener`(구경로 `course:{id}` 캐시)가 `RunFinishedEvent`/`RunUpdatedEvent`를 아직 소비 중이고, `CourseRunEvent`는 푸시 발송(`PushEventListener`)이 소비한다. 지금 지우면 구경로 캐시 무효화가 죽는다. 구경로 제거 PR(결정 10)에서 소비자가 0이 되면 발행도 함께 사라진다 — `RunningCommandServiceTest`가 이 발행을 계약으로 고정해 두었다.
+
+### [R2] 경로 e의 좌표 수집 순서 (리뷰 교정 — BLOCKER급)
+
+Architect 원안은 "`recalculate` 후, distinct 코스별로 LAZY `Course`를 초기화해 좌표를 읽는다"였다. **그대로 구현하면 `LazyInitializationException`이 난다.**
 
 - `Running.course`는 `@ManyToOne(fetch = FetchType.LAZY)`다 (`Running.java:58`).
 - `runningRepository.deleteInRunningIds`는 `@Modifying(clearAutomatically = true)`다 (`RunningRepository.java:78`) → 벌크 삭제 직후 **영속성 컨텍스트가 비워진다**.
 - 기존 `distinctCourseIdsOf`가 부르는 `Course::getId`는 식별자 게터라 프록시를 초기화하지 않는다. 따라서 삭제 시점에 `Course` 프록시는 **미초기화 상태로 detach**된다.
 - 그 뒤 `getStartCoordinate()`를 부르면 세션이 없어 예외가 난다 → 러닝 삭제 API가 항상 500.
 
-**교정**: 좌표 수집을 벌크 삭제 **이전**으로 옮긴다. `@TransactionalEventListener`는 AFTER_COMMIT이라 트랜잭션 안에서 언제 발행하든 리스너 실행 시점은 동일하므로, 발행 자체는 `recalculate` 뒤에 두어 "최종 상태 확정 후 발행"이라는 읽기 순서를 유지한다.
+**교정**: 좌표 수집을 벌크 삭제 **이전**으로 옮긴다. 실행 시점은 어차피 커밋 후라 트랜잭션 안에서 언제 예약하든 같으므로, 예약 자체는 `recalculate` 뒤에 두어 "최종 상태 확정 후 예약"이라는 읽기 순서를 유지한다.
 
 ```java
 @Transactional
@@ -571,30 +589,30 @@ public void deleteRunnings(List<Long> runningIds, String memberUuid) {
     List<Running> runningsToDelete = runningRepository.findByIds(runningIds);
     runningsToDelete.forEach(running -> running.verifyMember(memberUuid));
 
-    // 벌크 삭제가 영속성 컨텍스트를 비우므로(clearAutomatically), 좌표는 반드시 삭제 전에 확보한다.
-    List<CourseMapDataChangedEvent> mapDataChanges = distinctCourseMapEventsOf(runningsToDelete);
-    List<Long> affectedCourseIds = mapDataChanges.stream()
-            .map(CourseMapDataChangedEvent::courseId).toList();
+    // 1. 수집 — 벌크 삭제가 영속성 컨텍스트를 비우므로(clearAutomatically) 좌표는 반드시 삭제 전에 확보한다.
+    List<Course> affectedCourses = distinctCoursesOf(runningsToDelete);
+    List<Long> affectedCourseIds = affectedCourses.stream().map(Course::getId).toList();
+    List<CourseMapCell> mapCells = affectedCourses.stream()
+            .map(RunningCommandService::mapCellOf)   // 여기서 프록시가 초기화된다 (PC 살아있음)
+            .toList();
 
+    // 2. 삭제
     runningRepository.deleteInRunningIds(runningIds);
+    // 3. 재계산
     courseReadModelWriter.recalculate(affectedCourseIds);
 
-    mapDataChanges.forEach(eventPublisher::publishEvent);
+    // 4. 이빅트 예약 (실행은 커밋 후)
+    mapCells.forEach(cell ->
+            courseMapCacheEvictor.evictCellAfterCommit(cell.courseId(), cell.startLat(), cell.startLng()));
 }
 
-/** 러닝들이 속한 코스를 중복 없이 모아 이벤트로 만든다. (코스에 속하지 않은 러닝은 제외) */
-private List<CourseMapDataChangedEvent> distinctCourseMapEventsOf(List<Running> runnings) {
-    return runnings.stream()
-            .map(Running::getCourse)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toMap(Course::getId, c -> c, (a, b) -> a, LinkedHashMap::new))
-            .values().stream()
-            .map(Course::createMapDataChangedEvent)     // 여기서 프록시가 초기화된다 (PC 살아있음)
-            .toList();
+/** 러닝들이 속한 코스를 중복 없이 모은다. (코스에 속하지 않은 러닝은 제외) */
+private List<Course> distinctCoursesOf(List<Running> runnings) {
+    // course.getId()는 식별자 게터라 프록시를 초기화하지 않는다 → LinkedHashMap으로 접어 중복 제거
 }
 ```
 
-기존 `distinctCourseIdsOf`는 이 메서드로 대체되어 삭제된다. 비용은 distinct 코스 수만큼의 SELECT이고 실질적으로 1회다 — 공용 쿼리(`findByIds`)에 fetch join을 넣어 다른 호출자에 영향을 주거나, 이벤트 계약을 "좌표가 있을 수도 없을 수도"로 이완시키는 것보다 낫다 (D5).
+기존 `distinctCourseIdsOf`는 `distinctCoursesOf` + `mapCellOf`로 대체되어 삭제된다. 비용은 distinct 코스 수만큼의 SELECT이고 실질적으로 1회다 — 공용 쿼리(`findByIds`)에 fetch join을 넣어 다른 호출자에 영향을 주거나, 이빅트 계약을 "좌표가 있을 수도 없을 수도"로 이완시키는 것보다 낫다 (D5).
 
 ---
 
@@ -604,23 +622,25 @@ private List<CourseMapDataChangedEvent> distinctCourseMapEventsOf(List<Running> 
 
 | 대상 | 참조 잔존 확인 |
 |---|---|
-| `CourseMapCacheEvictListener` | `CacheManager` 유일 사용처. 대체 리스너로 교체 |
+| `CourseMapCacheEvictListener` | `CacheManager` 유일 사용처. `CourseMapCacheEvictor`로 교체 |
 | `CacheConfig` (클래스 전체) | `@Cacheable`/`@CacheEvict`/`CacheManager` 잔존 사용처 0 (main·test 전수) |
 | `CourseReadModelReader.findCoursesForMapByRegion` / `REGION_MAP_RADIUS_M` / `RegionRepository` 의존 | `REGION_MAP_RADIUS_M`의 외부 참조는 `CourseMapCacheEvictListener:86` 하나뿐 |
 | `CourseFacade.findCandidateCourses` / `useRegionCache` / `MIN·MAX_CACHEABLE_RADIUS_M` | private |
 | `RegionRepository.findByCenterLatBetweenAndCenterLngBetween` | 유일 호출자 `CourseMapCacheEvictListener:87`. `RegionService`는 `findByName`/`save`/`findById`만 사용 |
 | `RegionNotFoundException` | thrower `Reader:58`, catcher `Facade:210` — 둘 다 삭제 대상. 외부로 새어나간 적 없음 |
 | `ErrorCode.REGION_NOT_FOUND` (C-005) | `docs/core/05-api.md` 미등재. 설계 문서 05에만 "외부 노출 없음"으로 기록됨 |
-| `CourseMapCacheEvictListenerTest` | 대체 테스트로 교체 |
-| `RunningCommandService.distinctCourseIdsOf` | `distinctCourseMapEventsOf`로 대체 [R2] |
+| `CourseMapCacheEvictListenerTest` | `CourseMapCacheEvictorTest`로 교체 |
+| `RunningCommandService.distinctCourseIdsOf` | `distinctCoursesOf` + `mapCellOf`로 대체 [R2] |
 
 ### 변경
 
-`CourseReadModelReader`, `CourseFacade`, `CourseService`(+`ApplicationEventPublisher` 주입), `RunningCommandService`, `Course`(+이벤트 팩토리), `BoundingBox`(+`union`, javadoc), `CacheType`, `CourseApi`(javadoc), `RedisConfig`(+`redisTimeoutCustomizer` 신설 — Redis 응답/연결/재시도 기본값. **영향 반경이 course 도메인 밖**이라 §8-1·§8-2에 함께 기록), `src/test/resources/application.yml`(플래그 명시)
+`CourseReadModelReader`, `CourseFacade`, `CourseService`(+`CourseMapCacheEvictor` 주입), `RunningCommandService`(+`CourseMapCacheEvictor` 주입, `CourseMapCell` private record), `BoundingBox`(+`union`, javadoc), `CacheType`, `CourseApi`(javadoc), `RedisConfig`(+`redisTimeoutCustomizer` 신설 — Redis 응답/연결/재시도 기본값. **영향 반경이 course 도메인 밖**이라 §8-1·§8-2에 함께 기록), `src/test/resources/application.yml`(플래그 명시)
 
 ### 신규
 
-`GeoCell`, `GeoDistance`, `CourseMapDataChangedEvent`, `CellBucket`, `CellCacheLookup`, `CourseCellCache`, `CourseCellCacheMetrics`, `CourseCellCacheEvictListener`
+`GeoCell`, `GeoDistance`, `CellBucket`, `CellCacheLookup`, `CourseCellCache`, `CourseCellCacheMetrics`, `CourseMapCacheEvictor`
+
+`Course`는 이빅트 때문에 바뀌지 않는다 — 이벤트 팩토리(`createMapDataChangedEvent`)를 두지 않으므로 도메인 엔티티는 캐시를 전혀 모른다.
 
 ### 존치 (범위 밖)
 
@@ -647,13 +667,13 @@ private List<CourseMapDataChangedEvent> distinctCourseMapEventsOf(List<Running> 
 | 11 | `ReaderTest` 적재 스킵 | `fill-limit=2` + 코스 3개 → 응답은 정상, `course-cells*` 키는 0개 | 통합(`@TestPropertySource`) |
 | 12 | `ReaderTest` 강등 4종 | 플래그 off / r=3001 / 셀 수 초과 / Redis 장애 → 키 미생성 + 직행과 동일 결과 | 통합 |
 | 13 | `ReaderTest` 파리티 | 캐시 on/off의 후보 집합이 동일(선별 이전) / bbox 모서리 코스는 양쪽 모두 제외 | 통합 |
-| 14 | `EvictListenerTest` | 신규 이벤트 → 해당 셀만 DEL(**리드모델 없이도 성립**) / `RunFinished` → 리드모델 좌표로 DEL / 리드모델 부재 → no-op | 통합 |
-| 15 | `CourseServiceUnitTest` 보강 | `deleteCourse`·`updateCourse`가 좌표와 함께 발행 / 이름+공개 동시 변경 시 **1회만** | 단위 |
-| 16 | `RunningCommandServiceTest` 보강 | `deleteRunnings` → 영향 코스마다 이벤트 1건, **좌표가 채워져 있음**(= 벌크 삭제 후 LazyInitializationException 없음) [R2] | 통합 |
+| 14 | `CourseMapCacheEvictorTest` | **커밋 전에는 지우지 않고 커밋 후에 지운다** / `evictCellAfterCommit` → 해당 셀만 DEL(**리드모델 없이도 성립**) / `evictCourseCellAfterCommit` → 리드모델 좌표로 DEL / 리드모델 부재 → no-op / 이빅트 실패가 커밋한 호출자에게 전파되지 않음 [R3] | 통합 |
+| 15 | `CourseServiceUnitTest` 보강 | `deleteCourse`·`updateCourse`가 좌표와 함께 이빅트를 예약 / 이름+공개 동시 변경 시 **1회만** | 단위 |
+| 16 | `RunningCommandServiceTest` 보강 | `deleteRunnings` → 영향 코스마다 이빅트 1건, **좌표가 채워져 있음**(= 벌크 삭제 후 LazyInitializationException 없음) [R2] / 구경로가 소비하는 `RunFinishedEvent` 발행 존치 | 단위(mock) |
 
 **인프라 주의사항**
 
-- `IntegrationTestSupport`는 클래스 레벨 `@Transactional`이라 테스트 안에서 커밋이 나지 않는다. AFTER_COMMIT 리스너는 기존 관례대로 **리스너를 직접 호출**해 재현한다.
+- `IntegrationTestSupport`는 클래스 레벨 `@Transactional`이라 테스트 메서드 안에서 커밋이 나지 않는다. 이벤트 시절에는 이 제약 때문에 **핸들러를 직접 호출**해 AFTER_COMMIT을 흉내 냈고, 그래서 "커밋 전에는 지우지 않는다"가 정작 검증되지 않았다. 직접 호출로 바뀌면서 이빅터가 스스로 트랜잭션 동기화에 등록하므로, `PROPAGATION_REQUIRES_NEW` `TransactionTemplate`으로 **진짜 커밋**을 일으켜 그 경로를 그대로 검증한다(픽스처도 같은 방식으로 커밋해야 커밋 후 조회에 보인다).
 - `DatabaseCleanserExtension`은 테이블만 truncate하고 Redis는 건드리지 않는다. `@BeforeEach`에서 `course-cells*` 키를 정리한다(`CourseMapPathParityTest`의 `course:*` 정리와 같은 패턴).
 - 테스트 13(파리티)은 **후보 50개 이하 픽스처**를 전제한다. 직행은 LIMIT 50, 캐시 경로는 상한이 없어(결정 1) 그 위에서는 애초에 같을 수 없다. 주석으로 명시한다.
 - `@Value` 필드 주입 때문에 Reader 테스트 9~13은 통합 테스트여야 한다. 이는 코드베이스의 기존 `@Value` 관례(`S3RunningFileUploader`, `RefreshTokenService` 등)와 일치한다.
@@ -666,7 +686,7 @@ private List<CourseMapDataChangedEvent> distinctCourseMapEventsOf(List<Running> 
 | `CourseReadModelReaderTest` | 전면 재작성 (9~13) |
 | `CourseFacadeTest`의 regionId 테스트 2건(:383, :407) | 삭제 → "regionId를 실어도 좌표 경로와 동일한 결과" 1건으로 대체 |
 | `CourseMapPathParityTest` | 존치. 픽스처를 원 안쪽으로 고정하고, bbox 모서리 차이는 의도된 것임을 주석으로 명시 |
-| `CourseMapCacheEvictListenerTest` | 삭제 → 테스트 14로 대체 |
+| `CourseMapCacheEvictListenerTest` | 삭제 → `CourseMapCacheEvictorTest`(테스트 14)로 대체 |
 
 ---
 
@@ -678,13 +698,27 @@ private List<CourseMapDataChangedEvent> distinctCourseMapEventsOf(List<Running> 
 | D2 | `CellCacheLookup(degraded)` 반환 타입 | `Map<GeoCell, List<CourseMapDto>>` | "Redis 장애"와 "전 셀 미스"의 처리가 정반대인데 Map은 둘을 구분하지 못한다. 결정 2를 타입으로 강제 |
 | D3 | `executePipelined` putAll | 개별 SET / 마커 기반 레이스 방지 | 왕복 N회 → 1회. 레이스 창이 N배 → 1배로 줄어 마커 없이 결정 4를 수용 가능 |
 | D4 | `updateCourse` 한 곳에서 1회 발행 | private 메서드마다 발행 | 이름+공개 동시 변경 시 중복 DEL 방지, `evictions` 메트릭 일관 |
-| D5 | `deleteRunnings`에서 LAZY `Course` 초기화 허용 (단, **벌크 삭제 이전에** [R2]) | `findByIds`에 fetch join / 이벤트 좌표를 nullable로 | 공용 쿼리를 바꿔 다른 호출자에 영향을 주거나 이벤트 계약을 이완하는 것보다, "좌표는 항상 있다"는 단일 계약이 낫다. 비용은 실질 SELECT 1회 |
-| D6 | 신규 이벤트 1종, `Run*` 이벤트 불변 | 기존 이벤트에 좌표 필드 추가 | 기존 계약 파급 최소화. `Run*`의 다른 구독자에 영향 0 |
+| D5 | `deleteRunnings`에서 LAZY `Course` 초기화 허용 (단, **벌크 삭제 이전에** [R2]) | `findByIds`에 fetch join / 좌표를 nullable로 | 공용 쿼리를 바꿔 다른 호출자에 영향을 주거나 이빅트 계약을 이완하는 것보다, "좌표는 항상 있다"는 단일 계약이 낫다. 비용은 실질 SELECT 1회 |
+| D6 | 이빅트 트리거를 **전용 경로**로 신설, `Run*` 이벤트 불변 | 기존 이벤트에 좌표 필드 추가 | 기존 계약 파급 최소화. `Run*`의 다른 구독자에 영향 0 |
 | D7 | `CourseCellCacheMetrics` 별도 클래스 | 각 클래스에서 `MeterRegistry` 직접 사용 | 코드베이스 첫 커스텀 메트릭 — 이름·태그 규약을 한곳에 응집해야 후속 메트릭이 표류하지 않는다 |
 | D8 | fill-limit·플래그를 `@Value`로 | `private static final` 상수 | 상수면 이 경로 테스트에 코스 500개가 필요하다. 운영 튜닝 레버는 부수 효과 |
 | D9 | `CacheConfig` 완전 제거 | `@EnableCaching`만 남기기 | 죽은 인프라를 남기면 미래에 "아무도 이빅트하지 않는 캐시"가 조용히 생긴다 |
 | D10 | `StringRedisTemplate` + 순수 JSON | `RedisTemplate<String,Object>` + GenericJackson2 | `@class` 타입 정보를 값에 심지 않아 패키지 이동에 안전하고, 파이프라인 바이트 제어가 가능 |
 | D11 | antimeridian은 clamp만, wrap 없음 | ±180 wrap 처리 | r≤3km에서 해당 지역은 태평양 무인 해역. 분기 실익 0, 테스트 부담만 발생 |
+| D12 | 이빅트를 **도메인 이벤트가 아니라 직접 호출**로 (`CourseMapCacheEvictor`). 커밋 후 타이밍은 `TransactionSynchronizationManager`로 유지 | `CourseMapDataChangedEvent` + `@TransactionalEventListener` (초안·1차 구현) | 아래 서술 참조 |
+
+### D12 — 이벤트에서 직접 호출로 (판단 변경)
+
+초안과 1차 구현은 `CourseMapDataChangedEvent`(좌표 동봉) + `@TransactionalEventListener`였다. 실제로 돌려 보니 이벤트가 값을 하지 못했다.
+
+- **발행자-구독자가 1:1이었다.** 이 이벤트를 발행하는 곳과 소비하는 곳이 각각 하나뿐이라, 간접 계층이 사는 값(구독자 추가·교체의 자유)이 생기지 않았다.
+- **결합을 줄인 게 아니라 가리고 있었다.** `RunningCommandService`는 이미 `CourseService`·`CourseReadModelWriter`·`CourseSubscriptionService`를 직접 주입받아 쓴다. 그 옆에서 캐시 무효화만 이벤트로 나가는 것은 결합의 일부만 이름 뒤로 감춘 것이다.
+- **도메인 사건이 아니었다.** "지도 데이터가 변경됐다"는 사후 사실 통지가 아니라 **캐시를 지우라는 명령**이다. 인프라 관심사를 도메인 이벤트로 포장하면 `Course` 엔티티가 캐시 팩토리(`createMapDataChangedEvent`)를 갖게 되고, 도메인이 캐시를 알게 된다.
+- 이 저장소는 #165 "동기 이벤트 제거 1단계"에서 이미 같은 방향(같은 트랜잭션 동기 로직은 직접 호출로)을 잡았다.
+
+**단, AFTER_COMMIT 타이밍은 이벤트의 장식이 아니라 정합성 근거라 그대로 유지했다.** 커밋 전에 지우면 그 틈의 조회가 커밋 전 데이터를 재적재해 TTL 600초 동안 잔존한다(자가 치유 없음). 그래서 이벤트만 걷어내고 `TransactionSynchronizationManager.registerSynchronization`으로 같은 타이밍을 직접 확보했다(§3-9).
+
+부수 효과로 테스트가 좋아졌다 — 이벤트 시절에는 통합 테스트의 클래스 레벨 `@Transactional` 때문에 커밋이 나지 않아 **리스너를 직접 호출**하는 우회를 썼고, 그 결과 "커밋 전에는 지우지 않는다"가 검증되지 않았다. 이제 `TransactionTemplate`(`PROPAGATION_REQUIRES_NEW`)로 실제 커밋을 일으켜 그 불변식을 진짜로 확인한다(§6 테스트 14). 좌표 동봉이라는 우회도 사라졌다 — 호출 지점이 곧 좌표를 아는 지점이라 인자로 넘기면 그만이다.
 
 ---
 
@@ -757,8 +791,8 @@ Architect 원안을 실제 코드와 대조하는 과정에서 발견해 이 문
 | # | 심각도 | 위치 | 문제 | 교정 |
 |---|---|---|---|---|
 | R1 | BLOCKER급 | `GeoCell` / `Reader` | `MAX_COVERING_CELLS` 가드를 `covering()` 리스트 size로 판정 → 가드가 발동할 극단 좌표에서 최대 197,344개 `GeoCell`이 할당 후 폐기. `CourseApi`의 lat/lng에 검증 애노테이션이 없어 도달 가능하며, 현행 직행 경로에는 없는 신규 증폭 벡터 | `coveringCount()`(O(1) 산술)로 열거 **전에** 판정 |
-| R2 | BLOCKER급 | `RunningCommandService.deleteRunnings` | `deleteInRunningIds`가 `@Modifying(clearAutomatically = true)`라 벌크 삭제 후 `Course` LAZY 프록시가 미초기화 상태로 detach → `recalculate` 뒤 좌표 접근 시 `LazyInitializationException` (러닝 삭제 API 항상 500) | 좌표 수집을 벌크 삭제 **이전**으로 이동. 발행 시점은 `recalculate` 뒤 유지 |
-| R3 | WARNING | `CourseCellCacheEvictListener` | `handleCourseMapDataChanged`에 try/catch 없음. AFTER_COMMIT 동기화의 예외는 `AbstractPlatformTransactionManager`가 호출자에게 전파 → 커밋 성공 후 500 | 세 핸들러 전부 try/catch + 좌표 null 가드 (기존 리스너 관례와 동일) |
+| R2 | BLOCKER급 | `RunningCommandService.deleteRunnings` | `deleteInRunningIds`가 `@Modifying(clearAutomatically = true)`라 벌크 삭제 후 `Course` LAZY 프록시가 미초기화 상태로 detach → `recalculate` 뒤 좌표 접근 시 `LazyInitializationException` (러닝 삭제 API 항상 500) | 좌표 수집을 벌크 삭제 **이전**으로 이동(값 스냅샷). 예약 시점은 `recalculate` 뒤 유지. 커밋 후 콜백도 같은 이유로 primitive만 캡처한다 |
+| R3 | WARNING | 커밋 후 이빅트 콜백 | 커밋 후 실행 경로에 try/catch 없음. afterCommit 동기화의 예외는 `AbstractPlatformTransactionManager`가 호출자에게 전파 → 커밋 성공 후 500 | 콜백 전체를 try/catch + 좌표 null 가드 (삭제된 `CourseMapCacheEvictListener`의 관례와 동일) |
 | R4 | WARNING | `CourseCellCache.lookup` | `multiGet` 결과의 크기 불일치 미방어 | `raw.size() != covering.size()`도 degraded로 처리 |
 
 ### 사실 주장 정정
@@ -791,7 +825,7 @@ Architect 설계의 사실 주장을 실제 코드와 독립 계산으로 재확
 | V5 | `@Cacheable`/`CacheManager` 잔존 사용처 | main·test 전수 grep | `@Cacheable` 1건(`Reader:55`), `CacheManager` 1건(`CourseMapCacheEvictListener:45`) — **둘 다 삭제 대상**. 그 외 0건 → `CacheConfig` 제거 안전 |
 | V6 | `RegionNotFoundException`·C-005 노출 | grep + `docs/core/05-api.md` | thrower/catcher 각 1건이며 둘 다 삭제 대상. 외부 API 문서 미등재 → 제거 안전 |
 | V7 | `findByCenterLatBetweenAndCenterLngBetween` | grep | 유일 호출자가 삭제 대상 리스너. `RegionService`는 미사용 → 제거 안전 |
-| V8 | 리드모델 쓰기 경로 전수 | `readModelWriter`/`courseReadModelWriter` 호출 grep | 7곳 전부가 §4의 이벤트 5경로 + 기존 3이벤트로 커버됨. 누락 0 |
+| V8 | 리드모델 쓰기 경로 전수 | `readModelWriter`/`courseReadModelWriter` 호출 grep | 7곳 전부가 §4의 이빅트 호출로 커버됨. 누락 0 |
 | V9 | 코스 생성 시 공개 여부 | `Course.of` 호출자 grep | 프로덕션 유일 경로 `RunningApplicationMapper:84`가 `isPublic(false)` 하드코딩 → M3 전제 성립 |
 | V10 | 구경로 필터 방식 | `CustomCourseRepositoryImpl` | `startPointWithinBoundary`(bbox)만 where에 있고 Haversine은 `orderBy`에만 쓰인다 → bbox 모서리에서 구·신 경로가 갈리는 것은 의도된 차이 |
 | V11 | Micrometer 가용성 | `build.gradle` | actuator + micrometer-core + prometheus registry 존재. 기존 커스텀 메트릭 **0건** → 규약을 이 PR에서 확정하는 것이 맞다 |
