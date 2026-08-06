@@ -42,6 +42,13 @@ import soma.ghostrunner.domain.course.domain.GeoCell;
  *
  * <p><b>[R2] 콜백은 primitive만 캡처한다</b> — 커밋 시점에는 영속성 컨텍스트가 정리되어 있어 클로저에 담긴
  * 엔티티·LAZY 프록시를 만지면 {@code LazyInitializationException}이 난다. 좌표·식별자처럼 값만 캡처한다.</p>
+ *
+ * <p><b>호출 계약: 반드시 활성 트랜잭션 안이어야 한다.</b> 예전에는 트랜잭션 밖 호출을 "미룰 커밋이 없다"고 보고
+ * 즉시 실행으로 흘려보냈지만, 그 분기는 프로덕션 호출부 7곳이 전부 {@code @Transactional} 안이라 도달 불가능한
+ * 죽은 코드였다. 더 중요한 건 그 폴백이 <b>안전하지 않다</b>는 점이다 — 트랜잭션 밖에서 즉시 DEL 하면 아직
+ * 커밋되지 않은 변경 앞에서 캐시를 지우는 셈이라, 그 틈의 조회가 <b>커밋 전 데이터</b>를 재적재해 TTL까지
+ * 잔존한다(자가 치유 없음). 그래서 폴백 없이 항상 동기화에 등록한다. 트랜잭션 밖 호출은
+ * {@code IllegalStateException}으로 즉시 드러나며, 조용한 레이스보다 그 편이 안전하다.</p>
  */
 @Slf4j
 @Component
@@ -90,7 +97,8 @@ public class CourseMapCacheEvictor {
     }
 
     /**
-     * 이빅트를 커밋 후로 미룬다. 트랜잭션 밖에서 불렸다면(동기화 비활성) 미룰 커밋이 없으므로 즉시 실행한다.
+     * 이빅트를 커밋 후로 미룬다. 활성 트랜잭션이 없으면 {@code IllegalStateException}이 난다 — 계약 위반을
+     * 조용한 캐시 레이스 대신 즉시 드러내려는 의도다 (클래스 javadoc "호출 계약" 참고).
      *
      * <p>[R3] 커밋은 이미 끝났으므로 여기서 던지면 성공한 요청이 500이 된다. 실패는 warn 로그로만 남긴다.</p>
      */
@@ -103,10 +111,6 @@ public class CourseMapCacheEvictor {
             }
         };
 
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            guarded.run();
-            return;
-        }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {

@@ -29,8 +29,9 @@ import java.util.Map;
  *       그래서 "넣은 곳 = 지울 곳"이 1:1로 맞고, 요청 커버링의 일부만 히트하는 <b>부분 채움</b>이 성립한다.</li>
  *   <li><b>캐시 값은 요청자와 무관한 "셀의 내용물"</b> — 그래서 <b>적재는 언제나 원 필터보다 앞</b>이다.
  *       요청 반경으로 자른 값을 적재하면, 같은 셀을 더 넓게 보는 다음 요청이 오답을 본다.</li>
- *   <li><b>강등은 한 곳으로 수렴</b> — 플래그 off·광역 요청·커버링 폭발·Redis 장애 <b>네 갈래</b>가 모두
- *       {@link #queryDirect}로 모인다. 강등 결과가 언제나 현행 직행 경로와 같아야 롤백이 플래그 하나로 끝난다.</li>
+ *   <li><b>강등은 한 곳으로 수렴</b> — 광역 요청·커버링 폭발·Redis 장애 <b>세 갈래</b>가 모두
+ *       {@link #queryDirect}로 모인다. 강등 결과가 언제나 직행 경로와 같아야, 같은 요청이 Redis 상태에 따라
+ *       다른 결과를 내지 않는다.</li>
  *   <li><b>두 경로가 같은 원 필터를 거친다</b> — 직행도 캐시 경로와 똑같이 {@link #withinRadius}로 마무리한다(파리티, 설계 D1).</li>
  * </ul>
  */
@@ -61,10 +62,6 @@ public class CourseReadModelReader {
     private final CourseCellCache cellCache;
     private final CourseCellCacheMetrics metrics;
 
-    /** 롤백 레버 — 내리면 재배포 없이 현행 직행 경로로 되돌아간다. */
-    @Value("${course.cache.cell-bucket.enabled:true}")
-    private boolean cellBucketEnabled;
-
     /**
      * 미스 셀 채움 쿼리의 LIMIT.
      *
@@ -80,22 +77,19 @@ public class CourseReadModelReader {
      * <p>커버링 셀을 MGET 1왕복으로 읽고, 미스 셀만 DB에서 채워 적재한 뒤, 캐시분과 채움분을 합쳐
      * 실좌표 원 필터로 마무리한다. 캐시를 쓸 수 없는 요청은 {@link #queryDirect}로 강등한다.</p>
      *
-     * <p><b>강등 판정은 싼 것부터</b> — 플래그(필드 읽기) → 광역(비교 1회) → 커버링 수(산술 [R1]) → Redis 장애(1왕복).
-     * 걸러질 요청일수록 적은 비용으로 빠지고, 네 갈래가 모두 {@link #queryDirect} 하나로 수렴한다 (설계 §3-13).</p>
+     * <p><b>강등 판정은 싼 것부터</b> — 광역(비교 1회) → 커버링 수(산술 [R1]) → Redis 장애(1왕복).
+     * 걸러질 요청일수록 적은 비용으로 빠지고, 세 갈래가 모두 {@link #queryDirect} 하나로 수렴한다 (설계 §3-13).</p>
      */
     public List<CourseMapDto> findCoursesForMap(double lat, double lng, int radiusM) {
-        if (!cellBucketEnabled) {                        // 강등① 롤백 플래그 off
+        if (radiusM > MAX_CACHEABLE_RADIUS_M) {          // 강등① 광역 요청
             return queryDirect(lat, lng, radiusM);
         }
-        if (radiusM > MAX_CACHEABLE_RADIUS_M) {          // 강등② 광역 요청
-            return queryDirect(lat, lng, radiusM);
-        }
-        if (isCoveringTooLarge(lat, lng, radiusM)) {     // 강등③ 커버링 폭발(극단 좌표)
+        if (isCoveringTooLarge(lat, lng, radiusM)) {     // 강등② 커버링 폭발(극단 좌표)
             return queryDirect(lat, lng, radiusM);
         }
 
         CellCacheLookup lookup = cellCache.lookup(GeoCell.covering(lat, lng, radiusM));
-        if (lookup.degraded()) {                         // 강등④ Redis 장애
+        if (lookup.degraded()) {                         // 강등③ Redis 장애
             // 여기서 metrics.recordLookup을 부르지 않는다 — 이 강등은 CourseCellCache가 이미 기록했다.
             // 다시 세면 이중 계수로 degraded 비율이 부풀어 장애 신호가 오염된다.
             return queryDirect(lat, lng, radiusM);
@@ -104,10 +98,11 @@ public class CourseReadModelReader {
     }
 
     /**
-     * 캐시를 경유하지 않는 직행 경로. 강등 4갈래가 전부 여기로 수렴한다.
+     * 캐시를 경유하지 않는 직행 경로. 강등 3갈래가 전부 여기로 수렴한다.
      *
-     * <p>원 필터를 캐시 경로와 <b>똑같이</b> 적용한다 — 그래야 강등 결과와 캐시 결과가 같고,
-     * 플래그를 내리는 것만으로 롤백이 끝난다.</p>
+     * <p>원 필터를 캐시 경로와 <b>똑같이</b> 적용한다 — 그래야 강등 결과와 캐시 결과가 같다.
+     * Redis 장애 강등은 요청 중에도 일어날 수 있으므로, 두 경로가 다른 결과를 내면 같은 요청의 응답이
+     * Redis 상태에 따라 흔들린다.</p>
      */
     private List<CourseMapDto> queryDirect(double lat, double lng, int radiusM) {
         BoundingBox bounds = BoundingBox.of(lat, lng, radiusM);

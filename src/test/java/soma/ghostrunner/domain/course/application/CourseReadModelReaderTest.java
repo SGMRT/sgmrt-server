@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li><b>적재 스킵</b> — 채움 쿼리가 fill-limit에 걸리면 응답은 내되 <b>적재는 전체 스킵</b>한다. 잘린 결과는
  *       공간적으로 편향돼 있어, 그 값이 TTL 동안 캐시에 각인되는 것만은 막아야 한다.</li>
  *   <li><b>강등</b> — 캐시를 쓸 수 없는 요청은 전부 직행 한 곳으로 수렴하고, 직행 결과는 캐시 경로와 <b>같은 원 필터</b>를
- *       거친다. 그래야 롤백이 플래그 하나로 끝난다.</li>
+ *       거친다. 그래야 같은 요청의 응답이 Redis 상태에 따라 흔들리지 않는다.</li>
  * </ol>
  *
  * <p>Redis 장애 강등은 mock이 필요해 {@code CourseCellCacheDegradeTest}가 담당한다 — 여기서 중복하지 않는다.</p>
@@ -263,43 +263,6 @@ class CourseReadModelReaderTest extends IntegrationTestSupport {
             assertThat(names(courses)).isSubsetOf("코스1", "코스2", "코스3");
 
             // then : 공간적으로 편향된 이 결과가 TTL 600초 동안 각인되는 것만 막으면 된다
-            assertThat(fixture.cellKeys()).isEmpty();
-        }
-    }
-
-    /** 롤백 레버 검증. 플래그를 내리면 재배포 없이 현행 직행 경로로 되돌아가야 한다. */
-    @DisplayName("셀 버킷 플래그가 꺼진 경우")
-    @TestPropertySource(properties = "course.cache.cell-bucket.enabled=false")
-    @Nested
-    class CellBucketDisabled {
-
-        @Autowired CourseReadModelReader reader;
-        @Autowired CourseReadModelRepository readModelRepository;
-        @Autowired CourseRepository courseRepository;
-        @Autowired MemberRepository memberRepository;
-        @Autowired StringRedisTemplate stringRedisTemplate;
-
-        private MapFixture fixture;
-
-        @BeforeEach
-        void setUp() {
-            fixture = new MapFixture(memberRepository, courseRepository, readModelRepository, stringRedisTemplate);
-            fixture.clearCellKeys();
-        }
-
-        @DisplayName("캐시를 만들지 않고 직행 경로와 같은 결과를 낸다")
-        @Test
-        void degradesToDirectQuery_WhenFlagIsOff() {
-            // given : '원 안' 코스와 '박스 안 · 원 밖(모서리)' 코스
-            fixture.savePublicCourse(COURSE_AT_CENTER, SEOUL_LAT, SEOUL_LNG);
-            fixture.savePublicCourse(COURSE_AT_1KM_BOX_CORNER,
-                    SEOUL_LAT + latOffset(900), SEOUL_LNG + lngOffset(900, SEOUL_LAT));
-
-            // when
-            List<CourseMapDto> courses = reader.findCoursesForMap(SEOUL_LAT, SEOUL_LNG, MAP_RADIUS_M);
-
-            // then : 직행도 원 필터를 거친다 — 모서리 코스(1,273m)는 박스 안이지만 원 밖이다
-            assertThat(names(courses)).containsExactly(COURSE_AT_CENTER);
             assertThat(fixture.cellKeys()).isEmpty();
         }
     }
