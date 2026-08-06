@@ -63,11 +63,11 @@
 | 3 | 채움 LIMIT 도달 | fill-limit=500(`@Value`). 도달 시 응답은 반환하되 **적재는 전체 스킵** + warn + 메트릭 |
 | 4 | 채움-이빅트 레이스 | putAll을 `executePipelined`로 묶어 창을 최소화한 뒤 수용 (마커 없음) |
 | 5 | Thundering herd | 수용 (분산락 없음) |
-| 6 | 이빅트 트리거 보강 | 리드모델을 바꾸는 쓰기 경로가 **커밋 후 이빅트를 직접 예약**한다. 좌표를 되찾을 수 없는 경로(코스·러닝 삭제)는 좌표를 함께 넘긴다. `RunFinishedEvent`/`RunUpdatedEvent` **발행**은 구경로 리스너를 위해 존치하되, 셀 캐시 이빅트는 더 이상 그 구독에 걸려 있지 않다 (D12) |
+| 6 | 이빅트 트리거 보강 | 리드모델을 바꾸는 쓰기 경로가 **커밋 후 이빅트를 직접 예약**한다. 좌표를 되찾을 수 없는 경로(코스·러닝 삭제)는 좌표를 함께 넘긴다. 셀 캐시 이빅트는 더 이상 어떤 이벤트 구독에도 걸려 있지 않다 (D12). `RunFinishedEvent`/`RunUpdatedEvent`는 구경로와 함께 제거됐다 (D13) |
 | 7 | C-005 | `RegionNotFoundException`·`ErrorCode.REGION_NOT_FOUND` 제거. Region 도메인·API·테이블·`RegionService`는 존치, `RegionRepository.findByCenterLatBetweenAndCenterLngBetween`만 제거 |
 | 8 | 캐시 레지스트리 | `CacheType` 존치(이름·TTL 단일 출처로 역할 재정의). `CacheConfig` + `@EnableCaching` 제거 |
 | 9 | 커버링 | 셀 인덱스 산술 열거(샘플링 금지). `MAX_COVERING_CELLS=128` 초과 시 직행 강등. 4xx 신설 금지 |
-| 10 | 구경로 | `@Deprecated` 3종(`findCoursesByPositionCached`/`CourseCacheRepository`/`CourseCacheEventListener`) 존치 — 범위 밖 |
+| 10 | 구경로 | ~~`@Deprecated` 3종 존치 — 범위 밖~~ → **결론이 바뀌었다. 3종 전부 제거했다 (D13).** `findCoursesByPositionCached`의 프로덕션 호출자가 0(테스트만 참조)인 죽은 코드로 확인됐고, 외부 API 불변 제약과 무관했다 |
 | 11 | 관측 | Micrometer 카운터 포함. 코드베이스 첫 커스텀 메트릭이므로 네이밍 규약을 이 PR에서 확정 |
 | 12 | 운영 수용 | 멤버 프로필 변경·dev 재배포 잔존 카드·기존 `course-map::*` 키는 TTL(600s) 수용 |
 
@@ -242,7 +242,7 @@ private record CourseMapCell(Long courseId, Double startLat, Double startLng) {}
 
 **초안·1차 구현은 이 자리에 `CourseMapDataChangedEvent`(좌표 동봉 도메인 이벤트)와 `Course.createMapDataChangedEvent()` 팩토리를 두었다.** 직접 호출로 바뀌면서 좌표를 이벤트에 동봉할 이유가 사라졌다 — 호출 지점이 곧 좌표를 아는 지점이기 때문이다 (D12, 08 §3-6).
 
-기존 `RunFinishedEvent`/`RunUpdatedEvent`는 **변경하지 않는다** (D6).
+`RunFinishedEvent`/`RunUpdatedEvent`는 이 설계에서 손대지 않았고(D6), 이후 구경로 제거와 함께 **삭제됐다** — 유일한 소비자가 구경로 캐시 리스너였기 때문이다 (D13).
 
 ---
 
@@ -568,9 +568,11 @@ CourseService.updateCourse @Transactional {
 - **코스 신규 생성은 이빅트 대상이 아니다** — 프로덕션의 유일한 생성 경로인 `RunningApplicationMapper:84`의 `Course.of(...)`가 `isPublic(false)`을 하드코딩하므로, 새 코스는 항상 비공개이고 리드모델이 없다. 최초 공개 전환은 b~d가 커버한다.
 - `updateRunningName:172`도 이빅트를 예약하지만 리드모델을 건드리지 않는다. 카드에는 코스 이름만 나가므로 DEL 1회가 헛돌 뿐 무해하다.
 
-### `RunFinishedEvent`/`RunUpdatedEvent`/`CourseRunEvent` 발행은 존치한다
+### `CourseRunEvent` 발행만 존치한다
 
-셀 캐시 이빅트가 이 이벤트들의 구독에서 빠져나왔을 뿐, **발행 자체는 지우지 않는다.** `@Deprecated CourseCacheEventListener`(구경로 `course:{id}` 캐시)가 `RunFinishedEvent`/`RunUpdatedEvent`를 아직 소비 중이고, `CourseRunEvent`는 푸시 발송(`PushEventListener`)이 소비한다. 지금 지우면 구경로 캐시 무효화가 죽는다. 구경로 제거 PR(결정 10)에서 소비자가 0이 되면 발행도 함께 사라진다 — `RunningCommandServiceTest`가 이 발행을 계약으로 고정해 두었다.
+셀 캐시 이빅트는 어떤 이벤트 구독에도 걸려 있지 않다. `RunningCommandService`에 남은 이벤트 발행은 **`CourseRunEvent` 하나뿐**이고, 소비자는 푸시 발송(`PushEventListener.notifyCourseRunEvent`·`notifyCourseTopPersonalRecordUpdate`)이다. `ApplicationEventPublisher` 의존이 이 클래스에 남아 있는 이유가 그것이다. 발행 지점은 코스를 따라 뛴 러닝의 완주 한 곳이라 메서드명도 `publishCourseRunEvents` → `publishCourseRunEvent`(단수)로 바뀌었다.
+
+`RunFinishedEvent`/`RunUpdatedEvent`는 더 이상 없다. 구경로 캐시 리스너(`CourseCacheEventListener`)가 **유일한** 소비자였고 그 구경로가 죽은 코드로 확인돼 함께 제거되면서, 두 이벤트도 소비자 0이 되어 record·팩토리(`Running.createFinishedEvent()`/`createUpdatedEvent()`)·발행 4곳이 모두 사라졌다 (D13).
 
 ### [R2] 경로 e의 좌표 수집 순서 (리뷰 교정 — BLOCKER급)
 
@@ -632,6 +634,18 @@ private List<Course> distinctCoursesOf(List<Running> runnings) {
 | `CourseMapCacheEvictListenerTest` | `CourseMapCacheEvictorTest`로 교체 |
 | `RunningCommandService.distinctCourseIdsOf` | `distinctCoursesOf` + `mapCellOf`로 대체 [R2] |
 
+**구경로 제거분 (D13)** — 결정 10에서는 존치였으나, 호출자 0인 죽은 코드로 확인돼 함께 제거했다.
+
+| 대상 | 참조 잔존 확인 |
+|---|---|
+| `CourseFacade.findCoursesByPositionCached` + 전용 헬퍼(`handleCourseCacheMiss`/`saveCoursesToCache`/`handleCourseCacheHit`/`filterCacheMissedIds`) | 프로덕션 호출자 0(`CourseApi` 포함 main 어디서도 미호출, 테스트만 참조). `courseCacheRepository`·`memberService` 필드도 함께 제거 |
+| `CourseCacheEventListener` (구경로 `course:{id}` 무효화) + `CourseCacheEventListenerTest` | 위 제거로 무효화 대상 소멸 |
+| `CourseCacheRepository` | 유일 사용처가 위 둘 |
+| `CourseQueryModel`, `CourseMapper.toCourseQueryModel`, `CourseSubMapper` | 위 제거로 사용처 0 |
+| `RunFinishedEvent`, `RunUpdatedEvent` record | 유일 소비자가 `CourseCacheEventListener`였다 |
+| `Running.createFinishedEvent()` / `createUpdatedEvent()` + `RunningCommandService`의 발행 4곳·관련 주석 | 위 record 제거로 호출처 0 |
+| `CourseMapPathParityTest` | 구경로가 사라져 비교 대상 소멸 |
+
 ### 변경
 
 `CourseReadModelReader`, `CourseFacade`, `CourseService`(+`CourseMapCacheEvictor` 주입), `RunningCommandService`(+`CourseMapCacheEvictor` 주입, `CourseMapCell` private record), `BoundingBox`(+`union`, javadoc), `CacheType`, `CourseApi`(javadoc), `RedisConfig`(+`redisTimeoutCustomizer` 신설 — Redis 응답/연결/재시도 기본값. **영향 반경이 course 도메인 밖**이라 §8-1·§8-2에 함께 기록), `src/test/resources/application.yml`(플래그 명시)
@@ -644,7 +658,9 @@ private List<Course> distinctCoursesOf(List<Running> runnings) {
 
 ### 존치 (범위 밖)
 
-`@Deprecated` 구경로 3종(`findCoursesByPositionCached`, `CourseCacheRepository`, `CourseCacheEventListener`) — 결정 10. Region 일체(`Region`, `RegionApi`, `RegionService`, `POST /v1/regions`, `region` 테이블, `InvalidRegionCoordinateException`) — 결정 7.
+Region 일체(`Region`, `RegionApi`, `RegionService`, `POST /v1/regions`, `region` 테이블, `InvalidRegionCoordinateException`) — 결정 7.
+
+(구경로 3종은 결정 10에서 존치였으나 D13으로 제거됐다 — 바로 위 표 참조.)
 
 ---
 
@@ -669,12 +685,12 @@ private List<Course> distinctCoursesOf(List<Running> runnings) {
 | 13 | `ReaderTest` 파리티 | 캐시 on/off의 후보 집합이 동일(선별 이전) / bbox 모서리 코스는 양쪽 모두 제외 | 통합 |
 | 14 | `CourseMapCacheEvictorTest` | **커밋 전에는 지우지 않고 커밋 후에 지운다** / `evictCellAfterCommit` → 해당 셀만 DEL(**리드모델 없이도 성립**) / `evictCourseCellAfterCommit` → 리드모델 좌표로 DEL / 리드모델 부재 → no-op / 이빅트 실패가 커밋한 호출자에게 전파되지 않음 [R3] | 통합 |
 | 15 | `CourseServiceUnitTest` 보강 | `deleteCourse`·`updateCourse`가 좌표와 함께 이빅트를 예약 / 이름+공개 동시 변경 시 **1회만** | 단위 |
-| 16 | `RunningCommandServiceTest` 보강 | `deleteRunnings` → 영향 코스마다 이빅트 1건, **좌표가 채워져 있음**(= 벌크 삭제 후 LazyInitializationException 없음) [R2] / 구경로가 소비하는 `RunFinishedEvent` 발행 존치 | 단위(mock) |
+| 16 | `RunningCommandServiceTest` 보강 | `deleteRunnings` → 영향 코스마다 이빅트 1건, **좌표가 채워져 있음**(= 벌크 삭제 후 LazyInitializationException 없음) [R2] | 단위(mock) |
 
 **인프라 주의사항**
 
 - `IntegrationTestSupport`는 클래스 레벨 `@Transactional`이라 테스트 메서드 안에서 커밋이 나지 않는다. 이벤트 시절에는 이 제약 때문에 **핸들러를 직접 호출**해 AFTER_COMMIT을 흉내 냈고, 그래서 "커밋 전에는 지우지 않는다"가 정작 검증되지 않았다. 직접 호출로 바뀌면서 이빅터가 스스로 트랜잭션 동기화에 등록하므로, `PROPAGATION_REQUIRES_NEW` `TransactionTemplate`으로 **진짜 커밋**을 일으켜 그 경로를 그대로 검증한다(픽스처도 같은 방식으로 커밋해야 커밋 후 조회에 보인다).
-- `DatabaseCleanserExtension`은 테이블만 truncate하고 Redis는 건드리지 않는다. `@BeforeEach`에서 `course-cells*` 키를 정리한다(`CourseMapPathParityTest`의 `course:*` 정리와 같은 패턴).
+- `DatabaseCleanserExtension`은 테이블만 truncate하고 Redis는 건드리지 않는다. `@BeforeEach`에서 `course-cells*` 키를 정리한다(구경로 테스트가 `course:*`를 정리하던 것과 같은 패턴).
 - 테스트 13(파리티)은 **후보 50개 이하 픽스처**를 전제한다. 직행은 LIMIT 50, 캐시 경로는 상한이 없어(결정 1) 그 위에서는 애초에 같을 수 없다. 주석으로 명시한다.
 - `@Value` 필드 주입 때문에 Reader 테스트 9~13은 통합 테스트여야 한다. 이는 코드베이스의 기존 `@Value` 관례(`S3RunningFileUploader`, `RefreshTokenService` 등)와 일치한다.
 - 메트릭 검증이 필요한 단위 테스트는 `SimpleMeterRegistry`를 주입한다.
@@ -685,7 +701,8 @@ private List<Course> distinctCoursesOf(List<Running> runnings) {
 |---|---|
 | `CourseReadModelReaderTest` | 전면 재작성 (9~13) |
 | `CourseFacadeTest`의 regionId 테스트 2건(:383, :407) | 삭제 → "regionId를 실어도 좌표 경로와 동일한 결과" 1건으로 대체 |
-| `CourseMapPathParityTest` | 존치. 픽스처를 원 안쪽으로 고정하고, bbox 모서리 차이는 의도된 것임을 주석으로 명시 |
+| `CourseFacadeTest`의 구경로(`findCoursesByPositionCached`) 테스트 5건 | **D13으로 재정리.** 2건을 신경로로 이관 — `findCoursesByPosition_limitFiltering`(선별 한도는 Facade 책임이라 경로와 무관하다. 반경 5,000m로 광역 가드를 태워 캐시 간섭을 없앤다), `findCoursesByPosition_withRuns`(내 고스트 매핑). 3건 삭제 — 정렬 검증은 신경로가 sort를 적용하지 않아 구경로 전용이었고, 부분 캐시 미스 검증은 대상이 소멸했으며, TOP4 러너 조립은 `CourseReadModelReaderTest`·`CourseReadModelWriterTest`·`TopRunnersTest`가 이미 덮는다 |
+| `CourseMapPathParityTest` | ~~존치~~ → **삭제 (D13).** 구경로가 사라져 비교 대상이 없다. 이 테스트가 고정하던 §3-5의 "직행 경로에도 원 필터" 결정 자체는 유효하고, 그 근거인 원 ⊆ 박스는 테스트 5(`GeoDistanceTest`)가, 두 경로의 후보 동일성은 테스트 13(`ReaderTest` 파리티)이 이어받아 **일원화됐다** |
 | `CourseMapCacheEvictListenerTest` | 삭제 → `CourseMapCacheEvictorTest`(테스트 14)로 대체 |
 
 ---
@@ -706,6 +723,7 @@ private List<Course> distinctCoursesOf(List<Running> runnings) {
 | D10 | `StringRedisTemplate` + 순수 JSON | `RedisTemplate<String,Object>` + GenericJackson2 | `@class` 타입 정보를 값에 심지 않아 패키지 이동에 안전하고, 파이프라인 바이트 제어가 가능 |
 | D11 | antimeridian은 clamp만, wrap 없음 | ±180 wrap 처리 | r≤3km에서 해당 지역은 태평양 무인 해역. 분기 실익 0, 테스트 부담만 발생 |
 | D12 | 이빅트를 **도메인 이벤트가 아니라 직접 호출**로 (`CourseMapCacheEvictor`). 커밋 후 타이밍은 `TransactionSynchronizationManager`로 유지 | `CourseMapDataChangedEvent` + `@TransactionalEventListener` (초안·1차 구현) | 아래 서술 참조 |
+| D13 | **구경로 완전 제거** — `findCoursesByPositionCached`·`CourseCacheRepository`·`CourseCacheEventListener`와 딸린 `CourseQueryModel`·`CourseSubMapper`·`RunFinishedEvent`·`RunUpdatedEvent`까지 | 결정 10대로 `@Deprecated` 존치 | 아래 서술 참조 |
 
 ### D12 — 이벤트에서 직접 호출로 (판단 변경)
 
@@ -719,6 +737,17 @@ private List<Course> distinctCoursesOf(List<Running> runnings) {
 **단, AFTER_COMMIT 타이밍은 이벤트의 장식이 아니라 정합성 근거라 그대로 유지했다.** 커밋 전에 지우면 그 틈의 조회가 커밋 전 데이터를 재적재해 TTL 600초 동안 잔존한다(자가 치유 없음). 그래서 이벤트만 걷어내고 `TransactionSynchronizationManager.registerSynchronization`으로 같은 타이밍을 직접 확보했다(§3-9).
 
 부수 효과로 테스트가 좋아졌다 — 이벤트 시절에는 통합 테스트의 클래스 레벨 `@Transactional` 때문에 커밋이 나지 않아 **리스너를 직접 호출**하는 우회를 썼고, 그 결과 "커밋 전에는 지우지 않는다"가 검증되지 않았다. 이제 `TransactionTemplate`(`PROPAGATION_REQUIRES_NEW`)로 실제 커밋을 일으켜 그 불변식을 진짜로 확인한다(§6 테스트 14). 좌표 동봉이라는 우회도 사라졌다 — 호출 지점이 곧 좌표를 아는 지점이라 인자로 넘기면 그만이다.
+
+### D13 — 구경로 완전 제거 (판단 변경)
+
+결정 10은 구경로 3종을 `@Deprecated`로 존치하고 제거는 범위 밖으로 미뤘다. 그 전제는 "지우면 무언가 죽는다"였는데, **전제가 틀렸다.**
+
+- **`findCoursesByPositionCached`는 프로덕션 호출자가 0이었다.** `CourseApi`를 포함해 main 어디서도 부르지 않고 테스트만 참조하고 있었다. 즉 죽은 코드였고, `GET /v1/courses`의 계약을 건드리지 않으므로 **외부 API 불변 제약(§1-2)과 무관**하다. 존치 근거로 삼았던 "구경로 캐시 무효화가 죽는다"는, 애초에 아무도 타지 않는 경로의 무효화였다.
+- **`CourseCacheRepository`·`CourseQueryModel`·`CourseMapper.toCourseQueryModel`·`CourseSubMapper`는 그 경로의 부속이었다.** 구경로가 사라지자 사용처가 0이 됐다.
+- **`RunFinishedEvent`/`RunUpdatedEvent`는 구경로 때문에만 살아 있었다.** 유일한 소비자가 `CourseCacheEventListener`였다. §4의 "발행은 존치한다"와 D6의 "`Run*` 이벤트 불변"은 **그 소비자가 있다는 전제 위에서만** 성립하던 서술이고, 소비자가 사라진 지금은 발행할 이유도 함께 사라졌다. 그래서 record·`Running`의 팩토리 2개·`RunningCommandService`의 발행 4곳을 모두 제거했다.
+- **`CourseRunEvent`는 남는다.** 이쪽은 소비자가 실재한다 — `PushEventListener`가 받아 푸시를 보낸다. 두 이벤트와 운명이 갈리는 기준은 "이벤트라서"가 아니라 **소비자가 있는가**다.
+
+죽은 코드를 `@Deprecated`로 남겨 두면 다음 사람이 "왜 캐시 경로가 둘인가"를 매번 다시 조사해야 하고, D9(`CacheConfig` 완전 제거)에서 든 것과 같은 이유로 언젠가 누군가 그 경로를 되살린다. 제거 비용이 죽은 코드 확인 한 번뿐이라 미룰 이유가 없었다.
 
 ---
 
@@ -827,7 +856,7 @@ Architect 설계의 사실 주장을 실제 코드와 독립 계산으로 재확
 | V7 | `findByCenterLatBetweenAndCenterLngBetween` | grep | 유일 호출자가 삭제 대상 리스너. `RegionService`는 미사용 → 제거 안전 |
 | V8 | 리드모델 쓰기 경로 전수 | `readModelWriter`/`courseReadModelWriter` 호출 grep | 7곳 전부가 §4의 이빅트 호출로 커버됨. 누락 0 |
 | V9 | 코스 생성 시 공개 여부 | `Course.of` 호출자 grep | 프로덕션 유일 경로 `RunningApplicationMapper:84`가 `isPublic(false)` 하드코딩 → M3 전제 성립 |
-| V10 | 구경로 필터 방식 | `CustomCourseRepositoryImpl` | `startPointWithinBoundary`(bbox)만 where에 있고 Haversine은 `orderBy`에만 쓰인다 → bbox 모서리에서 구·신 경로가 갈리는 것은 의도된 차이 |
+| V10 | 구경로 필터 방식 | `CustomCourseRepositoryImpl` | `startPointWithinBoundary`(bbox)만 where에 있고 Haversine은 `orderBy`에만 쓰인다 → bbox 모서리에서 구·신 경로가 갈리는 것은 의도된 차이. **(D13으로 구경로가 제거되어 이 대조 자체는 무의미해졌다. 설계 당시 판단의 근거로만 남긴다)** |
 | V11 | Micrometer 가용성 | `build.gradle` | actuator + micrometer-core + prometheus registry 존재. 기존 커스텀 메트릭 **0건** → 규약을 이 PR에서 확정하는 것이 맞다 |
 | V12 | `StringRedisTemplate`·`ObjectMapper` 빈 | `RedisConfig` + 기존 주입 사례 | `RedisConfig`는 `redisTemplate`만 정의하므로 자동설정의 `stringRedisTemplate`이 살아 있다(`RefreshTokenService`가 그 빈을 쓴다). `ObjectMapper` 주입 선례는 `JsonVdotProvider` |
 | V13 | 테스트 인프라 전제 | `IntegrationTestSupport`, `DatabaseCleanserExtension` | 클래스 레벨 `@Transactional` 확인, Redis 미정리 확인 → §6 인프라 주의사항 성립 |

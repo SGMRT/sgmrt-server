@@ -473,6 +473,15 @@ private void afterCommit(Long courseId, Runnable evict) {
 
 **`RunFinishedEvent`/`RunUpdatedEvent`/`CourseRunEvent` 발행은 지우지 않았다.** 셀 캐시 이빅트가 그 구독에서 빠져나왔을 뿐, `@Deprecated CourseCacheEventListener`(구경로 `course:{id}` 캐시)가 아직 `RunFinished`/`RunUpdated`를 소비하고 `CourseRunEvent`는 푸시가 소비한다. 지금 지우면 구경로 무효화가 죽는다. 구경로 제거 PR에서 소비자가 0이 되면 발행도 함께 사라진다.
 
+> **[이후 판단 변경] 그 "구경로 제거 PR"이 곧바로 왔고, 두 이벤트는 사라졌다.**
+> 존치 근거였던 "지금 지우면 구경로 무효화가 죽는다"는 **전제부터 틀렸다.** 구경로의 진입점 `CourseFacade.findCoursesByPositionCached`는 프로덕션 호출자가 0이었다 — `CourseApi`를 포함해 main 어디서도 부르지 않고 테스트만 참조하고 있었다. 아무도 타지 않는 경로의 캐시를 무효화하고 있었던 셈이라, 지켜야 할 무효화가 애초에 없었다. `GET /v1/courses`의 계약과도 무관해 외부 API 불변 제약에 걸리지 않는다.
+>
+> 그래서 구경로 자체(`findCoursesByPositionCached` + 전용 헬퍼, `CourseCacheEventListener`, `CourseCacheRepository`)와 딸린 부속(`CourseQueryModel`, `CourseMapper.toCourseQueryModel`, `CourseSubMapper`)을 제거했고, **`RunFinishedEvent`/`RunUpdatedEvent`는 그 리스너가 유일한 소비자였으므로 소비자 0이 되어 함께 사라졌다** — record 2개, `Running.createFinishedEvent()`/`createUpdatedEvent()`, `RunningCommandService`의 발행 4곳과 관련 주석 전부.
+>
+> **`CourseRunEvent`만 남았다.** 이쪽은 소비자가 실재한다 — `PushEventListener.notifyCourseRunEvent`·`notifyCourseTopPersonalRecordUpdate`가 받아 푸시를 보낸다. `RunningCommandService`가 `ApplicationEventPublisher`를 계속 주입받는 이유가 이것 하나다. 발행 지점이 코스를 따라 뛴 러닝의 완주 한 곳으로 정리되면서 메서드명도 `publishCourseRunEvents` → `publishCourseRunEvent`(단수)가 됐다.
+>
+> 세 이벤트의 운명을 가른 기준은 "이벤트라서"가 아니라 **소비자가 있는가**였다. 확정 결정 10("구경로 존치 — 범위 밖")이 뒤집힌 기록은 설계 문서 D13에 있다.
+
 #### 이빅트 트리거 정리 (초안 표 정정)
 
 > 아래 표의 "이벤트 발행"은 1차 구현 기준 표현이다. 최종 코드에서는 같은 지점에서 `CourseMapCacheEvictor` 호출로 바뀌었고, **어느 지점에서 무엇을 트리거하는가**라는 결론은 그대로다.
@@ -614,7 +623,7 @@ public enum CacheType {
 | `CourseCellCacheTest` (Testcontainers) | 25필드 왕복 복원, 빈 배열 셀도 히트, TTL 600초, **값이 깨진 셀만 미스가 되고 나머지는 히트** |
 | `CourseCellCacheDegradeTest` | MGET 실패·null·**크기 불일치가 미스가 아니라 강등**, 적재·이빅트는 예외를 전파하지 않음 |
 | `CourseReadModelReaderTest` (Testcontainers) | 히트 셀은 갱신되지 않고 미스 셀만 적재(중복 없음), **빈 셀 네거티브 캐싱 재사용**, 광역·극단 좌표 강등, **fill-limit 도달 시 응답은 내되 적재 전체 스킵**, 플래그 off |
-| `CourseMapPathParityTest` | **DB 채움 경로와 캐시 히트 경로의 후보가 같고, 박스 모서리(반경 밖) 코스는 양쪽 모두에서 빠진다** — §3-5의 직행 필터 결정을 고정 |
+| ~~`CourseMapPathParityTest`~~ | **DB 채움 경로와 캐시 히트 경로의 후보가 같고, 박스 모서리(반경 밖) 코스는 양쪽 모두에서 빠진다** — §3-5의 직행 필터 결정을 고정<br>**[이후 삭제]** 구경로가 제거되면서 비교 대상이 사라졌다. **§3-5의 결정(직행 경로에도 원 필터) 자체는 그대로 유효하고**, 그 근거인 원 ⊆ 박스는 `GeoDistanceTest`가, 두 경로의 후보 동일성은 `CourseReadModelReaderTest`의 파리티 테스트가 이어받아 **일원화됐다** |
 | `CourseMapCacheEvictorTest` (Testcontainers) | **커밋 전에는 지우지 않고 커밋 후에 지운다**(`TransactionTemplate`으로 진짜 커밋 — 이벤트 시절에는 검증할 수 없던 불변식), **리드모델이 없어도 호출자가 넘긴 좌표로 해당 셀만 삭제**(코스 삭제 케이스), `courseId` 경로의 리드모델 역산, 이웃 셀 생존, **이빅트가 실패해도 커밋한 호출자에게 예외가 전파되지 않음** [R3] |
 | `RedisConfigTest` | single·cluster·sentinel 세 토폴로지에 타임아웃·재시도가 모두 적용되고, 미지원 토폴로지에서 **기동을 깨뜨리지 않음** |
-| `RunningCommandServiceTest` | 완주·기록 삭제 경로가 **이빅트를 코스당 1건 예약**하고 좌표가 채워져 있음([R2]), 그리고 **구경로 리스너가 소비하는 `RunFinishedEvent` 발행 존치를 계약으로 고정**(발행까지 함께 지우면 구경로 무효화가 죽는다) |
+| `RunningCommandServiceTest` | 완주·기록 삭제 경로가 **이빅트를 코스당 1건 예약**하고 좌표가 채워져 있음([R2]). ~~그리고 구경로 리스너가 소비하는 `RunFinishedEvent` 발행 존치를 계약으로 고정~~<br>**[이후 삭제]** 이벤트 발행 계약 테스트는 대상 이벤트가 사라져 함께 지웠다(위 판단 변경 참조). **셀 이빅트 예약 검증과 [R2] `LazyInitializationException` 회귀 가드는 그대로 유지된다** — 이 파일의 핵심은 원래 그쪽이었다 |

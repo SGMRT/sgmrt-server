@@ -38,15 +38,15 @@
 - `CourseReadModel`(379줄, main 최대 파일): courseId(unique) + **top1~top4 멤버ID/기록 8컬럼 역정규화** + runnersCount. `insertIfBetter()`/`shiftDown()` 수동 배열 시프트 로직 내장
 - 쓰기: `ReadModelSyncListener`가 `CourseRunEvent`를 **BEFORE_COMMIT**으로 수신 → `findByCourseIdForUpdate`(X락) → 증분 갱신. 러닝 생성 트랜잭션이 그만큼 길어지고 락 경합 지점
 - 읽기: `CourseFacade`(357줄)가 Redis 캐시(`course:{id}`, TTL 60분, MSET/MGET)를 **수동으로** 히트/미스 분기 — 캐시 로직과 비즈니스 로직 혼재
-- 캐시 무효화: `CourseCacheEventListener`(AFTER_COMMIT)가 RunFinished/RunUpdated 시 수동 삭제
+- 캐시 무효화: `CourseCacheEventListener`(AFTER_COMMIT)가 RunFinished/RunUpdated 시 수동 삭제 — 이 리스너와 두 이벤트는 #168에서 구경로와 함께 제거됐다(아래 참조)
 - 코스 삭제/공개전환 시 읽기모델·구독 동기화가 `CourseService`에 절차적으로 흩어져 있음
 
 ### 검토 과제
 - [ ] TOP4 8컬럼 → 정규화(별도 랭킹 테이블) vs 유지 결정. 랭킹 조회 패턴(`/top-ranking`, `/ranking`, `/top-percentage`)과 함께 재설계
 - [ ] 쓰기 경로: BEFORE_COMMIT 동기 갱신 유지 vs AFTER_COMMIT/비동기 전환(정합성 요구 수준 결정)
 - [x] 읽기 경로: `CourseFacade`의 수동 캐시 분기 제거 → 캐시 판정·부분 채움을 `CourseReadModelReader`로 이관 (#168). Spring Cache 추상화 대신 `CourseCellCache` 어댑터 채택 — 위 "결론이 뒤집힌 항목" 참조
-- [x] 캐시 키/TTL 전략, 무효화 경로 정리 (#168) — 키는 코스 시작점의 geohash p6 셀, TTL 600초. 무효화는 **이벤트가 아니라 직접 호출**로 정리했다: 리드모델을 바꾸는 쓰기 경로(러닝 완주·기록 수정·기록 삭제, 코스 수정·삭제·공개전환)가 `CourseMapCacheEvictor`를 직접 불러 셀 1개 DEL을 예약하고, 실행만 `TransactionSynchronizationManager`로 커밋 후에 일어난다. `RunFinishedEvent`/`RunUpdatedEvent` 발행은 구경로 캐시 리스너가 아직 소비 중이라 존치 — 구경로 제거 시 함께 삭제
-- [x] `CourseFacade` 책임 분리 (#168) — 캐시는 Reader, Facade에는 랜덤 선별과 DTO 조립만 남음. 구경로(`findCoursesByPositionCached`)는 `@Deprecated`로 존치, 제거는 별도 PR
+- [x] 캐시 키/TTL 전략, 무효화 경로 정리 (#168) — 키는 코스 시작점의 geohash p6 셀, TTL 600초. 무효화는 **이벤트가 아니라 직접 호출**로 정리했다: 리드모델을 바꾸는 쓰기 경로(러닝 완주·기록 수정·기록 삭제, 코스 수정·삭제·공개전환)가 `CourseMapCacheEvictor`를 직접 불러 셀 1개 DEL을 예약하고, 실행만 `TransactionSynchronizationManager`로 커밋 후에 일어난다. `RunFinishedEvent`/`RunUpdatedEvent`는 구경로 캐시 리스너가 유일한 소비자였고, 구경로 제거로 소비자가 0이 되어 **함께 삭제**했다. `RunningCommandService`에 남은 이벤트는 푸시(`PushEventListener`)가 소비하는 `CourseRunEvent` 하나뿐이다
+- [x] `CourseFacade` 책임 분리 (#168) — 캐시는 Reader, Facade에는 랜덤 선별과 DTO 조립만 남음. 구경로(`findCoursesByPositionCached`)는 `@Deprecated` 존치로 계획했으나, **프로덕션 호출자가 0인 죽은 코드로 확인돼 같은 PR에서 제거**했다(`CourseCacheRepository`·`CourseCacheEventListener`·`CourseQueryModel`·`CourseSubMapper` 동반 제거). 근거는 `docs/design/course-cell-bucket-cache-design.md` D13
 - [ ] 관련 데드코드 정리: Redisson 분산락, `RedisRateLimiterRepository`
 
 ---
@@ -72,7 +72,7 @@
 **목표**: 도메인 간 직접 의존 제거, 일관성 회복.
 
 ### 도메인 결합 해제
-- [ ] `member` → `pacemaker.VdotService` (RunFinishedEventListener의 VDOT 계산) — VDOT의 소속 도메인 결정 후 의존 방향 정리
+- [ ] `member` → `pacemaker.VdotService` (`MemberVdotWriter`·`MemberService`가 주입) — VDOT의 소속 도메인 결정 후 의존 방향 정리. 이 계산을 수행하던 `RunFinishedEventListener`는 #165에서 이미 사라졌고(`MemberVdotWriter` 직접 호출로 전환), **의존 방향 문제 자체는 그대로 남아 있다**
 - [ ] `pacemaker` → `running.infra.redis.RedisRunningRepository` — 레이트리밋 저장소를 pacemaker 소유로 이동 (2번과 연계)
 - [ ] `pacemaker`가 `running` 예외를 던지는 문제 — 자기 도메인 예외로
 - [ ] `Member.toStringForPacemakerPrompt()` — 엔티티의 LLM 프롬프트 생성을 pacemaker 쪽 프롬프트 생성기로 이동
