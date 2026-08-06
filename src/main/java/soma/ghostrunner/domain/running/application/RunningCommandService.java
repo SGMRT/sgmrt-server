@@ -1,7 +1,7 @@
 package soma.ghostrunner.domain.running.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,12 +10,12 @@ import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
 import soma.ghostrunner.domain.course.application.CourseService;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.running.application.RunningCreationWriter.CreatedRun;
 import soma.ghostrunner.domain.running.application.dto.*;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.application.MemberVdotWriter;
-import soma.ghostrunner.domain.course.application.CourseSubscriptionService;
 import soma.ghostrunner.domain.running.api.dto.response.CreateCourseAndRunResponse;
 import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
 import soma.ghostrunner.domain.running.domain.path.TelemetryProcessor;
@@ -29,6 +29,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 러닝 쓰기 유즈케이스의 조율자.
+ *
+ * <p><b>러닝 생성은 트랜잭션을 열지 않는다.</b> 시계열 가공(CPU)과 S3 업로드(네트워크 I/O)를 DB 커넥션을 쥔 채
+ * 수행하면 동시 요청이 늘 때 커넥션 풀이 먼저 마르기 때문이다. 순서는 "조회·가공·업로드 → 저장 트랜잭션 → VDOT"이고,
+ * DB 쓰기 경계는 {@link RunningCreationWriter}가 단독으로 갖는다.
+ *
+ * <p>수정·삭제 계열({@code updateRunningName}, {@code updateRunningPublicStatus}, {@code deleteRunnings})은
+ * 무거운 외부 I/O가 없으므로 기존대로 이 클래스가 트랜잭션을 연다.
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RunningCommandService {
@@ -39,7 +50,6 @@ public class RunningCommandService {
 
     private final TelemetryProcessor telemetryProcessor;
     private final RunningFileUploader runningFileUploader;
-    private final ApplicationEventPublisher eventPublisher;
 
     private final PathSimplificationService pathSimplificationService;
     private final RunningQueryService runningQueryService;
@@ -47,13 +57,11 @@ public class RunningCommandService {
     private final MemberService memberService;
     private final CourseReadModelWriter courseReadModelWriter;
     private final MemberVdotWriter memberVdotWriter;
-    private final CourseSubscriptionService courseSubscriptionService;
     private final CourseMapCacheEvictor courseMapCacheEvictor;
+    private final RunningCreationWriter runningCreationWriter;
 
-    @Transactional
     public CreateCourseAndRunResponse createRunAndCourse(
-            CreateRunCommand command, String memberUuid,
-            MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry, MultipartFile screenShotImage) {
+            CreateRunCommand command, String memberUuid, MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry, MultipartFile screenShotImage) {
 
         Member member = findMember(memberUuid);
 
@@ -62,17 +70,32 @@ public class RunningCommandService {
         SimplifiedPaths simplifiedPaths = pathSimplificationService.simplify(telemetryStatistics);
         RunningDataUrlsDto dataUrlsDto = upload(rawTelemetry, telemetryStatistics, simplifiedPaths, screenShotImage, member);
 
-        Course course = createAndSaveCourse(member, command, telemetryStatistics, dataUrlsDto);
-        Running running = createAndSaveRunning(command, telemetryStatistics, dataUrlsDto, member, course);
-        courseReadModelWriter.applyRun(running);
-        memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
-        // 지도 셀 캐시 이빅트는 직접 호출로 예약한다 (커밋 후 실행)
-        courseMapCacheEvictor.evictCourseCellAfterCommit(course.getId());
-        return mapper.toResponse(running, course);
+        CreatedRun created = runningCreationWriter.saveRunAndCourse(command, member, telemetryStatistics, dataUrlsDto);
+        updateVdotOrAlert(memberUuid, created.running());
+        return mapper.toResponse(created.running(), created.course());
     }
 
     private Member findMember(String memberUuid) {
         return memberService.findMemberByUuid(memberUuid);
+    }
+
+    /**
+     * VDOT를 갱신하되, 실패해도 이미 커밋된 러닝을 되돌리지 않는다.
+     *
+     * <p>VDOT 원자성을 포기한 이유는 손해의 비대칭이다 — 사용자가 방금 뛴 기록이 통째로 사라지는 것보다,
+     * VDOT만 낡은 채 두고(다음 러닝에서 재계산된다) 개발자가 인지하는 편이 낫다.
+     *
+     * <p>별도의 알림 채널을 두지 않는 이유는 {@code logback-spring.xml}에 있다 — {@code SentryAppender}가
+     * ERROR {@code ThresholdFilter}와 함께 prod 프로파일 root 에 물려 있어, 운영에서 {@code log.error}는
+     * 그 자체로 Sentry 알럿이 된다. (warn 이 아니라 error 인 이유 — 이 저장소 관례상 warn 은
+     * "TTL 안에 자가 치유되는 것", error 는 "데이터가 실제로 어긋난 채 남아 사람이 봐야 하는 것"이다.)
+     */
+    private void updateVdotOrAlert(String memberUuid, Running running) {
+        try {
+            memberVdotWriter.updateFromRun(memberUuid, running.getRunningRecord().getAveragePace());
+        } catch (Exception e) {
+            log.error("VDOT 갱신 실패, 러닝은 정상 저장됨 - memberUuid={}, runningId={}", memberUuid, running.getId(), e);
+        }
     }
 
     private RunningDataUrlsDto upload(MultipartFile rawTelemetry, TelemetryStatistics telemetryStatistics,
@@ -87,51 +110,27 @@ public class RunningCommandService {
         return new RunningDataUrlsDto(rawUrl, interpolatedUrl, simplifiedUrl, checkpointUrl, screenShotUrl);
     }
 
-    private Course createAndSaveCourse(Member member, CreateRunCommand command,
-                                       TelemetryStatistics telemetryStatistics,
-                                       RunningDataUrlsDto runningDataUrlsDto) {
-        Course course = mapper.toCourse(member, command, telemetryStatistics, runningDataUrlsDto);
-        courseService.save(course);
-        return course;
-    }
-
-    private Running createAndSaveRunning(CreateRunCommand command, TelemetryStatistics telemetryStatistics,
-                                         RunningDataUrlsDto runningDataUrlsDto, Member member, Course course) {
-        Running running = mapper.toRunning(command, telemetryStatistics, runningDataUrlsDto, member, course);
-        return runningRepository.save(running);
-    }
-
-    @Transactional
+    /**
+     * 코스를 따라 뛴 러닝을 저장한다.
+     *
+     * <p>코스 조회와 GHOST 검증은 읽기라 트랜잭션 밖에 둔다 — 존재하지 않는 코스/다른 코스의 고스트라면
+     * S3 업로드를 시작하기 전에 실패하는 편이 낫다(fail-fast). 저장에 쓸 코스는
+     * detached 를 피하려고 {@code courseId}만 넘겨 트랜잭션 안에서 다시 조회한다.
+     */
     public Long createRun(CreateRunCommand command, String memberUuid, Long courseId,
                           MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry, MultipartFile screenShotImage) {
 
         Member member = findMember(memberUuid);
-        Course course = findCourse(courseId);
-
+        findCourse(courseId);  // fail-fast — 없는 코스면 업로드 전에 끝낸다
         validateBelongsToCourseIfGhostMode(command, courseId);
+
         TelemetryStatistics processedTelemetries = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
-
         RunningDataUrlsDto runningDataUrlsDto = upload(rawTelemetry, processedTelemetries, screenShotImage, member);
-        Running running = createAndSaveRunning(command, processedTelemetries, runningDataUrlsDto, member, course);
 
-        courseReadModelWriter.applyRun(running);
-        memberVdotWriter.updateFromRun(member.getUuid(), running.getRunningRecord().getAveragePace());
-        courseSubscriptionService.subscribeIfAbsent(courseId, member.getId());
-        // "완주 직후 지도에서 내 등수를 본다"(설계 §1-2) — 커밋 후 셀 하나를 지우도록 직접 예약한다
-        courseMapCacheEvictor.evictCourseCellAfterCommit(courseId);
-        publishCourseRunEvent(running);
+        Running running = runningCreationWriter.saveRun(command, member, courseId, processedTelemetries, runningDataUrlsDto);
+
+        updateVdotOrAlert(memberUuid, running);
         return running.getId();
-    }
-
-    /**
-     * 코스를 따라 뛴 러닝의 완주 이벤트를 발행한다. 소비자는 푸시 발송({@code PushEventListener}) 하나이며,
-     * AFTER_COMMIT 부수효과다.
-     *
-     * <p>지도 셀 캐시 이빅트는 이 발행에 걸려 있지 않다 — {@link CourseMapCacheEvictor} 직접 호출이 담당한다.
-     * VDOT 갱신·구독 생성도 같은 트랜잭션 동기 로직이라 직접 호출로 전환됐다 (설계 04 §6).</p>
-     */
-    private void publishCourseRunEvent(Running running) {
-        eventPublisher.publishEvent(running.createCourseRunEvent());
     }
 
     private RunningDataUrlsDto upload(MultipartFile rawTelemetry, TelemetryStatistics telemetryStatistics,

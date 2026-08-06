@@ -12,7 +12,6 @@ import soma.ghostrunner.global.common.BaseTimeEntity;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @Entity
 @Table(name = "running_record")
@@ -107,7 +106,10 @@ public class Running extends BaseTimeEntity {
         RunningDataUrls runningDataUrls = RunningDataUrls.of(
                 rawTelemetrySavedUrl, interpolatedTelemetrySavedUrl, screenShotSavedUrl);
 
-        Running running = Running.builder()
+        // 역방향 컬렉션(member.getRuns())에는 담지 않는다.
+        // contains()가 PersistentBag 를 강제 초기화해 러닝 생성마다 그 회원의 전체 러닝을 SELECT 했고,
+        // member 가 detached 면 LazyInitializationException 이 났다. 저장은 runningRepository.save 가 직접 한다.
+        return Running.builder()
                 .runningName(runningName)
                 .runningMode(runningMode)
                 .ghostRunningId(ghostRunningId)
@@ -119,13 +121,6 @@ public class Running extends BaseTimeEntity {
                 .member(member)
                 .course(course)
                 .build();
-
-        List<Running> runs = running.member.getRuns();
-        if (runs != null && !runs.contains(running)) {
-            runs.add(running);
-        }
-
-        return running;
     }
 
     public void updateName(String name) {
