@@ -4,6 +4,7 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import soma.ghostrunner.domain.pacemaker.application.dto.RecoveryContext;
 import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerRepository;
@@ -43,32 +44,41 @@ public class PacemakerRecoveryService {
      * - 서킷브레이커가 열려있으면 FALLBACK 처리
      * - 상태 업데이트 + 데이터 준비 (REQUIRES_NEW 트랜잭션, 별도 서비스)
      * - LLM 재호출 (트랜잭션 밖)
+     *
+     * llmTaskExecutor에서 비동기로 실행 — LLM 호출(분 단위)이 스케줄러 스레드를 점유하면
+     * ShedLock 유지 시간(55초)을 넘겨 다른 인스턴스와 중복 실행될 수 있다.
+     * 복구 전체가 한 태스크라 graceful shutdown 시 완료까지 대기된다.
      */
+    @Async("llmTaskExecutor")
     public void recoverSingle(Long pacemakerId) {
-        log.info("Pacemaker 복구 시작 - pacemakerId={}", pacemakerId);
+        try {
+            log.info("Pacemaker 복구 시작 - pacemakerId={}", pacemakerId);
 
-        // 서킷브레이커 상태 확인
-        if (isCircuitOpen()) {
-            log.warn("서킷브레이커 OPEN 상태, FALLBACK 처리 - pacemakerId={}", pacemakerId);
-            statusService.updateToFallback(pacemakerId);
-            return;
+            // 서킷브레이커 상태 확인
+            if (isCircuitOpen()) {
+                log.warn("서킷브레이커 OPEN 상태, FALLBACK 처리 - pacemakerId={}", pacemakerId);
+                statusService.updateToFallback(pacemakerId);
+                return;
+            }
+
+            // 1. 상태 업데이트 + 데이터 준비 (별도 서비스의 독립 트랜잭션)
+            RecoveryContext context = prepareService.prepareForRecovery(pacemakerId);
+
+            // 2. LLM 재호출 (트랜잭션 밖, rateLimitKey = null로 Rate Limit 복구 스킵)
+            llmService.requestLlmToCreatePacemaker(
+                    context.member(),
+                    context.workoutDto(),
+                    context.vdot(),
+                    context.condition(),
+                    context.temperature(),
+                    context.pacemakerId(),
+                    null  // 워커 재시도는 Rate Limit 카운트 안 함
+            );
+
+            log.info("Pacemaker 복구 LLM 호출 완료 - pacemakerId={}", pacemakerId);
+        } catch (Exception e) {
+            log.error("Pacemaker 복구 실패 - pacemakerId={}", pacemakerId, e);
         }
-
-        // 1. 상태 업데이트 + 데이터 준비 (별도 서비스의 독립 트랜잭션)
-        RecoveryContext context = prepareService.prepareForRecovery(pacemakerId);
-
-        // 2. LLM 재호출 (트랜잭션 밖, rateLimitKey = null로 Rate Limit 복구 스킵)
-        llmService.requestLlmToCreatePacemaker(
-                context.member(),
-                context.workoutDto(),
-                context.vdot(),
-                context.condition(),
-                context.temperature(),
-                context.pacemakerId(),
-                null  // 워커 재시도는 Rate Limit 카운트 안 함
-        );
-
-        log.info("Pacemaker 복구 LLM 호출 완료 - pacemakerId={}", pacemakerId);
     }
 
     private boolean isCircuitOpen() {
