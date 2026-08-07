@@ -29,7 +29,7 @@ class PacemakerCommandServiceTest {
     @Mock
     PacemakerCreationService creationService;
     @Mock
-    PacemakerLlmTriggerService llmTriggerService;
+    PacemakerLlmApiTriggerService llmTriggerService;
     @Mock
     PacemakerUpdateService updateService;
     @Mock
@@ -88,7 +88,7 @@ class PacemakerCommandServiceTest {
         InOrder inOrder = inOrder(rateLimitService, creationService, llmTriggerService);
         inOrder.verify(rateLimitService).incrementCounter(memberUuid);
         inOrder.verify(creationService).createInitialPacemaker(memberUuid, command);
-        inOrder.verify(llmTriggerService).processAsync(result);
+        inOrder.verify(llmTriggerService).process(result);
     }
 
     @DisplayName("Rate Limit 초과 시 TX1, TX2, LLM이 실행되지 않는다 (Fail-Fast)")

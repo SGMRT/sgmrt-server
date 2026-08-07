@@ -16,7 +16,7 @@ import soma.ghostrunner.domain.pacemaker.application.dto.PacemakerCreationResult
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PacemakerLlmTriggerService {
+public class PacemakerLlmApiTriggerService {
 
     private final PacemakerStatusService statusService;
     private final PacemakerRateLimitService rateLimitService;
@@ -31,7 +31,7 @@ public class PacemakerLlmTriggerService {
      * - TX2 실패 시 INIT 상태 유지 → 폴링 시 지연 판정(fallbackIfStale)으로 FALLBACK 처리
      */
     @Async("llmTaskExecutor")
-    public void processAsync(PacemakerCreationResult result) {
+    public void process(PacemakerCreationResult result) {
         Long pacemakerId = result.getPacemakerId();
         log.info("비동기 처리 시작 - pacemakerId={}", pacemakerId);
 

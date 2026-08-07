@@ -19,7 +19,7 @@ import soma.ghostrunner.domain.pacemaker.application.dto.request.PacemakerCreate
 public class PacemakerCommandService {
 
     private final PacemakerCreationService creationService;
-    private final PacemakerLlmTriggerService llmTriggerService;
+    private final PacemakerLlmApiTriggerService llmTriggerService;
     private final PacemakerUpdateService updateService;
     private final PacemakerRateLimitService rateLimitService;
 
@@ -60,7 +60,7 @@ public class PacemakerCommandService {
         }
 
         // 비동기 처리 전달 (TX2 + LLM 호출은 비동기 스레드에서 수행)
-        llmTriggerService.processAsync(result);
+        llmTriggerService.process(result);
 
         log.info("페이스메이커 생성 요청 완료 - pacemakerId={}", result.getPacemakerId());
         return result.getPacemakerId();

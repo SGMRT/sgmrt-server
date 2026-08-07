@@ -175,8 +175,7 @@ public class Pacemaker extends BaseTimeEntity {
      * @return 전환이 일어났으면 true — 고아 레코드였다는 뜻이므로 호출자가 알림을 남긴다
      */
     public boolean fallbackIfStaleOver(Duration threshold) {
-        boolean stale = isNotCompleted()
-                && getCreatedAt().isBefore(LocalDateTime.now().minus(threshold));
+        boolean stale = isNotCompleted() && getCreatedAt().isBefore(LocalDateTime.now().minus(threshold));
         if (stale) {
             fallback();
         }
