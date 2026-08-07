@@ -67,13 +67,16 @@ public class PacemakerStatusService {
      * 폴링 조회 전 지연 판정 — INIT/PROCEEDING인 채 임계치를 넘긴 고아 레코드를 FALLBACK(FAILED)으로
      * 전환해 사용자에게 Rule-Base 훈련표가 응답되도록 한다. SIGKILL·크래시 등으로 LLM 작업이 유실된
      * 경우의 안전망으로, 발생 시 error 로그로 개발자에게 알린다.
+     *
+     * REQUIRES_NEW — QueryService의 readOnly 트랜잭션 안에서 호출되므로, 참여하면 쓰기가 막힌다.
+     * 독립 트랜잭션으로 먼저 커밋되어야 이어지는 조회가 전환된 상태를 읽는다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void fallbackIfStale(Long pacemakerId) {
         pacemakerRepository.findById(pacemakerId).ifPresent(this::fallbackIfStale);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void fallbackIfStaleInCourse(Long courseId, String memberUuid) {
         pacemakerRepository.findByCourseId(courseId, memberUuid).ifPresent(this::fallbackIfStale);
     }

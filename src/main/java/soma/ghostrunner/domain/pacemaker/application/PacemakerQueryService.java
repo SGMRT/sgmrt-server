@@ -19,8 +19,10 @@ import java.util.List;
 
 /**
  * 페이스메이커 조회 전용 서비스
- * - 페이스메이커 단건 조회
- * - 코스 내 페이스메이커 조회
+ * - 페이스메이커 단건 조회 / 코스 내 조회 (폴링용)
+ * - 남은 Rate Limit 조회
+ * - 폴링 조회는 지연 판정(fallbackIfStale)을 먼저 거친다 — 고아 레코드를 FALLBACK으로 전환하는
+ *   유일한 쓰기이며, REQUIRES_NEW 독립 트랜잭션으로 실행되어 readOnly 경계를 침범하지 않는다
  */
 @Slf4j
 @Service
@@ -32,11 +34,15 @@ public class PacemakerQueryService {
     private final PacemakerSetRepository pacemakerSetRepository;
     private final PacemakerApplicationMapper mapper;
     private final RunningTipsProvider runningTipsProvider;
+    private final PacemakerStatusService statusService;
+    private final PacemakerRateLimitService rateLimitService;
 
     /**
      * 페이스메이커 단건 조회 (폴링용)
      */
     public PacemakerPollingResponse getPacemaker(Long pacemakerId, String memberUuid) {
+        statusService.fallbackIfStale(pacemakerId);
+
         Pacemaker pacemaker = findPacemaker(pacemakerId);
         pacemaker.verifyMember(memberUuid);
 
@@ -52,6 +58,8 @@ public class PacemakerQueryService {
      * 코스 내 페이스메이커 조회 (폴링용)
      */
     public PacemakerInCourseViewPollingResponse getPacemakerInCourse(String memberUuid, Long courseId) {
+        statusService.fallbackIfStaleInCourse(courseId, memberUuid);
+
         Pacemaker pacemaker = findPacemakerInCourse(memberUuid, courseId);
         if (pacemaker.isNotCompleted()) {
             return mapper.toPacemakerInCourseViewPollingResponse(pacemaker);
@@ -75,6 +83,13 @@ public class PacemakerQueryService {
     public Pacemaker findPacemakerInCourse(String memberUuid, Long courseId) {
         return pacemakerRepository.findByCourseId(courseId, memberUuid)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId + "에 대한 페이스메이커를 찾을 수 없음"));
+    }
+
+    /**
+     * 남은 일일 사용량 조회
+     */
+    public Long getRateLimitCounter(String memberUuid) {
+        return rateLimitService.getRemainingCount(memberUuid);
     }
 
 }

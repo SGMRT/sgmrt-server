@@ -35,6 +35,10 @@ class PacemakerQueryServiceTest {
     PacemakerApplicationMapper mapper;
     @Mock
     RunningTipsProvider runningTipsProvider;
+    @Mock
+    PacemakerStatusService statusService;
+    @Mock
+    PacemakerRateLimitService rateLimitService;
 
     PacemakerQueryService queryService;
 
@@ -44,7 +48,9 @@ class PacemakerQueryServiceTest {
                 pacemakerRepository,
                 pacemakerSetRepository,
                 mapper,
-                runningTipsProvider
+                runningTipsProvider,
+                statusService,
+                rateLimitService
         );
     }
 
@@ -196,6 +202,41 @@ class PacemakerQueryServiceTest {
         // when/then
         assertThatThrownBy(() -> queryService.findPacemaker(id))
                 .isInstanceOf(RunningNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("폴링 조회는 지연 판정(fallbackIfStale)을 먼저 거친 뒤 조회한다")
+    void getPacemaker_runsStaleCheckBeforeQuery() {
+        // given
+        String owner = "owner-uuid";
+        Long id = 100L;
+        Pacemaker proceeding = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
+        proceeding.proceed();
+
+        when(pacemakerRepository.findById(id)).thenReturn(Optional.of(proceeding));
+
+        // when
+        queryService.getPacemaker(id, owner);
+
+        // then — 고아 레코드가 전환된 '뒤의' 상태를 읽어야 하므로 순서가 불변식이다
+        InOrder inOrder = inOrder(statusService, pacemakerRepository);
+        inOrder.verify(statusService).fallbackIfStale(id);
+        inOrder.verify(pacemakerRepository).findById(id);
+    }
+
+    @Test
+    @DisplayName("Rate Limit 조회는 RateLimitService로 위임된다")
+    void getRateLimitCounter_delegatesToRateLimitService() {
+        // given
+        String memberUuid = "member-123";
+        when(rateLimitService.getRemainingCount(memberUuid)).thenReturn(2L);
+
+        // when
+        Long count = queryService.getRateLimitCounter(memberUuid);
+
+        // then
+        assertThat(count).isEqualTo(2L);
+        verify(rateLimitService).getRemainingCount(memberUuid);
     }
 
 }

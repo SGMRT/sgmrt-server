@@ -19,7 +19,8 @@ import soma.ghostrunner.domain.notification.api.NotificationApi;
 import soma.ghostrunner.domain.notification.application.PushService;
 import soma.ghostrunner.domain.pacemaker.api.PacemakerApi;
 import soma.ghostrunner.domain.pacemaker.api.support.PacemakerApiMapperImpl;
-import soma.ghostrunner.domain.pacemaker.application.PacemakerFacade;
+import soma.ghostrunner.domain.pacemaker.application.PacemakerCommandService;
+import soma.ghostrunner.domain.pacemaker.application.PacemakerQueryService;
 import soma.ghostrunner.domain.running.api.RunningApi;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapperImpl;
@@ -74,6 +75,9 @@ public abstract class ApiTestSupport {
     protected PushService pushService;
 
     @MockitoBean
-    protected PacemakerFacade pacemakerFacade;
+    protected PacemakerCommandService pacemakerCommandService;
+
+    @MockitoBean
+    protected PacemakerQueryService pacemakerQueryService;
 
 }

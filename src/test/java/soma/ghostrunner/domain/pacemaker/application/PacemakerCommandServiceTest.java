@@ -8,8 +8,6 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerInCourseViewPollingResponse;
-import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.pacemaker.api.support.PacemakerType;
 import soma.ghostrunner.domain.pacemaker.application.dto.PacemakerCreationResult;
 import soma.ghostrunner.domain.pacemaker.application.dto.WorkoutDto;
@@ -26,32 +24,26 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class PacemakerFacadeTest {
+class PacemakerCommandServiceTest {
 
     @Mock
     PacemakerCreationService creationService;
     @Mock
     PacemakerLlmTriggerService llmTriggerService;
     @Mock
-    PacemakerQueryService queryService;
-    @Mock
     PacemakerUpdateService updateService;
     @Mock
     PacemakerRateLimitService rateLimitService;
-    @Mock
-    PacemakerStatusService statusService;
 
-    PacemakerFacade facade;
+    PacemakerCommandService commandService;
 
     @BeforeEach
     void setUp() {
-        facade = new PacemakerFacade(
+        commandService = new PacemakerCommandService(
                 creationService,
                 llmTriggerService,
-                queryService,
                 updateService,
-                rateLimitService,
-                statusService
+                rateLimitService
         );
     }
 
@@ -87,7 +79,7 @@ class PacemakerFacadeTest {
         when(creationService.createInitialPacemaker(memberUuid, command)).thenReturn(result);
 
         // when
-        Long actualId = facade.createPacemaker(memberUuid, command);
+        Long actualId = commandService.createPacemaker(memberUuid, command);
 
         // then
         assertThat(actualId).isEqualTo(expectedPacemakerId);
@@ -114,7 +106,7 @@ class PacemakerFacadeTest {
                 .when(rateLimitService).incrementCounter(memberUuid);
 
         // when & then
-        assertThatThrownBy(() -> facade.createPacemaker(memberUuid, command))
+        assertThatThrownBy(() -> commandService.createPacemaker(memberUuid, command))
                 .isInstanceOf(InvalidRunningException.class)
                 .hasMessageContaining("일일 사용량");
 
@@ -139,7 +131,7 @@ class PacemakerFacadeTest {
                 .thenThrow(new RuntimeException("TX1 실패"));
 
         // when & then
-        assertThatThrownBy(() -> facade.createPacemaker(memberUuid, command))
+        assertThatThrownBy(() -> commandService.createPacemaker(memberUuid, command))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("TX1 실패");
 
@@ -148,44 +140,6 @@ class PacemakerFacadeTest {
 
         // 카운트 보상이 실행되어야 함
         verify(rateLimitService).decrementCounter(rateLimitKey);
-    }
-
-    // ==================== 조회 테스트 ====================
-
-    @DisplayName("페이스메이커 조회는 QueryService로 위임된다")
-    @Test
-    void getPacemaker_delegatesToQueryService() {
-        // given
-        Long pacemakerId = 100L;
-        String memberUuid = "member-123";
-        PacemakerPollingResponse expected = new PacemakerPollingResponse();
-
-        when(queryService.getPacemaker(pacemakerId, memberUuid)).thenReturn(expected);
-
-        // when
-        PacemakerPollingResponse actual = facade.getPacemaker(pacemakerId, memberUuid);
-
-        // then
-        assertThat(actual).isSameAs(expected);
-        verify(queryService).getPacemaker(pacemakerId, memberUuid);
-    }
-
-    @DisplayName("코스 내 페이스메이커 조회는 QueryService로 위임된다")
-    @Test
-    void getPacemakerInCourse_delegatesToQueryService() {
-        // given
-        String memberUuid = "member-123";
-        Long courseId = 1L;
-        PacemakerInCourseViewPollingResponse expected = new PacemakerInCourseViewPollingResponse();
-
-        when(queryService.getPacemakerInCourse(memberUuid, courseId)).thenReturn(expected);
-
-        // when
-        PacemakerInCourseViewPollingResponse actual = facade.getPacemakerInCourse(memberUuid, courseId);
-
-        // then
-        assertThat(actual).isSameAs(expected);
-        verify(queryService).getPacemakerInCourse(memberUuid, courseId);
     }
 
     // ==================== 업데이트/삭제 테스트 ====================
@@ -199,7 +153,7 @@ class PacemakerFacadeTest {
         Long runningId = 200L;
 
         // when
-        facade.updateAfterRunning(memberUuid, pacemakerId, runningId);
+        commandService.updateAfterRunning(memberUuid, pacemakerId, runningId);
 
         // then
         verify(updateService).updateAfterRunning(memberUuid, pacemakerId, runningId);
@@ -213,29 +167,10 @@ class PacemakerFacadeTest {
         Long pacemakerId = 100L;
 
         // when
-        facade.deletePacemaker(memberUuid, pacemakerId);
+        commandService.deletePacemaker(memberUuid, pacemakerId);
 
         // then
         verify(updateService).deletePacemaker(memberUuid, pacemakerId);
-    }
-
-    // ==================== Rate Limit 테스트 ====================
-
-    @DisplayName("Rate Limit 조회는 RateLimitService로 위임된다")
-    @Test
-    void getRateLimitCounter_delegatesToRateLimitService() {
-        // given
-        String memberUuid = "member-123";
-        Long expectedCount = 2L;
-
-        when(rateLimitService.getRemainingCount(memberUuid)).thenReturn(expectedCount);
-
-        // when
-        Long count = facade.getRateLimitCounter(memberUuid);
-
-        // then
-        assertThat(count).isEqualTo(expectedCount);
-        verify(rateLimitService).getRemainingCount(memberUuid);
     }
 
 }

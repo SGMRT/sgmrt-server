@@ -3,33 +3,25 @@ package soma.ghostrunner.domain.pacemaker.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerInCourseViewPollingResponse;
-import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.pacemaker.application.dto.PacemakerCreationResult;
 import soma.ghostrunner.domain.pacemaker.application.dto.request.PacemakerCreateCommand;
 
 /**
- * 페이스메이커 Facade - 모든 진입점
+ * 페이스메이커 명령(생성·업데이트·삭제) 진입점 — 조회는 {@link PacemakerQueryService}
  *
  * 역할:
  * - 생성: TX1(Rule-Base, INIT) → 비동기(TX2 + LLM)
- * - 조회: 단건 조회, 코스 내 조회
  * - 업데이트: 러닝 후 상태 업데이트, 삭제
- * - Rate Limit: 남은 사용량 조회
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PacemakerFacade {
+public class PacemakerCommandService {
 
     private final PacemakerCreationService creationService;
     private final PacemakerLlmTriggerService llmTriggerService;
-    private final PacemakerQueryService queryService;
     private final PacemakerUpdateService updateService;
     private final PacemakerRateLimitService rateLimitService;
-    private final PacemakerStatusService statusService;
-
-    // ==================== 생성 ====================
 
     /**
      * 페이스메이커 생성
@@ -75,28 +67,6 @@ public class PacemakerFacade {
         return result.getPacemakerId();
     }
 
-    // ==================== 조회 ====================
-
-    /**
-     * 페이스메이커 단건 조회 (폴링용)
-     * - 조회 전 지연 판정: 임계치를 넘긴 고아 레코드는 FALLBACK으로 전환 후 조회
-     */
-    public PacemakerPollingResponse getPacemaker(Long pacemakerId, String memberUuid) {
-        statusService.fallbackIfStale(pacemakerId);
-        return queryService.getPacemaker(pacemakerId, memberUuid);
-    }
-
-    /**
-     * 코스 내 페이스메이커 조회 (폴링용)
-     * - 조회 전 지연 판정: 임계치를 넘긴 고아 레코드는 FALLBACK으로 전환 후 조회
-     */
-    public PacemakerInCourseViewPollingResponse getPacemakerInCourse(String memberUuid, Long courseId) {
-        statusService.fallbackIfStaleInCourse(courseId, memberUuid);
-        return queryService.getPacemakerInCourse(memberUuid, courseId);
-    }
-
-    // ==================== 업데이트/삭제 ====================
-
     /**
      * 러닝 완료 후 페이스메이커 상태 업데이트
      */
@@ -109,15 +79,6 @@ public class PacemakerFacade {
      */
     public void deletePacemaker(String memberUuid, Long pacemakerId) {
         updateService.deletePacemaker(memberUuid, pacemakerId);
-    }
-
-    // ==================== Rate Limit ====================
-
-    /**
-     * 남은 일일 사용량 조회
-     */
-    public Long getRateLimitCounter(String memberUuid) {
-        return rateLimitService.getRemainingCount(memberUuid);
     }
 
 }
