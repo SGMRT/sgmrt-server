@@ -8,6 +8,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.util.ReflectionTestUtils;
 import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.pacemaker.application.support.PacemakerApplicationMapper;
 import soma.ghostrunner.domain.pacemaker.domain.Pacemaker;
@@ -201,7 +202,7 @@ class PacemakerQueryServiceTest {
     }
 
     @Test
-    @DisplayName("PROCEEDING인 채 임계치(30분)를 넘긴 고아 레코드는 FAILED로 전환되고 세트와 함께 응답한다")
+    @DisplayName("PROCEEDING인 채 임계치(30분)를 넘긴 고아 레코드는 조건부 UPDATE로 FAILED 전환 후 세트와 함께 응답한다")
     void getPacemaker_stale_fallsBackAndReturnsWithSets() {
         // given
         String owner = "owner-uuid";
@@ -209,25 +210,65 @@ class PacemakerQueryServiceTest {
         Pacemaker stale = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
         stale.proceed();
         stale.setCreatedAt(LocalDateTime.now().minusMinutes(31));
+        ReflectionTestUtils.setField(stale, "id", id);    // 재조회(findById(getId()))가 스텁과 일치하도록
+
+        Pacemaker failed = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
+        failed.proceed();
+        failed.fallback();
 
         List<PacemakerSet> sets = List.of(PacemakerSet.of(1, null, 0.0, 2.0, 5.0, null));
         PacemakerPollingResponse expected = new PacemakerPollingResponse();
         when(runningTipsProvider.getRandomTip()).thenReturn("Mock Tip");
-        when(pacemakerRepository.findById(id)).thenReturn(Optional.of(stale));
+        when(pacemakerRepository.findById(id))
+                .thenReturn(Optional.of(stale))     // 최초 조회
+                .thenReturn(Optional.of(failed));   // 조건부 UPDATE 후 재조회
+        when(pacemakerRepository.fallbackIfNotCompleted(id)).thenReturn(1);
         when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(id)).thenReturn(sets);
-        when(mapper.toPacemakerPollingResponse(stale, sets, "Mock Tip")).thenReturn(expected);
+        when(mapper.toPacemakerPollingResponse(failed, sets, "Mock Tip")).thenReturn(expected);
 
         // when
         PacemakerPollingResponse actual = queryService.getPacemaker(id, owner);
 
         // then — 진행 중 응답이 아니라 Rule-Base 훈련표(세트)가 폴백으로 나가야 한다
-        assertThat(stale.getStatus()).isEqualTo(Pacemaker.Status.FAILED);
         assertThat(actual).isSameAs(expected);
-        verify(mapper, never()).toPacemakerPollingResponse(stale);
+        verify(pacemakerRepository).fallbackIfNotCompleted(id);
+        verify(mapper, never()).toPacemakerPollingResponse(any(Pacemaker.class));
     }
 
     @Test
-    @DisplayName("PROCEEDING이라도 임계치 이내면 상태를 유지하고 진행 중 응답을 반환한다")
+    @DisplayName("임계치를 넘겼어도 완료 콜백이 먼저 커밋했다면(0건 매치) 콜백 결과를 그대로 응답한다")
+    void getPacemaker_stale_butCallbackWon_returnsCallbackResult() {
+        // given — 지연 판정과 완료 콜백의 경쟁에서 콜백이 이긴 상황
+        String owner = "owner-uuid";
+        Long id = 100L;
+        Pacemaker stale = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
+        stale.proceed();
+        stale.setCreatedAt(LocalDateTime.now().minusMinutes(31));
+        ReflectionTestUtils.setField(stale, "id", id);
+
+        Pacemaker completed = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
+        completed.proceed();
+        completed.complete("요약", 10.0, 50, "메세지");
+
+        List<PacemakerSet> sets = List.of(PacemakerSet.of(1, "메세지1", null, null, null, null));
+        PacemakerPollingResponse expected = new PacemakerPollingResponse();
+        when(runningTipsProvider.getRandomTip()).thenReturn("Mock Tip");
+        when(pacemakerRepository.findById(id))
+                .thenReturn(Optional.of(stale))
+                .thenReturn(Optional.of(completed));
+        when(pacemakerRepository.fallbackIfNotCompleted(id)).thenReturn(0);     // 이미 COMPLETED — 물러남
+        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(id)).thenReturn(sets);
+        when(mapper.toPacemakerPollingResponse(completed, sets, "Mock Tip")).thenReturn(expected);
+
+        // when
+        PacemakerPollingResponse actual = queryService.getPacemaker(id, owner);
+
+        // then — LLM 결과(COMPLETED)가 덮어써지지 않고 그대로 응답된다
+        assertThat(actual).isSameAs(expected);
+    }
+
+    @Test
+    @DisplayName("PROCEEDING이라도 임계치 이내면 전환 없이 진행 중 응답을 반환한다")
     void getPacemaker_notStale_keepsProceeding() {
         // given
         String owner = "owner-uuid";
@@ -244,8 +285,8 @@ class PacemakerQueryServiceTest {
         PacemakerPollingResponse actual = queryService.getPacemaker(id, owner);
 
         // then
-        assertThat(proceeding.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
         assertThat(actual).isSameAs(expected);
+        verify(pacemakerRepository, never()).fallbackIfNotCompleted(anyLong());
     }
 
 }

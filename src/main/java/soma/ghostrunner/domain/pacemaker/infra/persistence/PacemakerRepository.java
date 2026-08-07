@@ -17,6 +17,19 @@ public interface PacemakerRepository extends JpaRepository<Pacemaker, Long> {
             "limit 1")
     Optional<Pacemaker> findByCourseId(Long courseId, String memberUuid);
 
+    /**
+     * 미완료(INIT/PROCEEDING) 상태일 때만 FAILED로 전환하는 원자적 조건부 UPDATE.
+     * 완료 콜백과의 경쟁에서 이미 COMPLETED가 커밋됐다면 0건 매치로 물러나 —
+     * 읽고-쓰기(dirty checking) 방식에서 생기던 Lost Update(LLM 결과 덮어쓰기)를 차단한다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Pacemaker p " +
+            "set p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.FAILED " +
+            "where p.id = :pacemakerId " +
+            "and p.status in (soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.INIT, " +
+            "                 soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.PROCEEDING)")
+    int fallbackIfNotCompleted(Long pacemakerId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Pacemaker p set p.deleted = true where p.id = :pacemakerId")
     int softDelete(Long pacemakerId);

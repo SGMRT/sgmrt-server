@@ -170,16 +170,11 @@ public class Pacemaker extends BaseTimeEntity {
     }
 
     /**
-     * 지연 판정 — 미완료(INIT/PROCEEDING)인 채 threshold를 넘겼으면 FALLBACK(FAILED)으로 전환한다.
-     *
-     * @return 전환이 일어났으면 true — 고아 레코드였다는 뜻이므로 호출자가 알림을 남긴다
+     * 지연 판정 — 미완료(INIT/PROCEEDING)인 채 threshold를 넘긴 고아 레코드인지 판정한다.
+     * 전환 자체는 완료 콜백과의 경쟁 때문에 DB 조건부 UPDATE로 수행한다 (repository.fallbackIfNotCompleted).
      */
-    public boolean fallbackIfStaleOver(Duration threshold) {
-        boolean stale = isNotCompleted() && getCreatedAt().isBefore(LocalDateTime.now().minus(threshold));
-        if (stale) {
-            fallback();
-        }
-        return stale;
+    public boolean isStaleOver(Duration threshold) {
+        return isNotCompleted() && getCreatedAt().isBefore(LocalDateTime.now().minus(threshold));
     }
 
     private void validateStatusTransition(Status next) {

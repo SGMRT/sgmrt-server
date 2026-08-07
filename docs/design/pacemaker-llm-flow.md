@@ -146,23 +146,31 @@ public PacemakerPollingResponse getPacemaker(Long pacemakerId, String memberUuid
 }
 ```
 
-**지연 판정** — 판정·전환은 도메인이, 임계치(운영 정책)와 error 알림은 서비스가 담당한다.
+**지연 판정** — 판정은 도메인이, 전환은 DB 조건부 UPDATE가, 임계치(운영 정책)와 error 알림은 서비스가 담당한다.
 
 ```java
-// Pacemaker (도메인) — 상태 전이 규칙의 주인이 시간 조건까지 담당
-public boolean fallbackIfStaleOver(Duration threshold) {
-    boolean stale = isNotCompleted() && getCreatedAt().isBefore(LocalDateTime.now().minus(threshold));
-    if (stale) fallback();
-    return stale;
+// Pacemaker (도메인) — 고아 여부 판정
+public boolean isStaleOver(Duration threshold) {
+    return isNotCompleted() && getCreatedAt().isBefore(LocalDateTime.now().minus(threshold));
 }
 
+// PacemakerRepository — 원자적 조건부 전환: 완료 콜백과의 경쟁에서 이미 COMPLETED면 0건 매치로 물러난다
+@Modifying(clearAutomatically = true, flushAutomatically = true)
+@Query("update Pacemaker p set p.status = 'FAILED' " +
+        "where p.id = :pacemakerId and p.status in ('INIT', 'PROCEEDING')")
+int fallbackIfNotCompleted(Long pacemakerId);
+
 // PacemakerQueryService — 임계치 30분: 셧다운 대기(20분)·재시도 워스트(~18분)보다 길게
-private void fallbackIfStale(Pacemaker pacemaker) {
-    if (pacemaker.fallbackIfStaleOver(STALE_THRESHOLD)) {
+private Pacemaker fallbackIfStale(Pacemaker pacemaker) {
+    if (!pacemaker.isStaleOver(STALE_THRESHOLD)) return pacemaker;
+    if (pacemakerRepository.fallbackIfNotCompleted(pacemaker.getId()) == 1) {
         log.error("고아 페이스메이커 감지 → FALLBACK 전환 - ...");   // Sentry·Discord 개발자 알림
     }
+    return findPacemaker(pacemaker.getId());    // 전환(또는 경쟁 상대의 완료) 결과 재조회
 }
 ```
+
+전환을 읽고-쓰기(dirty checking)가 아닌 **조건부 UPDATE**로 하는 이유: 폴링의 지연 판정과 LLM 완료 콜백이 같은 레코드를 서로 다른 트랜잭션에서 수정할 수 있는데, 각자 자기 스냅샷 기준으로 쓰면 나중에 커밋한 쪽이 상대를 덮는다(Lost Update — 최악은 LLM 결과가 FAILED로 되돌아가는 경우). 조건부 UPDATE는 "미완료일 때만 전환"을 DB가 원자적으로 보장하므로 이 경쟁이 사라진다.
 
 - **왜 워커가 아니라 읽기 시점인가** — 고아는 SIGKILL·크래시·TX2 실패 같은 드문 이벤트에서만 생긴다. 1분 주기 스케줄러 + ShedLock을 상시 유지하는 대신, 실제로 조회될 때 해소하고 발생 사실은 error 로그로 알린다.
 - **UC2′ (코스 내 조회)** 도 동일 — `findByCourseId`(해당 코스에서 아직 함께 뛰지 않은 최신 1건) 후 같은 지연 판정을 거친다.

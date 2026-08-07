@@ -49,7 +49,7 @@ public class PacemakerQueryService {
     public PacemakerPollingResponse getPacemaker(Long pacemakerId, String memberUuid) {
         Pacemaker pacemaker = findPacemaker(pacemakerId);
         pacemaker.verifyMember(memberUuid);
-        fallbackIfStale(pacemaker);
+        pacemaker = fallbackIfStale(pacemaker);
 
         if (pacemaker.isNotCompleted()) {
             return mapper.toPacemakerPollingResponse(pacemaker);
@@ -66,7 +66,7 @@ public class PacemakerQueryService {
     @Transactional
     public PacemakerInCourseViewPollingResponse getPacemakerInCourse(String memberUuid, Long courseId) {
         Pacemaker pacemaker = findPacemakerInCourse(memberUuid, courseId);
-        fallbackIfStale(pacemaker);
+        pacemaker = fallbackIfStale(pacemaker);
         if (pacemaker.isNotCompleted()) {
             return mapper.toPacemakerInCourseViewPollingResponse(pacemaker);
         }
@@ -92,15 +92,25 @@ public class PacemakerQueryService {
     }
 
     /**
-     * 지연 판정 — 판정과 전환은 도메인(Pacemaker)이 하고, 고아 발생 알림만 여기서 남긴다.
+     * 지연 판정 — 판정은 도메인(isStaleOver)이, 전환은 DB 조건부 UPDATE가 수행한다.
+     * 완료 콜백과의 경쟁에서 콜백이 먼저 COMPLETED를 커밋했다면 0건 매치로 물러나므로,
+     * 읽고-쓰기 방식에서 생기던 LLM 결과 덮어쓰기(Lost Update)가 없다.
      * SIGKILL·크래시·TX2 실패 등으로 LLM 작업이 유실된 경우라 발생 자체가 이상 신호다.
+     *
+     * @return 전환(또는 경쟁 상대의 완료) 결과가 반영된 최신 엔티티
      */
-    private void fallbackIfStale(Pacemaker pacemaker) {
-        if (pacemaker.fallbackIfStaleOver(STALE_THRESHOLD)) {
+    private Pacemaker fallbackIfStale(Pacemaker pacemaker) {
+        if (!pacemaker.isStaleOver(STALE_THRESHOLD)) {
+            return pacemaker;
+        }
+
+        int transitioned = pacemakerRepository.fallbackIfNotCompleted(pacemaker.getId());
+        if (transitioned == 1) {
             log.error("고아 페이스메이커 감지 → FALLBACK 전환 - pacemakerId={}, createdAt={}. "
                             + "LLM 파이프라인에서 유실된 작업이므로 원인 확인 필요 (강제 종료·크래시 등)",
                     pacemaker.getId(), pacemaker.getCreatedAt());
         }
+        return findPacemaker(pacemaker.getId());
     }
 
 }

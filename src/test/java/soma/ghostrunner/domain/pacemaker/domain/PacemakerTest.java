@@ -178,53 +178,41 @@ class PacemakerTest {
                 .hasMessage("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
     }
 
-    @DisplayName("fallbackIfStaleOver는 미완료 상태로 임계치를 넘겼으면 FAILED로 전환하고 true를 반환한다.")
+    @DisplayName("isStaleOver는 미완료 상태로 임계치를 넘겼으면 true다.")
     @Test
-    void fallbackIfStaleOver_staleProceeding_failsOver() {
+    void isStaleOver_staleProceeding_true() {
         // given
         Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
         pacemaker.proceed();
         pacemaker.setCreatedAt(LocalDateTime.now().minusMinutes(31));
 
-        // when
-        boolean transitioned = pacemaker.fallbackIfStaleOver(Duration.ofMinutes(30));
-
-        // then
-        Assertions.assertThat(transitioned).isTrue();
-        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.FAILED);
+        // when // then
+        Assertions.assertThat(pacemaker.isStaleOver(Duration.ofMinutes(30))).isTrue();
     }
 
-    @DisplayName("fallbackIfStaleOver는 임계치 이내면 상태를 유지하고 false를 반환한다.")
+    @DisplayName("isStaleOver는 임계치 이내면 false다.")
     @Test
-    void fallbackIfStaleOver_fresh_keepsStatus() {
+    void isStaleOver_fresh_false() {
         // given
         Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
         pacemaker.proceed();
         pacemaker.setCreatedAt(LocalDateTime.now().minusMinutes(29));
 
-        // when
-        boolean transitioned = pacemaker.fallbackIfStaleOver(Duration.ofMinutes(30));
-
-        // then
-        Assertions.assertThat(transitioned).isFalse();
-        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
+        // when // then
+        Assertions.assertThat(pacemaker.isStaleOver(Duration.ofMinutes(30))).isFalse();
     }
 
-    @DisplayName("fallbackIfStaleOver는 이미 완료(COMPLETED/FAILED)된 상태면 시간이 지나도 건드리지 않는다.")
+    @DisplayName("isStaleOver는 이미 완료(COMPLETED/FAILED)된 상태면 시간이 지나도 false다.")
     @Test
-    void fallbackIfStaleOver_completed_untouched() {
+    void isStaleOver_completed_false() {
         // given
         Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
         pacemaker.proceed();
         pacemaker.complete("요약", 10.0, 50, "메세지");
         pacemaker.setCreatedAt(LocalDateTime.now().minusMinutes(31));
 
-        // when
-        boolean transitioned = pacemaker.fallbackIfStaleOver(Duration.ofMinutes(30));
-
-        // then
-        Assertions.assertThat(transitioned).isFalse();
-        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.COMPLETED);
+        // when // then
+        Assertions.assertThat(pacemaker.isStaleOver(Duration.ofMinutes(30))).isFalse();
     }
 
     @DisplayName("createWithRuleBase는 condition과 temperature를 저장한다.")
