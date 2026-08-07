@@ -7,25 +7,38 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
+import soma.ghostrunner.domain.course.domain.BoundingBox;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseReadModel;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
-import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * 코스 도메인의 조회·수정·삭제와, 그에 딸린 <b>주인의 구독({@link CourseSubscription}) 조율</b>을 담당한다.
+ *
+ * <p>책임 경계</p>
+ * <ul>
+ *   <li><b>코스 본체</b> — 코스 조회(주변/회원별/단건), 코스명·공개 여부 변경, 코스 삭제.</li>
+ *   <li><b>주인 구독 조율</b> — 코스 공개 전환은 곧 "주인이 자기 코스를 구독한 상태"를 뜻하므로, 공개/비공개
+ *       전환에 맞춰 주인의 구독을 생성·복원·해제한다. (다른 러너의 구독은 코스를 따라 뛸 때
+ *       {@code CourseSubscriptionEventListener}가 만든다.)</li>
+ *   <li><b>리드모델은 위임</b> — 리드모델 갱신은 직접 하지 않고 전부 {@link CourseReadModelWriter}에 맡긴다.
+ *       (코스명 변경 → rename, 공개 전환 → syncPublicity, 코스 삭제 → delete)</li>
+ * </ul>
+ *
+ * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §3-2
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -34,8 +47,8 @@ public class CourseService {
     private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
     private final CourseSubscriptionRepository subscriptionRepository;
-    private final CourseReadModelRepository readModelRepository;
-    private final RunningRepository runningRepository;
+    private final CourseReadModelWriter readModelWriter;
+    private final CourseMapCacheEvictor mapCacheEvictor;
 
     public Long save(Course course) {
         return courseRepository.save(course).getId();
@@ -53,15 +66,14 @@ public class CourseService {
 
     public List<CoursePreviewDto> findNearbyCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
                                                     CourseSearchFilterDto filters, Long memberId) {
-        // 코스 검색할 직사각형 반경 계산
-        // - 1도 위도 당 111km 가정 (지구 둘레 40,075km / 360도 = 약 111.3km)
-        // - 근사치이며, 적도에서 멀어질 수록 경도 거리 오차가 커짐 -> TODO: 추후 Haversine 공식이나 DB 공간 데이터 타입 활용하도록 변경
-        LatLngs result = getBoundingBoxLatLngs(lat, lng, radiusM);
+        BoundingBox boundingBox = BoundingBox.of(lat, lng, radiusM);
 
-        List<Course> courses = courseRepository.findCoursesWithFilters(lat, lng, result.minLat(), result.maxLat(), result.minLng(), result.maxLng(), filters, sort, memberId);
-        log.info("CourseService::findNearbyCourses() - found {} courses", courses.size());
+        List<Course> nearbyCourses = courseRepository.findCoursesWithFilters(lat, lng,
+                boundingBox.minLat(), boundingBox.maxLat(), boundingBox.minLng(), boundingBox.maxLng(),
+                filters, sort, memberId);
+        log.info("CourseService::findNearbyCourses() - found {} courses", nearbyCourses.size());
 
-        return courses.stream()
+        return nearbyCourses.stream()
                 .map(courseMapper::toCoursePreviewDto)
                 .collect(Collectors.toList());
     }
@@ -76,201 +88,152 @@ public class CourseService {
     public void deleteCourse(Long courseId, String memberUuid) {
         Course course = findCourseById(courseId);
         course.verifyOwner(memberUuid);
-        
-        // 리드모델 삭제 (있으면)
-        readModelRepository.findByCourseId(courseId)
-            .ifPresent(readModelRepository::delete);
-        
+
+        // 삭제 후에는 좌표를 되찾을 수 없으므로, 코스가 아직 살아 있는 지금 좌표를 읽어 커밋 후 이빅트를 예약한다.
+        scheduleMapCellEvict(course);
+
+        readModelWriter.delete(courseId);
         courseRepository.delete(course);
     }
 
+    /**
+     * 요청에 담긴 필드만 부분 수정한다. (null 인 필드는 건드리지 않는다)
+     * 각 수정은 코스 본체를 바꾼 뒤 곧바로 리드모델에 동기화한다.
+     *
+     * <p><b>이 메서드는 지도에 노출되는 코스 카드(코스명·공개 여부)를 바꾸는 유일한 진입점이다.</b>
+     * 그러므로 지도 셀 캐시 이빅트는 개별 수정 메서드가 아니라 여기서 한 번만 요청한다. 이름과 공개 여부가
+     * 함께 바뀌어도 캐시 이빅트는 한 번이면 충분하고, 중복 요청은 이빅트 메트릭을 부풀려 관측을 왜곡한다.
+     *
+     * <p>설계 문서: docs/design/course-cell-bucket-cache-design.md §4(경로 b~d) · D4
+     */
     @Transactional
     public void updateCourse(Long courseId, CoursePatchRequest request, String memberUuid) {
         Course course = findCourseById(courseId);
         course.verifyOwner(memberUuid);
 
-        if (request.getName() != null) {
-            updateCourseName(course, request.getName());
+        String newName = request.getName();
+        Boolean newPublicity = request.getIsPublic();
+        boolean courseCardChangeRequested = (newName != null || newPublicity != null);
+
+        if (newName != null) {
+            updateCourseName(course, newName);
         }
-        if (request.getIsPublic() != null) {
-            updateCoursePublicity(course, request.getIsPublic());
-            syncReadModelPublicity(courseId, request.getIsPublic()); // 리드모델 동기화
+        if (newPublicity != null) {
+            updateCoursePublicity(course, newPublicity);
         }
+
         courseRepository.save(course);
-    }
 
-    private void updateCourseName(
-            Course course,
-            String name) {
-        if(course == null) throw new IllegalArgumentException("Course cannot be null");
-        if(!StringUtils.hasText(name)) throw new CourseNameNotValidException(ErrorCode.COURSE_NAME_NOT_VALID);
-        course.setName(name);
-    }
-
-    private void updateCoursePublicity(Course course, Boolean isPublic) {
-        if(course == null) throw new IllegalArgumentException("Course cannot be null");
-        if(isPublic == null) throw new IllegalArgumentException("IsPublic cannot be null");
-        
-        boolean currentStatus = course.isPublic();
-        
-        if (currentStatus == isPublic) {
-            log.debug("Course {} is already in desired state: isPublic={}", course.getId(), isPublic);
-            return;
-        }
-        
-        // 등록: false -> true
-        if (!currentStatus) {
-            registerCourse(course);
-        }
-        // 등록 해제: true -> false
-        else {
-            unregisterCourse(course);
+        if (courseCardChangeRequested) {
+            scheduleMapCellEvict(course);
         }
     }
 
     /**
-     * 코스 등록 (도메인 + 중간테이블 조율)
-     * - 이름이 없으면 등록 불가
+     * 이 코스가 속한 지도 셀의 캐시를 커밋 후 지우도록 예약한다.
+     *
+     * <p>좌표는 이미 로드된 {@link Course}에서 읽으므로 추가 쿼리가 없다. 시작점이 없는 코스라면 좌표가
+     * {@code null}이고, 그때는 지울 셀을 정할 수 없으므로 이빅터가 건너뛴다.
+     */
+    private void scheduleMapCellEvict(Course course) {
+        Coordinate startCoordinate = course.getStartCoordinate();
+        mapCacheEvictor.evictCellAfterCommit(
+                course.getId(),
+                startCoordinate != null ? startCoordinate.getLatitude() : null,
+                startCoordinate != null ? startCoordinate.getLongitude() : null);
+    }
+
+    /**
+     * 코스명을 바꾸고 리드모델에도 반영한다. (빈 이름은 허용하지 않는다)
+     *
+     * <p>지도 데이터 변경 이벤트는 발행하지 않는다 — 발행은 호출자인 {@link #updateCourse}가 1회만 담당한다. (D4)
+     */
+    private void updateCourseName(Course course, String name) {
+        if (!StringUtils.hasText(name)) {
+            throw new CourseNameNotValidException(ErrorCode.COURSE_NAME_NOT_VALID);
+        }
+        course.setName(name);
+        readModelWriter.rename(course.getId(), name);
+    }
+
+    /**
+     * 코스 공개 여부를 바꾸고 리드모델에도 반영한다.
+     * 이미 원하는 상태라면 등록/해제는 건너뛰되, 리드모델 동기화는 멱등하게 그대로 수행한다.
+     *
+     * <p>지도 데이터 변경 이벤트는 발행하지 않는다 — 발행은 호출자인 {@link #updateCourse}가 1회만 담당한다. (D4)
+     */
+    private void updateCoursePublicity(Course course, boolean isPublic) {
+        if (course.isPublic() != isPublic) {
+            if (isPublic) {
+                registerCourse(course);
+            } else {
+                unregisterCourse(course);
+            }
+        }
+        readModelWriter.syncPublicity(course.getId(), isPublic);
+    }
+
+    /**
+     * 코스 등록 — 주인의 구독을 살린 뒤 코스를 공개로 전환한다. (이름이 없으면 등록 불가)
      */
     private void registerCourse(Course course) {
         if (!StringUtils.hasText(course.getName())) {
             throw new CourseNameNotValidException(ErrorCode.COURSE_NAME_NOT_VALID);
         }
-        manageSubscriptionForRegister(course);
+        activateOwnerSubscription(course);
         course.makePublic();
     }
 
     /**
-     * 코스 등록 해제 (도메인 + 중간테이블 조율)
+     * 코스 등록 해제 — 주인의 구독을 해제한 뒤 코스를 비공개로 전환한다.
      */
     private void unregisterCourse(Course course) {
-        manageSubscriptionForUnregister(course);
+        deactivateOwnerSubscription(course);
         course.makePrivate();
     }
 
     /**
-     * 등록 시 중간테이블 관리
-     * - 중간테이블이 없으면 생성
-     * - deleted=true면 restore
-     * - deleted=false면 그대로
+     * 주인의 구독을 활성 상태로 만든다.
+     * - 구독이 없으면 생성 (최초 등록)
+     * - 해제된 구독이면 복원 (재등록)
+     * - 이미 활성이면 그대로 둔다
      */
-    private void manageSubscriptionForRegister(Course course) {
+    private void activateOwnerSubscription(Course course) {
         Long courseId = course.getId();
-        Long memberId = course.getMember().getId();
-        
-        Optional<CourseSubscription> existingSubscription = 
-                subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId);
-        
-        if (existingSubscription.isEmpty()) {
-            // 새로 등록: 중간테이블 생성
-            CourseSubscription newSubscription = CourseSubscription.create(course, course.getMember());
-            subscriptionRepository.save(newSubscription);
-            log.info("Created new subscription for course={}, member={}", courseId, memberId);
-        } else {
-            CourseSubscription subscription = existingSubscription.get();
-            if (subscription.isDeleted()) {
-                // 재등록: restore
-                subscription.restore();
-                subscriptionRepository.save(subscription);
-                log.info("Restored subscription for course={}, member={}", courseId, memberId);
-            } else {
-                // 이미 활성 상태
-                log.debug("Subscription already active for course={}, member={}", courseId, memberId);
-            }
-        }
-    }
-
-    /**
-     * 등록 해제 시 중간테이블 관리
-     */
-    private void manageSubscriptionForUnregister(Course course) {
-        Long courseId = course.getId();
-        Long memberId = course.getMember().getId();
-        
-        Optional<CourseSubscription> subscription = 
-                subscriptionRepository.findByCourseIdAndMemberId(courseId, memberId);
-        
-        if (subscription.isPresent()) {
-            subscription.get().unregister();
-            subscriptionRepository.save(subscription.get());
-            log.info("Unregistered subscription for course={}, member={}", courseId, memberId);
-        }
-    }
-    
-    /**
-     * 리드모델 공개/비공개 동기화
-     * 
-     * @param courseId 코스 ID
-     * @param isPublic true: 공개 (리드모델 생성 또는 공개), false: 비공개 (리드모델 비공개)
-     */
-    private void syncReadModelPublicity(Long courseId, Boolean isPublic) {
-        if (isPublic) {
-            // 공개: 리드모델 생성 또는 공개
-            CourseReadModel readModel = readModelRepository.findByCourseId(courseId)
-                .orElseGet(() -> createReadModelForCourse(courseId));
-            readModel.makePublic();
-            readModelRepository.save(readModel);
-            log.info("Read model made public for course={}", courseId);
-        } else {
-            // 비공개: 리드모델 비공개 (있으면)
-            readModelRepository.findByCourseId(courseId)
-                .ifPresent(rm -> {
-                    rm.makePrivate();
-                    readModelRepository.save(rm);
-                    log.info("Read model made private for course={}", courseId);
-                });
-        }
-    }
-    
-    /**
-     * 코스 정보로 리드모델 생성 및 주인의 최고기록으로 TOP1 초기화
-     * - 처음 등록이므로 해당 코스를 뛴 러너는 주인뿐
-     * - 저장은 호출자가 담당
-     */
-    private CourseReadModel createReadModelForCourse(Long courseId) {
-        Course course = findCourseByIdFetchJoinMember(courseId);
-        CourseReadModel readModel = CourseReadModel.create(course);
-
-        // 주인의 최고기록으로 TOP1 초기화
-        String ownerUuid = course.getMember().getUuid();
         Long ownerId = course.getMember().getId();
 
-        runningRepository.findBestPublicRunByCourseIdAndMemberId(courseId, ownerUuid)
-                .ifPresent(bestRun -> {
-                    Long durationSeconds = bestRun.getRunningRecord().getDuration();
-                    readModel.replaceTop4(
-                            ownerId, durationSeconds != null ? durationSeconds.intValue() : null,
-                            null, null,
-                            null, null,
-                            null, null
-                    );
-                    log.info("Initialized TOP1 for course={}: ownerId={}, duration={}s",
-                            courseId, ownerId, durationSeconds);
+        Optional<CourseSubscription> existingSubscription =
+                subscriptionRepository.findByCourseIdAndMemberId(courseId, ownerId);
+
+        if (existingSubscription.isEmpty()) {
+            subscriptionRepository.save(CourseSubscription.create(course, course.getMember()));
+            log.info("Created new subscription for course={}, member={}", courseId, ownerId);
+            return;
+        }
+
+        CourseSubscription subscription = existingSubscription.get();
+        if (subscription.isDeleted()) {
+            subscription.restore();
+            subscriptionRepository.save(subscription);
+            log.info("Restored subscription for course={}, member={}", courseId, ownerId);
+        } else {
+            log.debug("Subscription already active for course={}, member={}", courseId, ownerId);
+        }
+    }
+
+    /**
+     * 주인의 구독을 해제한다. (구독이 없으면 아무 일도 하지 않는다)
+     */
+    private void deactivateOwnerSubscription(Course course) {
+        Long courseId = course.getId();
+        Long ownerId = course.getMember().getId();
+
+        subscriptionRepository.findByCourseIdAndMemberId(courseId, ownerId)
+                .ifPresent(subscription -> {
+                    subscription.unregister();
+                    subscriptionRepository.save(subscription);
+                    log.info("Unregistered subscription for course={}, member={}", courseId, ownerId);
                 });
-
-        // runnersCount 초기화 (TOP1 유무와 별개로 항상 실행)
-        long runnersCount = runningRepository.countDistinctRunnersByCourseId(courseId);
-        readModel.updateRunnersCount(runnersCount);
-
-        log.info("Created read model for course={} with runnersCount={}", courseId, runnersCount);
-        return readModel;
-    }
-
-    /** (lat, lng)을 radiusM로 둘러싼 직사각형의 네 꼭지점 좌표를 반환한다 */
-    public static LatLngs getBoundingBoxLatLngs(Double lat, Double lng, double radiusM) {
-        double radiusKm = radiusM / 1000d;
-        double latDelta = radiusKm / 111.0;
-        double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
-
-        double minLat = lat - latDelta;
-        double maxLat = lat + latDelta;
-        double minLng = lng - lngDelta;
-        double maxLng = lng + lngDelta;
-
-        return new LatLngs(minLat, maxLat, minLng, maxLng);
-    }
-
-    public record LatLngs(double minLat, double maxLat, double minLng, double maxLng) {
     }
 
 }

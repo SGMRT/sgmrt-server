@@ -34,7 +34,6 @@ import static soma.ghostrunner.global.error.ErrorCode.MEMBER_ALREADY_EXISTED;
 @RequiredArgsConstructor
 public class MemberService {
 
-    private final VdotService vdotService;
 
     private final MemberMapper mapper;
 
@@ -43,6 +42,7 @@ public class MemberService {
     private final MemberAuthInfoRepository memberAuthInfoRepository;
     private final MemberSettingsRepository memberSettingsRepository;
     private final MemberVdotRepository memberVdotRepository;
+    private final MemberVdotWriter memberVdotWriter;
     private final CourseRepository courseRepository;
 
     public Member findMemberByUuid(String uuid) {
@@ -239,16 +239,7 @@ public class MemberService {
 
     @Transactional
     public void calculateAndSaveVdot(String memberUuid, String level) {
-        Member member = findMemberByUuid(memberUuid);
-        cannotSaveIfAlreadyVdotExist(memberUuid);
-        int vdot = vdotService.calculateVdotFromRunningLevel(level);
-        memberVdotRepository.save(mapper.toMemberVdot(member, vdot));
-    }
-
-    private void cannotSaveIfAlreadyVdotExist(String memberUuid) {
-        if (memberVdotRepository.existsByMemberUuid(memberUuid)) {
-            throw new InvalidMemberException(ErrorCode.VDOT_ALREADY_EXIST, "이미 VDOT가 저장되어 있음.");
-        }
+        memberVdotWriter.initializeFromRunningLevel(memberUuid, level);   // 쓰기는 MemberVdotWriter 단일 진입점
     }
 
 }

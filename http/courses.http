@@ -1,0 +1,143 @@
+@access-token = REPLACE_WITH_JWT
+@regionId = 1
+
+### [해피] 코스 지도 조회 - regionId 첨부 + 기본 요청 (캐시 경로)
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}
+Authorization: Bearer {{access-token}}
+
+### [해피] 코스 지도 조회 - regionId 없이 (기존 폴백 경로)
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365
+Authorization: Bearer {{access-token}}
+
+### [해피] 코스 지도 조회 - regionId 첨부 + 비기본 요청(정렬 변경) → 비캐시 폴백
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}&sort=POPULARITY
+Authorization: Bearer {{access-token}}
+
+### [에러] 코스 지도 조회 - 인증 헤더 누락
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}
+
+### [경계] 코스 지도 조회 - regionId + radiusM=10000(광역) → 캐시 우회, 요청 반경 그대로 폴백
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}&radiusM=10000
+Authorization: Bearer {{access-token}}
+
+### [경계] 코스 지도 조회 - 미발급 regionId → 예외 없이 좌표 폴백 (500/404 아님)
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId=999999999
+Authorization: Bearer {{access-token}}
+
+### [에러] 코스 지도 조회 - radiusM 상한(20000) 초과
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId={{regionId}}&radiusM=20001
+Authorization: Bearer {{access-token}}
+
+### [경계] 코스 지도 조회 - regionId=0 (미존재) → 폴백 정상 응답
+GET {{host}}/v1/courses?lat=37.5008&lng=127.0365&regionId=0
+Authorization: Bearer {{access-token}}
+
+
+### 아래는 셀 버킷(geohash p6) 캐시 전환 회귀 테스트다 (docs/design/course-cell-bucket-cache-design.md).
+### 순서 의존: [캐시-1]을 가장 먼저 실행해 mapResponseBaseline 전역변수를 채워야 [캐시-2]~[캐시-4]의 정합성 비교가 동작한다.
+@lat = 37.5008
+@lng = 127.0365
+
+### [캐시-1][해피] 코스 지도 조회 - 기본 요청(lat/lng), 코스 카드 필드 확인
+GET {{host}}/v1/courses?lat={{lat}}&lng={{lng}}
+Authorization: Bearer {{access-token}}
+
+> {%
+client.test("200 OK, 배열 응답", () => {
+    client.assert(response.status === 200, "status is " + response.status);
+    client.assert(Array.isArray(response.body), "response body is not an array");
+});
+if (response.body.length > 0) {
+    client.test("코스 카드 필수 필드 존재", () => {
+        const c = response.body[0];
+        ["id", "name", "ownerUuid", "source", "startLat", "startLng", "distance", "runnersCount"]
+            .forEach(f => client.assert(Object.prototype.hasOwnProperty.call(c, f), "missing field " + f));
+    });
+}
+client.global.set("mapResponseBaseline", JSON.stringify(response.body));
+%}
+
+### [캐시-2][회귀] 코스 지도 조회 - regionId 첨부 요청이 동일 좌표의 무첨부 요청과 동일 결과 (구버전 앱 하위호환)
+GET {{host}}/v1/courses?lat={{lat}}&lng={{lng}}&regionId={{regionId}}
+Authorization: Bearer {{access-token}}
+
+> {%
+// 후보가 10개 이하인 테스트 환경을 전제로 id 집합 동일성까지 검증한다(초과 시 랜덤 선별로 흔들릴 수 있음 - §3-10).
+client.test("200 OK", () => client.assert(response.status === 200, "status is " + response.status));
+client.test("regionId 유무와 무관하게 코스 id 집합이 동일", () => {
+    const baseline = JSON.parse(client.global.get("mapResponseBaseline") || "[]");
+    const baselineIds = baseline.map(c => c.id).sort();
+    const currentIds = response.body.map(c => c.id).sort();
+    client.assert(JSON.stringify(baselineIds) === JSON.stringify(currentIds),
+        "id 집합 불일치: baseline=" + JSON.stringify(baselineIds) + " current=" + JSON.stringify(currentIds));
+});
+%}
+
+### [캐시-3] 코스 지도 조회 - 동일 좌표 반복 조회 (캐시 히트 경로), 공통 코스 카드 데이터 동일성
+GET {{host}}/v1/courses?lat={{lat}}&lng={{lng}}
+Authorization: Bearer {{access-token}}
+
+> {%
+// Redis 내부 히트/미스는 HTTP 밖에서 관측 불가하므로, "같은 코스는 같은 카드로 나온다"로 간접 검증한다.
+// 실제 히트율은 ghostrunner.course.cell.cache.lookups{result=full_hit} 메트릭으로 확인할 것.
+client.test("200 OK", () => client.assert(response.status === 200, "status is " + response.status));
+client.test("반복 조회 시 공통 코스의 카드 데이터가 동일", () => {
+    const baseline = JSON.parse(client.global.get("mapResponseBaseline") || "[]");
+    const baselineById = {};
+    baseline.forEach(c => baselineById[c.id] = c);
+    let compared = 0;
+    response.body.forEach(c => {
+        if (baselineById[c.id]) {
+            compared++;
+            client.assert(JSON.stringify(c) === JSON.stringify(baselineById[c.id]),
+                "course " + c.id + " 카드 데이터가 반복 조회 사이에 달라짐");
+        }
+    });
+    client.log("공통 코스 " + compared + "개 비교 완료");
+});
+%}
+
+### [캐시-4] 코스 지도 조회 - 인접 좌표 조회 (커버링 셀 일부만 겹치는 부분 히트), 공통 코스 카드 데이터 동일성
+GET {{host}}/v1/courses?lat=37.5098&lng=127.0365
+Authorization: Bearer {{access-token}}
+
+> {%
+// 기준점에서 약 1km 북쪽 — 커버링 셀 일부는 [캐시-1]과 겹치고(히트) 일부는 새로 채워진다(미스).
+client.test("200 OK", () => client.assert(response.status === 200, "status is " + response.status));
+client.test("겹치는 커버링 영역의 공통 코스는 카드 데이터가 동일", () => {
+    const baseline = JSON.parse(client.global.get("mapResponseBaseline") || "[]");
+    const baselineById = {};
+    baseline.forEach(c => baselineById[c.id] = c);
+    response.body.forEach(c => {
+        if (baselineById[c.id]) {
+            client.assert(JSON.stringify(c) === JSON.stringify(baselineById[c.id]),
+                "course " + c.id + " 카드 데이터가 인접 좌표 조회 사이에 달라짐");
+        }
+    });
+});
+%}
+
+### [캐시-5][경계] 코스 지도 조회 - 광역 반경(radiusM=3001) → 캐시 우회 직행 경로, 정상 응답
+GET {{host}}/v1/courses?lat={{lat}}&lng={{lng}}&radiusM=3001
+Authorization: Bearer {{access-token}}
+
+> {%
+client.test("200 OK, 배열 응답 (직행 경로도 정상 동작)", () => {
+    client.assert(response.status === 200, "status is " + response.status);
+    client.assert(Array.isArray(response.body), "response body is not an array");
+});
+%}
+
+### [캐시-6][경계] 코스 지도 조회 - 극단 좌표(lat=89.9) → 커버링 셀 상한 가드로 직행 강등, 5xx 아님
+GET {{host}}/v1/courses?lat=89.9&lng=127.0365&radiusM=2000
+Authorization: Bearer {{access-token}}
+
+> {%
+client.test("5xx가 아닌 정상 응답 (가드가 직행으로 안전하게 강등)", () => {
+    client.assert(response.status < 500, "status is " + response.status);
+});
+client.test("200 OK, 배열 응답", () => {
+    client.assert(response.status === 200, "status is " + response.status);
+    client.assert(Array.isArray(response.body), "response body is not an array");
+});
+%}

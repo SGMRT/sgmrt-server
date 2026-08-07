@@ -149,8 +149,14 @@ VALUES
 -- ===================================
 -- 4. 리드모델 생성 (공개 코스만)
 -- ===================================
+-- 리드모델은 course 의 역정규화 사본이므로 시드도 원본과 값이 일치해야 한다.
+-- - 코스 정보(name/owner_uuid/source/route_url/thumbnail_url/거리·고도/시작 좌표)는 위 course 시드에서 그대로 복사한다.
+-- - TOP4·runners_count 는 위 running_record 시드를 집계한 결과와 일치시킨다. (집계 대상: 공개 + 일시정지 아님 + 삭제 아님)
+-- - 비공개 코스(course.id=2, 남산)는 리드모델 행을 만들지 않는다. 리드모델 생성 책임은 코스 공개 전환에만 있다.
 INSERT INTO course_read_model (
-    course_id, name, owner_uuid, source, route_url, start_lat, start_lng,
+    course_id, name, owner_uuid, source, route_url, thumbnail_url,
+    distance_km, elevation_average_m, elevation_gain_m, elevation_loss_m,
+    start_lat, start_lng,
     top1_member_id, top1_time_seconds,
     top2_member_id, top2_time_seconds,
     top3_member_id, top3_time_seconds,
@@ -158,21 +164,26 @@ INSERT INTO course_read_model (
     runners_count, is_public, created_at, updated_at
 )
 VALUES
-    -- 코스 1: 한강 (TOP4: 러너2, 러너4, 러너1, 러너3)
-    (1, '한강 러닝 코스', 'user-uuid-001', 'USER', 'https://example.com/route1.json', 37.5219, 127.0411,
-     2, 1500, 4, 1600, 1, 1700, 3, 1800, 5, true, NOW(), NOW()),
+    -- 코스 1: 한강 러닝 코스 (러너원 소유) — TOP2: 러너투(1545s, 러닝4), 러너원(1590s, 러닝1)
+    (1, '한강 러닝 코스', 'test-uuid-001', 'USER',
+     'https://example.com/routes/1.json', 'https://example.com/thumbnails/1.png',
+     5.0, 10.5, 20.0, 18.0,
+     37.5283, 126.9340,
+     2, 1545, 1, 1590, NULL, NULL, NULL, NULL, 2, true, NOW(), NOW()),
 
-    -- 코스 2: 올림픽공원 (TOP3: 러너4, 러너3, 러너5)
-    (2, '올림픽공원 달리기', 'user-uuid-002', 'USER', 'https://example.com/route2.json', 37.5219, 127.1263,
-     4, 1100, 3, 1200, 5, 1300, NULL, NULL, 3, true, NOW(), NOW()),
+    -- 코스 3: 올림픽공원 코스 (러너투 소유) — TOP1: 러너투(2376s, 러닝5)
+    (3, '올림픽공원 코스', 'test-uuid-002', 'USER',
+     'https://example.com/routes/3.json', 'https://example.com/thumbnails/3.png',
+     7.2, 5.0, 15.0, 15.0,
+     37.5202, 127.1213,
+     2, 2376, NULL, NULL, NULL, NULL, NULL, NULL, 1, true, NOW(), NOW()),
 
-    -- 코스 3: 강남 (TOP2: 러너2, 러너1)
-    (3, '강남 야간 러닝', 'user-uuid-003', 'RECOMMENDED', 'https://example.com/route3.json', 37.4979, 127.0276,
-     2, 2200, 1, 2400, NULL, NULL, NULL, NULL, 2, true, NOW(), NOW()),
-
-    -- 코스 4: 여의도 (TOP1: 러너1)
-    (4, '여의도 한강 순환', 'user-uuid-004', 'USER', 'https://example.com/route4.json', 37.5219, 126.9245,
-     1, 3600, NULL, NULL, NULL, NULL, NULL, NULL, 1, true, NOW(), NOW());
+    -- 코스 4: 서울숲 공식 코스 (러너투 소유, OFFICIAL) — TOP2: 러너투(1200s, 러닝6), 러너원(1248s, 러닝3)
+    (4, '서울숲 공식 코스', 'test-uuid-002', 'OFFICIAL',
+     'https://example.com/routes/4.json', 'https://example.com/thumbnails/4.png',
+     4.0, 8.0, 10.0, 10.0,
+     37.5443, 127.0374,
+     2, 1200, 1, 1248, NULL, NULL, NULL, NULL, 2, true, NOW(), NOW());
 
 -- Notice 테이블
 INSERT INTO notice (id, title, content, type, image_url, priority, start_at, end_at, created_at, updated_at)

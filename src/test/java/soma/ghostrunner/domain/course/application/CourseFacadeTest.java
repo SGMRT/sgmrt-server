@@ -5,16 +5,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import soma.ghostrunner.IntegrationTestSupport;
-import soma.ghostrunner.domain.course.dao.CourseCacheRepository;
+import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.dao.RegionRepository;
+import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
+import soma.ghostrunner.domain.course.domain.CourseDataUrls;
 import soma.ghostrunner.domain.course.domain.CourseProfile;
-import soma.ghostrunner.domain.course.dto.RunnerProfile;
-import soma.ghostrunner.domain.course.dto.query.CourseQueryModel;
+import soma.ghostrunner.domain.course.domain.CourseReadModel;
+import soma.ghostrunner.domain.course.domain.Region;
 import soma.ghostrunner.domain.course.dto.response.CourseMapResponse;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.enums.CourseSource;
@@ -24,19 +27,25 @@ import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningMode;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
+import soma.ghostrunner.global.config.CacheType;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.IntStream;
+import java.util.Set;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.*;
 
 class CourseFacadeTest extends IntegrationTestSupport {
 
     private final double DEFAULT_LAT = 37, DEFAULT_LNG = 129;
+
+    /**
+     * 셀 버킷 캐시를 경유하지 않는 반경 (설계 §3-8의 광역 가드 3,000m 초과).
+     * 선별 정책만 보려는 테스트가 캐시 적재/히트에 흔들리지 않도록 직행 경로를 쓴다.
+     */
+    private static final int UNCACHED_RADIUS_M = 5000;
 
     @Autowired
     private CourseFacade courseFacade;
@@ -51,65 +60,42 @@ class CourseFacadeTest extends IntegrationTestSupport {
     private RunningRepository runningRepository;
 
     @Autowired
-    private CourseCacheRepository courseCacheRepository;
+    private CourseReadModelRepository readModelRepository;
+
+    @Autowired
+    private RegionRepository regionRepository;
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    /** 셀 버킷 캐시가 쓰는 Redis 키 전부를 훑는 패턴 (CourseReadModelReaderTest와 동일) */
+    private static final String CELL_KEY_PATTERN = CacheType.Names.COURSE_CELLS + "*";
 
     private Member defaultMember;
 
     @BeforeEach
     void setUp() {
         defaultMember = memberRepository.save(Member.of("기본 회원", "test-url"));
-    }
-
-    @DisplayName("주변 코스를 검색하면, 각 코스별 상위 최대 4명의 러너 정보가 함께 조회된다.")
-    @Test
-    void findCoursesByPositionCached() {
-        // given
-        Course course1 = createCourse("유명한 코스");
-        Course course2 = createCourse("적당히 달린 코스");
-        Course course3 = createCourse("아무도 안 달린 코스");
-        courseRepository.saveAll(List.of(course1, course2, course3));
-
-        List<Member> memberPool = IntStream.range(0, 10).boxed()
-                .map(i -> Member.of("회원" + i, "profile-url-" + i))
-                .toList();
-        memberRepository.saveAll(memberPool);
-        saveDummyRunsToCourse(course1, 10, memberPool);
-        saveDummyRunsToCourse(course2, 3, memberPool);
-        saveDummyRunsToCourse(course3, 0, memberPool);
-
-        // when
-        List<CourseMapResponse> courses = courseFacade
-                .findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG, 1000, CourseSortType.DISTANCE, null, defaultMember.getUuid());
-
-        // then
-        assertThat(courses.size()).isEqualTo(3);
-        // 코스별 상위 러너 정보 검증
-        assertThat(courses).extracting("runnersCount")
-                .containsExactlyInAnyOrder(10L, 3L, 0L);
-        List<RunnerProfile> memberPoolRecords = memberPool.stream()
-                .map(member -> new RunnerProfile(member.getUuid(), member.getProfilePictureUrl(), null))
-                .toList();
-        assertThat(courses).extracting("runners")
-                .containsExactlyInAnyOrder(
-                        memberPoolRecords.stream().limit(4).toList(),
-                        memberPoolRecords.stream().limit(3).toList(),
-                        List.of());
+        // 셀 버킷 캐시는 Redis에 남아 테스트 간 순서 의존을 만든다 — 캐시 관련 테스트가 여럿이므로 진입 시점에 공통 정리한다.
+        clearCellCache();
     }
 
     @DisplayName("주변 코스 검색 시 코스를 달린 기록이 존재하는 경우에만 고스트 정보가 포함된다.")
     @Test
-    void findCoursesByPositionCached_withRuns() {
+    void findCoursesByPosition_withRuns() {
         // given
         Course courseRan = createCourse("달린 코스");
         Course courseNotRan = createCourse("안 달린 코스");
         courseRepository.saveAll(List.of(courseRan, courseNotRan));
+        saveReadModel(courseRan);
+        saveReadModel(courseNotRan);
 
         Running myRunning = createRunning("나의 기록", courseRan, defaultMember);
         runningRepository.save(myRunning);
 
         // when
-        List<CourseMapResponse> courses = courseFacade
-                .findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG, 1000, CourseSortType.DISTANCE, null, defaultMember.getUuid());
+        List<CourseMapResponse> courses = courseFacade.findCoursesByPosition(
+                DEFAULT_LAT, DEFAULT_LNG, 1000, CourseSortType.DISTANCE, null, null, defaultMember.getUuid());
 
         // then
         // 달린 코스의 고스트 응답 확인
@@ -131,7 +117,7 @@ class CourseFacadeTest extends IntegrationTestSupport {
     @DisplayName("주변 코스 검색 결과, 코스 추천 정책에 따른 개수 필터링을 올바르게 적용한다. ( 본인 코스(P1) > 추천 코스(P2) > 타인 코스(P3) > 더미 코스(P4) 순서 )")
     @ParameterizedTest(name = "[{index}] P1:{0}, P2:{1}, P3:{2}, P4:{3} -> 최종:{5} (P1:{6}, P2:{7}, P3:{8}, P4:{9})")
     @MethodSource("provideCourseCountsForLimitFiltering")
-    void findCoursesByPositionCached_limitFiltering(
+    void findCoursesByPosition_limitFiltering(
             int userCnt, int recommendedCnt, int otherCnt, int dummyCnt, int limit,
             int expectedFinalCnt, int expectedUserCnt, int expectedRecommendedCnt, int expectedOtherCnt, int expectedDummyCnt
     ) {
@@ -163,10 +149,11 @@ class CourseFacadeTest extends IntegrationTestSupport {
         }
 
         courseRepository.saveAll(courses);
+        courses.forEach(this::saveReadModel);
 
         // when
-        List<CourseMapResponse> result = courseFacade.findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG,
-                5000, CourseSortType.DISTANCE, null, viewer.getUuid());
+        List<CourseMapResponse> result = courseFacade.findCoursesByPosition(DEFAULT_LAT, DEFAULT_LNG,
+                UNCACHED_RADIUS_M, CourseSortType.DISTANCE, null, null, viewer.getUuid());
 
         // then
         long actualUserCount = result.stream()
@@ -188,7 +175,8 @@ class CourseFacadeTest extends IntegrationTestSupport {
         assertThat(actualOtherCount).isEqualTo(expectedOtherCnt);
         assertThat(actualDummyCount).isEqualTo(expectedDummyCnt);
 
-        // 순서 유지 여부 검증
+        // 선별은 후보 순서를 흐트러뜨리지 않는다 — 리드모델 조회가 시작점 위도 오름차순으로 주고,
+        // 픽스처의 코스도 그 순서로 만들었으므로 결과는 생성 순서의 부분 수열이어야 한다.
         if (result.size() > 1) {
             List<Long> resultIds = result.stream().map(CourseMapResponse::id).toList();
             List<Long> originalIds = courses.stream().map(Course::getId).toList();
@@ -218,150 +206,72 @@ class CourseFacadeTest extends IntegrationTestSupport {
                         6, 3, 1, 1, 1), // 전체 코스가 부족한 경우
                 Arguments.of(0, 5, 0, 0, 10,
                         2, 0, 2, 0, 0), // 추천 코스만 존재하는 경우
-//                Arguments.of(10, 10, 10, 10, 5,
-//                        5, 2, 1, 2, 0), // Limit이 5인 경우
-//                Arguments.of(10, 10, 10, 10, 7,
-//                        7, 3, 1, 3, 0), // Limit이 7인 경우
-//                Arguments.of(10, 10, 10, 10,
-//                        1, 1, 0, 0, 1, 0), // Limit이 1인 경우
                 Arguments.of(0, 0, 0, 0, 10,
                         0, 0, 0, 0, 0) // 모든 코스가 없는 경우
         );
     }
 
-    @DisplayName("주변 코스 검색 시")
-    @ParameterizedTest(name = "{0} 기준으로 정렬하면 그에 맞게 정렬되어야 한다.")
-    @EnumSource(value = CourseSortType.class, names = {"DISTANCE", "POPULARITY"})
-    void findCoursesByPositionCached_properlySorted(CourseSortType sortType) {
-        Member member = createMember("회원");
-        memberRepository.save(member);
-        // given
-        Course courseNear = createCourse("가까운 코스", DEFAULT_LAT, DEFAULT_LNG);
-        Course courseMid = createCourse("중간 코스", DEFAULT_LAT + 0.005, DEFAULT_LNG + 0.005);
-        Course courseFar = createCourse("먼 코스", member, DEFAULT_LAT + 0.01, DEFAULT_LNG + 0.01);
+    /**
+     * regionId는 하위호환으로 수용만 하고 조회에 사용하지 않는다 (설계 §3-10).
+     *
+     * regionId를 실은 요청이 대표좌표 기준 결과를 받게 되면, 사용자가 그 지역 어디에 서 있든 같은 답이 돌아온다.
+     * 예외도 로그도 없는 침묵 오답이라 관측되지 않는다. 결과가 오직 요청 좌표로만 결정된다는 것을 고정한다 —
+     * region 대표좌표를 요청 좌표에서 멀리 떼어 두어, 두 경로가 갈리면 반드시 드러나게 한다.
+     */
+    @DisplayName("regionId를 실어 보내도 좌표 기반 경로와 동일한 결과를 반환한다")
+    @Test
+    void findCoursesByPosition_withRegionId_returnsSameResultAsCoordinatePath() {
+        // given : 요청 좌표에서 멀리 떨어진 대표좌표를 가진 지역과, 각 좌표 위의 코스
+        Region farRegion = regionRepository.save(
+                Region.of("서울특별시 강남구 역삼동", DEFAULT_LAT + 0.5, DEFAULT_LNG + 0.5));
+        savePublicCourseWithReadModel("요청 좌표 코스", DEFAULT_LAT, DEFAULT_LNG);
+        savePublicCourseWithReadModel("옆 동네 코스", DEFAULT_LAT + 0.5, DEFAULT_LNG + 0.5);
 
-        // 인기순: 러너가 많은 코스, 보통 코스, 적은 코스
-        Course coursePopular = createCourse("인기 코스", DEFAULT_LAT + 0.015, DEFAULT_LNG + 0.015);
-        Course courseNormal = createCourse("보통 코스", member,  DEFAULT_LAT + 0.02, DEFAULT_LNG + 0.02);
-        Course courseUnpopular = createCourse("비인기 코스", DEFAULT_LAT + 0.025, DEFAULT_LNG + 0.025);
+        // when : 같은 좌표·반경으로 regionId만 실어 보낸 요청과 실지 않은 요청
+        List<CourseMapResponse> withRegionId = courseFacade.findCoursesByPosition(
+                DEFAULT_LAT, DEFAULT_LNG, 2000, CourseSortType.DISTANCE, null,
+                farRegion.getId(), defaultMember.getUuid());
+        List<CourseMapResponse> withoutRegionId = courseFacade.findCoursesByPosition(
+                DEFAULT_LAT, DEFAULT_LNG, 2000, CourseSortType.DISTANCE, null,
+                null, defaultMember.getUuid());
 
-        // 최신순: 오래된 코스, 중간 코스, 최신 코스 (ID 오름차순으로 생성)
-        courseRepository.saveAll(List.of(courseNear, courseMid, courseFar, coursePopular, courseNormal, courseUnpopular));
+        // then : 결과는 요청 좌표로만 결정된다
+        assertThat(withRegionId).extracting(CourseMapResponse::name)
+                .containsExactlyElementsOf(
+                        withoutRegionId.stream().map(CourseMapResponse::name).toList());
+        assertThat(withRegionId).extracting(CourseMapResponse::name)
+                .containsExactly("요청 좌표 코스");
+    }
 
-        // 인기순 정렬을 위한 더미 데이터 생성
-        List<Member> memberPool = IntStream.range(0, 10).boxed()
-                .map(i -> createMember("회원" + i))
-                .toList();
-        memberRepository.saveAll(memberPool);
-        saveDummyRunsToCourse(coursePopular, 10, memberPool); // 인기 코스: 10명
-        saveDummyRunsToCourse(courseNormal, 5, memberPool); // 보통 코스: 5명
-        saveDummyRunsToCourse(courseUnpopular, 3, memberPool); // 비인기 코스: 1명
-        saveDummyRunsToCourse(courseNear, 2, memberPool);
-        saveDummyRunsToCourse(courseMid, 1, memberPool);
-        saveDummyRunsToCourse(courseFar, 0, memberPool);
-
-        // when
-        List<CourseMapResponse> actualCourses = courseFacade
-                .findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG, 19999, sortType, null, defaultMember.getUuid());
-
-        // then
-        List<String> actualCourseNames = actualCourses.stream()
-                .map(CourseMapResponse::name)
-                .toList();
-
-        // 정렬 기준(sortType)에 따라 기대되는 이름 순서를 정의하고 실제 결과와 비교
-        switch (sortType) {
-            case DISTANCE -> {
-                List<String> expectedOrder = List.of("가까운 코스", "중간 코스", "먼 코스", "인기 코스", "보통 코스", "비인기 코스");
-                assertThat(actualCourseNames).containsSequence(expectedOrder);
-            }
-            case POPULARITY -> {
-                List<String> expectedOrder = List.of("인기 코스", "보통 코스", "비인기 코스", "가까운 코스", "중간 코스", "먼 코스");
-                assertThat(actualCourseNames).containsSequence(expectedOrder);
-            }
+    private void clearCellCache() {
+        Set<String> keys = redisTemplate.keys(CELL_KEY_PATTERN);
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
         }
     }
 
-    @DisplayName("주변 코스 조회 시 일부 캐시만 미스가 발생한 경우, DB에서 다시 조회하여 응답한다.")
-    @Test
-    void findCoursesByPosition_OnPartialCacheMiss() {
-        // given
-        var viewer = createMember("아이유");
-        memberRepository.save(viewer);
-        var memberPool = IntStream.range(0, 5).boxed()
-                .map(i -> Member.of("회원" + i, "profile-url-" + i))
-                .toList();
-        memberRepository.saveAll(memberPool);
-        // 코스 저장 - 하나는 캐시, 두 개는 DB에 저장
-        var hitCourse = createCourse("캐시된 코스");
-        var missedCourse1 = createCourse("DB 저장 코스 1");
-        var missedCourse2 = createCourse("DB 저장 코스 2");
-        courseRepository.saveAll(List.of(hitCourse, missedCourse1, missedCourse2));
-        CourseQueryModel cachedData = new CourseQueryModel(
-                hitCourse.getId(),
-                "캐시된 코스",
-                List.of(new RunnerProfile(viewer.getUuid(), viewer.getProfilePictureUrl(), null)),
-                1
-        );
-        courseCacheRepository.save(cachedData);
-        // 러닝 기록 저장 - 캐시된 코스는 1명, DB 코스 1은 3명, DB 코스 2는 5명
-        // viewer는 코스 1을 달렸다고 가정
-        saveDummyRunsToCourse(hitCourse, 1, List.of(viewer));
-        saveDummyRunsToCourse(missedCourse1, 3, memberPool);
-        saveDummyRunsToCourse(missedCourse2, 5, memberPool);
+    private void savePublicCourseWithReadModel(String name, double lat, double lng) {
+        Course course = courseRepository.save(Course.of(
+                defaultMember, name,
+                CourseProfile.of(5.0, 10.0, 100.0, 50.0),
+                Coordinate.of(lat, lng),
+                CourseSource.USER, true,
+                CourseDataUrls.of("https://example.com/route.json",
+                        "https://example.com/checkpoints.json",
+                        "https://example.com/thumb.jpg")));
+        saveReadModel(course);
+    }
 
-        // when
-        var courses = courseFacade.findCoursesByPositionCached(DEFAULT_LAT, DEFAULT_LNG, 5000,
-                CourseSortType.DISTANCE, null, viewer.getUuid());
-
-        // then
-        assertThat(courses).hasSize(3);
-        // 캐시 히트된 코스 검증
-        var hitResponse = courses.stream().filter(c -> c.id().equals(hitCourse.getId())).findFirst()
-                .orElseThrow();
-        assertThat(hitResponse.runnersCount()).isEqualTo(1L);
-        assertThat(hitResponse.runners()).hasSize(1)
-                .extracting("uuid")
-                .containsExactly(viewer.getUuid());
-        assertThat(hitResponse.myGhostInfo().runnerUuid()).isEqualTo(viewer.getUuid());
-        // 캐시 미스된 코스들 검증
-        var missedResponse1 = courses.stream().filter(c -> c.id().equals(missedCourse1.getId())).findFirst()
-                .orElseThrow();
-        assertThat(missedResponse1.runnersCount()).isEqualTo(3L);
-        assertThat(missedResponse1.runners()).hasSize(3)
-                .extracting("uuid")
-                .containsExactlyElementsOf(
-                        memberPool.stream().limit(3).map(Member::getUuid).toList()
-                );
-        assertThat(missedResponse1.myGhostInfo()).isNull();
-
-        var missedResponse2 = courses.stream().filter(c -> c.id().equals(missedCourse2.getId())).findFirst()
-                .orElseThrow();
-        assertThat(missedResponse2.runnersCount()).isEqualTo(5L);
-        assertThat(missedResponse2.runners()).hasSize(4)
-                .extracting("uuid")
-                .containsExactlyElementsOf(
-                        memberPool.stream().limit(4).map(Member::getUuid).toList()
-                );
-        assertThat(missedResponse2.myGhostInfo()).isNull();
-
-        // 캐시 리포지토리에는 캐시된 코스 존재
-        assertThat(courseCacheRepository.findById(hitCourse.getId()).id()).isNotNull();
-        assertThat(courseCacheRepository.findById(missedCourse1.getId())).isNotNull();
-        assertThat(courseCacheRepository.findById(missedCourse2.getId())).isNotNull();
+    /** 지도 조회(리드모델 경로)의 전제를 만든다 — 저장된 코스에 공개 리드모델을 붙인다. */
+    private void saveReadModel(Course course) {
+        CourseReadModel readModel = CourseReadModel.create(course);
+        readModel.makePublic();
+        readModelRepository.save(readModel);
     }
 
     // --- Helper Methods ---
     private Course createCourse(String name) {
-        return createCourse(name, defaultMember, DEFAULT_LAT, DEFAULT_LNG, CourseProfile.of(100d, 10d, 10d, -10d));
-    }
-
-    private Course createCourse(String name, double lat, double lng) {
-        return createCourse(name, defaultMember, lat, lng, CourseProfile.of(100d, 10d, 10d, -10d));
-    }
-
-    private Course createCourse(String name, Member member) {
-        return createCourse(name, member, DEFAULT_LAT, DEFAULT_LNG, CourseProfile.of(100d, 10d, 10d, -10d));
+        return createCourse(name, defaultMember, DEFAULT_LAT, DEFAULT_LNG);
     }
 
     private Course createCourse(String name, Member member, double lat, double lng) {
@@ -371,21 +281,9 @@ class CourseFacadeTest extends IntegrationTestSupport {
         return course;
     }
 
-    private Course createCourse(String name, Member member, double lat, double lng, CourseProfile courseProfile) {
-        Course course = Course.of(member, 0d, 0d, 0d, 0d, lat, lng, "url", "url", "url");
-        course.setName(name);
-        course.setIsPublic(true);
-        return course;
-    }
-
     private RunningRecord createRunningRecord() {
         return RunningRecord.of(5.2, 30.0, 40.0, -20.0,
                 6.1, 3423.2, 302.2, 120L, 56, 100, 120);
-    }
-
-    private RunningRecord createRunningRecord(Long runDuration) {
-        return RunningRecord.of(5.2, 30.0, 40.0, -20.0,
-                6.1, 3423.2, 302.2, runDuration, 56, 100, 120);
     }
 
     private Running createRunning(String runningName, Course course, Member member) {
@@ -398,32 +296,12 @@ class CourseFacadeTest extends IntegrationTestSupport {
         );
     }
 
-    private Running createRunning(String runningName, Course course, Member member, Long runDuration) {
-        return Running.of(
-                runningName, RunningMode.SOLO, null,
-                createRunningRecord(runDuration), 1750729987181L,
-                true, false,
-                "Raw Telemetry Mock URL", "Interpolated Mock URL", "screenShot",
-                member, course
-        );
-    }
-
     private Member createMember(String nickname) {
         return Member.of(nickname, "picture-url");
     }
 
     private Member saveMember(Member member) {
         return memberRepository.save(member);
-    }
-
-    // 코스에 더미 러닝기록을 n개 저장한다 (러닝 성적은 i = 0->n으로 갈수록 낮아진다)
-    private void saveDummyRunsToCourse(Course course, int runsToSave, List<Member> memberPool) {
-        long initialRunDuration = 3600L;
-        for (int i = 0; i < runsToSave; i++) {
-            runningRepository.save(
-                    createRunning("러닝" + i, course, memberPool.get(i %  memberPool.size()), initialRunDuration + 60L * i)
-            );
-        }
     }
 
     // Reflection으로 Course 엔티티의 CourseSource 필드를 설정한다

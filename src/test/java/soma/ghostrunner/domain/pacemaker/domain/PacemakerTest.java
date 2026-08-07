@@ -5,6 +5,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 class PacemakerTest {
 
     @DisplayName("페이스메이커 생성 시 INIT 상태로 시작한다.")
@@ -175,45 +178,41 @@ class PacemakerTest {
                 .hasMessage("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
     }
 
-    @DisplayName("proceedForRetry는 INIT 상태에서 PROCEEDING으로 전이한다.")
+    @DisplayName("isStaleOver는 미완료 상태로 임계치를 넘겼으면 true다.")
     @Test
-    void proceedForRetry_fromInit() {
-        // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
-
-        // when
-        pacemaker.proceedForRetry();
-
-        // then
-        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
-    }
-
-    @DisplayName("proceedForRetry는 PROCEEDING 상태에서 상태를 유지한다.")
-    @Test
-    void proceedForRetry_fromProceeding() {
+    void isStaleOver_staleProceeding_true() {
         // given
         Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
         pacemaker.proceed();
+        pacemaker.setCreatedAt(LocalDateTime.now().minusMinutes(31));
 
-        // when
-        pacemaker.proceedForRetry();
-
-        // then
-        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
+        // when // then
+        Assertions.assertThat(pacemaker.isStaleOver(Duration.ofMinutes(30))).isTrue();
     }
 
-    @DisplayName("updateLastRetryAt은 lastRetryAt을 현재 시간으로 업데이트한다.")
+    @DisplayName("isStaleOver는 임계치 이내면 false다.")
     @Test
-    void updateLastRetryAt() {
+    void isStaleOver_fresh_false() {
         // given
         Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
-        Assertions.assertThat(pacemaker.getLastRetryAt()).isNull();
+        pacemaker.proceed();
+        pacemaker.setCreatedAt(LocalDateTime.now().minusMinutes(29));
 
-        // when
-        pacemaker.updateLastRetryAt();
+        // when // then
+        Assertions.assertThat(pacemaker.isStaleOver(Duration.ofMinutes(30))).isFalse();
+    }
 
-        // then
-        Assertions.assertThat(pacemaker.getLastRetryAt()).isNotNull();
+    @DisplayName("isStaleOver는 이미 완료(COMPLETED/FAILED)된 상태면 시간이 지나도 false다.")
+    @Test
+    void isStaleOver_completed_false() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        pacemaker.proceed();
+        pacemaker.complete("요약", 10.0, 50, "메세지");
+        pacemaker.setCreatedAt(LocalDateTime.now().minusMinutes(31));
+
+        // when // then
+        Assertions.assertThat(pacemaker.isStaleOver(Duration.ofMinutes(30))).isFalse();
     }
 
     @DisplayName("createWithRuleBase는 condition과 temperature를 저장한다.")

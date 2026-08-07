@@ -41,6 +41,8 @@ public enum ErrorCode {
     COURSE_NAME_NOT_VALID("C-002", BAD_REQUEST, "올바르지 않은 코스명"),
     COURSE_ALREADY_PUBLIC("C-003", BAD_REQUEST, "코스가 이미 public이므로 수정 불가"),
     COURSE_RUN_NOT_FOUND("C-004", BAD_REQUEST, "해당 코스를 달린 기록이 없음"),
+    // C-005(REGION_NOT_FOUND)는 구 regionId 캐시 경로 전용 내부 신호였고, 경로 제거와 함께 삭제됐다. 코드는 재사용하지 않는다.
+    REGION_COORDINATE_NOT_VALID("C-006", BAD_REQUEST, "서비스 영역 밖의 지역 좌표"),
 
     // Running
 
