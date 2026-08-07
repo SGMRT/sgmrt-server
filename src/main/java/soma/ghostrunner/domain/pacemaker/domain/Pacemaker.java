@@ -10,7 +10,6 @@ import org.hibernate.annotations.Where;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
-import java.time.LocalDateTime;
 
 @SQLDelete(sql = "UPDATE pacemaker SET deleted = true WHERE id=?")
 @Where(clause = "deleted = false")
@@ -67,9 +66,6 @@ public class Pacemaker extends BaseTimeEntity {
 
     @Column(name = "temperature")
     private Integer temperature;
-
-    @Column(name = "last_retry_at")
-    private LocalDateTime lastRetryAt;
 
     @Builder(access = AccessLevel.PRIVATE)
     public Pacemaker(RunningType runningType, Norm norm, String summary,
@@ -201,21 +197,6 @@ public class Pacemaker extends BaseTimeEntity {
         if (hasRunWith) {
             throw new IllegalArgumentException("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
         }
-    }
-
-    public void updateLastRetryAt() {
-        this.lastRetryAt = LocalDateTime.now();
-    }
-
-    /**
-     * 워커 재시도 시 INIT → PROCEEDING 전이
-     * 기존 proceed()와 달리 이미 PROCEEDING인 경우 무시
-     */
-    public void proceedForRetry() {
-        if (this.status == Status.INIT) {
-            this.status = Status.PROCEEDING;
-        }
-        // PROCEEDING인 경우 상태 유지
     }
 
 }

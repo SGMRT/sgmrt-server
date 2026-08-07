@@ -38,6 +38,8 @@ class PacemakerFacadeTest {
     PacemakerUpdateService updateService;
     @Mock
     PacemakerRateLimitService rateLimitService;
+    @Mock
+    PacemakerStatusService statusService;
 
     PacemakerFacade facade;
 
@@ -48,7 +50,8 @@ class PacemakerFacadeTest {
                 llmTriggerService,
                 queryService,
                 updateService,
-                rateLimitService
+                rateLimitService,
+                statusService
         );
     }
 

@@ -27,6 +27,7 @@ public class PacemakerFacade {
     private final PacemakerQueryService queryService;
     private final PacemakerUpdateService updateService;
     private final PacemakerRateLimitService rateLimitService;
+    private final PacemakerStatusService statusService;
 
     // ==================== 생성 ====================
 
@@ -78,15 +79,19 @@ public class PacemakerFacade {
 
     /**
      * 페이스메이커 단건 조회 (폴링용)
+     * - 조회 전 지연 판정: 임계치를 넘긴 고아 레코드는 FALLBACK으로 전환 후 조회
      */
     public PacemakerPollingResponse getPacemaker(Long pacemakerId, String memberUuid) {
+        statusService.fallbackIfStale(pacemakerId);
         return queryService.getPacemaker(pacemakerId, memberUuid);
     }
 
     /**
      * 코스 내 페이스메이커 조회 (폴링용)
+     * - 조회 전 지연 판정: 임계치를 넘긴 고아 레코드는 FALLBACK으로 전환 후 조회
      */
     public PacemakerInCourseViewPollingResponse getPacemakerInCourse(String memberUuid, Long courseId) {
+        statusService.fallbackIfStaleInCourse(courseId, memberUuid);
         return queryService.getPacemakerInCourse(memberUuid, courseId);
     }
 

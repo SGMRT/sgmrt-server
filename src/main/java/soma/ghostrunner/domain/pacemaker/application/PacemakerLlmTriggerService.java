@@ -28,7 +28,7 @@ public class PacemakerLlmTriggerService {
      * - 서킷브레이커가 열려있으면 FALLBACK 처리
      * - 새 트랜잭션에서 PROCEEDING 상태 업데이트
      * - 트랜잭션 커밋 후 LLM 호출
-     * - TX2 실패 시 INIT 상태 유지 → 워커가 복구
+     * - TX2 실패 시 INIT 상태 유지 → 폴링 시 지연 판정(fallbackIfStale)으로 FALLBACK 처리
      */
     @Async("llmTaskExecutor")
     public void processAsync(PacemakerCreationResult result) {
@@ -46,8 +46,8 @@ public class PacemakerLlmTriggerService {
         try {
             statusService.updateToProceeding(pacemakerId);
         } catch (Exception e) {
-            log.error("TX2 실패, INIT 상태 유지 - pacemakerId={}, 워커가 복구 예정", pacemakerId, e);
-            return;  // LLM 호출하지 않음, 워커가 INIT 상태를 복구
+            log.error("TX2 실패, INIT 상태 유지 - pacemakerId={}, 폴링 시 지연 판정으로 FALLBACK 처리됨", pacemakerId, e);
+            return;  // LLM 호출하지 않음, 폴링 시 fallbackIfStale이 FALLBACK으로 전환
         }
 
         // 트랜잭션 밖에서 LLM 호출

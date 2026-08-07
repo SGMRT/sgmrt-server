@@ -175,47 +175,6 @@ class PacemakerTest {
                 .hasMessage("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
     }
 
-    @DisplayName("proceedForRetry는 INIT 상태에서 PROCEEDING으로 전이한다.")
-    @Test
-    void proceedForRetry_fromInit() {
-        // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
-
-        // when
-        pacemaker.proceedForRetry();
-
-        // then
-        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
-    }
-
-    @DisplayName("proceedForRetry는 PROCEEDING 상태에서 상태를 유지한다.")
-    @Test
-    void proceedForRetry_fromProceeding() {
-        // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
-        pacemaker.proceed();
-
-        // when
-        pacemaker.proceedForRetry();
-
-        // then
-        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
-    }
-
-    @DisplayName("updateLastRetryAt은 lastRetryAt을 현재 시간으로 업데이트한다.")
-    @Test
-    void updateLastRetryAt() {
-        // given
-        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
-        Assertions.assertThat(pacemaker.getLastRetryAt()).isNull();
-
-        // when
-        pacemaker.updateLastRetryAt();
-
-        // then
-        Assertions.assertThat(pacemaker.getLastRetryAt()).isNotNull();
-    }
-
     @DisplayName("createWithRuleBase는 condition과 temperature를 저장한다.")
     @Test
     void createWithRuleBase_withConditionAndTemperature() {
