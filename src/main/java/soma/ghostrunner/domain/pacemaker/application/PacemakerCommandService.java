@@ -46,8 +46,7 @@ public class PacemakerCommandService {
         log.info("페이스메이커 생성 시작 - memberUuid={}, courseId={}", memberUuid, command.getCourseId());
 
         // 선카운트: 원자적으로 카운트 증가 + 임계치 검증 (Race Condition 방지)
-        String rateLimitKey = rateLimitService.createRateLimitKey(memberUuid);
-        rateLimitService.incrementCounter(memberUuid);
+        String rateLimitKey = rateLimitService.incrementCounter(memberUuid);
 
         // TX1: Rule-Base Pacemaker(INIT) 생성 및 저장
         // TX1 실패 시에만 카운트 보상 (Pacemaker가 저장되지 않았으므로)

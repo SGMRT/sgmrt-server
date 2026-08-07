@@ -75,7 +75,7 @@ class PacemakerCommandServiceTest {
                 .temperature(25)
                 .build();
 
-        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn("rate-limit-key");
+        when(rateLimitService.incrementCounter(memberUuid)).thenReturn("rate-limit-key");
         when(creationService.createInitialPacemaker(memberUuid, command)).thenReturn(result);
 
         // when
@@ -101,7 +101,6 @@ class PacemakerCommandServiceTest {
         PacemakerCreateCommand command = new PacemakerCreateCommand(
                 PacemakerType.STAMINA, 10.0, 3, 25, courseId);
 
-        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn("rate-limit-key");
         doThrow(new InvalidRunningException(ErrorCode.TOO_MANY_REQUESTS, "일일 사용량을 초과했습니다."))
                 .when(rateLimitService).incrementCounter(memberUuid);
 
@@ -126,7 +125,7 @@ class PacemakerCommandServiceTest {
         PacemakerCreateCommand command = new PacemakerCreateCommand(
                 PacemakerType.STAMINA, 10.0, 3, 25, courseId);
 
-        when(rateLimitService.createRateLimitKey(memberUuid)).thenReturn(rateLimitKey);
+        when(rateLimitService.incrementCounter(memberUuid)).thenReturn(rateLimitKey);
         when(creationService.createInitialPacemaker(memberUuid, command))
                 .thenThrow(new RuntimeException("TX1 실패"));
 
