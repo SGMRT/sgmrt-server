@@ -5,6 +5,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 class PacemakerTest {
 
     @DisplayName("페이스메이커 생성 시 INIT 상태로 시작한다.")
@@ -173,6 +176,55 @@ class PacemakerTest {
         Assertions.assertThatThrownBy(() -> pacemaker.updateAfterRunning(4L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("이미 함께 뛴 기록이 있는 페이스메이커입니다.");
+    }
+
+    @DisplayName("fallbackIfStaleOver는 미완료 상태로 임계치를 넘겼으면 FAILED로 전환하고 true를 반환한다.")
+    @Test
+    void fallbackIfStaleOver_staleProceeding_failsOver() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        pacemaker.proceed();
+        pacemaker.setCreatedAt(LocalDateTime.now().minusMinutes(31));
+
+        // when
+        boolean transitioned = pacemaker.fallbackIfStaleOver(Duration.ofMinutes(30));
+
+        // then
+        Assertions.assertThat(transitioned).isTrue();
+        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.FAILED);
+    }
+
+    @DisplayName("fallbackIfStaleOver는 임계치 이내면 상태를 유지하고 false를 반환한다.")
+    @Test
+    void fallbackIfStaleOver_fresh_keepsStatus() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        pacemaker.proceed();
+        pacemaker.setCreatedAt(LocalDateTime.now().minusMinutes(29));
+
+        // when
+        boolean transitioned = pacemaker.fallbackIfStaleOver(Duration.ofMinutes(30));
+
+        // then
+        Assertions.assertThat(transitioned).isFalse();
+        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
+    }
+
+    @DisplayName("fallbackIfStaleOver는 이미 완료(COMPLETED/FAILED)된 상태면 시간이 지나도 건드리지 않는다.")
+    @Test
+    void fallbackIfStaleOver_completed_untouched() {
+        // given
+        Pacemaker pacemaker = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.R, "멤버 UUID");
+        pacemaker.proceed();
+        pacemaker.complete("요약", 10.0, 50, "메세지");
+        pacemaker.setCreatedAt(LocalDateTime.now().minusMinutes(31));
+
+        // when
+        boolean transitioned = pacemaker.fallbackIfStaleOver(Duration.ofMinutes(30));
+
+        // then
+        Assertions.assertThat(transitioned).isFalse();
+        Assertions.assertThat(pacemaker.getStatus()).isEqualTo(Pacemaker.Status.COMPLETED);
     }
 
     @DisplayName("createWithRuleBase는 condition과 temperature를 저장한다.")

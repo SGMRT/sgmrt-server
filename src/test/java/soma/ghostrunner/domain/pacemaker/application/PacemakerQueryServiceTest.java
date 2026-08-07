@@ -18,6 +18,7 @@ import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerRepository;
 import soma.ghostrunner.domain.pacemaker.infra.persistence.PacemakerSetRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,8 +37,6 @@ class PacemakerQueryServiceTest {
     @Mock
     RunningTipsProvider runningTipsProvider;
     @Mock
-    PacemakerStatusService statusService;
-    @Mock
     PacemakerRateLimitService rateLimitService;
 
     PacemakerQueryService queryService;
@@ -49,7 +48,6 @@ class PacemakerQueryServiceTest {
                 pacemakerSetRepository,
                 mapper,
                 runningTipsProvider,
-                statusService,
                 rateLimitService
         );
     }
@@ -125,6 +123,7 @@ class PacemakerQueryServiceTest {
         Long id = 101L;
 
         Pacemaker init = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
+        init.setCreatedAt(LocalDateTime.now());    // 갓 생성 — 지연 판정 대상 아님
 
         PacemakerPollingResponse expected = new PacemakerPollingResponse();
         when(pacemakerRepository.findById(id)).thenReturn(Optional.of(init));
@@ -205,23 +204,51 @@ class PacemakerQueryServiceTest {
     }
 
     @Test
-    @DisplayName("폴링 조회는 지연 판정(fallbackIfStale)을 먼저 거친 뒤 조회한다")
-    void getPacemaker_runsStaleCheckBeforeQuery() {
+    @DisplayName("PROCEEDING인 채 임계치(30분)를 넘긴 고아 레코드는 FAILED로 전환되고 세트와 함께 응답한다")
+    void getPacemaker_stale_fallsBackAndReturnsWithSets() {
+        // given
+        String owner = "owner-uuid";
+        Long id = 100L;
+        Pacemaker stale = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
+        stale.proceed();
+        stale.setCreatedAt(LocalDateTime.now().minusMinutes(31));
+
+        List<PacemakerSet> sets = List.of(PacemakerSet.of(1, null, 0.0, 2.0, 5.0, null));
+        PacemakerPollingResponse expected = new PacemakerPollingResponse();
+        when(runningTipsProvider.getRandomTip()).thenReturn("Mock Tip");
+        when(pacemakerRepository.findById(id)).thenReturn(Optional.of(stale));
+        when(pacemakerSetRepository.findByPacemakerIdOrderBySetNumAsc(id)).thenReturn(sets);
+        when(mapper.toPacemakerPollingResponse(stale, sets, "Mock Tip")).thenReturn(expected);
+
+        // when
+        PacemakerPollingResponse actual = queryService.getPacemaker(id, owner);
+
+        // then — 진행 중 응답이 아니라 Rule-Base 훈련표(세트)가 폴백으로 나가야 한다
+        assertThat(stale.getStatus()).isEqualTo(Pacemaker.Status.FAILED);
+        assertThat(actual).isSameAs(expected);
+        verify(mapper, never()).toPacemakerPollingResponse(stale);
+    }
+
+    @Test
+    @DisplayName("PROCEEDING이라도 임계치 이내면 상태를 유지하고 진행 중 응답을 반환한다")
+    void getPacemaker_notStale_keepsProceeding() {
         // given
         String owner = "owner-uuid";
         Long id = 100L;
         Pacemaker proceeding = Pacemaker.of(Pacemaker.Norm.DISTANCE, 10.0, 1L, RunningType.M, owner);
         proceeding.proceed();
+        proceeding.setCreatedAt(LocalDateTime.now().minusMinutes(29));
 
+        PacemakerPollingResponse expected = new PacemakerPollingResponse();
         when(pacemakerRepository.findById(id)).thenReturn(Optional.of(proceeding));
+        when(mapper.toPacemakerPollingResponse(proceeding)).thenReturn(expected);
 
         // when
-        queryService.getPacemaker(id, owner);
+        PacemakerPollingResponse actual = queryService.getPacemaker(id, owner);
 
-        // then — 고아 레코드가 전환된 '뒤의' 상태를 읽어야 하므로 순서가 불변식이다
-        InOrder inOrder = inOrder(statusService, pacemakerRepository);
-        inOrder.verify(statusService).fallbackIfStale(id);
-        inOrder.verify(pacemakerRepository).findById(id);
+        // then
+        assertThat(proceeding.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
+        assertThat(actual).isSameAs(expected);
     }
 
     @Test

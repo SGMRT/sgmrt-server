@@ -10,6 +10,9 @@ import org.hibernate.annotations.Where;
 import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.global.common.BaseTimeEntity;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 
 @SQLDelete(sql = "UPDATE pacemaker SET deleted = true WHERE id=?")
 @Where(clause = "deleted = false")
@@ -164,6 +167,20 @@ public class Pacemaker extends BaseTimeEntity {
     public void fallback() {
         validateStatusTransition(Status.FAILED);
         this.status = Status.FAILED;
+    }
+
+    /**
+     * 지연 판정 — 미완료(INIT/PROCEEDING)인 채 threshold를 넘겼으면 FALLBACK(FAILED)으로 전환한다.
+     *
+     * @return 전환이 일어났으면 true — 고아 레코드였다는 뜻이므로 호출자가 알림을 남긴다
+     */
+    public boolean fallbackIfStaleOver(Duration threshold) {
+        boolean stale = isNotCompleted()
+                && getCreatedAt().isBefore(LocalDateTime.now().minus(threshold));
+        if (stale) {
+            fallback();
+        }
+        return stale;
     }
 
     private void validateStatusTransition(Status next) {
