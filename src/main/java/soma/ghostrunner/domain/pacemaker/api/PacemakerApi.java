@@ -9,7 +9,9 @@ import soma.ghostrunner.domain.pacemaker.api.dto.request.PacemakerPatchAfterRunn
 import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerInCourseViewPollingResponse;
 import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.pacemaker.api.support.PacemakerApiMapper;
-import soma.ghostrunner.domain.pacemaker.application.PacemakerFacade;
+import soma.ghostrunner.domain.pacemaker.application.PacemakerCommandService;
+import soma.ghostrunner.domain.pacemaker.application.PacemakerQueryService;
+import soma.ghostrunner.domain.pacemaker.application.PacemakerRateLimitService;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 @RestController
@@ -18,34 +20,36 @@ public class PacemakerApi {
 
     private final PacemakerApiMapper mapper;
 
-    private final PacemakerFacade pacemakerFacade;
+    private final PacemakerCommandService pacemakerCommandService;
+    private final PacemakerQueryService pacemakerQueryService;
+    private final PacemakerRateLimitService pacemakerRateLimitService;
 
     @PostMapping("/v1/pacemaker")
     public Long createPacemaker(
             @AuthenticationPrincipal JwtUserDetails userDetails,
             @RequestBody @Valid CreatePacemakerRequest request) {
         String memberUuid = userDetails.getUserId();
-        return pacemakerFacade.createPacemaker(memberUuid, mapper.toCommand(request));
+        return pacemakerCommandService.createPacemaker(memberUuid, mapper.toCommand(request));
     }
 
     @GetMapping("/v1/pacemaker/{pacemakerId}")
     public PacemakerPollingResponse getPacemaker(
             @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long pacemakerId) {
         String memberUuid = userDetails.getUserId();
-        return pacemakerFacade.getPacemaker(pacemakerId, memberUuid);
+        return pacemakerQueryService.getPacemaker(pacemakerId, memberUuid);
     }
 
     @DeleteMapping("/v1/pacemaker/{pacemakerId}")
     public void deletePacemaker(@AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long pacemakerId) {
         String memberUuid = userDetails.getUserId();
-        pacemakerFacade.deletePacemaker(memberUuid, pacemakerId);
+        pacemakerCommandService.deletePacemaker(memberUuid, pacemakerId);
     }
 
     @GetMapping("/v1/pacemaker")
     public PacemakerInCourseViewPollingResponse getPacemakerInCourseView(
             @AuthenticationPrincipal JwtUserDetails userDetails, @RequestParam Long courseId) {
         String memberUuid = userDetails.getUserId();
-        return pacemakerFacade.getPacemakerInCourse(memberUuid, courseId);
+        return pacemakerQueryService.getPacemakerInCourse(memberUuid, courseId);
     }
 
     @PatchMapping("/v1/pacemaker/after-running")
@@ -53,13 +57,13 @@ public class PacemakerApi {
             @AuthenticationPrincipal JwtUserDetails userDetails,
             @RequestBody @Valid PacemakerPatchAfterRunningRequest req) {
         String memberUuid = userDetails.getUserId();
-        pacemakerFacade.updateAfterRunning(memberUuid, req.getPacemakerId(), req.getRunningId());
+        pacemakerCommandService.updateAfterRunning(memberUuid, req.getPacemakerId(), req.getRunningId());
     }
 
     @GetMapping("/v1/pacemaker/rate-limit")
     public Long getRateLimitCounterToMakePacemaker(@AuthenticationPrincipal JwtUserDetails userDetails) {
         String memberUuid = userDetails.getUserId();
-        return pacemakerFacade.getRateLimitCounter(memberUuid);
+        return pacemakerRateLimitService.getRemainingCount(memberUuid);
     }
 
 }

@@ -22,8 +22,7 @@ import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
  *
  * <p><b>왜 별도 빈인가</b> — {@code RunningCommandService} 안의 private 메서드에 {@code @Transactional}을 붙이면
  * self-invocation 이라 프록시를 타지 않아 <b>트랜잭션이 아예 걸리지 않는다</b>(조용히 실패하는 형태라 더 나쁘다).
- * 이 저장소는 이미 같은 이유로 경계를 별도 빈에 두는 패턴을 쓴다 —
- * {@code PacemakerRecoveryPrepareService}("Self-Invocation 문제 방지를 위해 분리"), {@code SqsWorkerInternalService}.
+ * 이 저장소는 이미 같은 이유로 경계를 별도 빈에 두는 패턴을 쓴다 — {@code SqsWorkerInternalService}.
  *
  * <p><b>왜 경계를 여기까지만 좁혔나</b> — 시계열 가공(CPU)과 S3 업로드(네트워크 I/O 5회/3회)가 예전에는 같은
  * 트랜잭션 안에 있었다. DB 커넥션을 쥔 채 외부 I/O를 하면 동시 요청이 늘 때 커넥션 풀이 먼저 마른다.

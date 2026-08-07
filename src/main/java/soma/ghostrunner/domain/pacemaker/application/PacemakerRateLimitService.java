@@ -63,11 +63,15 @@ public class PacemakerRateLimitService {
 
     /**
      * Rate Limit 카운터 증가 (사용량 소비)
+     *
+     * @return 증가에 사용한 키 — 키에 날짜가 들어가므로, 실패 보상(decrementCounter)은
+     *         새로 만든 키가 아니라 반드시 이 키로 해야 자정 경계에서 어긋나지 않는다
      * @throws InvalidRunningException 일일 사용량 초과 시
      */
-    public void incrementCounter(String memberUuid) {
+    public String incrementCounter(String memberUuid) {
         String rateLimitKey = createRateLimitKey(memberUuid);
         incrementRateLimitCounter(memberUuid, rateLimitKey);
+        return rateLimitKey;
     }
 
     /**

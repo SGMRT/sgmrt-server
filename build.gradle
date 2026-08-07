@@ -143,10 +143,6 @@ dependencies {
 	// Sentry
 	implementation 'io.sentry:sentry-logback'
 
-	// ShedLock (분산 스케줄러 락)
-	implementation 'net.javacrumbs.shedlock:shedlock-spring:5.10.0'
-	implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:5.10.0'
-
 	// Resilience4j (서킷브레이커)
 	implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
 	implementation 'org.springframework.boot:spring-boot-starter-aop'

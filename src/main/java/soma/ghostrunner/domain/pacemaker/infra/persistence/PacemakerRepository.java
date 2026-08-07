@@ -3,12 +3,9 @@ package soma.ghostrunner.domain.pacemaker.infra.persistence;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import soma.ghostrunner.domain.pacemaker.domain.Pacemaker;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -20,6 +17,19 @@ public interface PacemakerRepository extends JpaRepository<Pacemaker, Long> {
             "limit 1")
     Optional<Pacemaker> findByCourseId(Long courseId, String memberUuid);
 
+    /**
+     * 미완료(INIT/PROCEEDING) 상태일 때만 FAILED로 전환하는 원자적 조건부 UPDATE.
+     * 완료 콜백과의 경쟁에서 이미 COMPLETED가 커밋됐다면 0건 매치로 물러나 —
+     * 읽고-쓰기(dirty checking) 방식에서 생기던 Lost Update(LLM 결과 덮어쓰기)를 차단한다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Pacemaker p " +
+            "set p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.FAILED " +
+            "where p.id = :pacemakerId " +
+            "and p.status in (soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.INIT, " +
+            "                 soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.PROCEEDING)")
+    int fallbackIfNotCompleted(Long pacemakerId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Pacemaker p set p.deleted = true where p.id = :pacemakerId")
     int softDelete(Long pacemakerId);
@@ -27,19 +37,5 @@ public interface PacemakerRepository extends JpaRepository<Pacemaker, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update PacemakerSet s set s.deleted = true where s.pacemaker.id = :pacemakerId")
     int softDeleteAllByPacemakerId(Long pacemakerId);
-
-    /**
-     * 복구 대상 Pacemaker ID 조회
-     * - INIT 또는 PROCEEDING 상태
-     * - lastRetryAt이 null이면 createdAt 기준, 아니면 lastRetryAt 기준으로 threshold 이전
-     */
-    @Query("select p.id from Pacemaker p " +
-            "where (p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.INIT " +
-            "       or p.status = soma.ghostrunner.domain.pacemaker.domain.Pacemaker.Status.PROCEEDING) " +
-            "and ((p.lastRetryAt is null and p.createdAt < :threshold) " +
-            "     or (p.lastRetryAt is not null and p.lastRetryAt < :threshold)) " +
-            "order by p.createdAt asc")
-    List<Long> findRecoveryTargetIds(@Param("threshold") LocalDateTime threshold,
-                                     org.springframework.data.domain.Pageable pageable);
 
 }

@@ -20,7 +20,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class PacemakerLlmTriggerServiceTest {
+class PacemakerLlmApiTriggerServiceTest {
 
     @Mock
     PacemakerStatusService statusService;
@@ -31,11 +31,11 @@ class PacemakerLlmTriggerServiceTest {
     @Mock
     CircuitBreaker circuitBreaker;
 
-    PacemakerLlmTriggerService triggerService;
+    PacemakerLlmApiTriggerService triggerService;
 
     @BeforeEach
     void setUp() {
-        triggerService = new PacemakerLlmTriggerService(
+        triggerService = new PacemakerLlmApiTriggerService(
                 statusService,
                 rateLimitService,
                 llmService,
@@ -75,7 +75,7 @@ class PacemakerLlmTriggerServiceTest {
             when(rateLimitService.createRateLimitKey(anyString())).thenReturn("rate-limit-key");
 
             // when
-            triggerService.processAsync(result);
+            triggerService.process(result);
 
             // then
             verify(statusService).updateToProceeding(result.getPacemakerId());
@@ -99,7 +99,7 @@ class PacemakerLlmTriggerServiceTest {
                     .when(statusService).updateToProceeding(result.getPacemakerId());
 
             // when & then
-            assertThatNoException().isThrownBy(() -> triggerService.processAsync(result));
+            assertThatNoException().isThrownBy(() -> triggerService.process(result));
             verifyNoInteractions(llmService);
         }
     }
@@ -120,7 +120,7 @@ class PacemakerLlmTriggerServiceTest {
             PacemakerCreationResult result = createTestResult();
 
             // when
-            triggerService.processAsync(result);
+            triggerService.process(result);
 
             // then
             verify(statusService, never()).updateToProceeding(anyLong());
@@ -146,7 +146,7 @@ class PacemakerLlmTriggerServiceTest {
             when(rateLimitService.createRateLimitKey(anyString())).thenReturn("rate-limit-key");
 
             // when
-            triggerService.processAsync(result);
+            triggerService.process(result);
 
             // then
             verify(statusService).updateToProceeding(result.getPacemakerId());

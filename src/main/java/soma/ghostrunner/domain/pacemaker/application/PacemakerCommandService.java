@@ -3,32 +3,25 @@ package soma.ghostrunner.domain.pacemaker.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerInCourseViewPollingResponse;
-import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerPollingResponse;
 import soma.ghostrunner.domain.pacemaker.application.dto.PacemakerCreationResult;
 import soma.ghostrunner.domain.pacemaker.application.dto.request.PacemakerCreateCommand;
 
 /**
- * 페이스메이커 Facade - 모든 진입점
+ * 페이스메이커 명령(생성·업데이트·삭제) 진입점 — 조회는 {@link PacemakerQueryService}
  *
  * 역할:
  * - 생성: TX1(Rule-Base, INIT) → 비동기(TX2 + LLM)
- * - 조회: 단건 조회, 코스 내 조회
  * - 업데이트: 러닝 후 상태 업데이트, 삭제
- * - Rate Limit: 남은 사용량 조회
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PacemakerFacade {
+public class PacemakerCommandService {
 
     private final PacemakerCreationService creationService;
-    private final PacemakerLlmTriggerService llmTriggerService;
-    private final PacemakerQueryService queryService;
+    private final PacemakerLlmApiTriggerService llmTriggerService;
     private final PacemakerUpdateService updateService;
     private final PacemakerRateLimitService rateLimitService;
-
-    // ==================== 생성 ====================
 
     /**
      * 페이스메이커 생성
@@ -53,8 +46,7 @@ public class PacemakerFacade {
         log.info("페이스메이커 생성 시작 - memberUuid={}, courseId={}", memberUuid, command.getCourseId());
 
         // 선카운트: 원자적으로 카운트 증가 + 임계치 검증 (Race Condition 방지)
-        String rateLimitKey = rateLimitService.createRateLimitKey(memberUuid);
-        rateLimitService.incrementCounter(memberUuid);
+        String rateLimitKey = rateLimitService.incrementCounter(memberUuid);
 
         // TX1: Rule-Base Pacemaker(INIT) 생성 및 저장
         // TX1 실패 시에만 카운트 보상 (Pacemaker가 저장되지 않았으므로)
@@ -68,29 +60,11 @@ public class PacemakerFacade {
         }
 
         // 비동기 처리 전달 (TX2 + LLM 호출은 비동기 스레드에서 수행)
-        llmTriggerService.processAsync(result);
+        llmTriggerService.process(result);
 
         log.info("페이스메이커 생성 요청 완료 - pacemakerId={}", result.getPacemakerId());
         return result.getPacemakerId();
     }
-
-    // ==================== 조회 ====================
-
-    /**
-     * 페이스메이커 단건 조회 (폴링용)
-     */
-    public PacemakerPollingResponse getPacemaker(Long pacemakerId, String memberUuid) {
-        return queryService.getPacemaker(pacemakerId, memberUuid);
-    }
-
-    /**
-     * 코스 내 페이스메이커 조회 (폴링용)
-     */
-    public PacemakerInCourseViewPollingResponse getPacemakerInCourse(String memberUuid, Long courseId) {
-        return queryService.getPacemakerInCourse(memberUuid, courseId);
-    }
-
-    // ==================== 업데이트/삭제 ====================
 
     /**
      * 러닝 완료 후 페이스메이커 상태 업데이트
@@ -104,15 +78,6 @@ public class PacemakerFacade {
      */
     public void deletePacemaker(String memberUuid, Long pacemakerId) {
         updateService.deletePacemaker(memberUuid, pacemakerId);
-    }
-
-    // ==================== Rate Limit ====================
-
-    /**
-     * 남은 일일 사용량 조회
-     */
-    public Long getRateLimitCounter(String memberUuid) {
-        return rateLimitService.getRemainingCount(memberUuid);
     }
 
 }

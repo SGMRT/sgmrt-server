@@ -2,7 +2,6 @@ package soma.ghostrunner.domain.pacemaker.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import soma.ghostrunner.domain.member.domain.Member;
 import soma.ghostrunner.domain.pacemaker.application.dto.WorkoutDto;
@@ -17,7 +16,11 @@ public class PacemakerLlmService {
     private final PacemakerLlmClient llmClient;
     private final PacemakerLlmCallbackService callbackService;
 
-    @Async("llmTaskExecutor")
+    /**
+     * 동기 실행 — 반드시 호출자의 llmTaskExecutor 태스크 안에서 실행되어야 한다.
+     * 여기서 다시 @Async로 재제출하면 graceful shutdown 시 신규 제출이 거부되어
+     * 접수된(PROCEEDING) 요청의 LLM 호출이 유실된다.
+     */
     public void requestLlmToCreatePacemaker(Member member, WorkoutDto workoutDto,
                                             int vdot, int condition, int temperature, Long pacemakerId,
                                             String rateLimitKey) {
