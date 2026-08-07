@@ -36,8 +36,6 @@ class PacemakerQueryServiceTest {
     PacemakerApplicationMapper mapper;
     @Mock
     RunningTipsProvider runningTipsProvider;
-    @Mock
-    PacemakerRateLimitService rateLimitService;
 
     PacemakerQueryService queryService;
 
@@ -47,8 +45,7 @@ class PacemakerQueryServiceTest {
                 pacemakerRepository,
                 pacemakerSetRepository,
                 mapper,
-                runningTipsProvider,
-                rateLimitService
+                runningTipsProvider
         );
     }
 
@@ -249,21 +246,6 @@ class PacemakerQueryServiceTest {
         // then
         assertThat(proceeding.getStatus()).isEqualTo(Pacemaker.Status.PROCEEDING);
         assertThat(actual).isSameAs(expected);
-    }
-
-    @Test
-    @DisplayName("Rate Limit 조회는 RateLimitService로 위임된다")
-    void getRateLimitCounter_delegatesToRateLimitService() {
-        // given
-        String memberUuid = "member-123";
-        when(rateLimitService.getRemainingCount(memberUuid)).thenReturn(2L);
-
-        // when
-        Long count = queryService.getRateLimitCounter(memberUuid);
-
-        // then
-        assertThat(count).isEqualTo(2L);
-        verify(rateLimitService).getRemainingCount(memberUuid);
     }
 
 }

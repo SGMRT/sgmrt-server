@@ -10,7 +10,7 @@
 | `POST /v1/pacemaker` | UC1. 생성 (Rule-Base + LLM 개선) | `PacemakerCommandService` | 명령, 비동기 |
 | `GET /v1/pacemaker/{id}` | UC2. 단건 폴링 (+ 지연 판정) | `PacemakerQueryService` | 조회 |
 | `GET /v1/pacemaker?courseId=` | UC2′. 코스 내 폴링 (+ 지연 판정) | `PacemakerQueryService` | 조회 |
-| `GET /v1/pacemaker/rate-limit` | UC3. 남은 사용량 조회 | `PacemakerQueryService` | 조회 |
+| `GET /v1/pacemaker/rate-limit` | UC3. 남은 사용량 조회 | `PacemakerRateLimitService` | 조회 (Redis만 — DB 트랜잭션 불필요) |
 | `PATCH /v1/pacemaker/after-running` | UC4. 러닝 후 상태 업데이트 | `PacemakerCommandService` | 명령 |
 | `DELETE /v1/pacemaker/{id}` | UC5. 삭제 (soft delete) | `PacemakerCommandService` | 명령 |
 

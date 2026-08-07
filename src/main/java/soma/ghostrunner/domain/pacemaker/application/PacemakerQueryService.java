@@ -21,7 +21,6 @@ import java.util.List;
 /**
  * 페이스메이커 조회 전용 서비스
  * - 페이스메이커 단건 조회 / 코스 내 조회 (폴링용)
- * - 남은 Rate Limit 조회
  * - 폴링 조회는 지연 판정을 겸한다 — 임계치를 넘긴 고아 레코드를 FALLBACK(FAILED)으로 전환해
  *   Rule-Base 훈련표가 응답되도록 한다. 이 쓰기 때문에 폴링 메서드는 readOnly를 해제한다
  */
@@ -41,7 +40,6 @@ public class PacemakerQueryService {
     private final PacemakerSetRepository pacemakerSetRepository;
     private final PacemakerApplicationMapper mapper;
     private final RunningTipsProvider runningTipsProvider;
-    private final PacemakerRateLimitService rateLimitService;
 
     /**
      * 페이스메이커 단건 조회 (폴링용)
@@ -91,13 +89,6 @@ public class PacemakerQueryService {
     public Pacemaker findPacemakerInCourse(String memberUuid, Long courseId) {
         return pacemakerRepository.findByCourseId(courseId, memberUuid)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, courseId + "에 대한 페이스메이커를 찾을 수 없음"));
-    }
-
-    /**
-     * 남은 일일 사용량 조회
-     */
-    public Long getRateLimitCounter(String memberUuid) {
-        return rateLimitService.getRemainingCount(memberUuid);
     }
 
     /**

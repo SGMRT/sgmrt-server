@@ -11,6 +11,7 @@ import soma.ghostrunner.domain.pacemaker.api.dto.response.PacemakerPollingRespon
 import soma.ghostrunner.domain.pacemaker.api.support.PacemakerApiMapper;
 import soma.ghostrunner.domain.pacemaker.application.PacemakerCommandService;
 import soma.ghostrunner.domain.pacemaker.application.PacemakerQueryService;
+import soma.ghostrunner.domain.pacemaker.application.PacemakerRateLimitService;
 import soma.ghostrunner.global.security.jwt.JwtUserDetails;
 
 @RestController
@@ -21,6 +22,7 @@ public class PacemakerApi {
 
     private final PacemakerCommandService pacemakerCommandService;
     private final PacemakerQueryService pacemakerQueryService;
+    private final PacemakerRateLimitService pacemakerRateLimitService;
 
     @PostMapping("/v1/pacemaker")
     public Long createPacemaker(
@@ -61,7 +63,7 @@ public class PacemakerApi {
     @GetMapping("/v1/pacemaker/rate-limit")
     public Long getRateLimitCounterToMakePacemaker(@AuthenticationPrincipal JwtUserDetails userDetails) {
         String memberUuid = userDetails.getUserId();
-        return pacemakerQueryService.getRateLimitCounter(memberUuid);
+        return pacemakerRateLimitService.getRemainingCount(memberUuid);
     }
 
 }
