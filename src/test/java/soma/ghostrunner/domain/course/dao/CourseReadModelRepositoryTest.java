@@ -175,7 +175,7 @@ class CourseReadModelRepositoryTest extends IntegrationTestSupport {
     }
     
     /**
-     * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §1-2(필드 구성), §1-3(RankSlot), §1-7(테스트 계획)
+     * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §1-2(필드 구성), §1-3(RankSlot), §1-7(테스트 계획)
      *
      * 검증 대상은 "매핑이 DB 왕복에서 깨지지 않는다" 한 가지다.
      * - @Embedded CourseProfile 4컬럼 + thumbnailUrl 역정규화 필드

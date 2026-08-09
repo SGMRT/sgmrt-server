@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * CourseReadModel 순수 단위 테스트 (Spring 컨텍스트/DB 없음)
  *
- * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §1-2, §1-5, §1-7
+ * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §1-2, §1-5, §1-7
  *
  * 주요 테스트 대상:
  * - applyRun(): TOP4 증분 갱신 + 변경 감지(true/false)

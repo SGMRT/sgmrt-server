@@ -23,9 +23,9 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
-class CourseQueryServiceTest extends IntegrationTestSupport {
+class CourseReaderTest extends IntegrationTestSupport {
 
-    @Autowired private CourseQueryService courseQueryService;
+    @Autowired private CourseReader courseReader;
     @Autowired private CourseRepository courseRepository;
     @Autowired private MemberRepository memberRepository;
 
@@ -50,7 +50,7 @@ class CourseQueryServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseNearby1, courseNearby2, courseFar));
 
         // when
-        List<CoursePreviewDto> courses = courseQueryService.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
+        List<CoursePreviewDto> courses = courseReader.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         // - course1, 2는 조회되고, course3은 조회되지 않는다
@@ -68,7 +68,7 @@ class CourseQueryServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(course1, course2));
 
         // when
-        List<CoursePreviewDto> courses = courseQueryService.findNearbyCourses(LAT, LNG, 0, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
+        List<CoursePreviewDto> courses = courseReader.findNearbyCourses(LAT, LNG, 0, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         Assertions.assertThat(courses).hasSize(1)
@@ -85,7 +85,7 @@ class CourseQueryServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(publicCourse, privateCourse));
 
         // when
-        List<CoursePreviewDto> courses = courseQueryService.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
+        List<CoursePreviewDto> courses = courseReader.findNearbyCourses(LAT, LNG, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         Assertions.assertThat(courses).hasSize(1);
@@ -102,7 +102,7 @@ class CourseQueryServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseEast, courseWest, courseFar));
 
         // when
-        List<CoursePreviewDto> courses = courseQueryService.findNearbyCourses(LAT, 0d, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
+        List<CoursePreviewDto> courses = courseReader.findNearbyCourses(LAT, 0d, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         // 동경, 서경 코스는 모두 조회되고, 멀리 있는 코스는 조회되지 않아야 함
@@ -123,7 +123,7 @@ class CourseQueryServiceTest extends IntegrationTestSupport {
 
         // when
         // 동경 179.9985도 지점에서 반경 1km 내 코스 검색
-        List<CoursePreviewDto> courses = courseQueryService.findNearbyCourses(LAT, 179.9985, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
+        List<CoursePreviewDto> courses = courseReader.findNearbyCourses(LAT, 179.9985, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         // 동경 끝, 서경 끝 코스는 모두 조회되고, 멀리 있는 코스는 조회되지 않아야 함
@@ -143,7 +143,7 @@ class CourseQueryServiceTest extends IntegrationTestSupport {
         courseRepository.saveAll(List.of(courseNearby, courseFar));
 
         // when
-        List<CoursePreviewDto> courses = courseQueryService.findNearbyCourses(lat, lng, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
+        List<CoursePreviewDto> courses = courseReader.findNearbyCourses(lat, lng, 1000, CourseSortType.DISTANCE, CourseSearchFilterDto.of(), dummyMember.getId());
 
         // then
         assertThat(courses).hasSize(1)
@@ -169,7 +169,7 @@ class CourseQueryServiceTest extends IntegrationTestSupport {
         Course savedCourse = courseRepository.save(course);
 
         // when
-        Course foundCourse = courseQueryService.findCourseById(savedCourse.getId());
+        Course foundCourse = courseReader.findCourseById(savedCourse.getId());
 
         // then
         Assertions.assertThat(foundCourse.getId()).isEqualTo(savedCourse.getId());

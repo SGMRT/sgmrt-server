@@ -47,7 +47,7 @@ import static soma.ghostrunner.domain.course.dto.request.CoursePatchRequest.Upda
 /**
  * 리드모델 쓰기 경로 전체를 관통하는 E2E 시나리오 테스트.
  *
- * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §3-2(유즈케이스별 흐름)
+ * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §3-2(유즈케이스별 흐름)
  *
  * <p>개별 유즈케이스(러닝 종료 증분 · 러닝 삭제 재계산 · 코스 등록 초기화)는 각각
  * {@code RunningReadModelSyncIntegrationTest}, {@code CourseWriterTest}가 이미 덮는다.

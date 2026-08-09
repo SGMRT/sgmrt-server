@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * RegionService 통합 테스트 — 멱등 upsert.
+ * RegionResolver 통합 테스트 — 멱등 upsert.
  *
  * 설계 문서: docs/refactoring/course-read-model/cache/05-cache-key-design.md §3-2, §6-3, §8
  *
@@ -29,14 +29,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *    좌표가 뒤 요청으로 갱신되면 같은 키에 다른 값이 적재되어 결정성이 깨진다.
  *
  * <p>{@code NOT_SUPPORTED}로 상위({@code IntegrationTestSupport})의 테스트 트랜잭션을 벗어난다.
- * {@code RegionService}는 {@code @Transactional(propagation = NEVER)}라 트랜잭션 안에서는 호출 자체가 거부되며,
+ * {@code RegionResolver}는 {@code @Transactional(propagation = NEVER)}라 트랜잭션 안에서는 호출 자체가 거부되며,
  * 실제 호출자({@code RegionApi})도 트랜잭션 밖이다 — 즉 프로덕션과 같은 조건에서 검증하기 위한 것이다.
  * 커밋이 실제로 일어나므로 정리는 {@link DatabaseCleanserExtension}이 맡는다.</p>
  */
-@DisplayName("RegionService 통합 테스트 - 멱등 upsert")
+@DisplayName("RegionResolver 통합 테스트 - 멱등 upsert")
 @ExtendWith(DatabaseCleanserExtension.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class RegionServiceTest extends IntegrationTestSupport {
+class RegionResolverTest extends IntegrationTestSupport {
 
     private static final String REGION_NAME = "서울특별시 강남구 역삼동";
 
@@ -49,7 +49,7 @@ class RegionServiceTest extends IntegrationTestSupport {
     private static final double LATER_REQUEST_LNG = 127.0410;
 
     @Autowired
-    private RegionService regionService;
+    private RegionResolver regionResolver;
 
     @Autowired
     private RegionRepository regionRepository;
@@ -58,10 +58,10 @@ class RegionServiceTest extends IntegrationTestSupport {
     @Test
     void resolve_withSameName_isIdempotentAndKeepsFirstCoordinate() {
         // given : 최초 등록 (대표좌표가 되는 좌표)
-        Region firstResolved = regionService.resolve(REGION_NAME, FIRST_REQUEST_LAT, FIRST_REQUEST_LNG);
+        Region firstResolved = regionResolver.resolve(REGION_NAME, FIRST_REQUEST_LAT, FIRST_REQUEST_LNG);
 
         // when : 같은 동네 안의 다른 지점에서 온 재요청 (좌표가 다름)
-        Region secondResolved = regionService.resolve(REGION_NAME, LATER_REQUEST_LAT, LATER_REQUEST_LNG);
+        Region secondResolved = regionResolver.resolve(REGION_NAME, LATER_REQUEST_LAT, LATER_REQUEST_LNG);
 
         // then : 같은 id로 해소되고, 행은 하나뿐이며, 대표좌표는 최초 등록 좌표 그대로다
         assertThat(secondResolved.getId()).isEqualTo(firstResolved.getId());
@@ -79,11 +79,11 @@ class RegionServiceTest extends IntegrationTestSupport {
     @Test
     void resolve_withDecomposedName_resolvesToSameRegionAsComposedName() {
         // given : 완성형(NFC) 이름으로 먼저 등록된 지역
-        Region composedResolved = regionService.resolve(REGION_NAME, FIRST_REQUEST_LAT, FIRST_REQUEST_LNG);
+        Region composedResolved = regionResolver.resolve(REGION_NAME, FIRST_REQUEST_LAT, FIRST_REQUEST_LNG);
 
         // when : 같은 동네를 자모 분해형(NFD)으로 보낸 재요청
         String decomposedName = Normalizer.normalize(REGION_NAME, Normalizer.Form.NFD);
-        Region decomposedResolved = regionService.resolve(decomposedName, FIRST_REQUEST_LAT, FIRST_REQUEST_LNG);
+        Region decomposedResolved = regionResolver.resolve(decomposedName, FIRST_REQUEST_LAT, FIRST_REQUEST_LNG);
 
         // then : 같은 id로 해소되고 행도 하나뿐이다 (키가 갈라지지 않는다)
         assertThat(decomposedResolved.getId()).isEqualTo(composedResolved.getId());
@@ -101,16 +101,16 @@ class RegionServiceTest extends IntegrationTestSupport {
         // given : 서비스 영역(한국) 밖 좌표와, 정상 좌표로 이미 등록된 지역
         double outsideLat = 0.0;
         double outsideLng = 0.0;
-        Region existingRegion = regionService.resolve(REGION_NAME, FIRST_REQUEST_LAT, FIRST_REQUEST_LNG);
+        Region existingRegion = regionResolver.resolve(REGION_NAME, FIRST_REQUEST_LAT, FIRST_REQUEST_LNG);
 
         // when & then : 신규 이름 + 영역 밖 좌표는 거부된다
-        assertThatThrownBy(() -> regionService.resolve("알 수 없는 동네", outsideLat, outsideLng))
+        assertThatThrownBy(() -> regionResolver.resolve("알 수 없는 동네", outsideLat, outsideLng))
                 .isInstanceOf(InvalidRegionCoordinateException.class);
         assertThat(regionRepository.count()).isEqualTo(1L);
 
         // when & then : 이미 등록된 지역은 영역 밖 좌표로 요청해도 기존 id를 그대로 반환한다
         assertThatCode(() -> {
-            Region resolved = regionService.resolve(REGION_NAME, outsideLat, outsideLng);
+            Region resolved = regionResolver.resolve(REGION_NAME, outsideLat, outsideLng);
             assertThat(resolved.getId()).isEqualTo(existingRegion.getId());
         }).doesNotThrowAnyException();
     }

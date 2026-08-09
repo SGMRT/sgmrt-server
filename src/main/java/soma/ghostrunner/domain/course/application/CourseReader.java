@@ -17,16 +17,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 코스 도메인의 <b>조회 전용</b> 서비스. (구 {@code CourseService}의 읽기 절반)
+ * 코스 도메인의 <b>조회 전용</b> Reader. (구 {@code CourseQueryService})
  *
- * <p>코스 본체의 저장·수정·삭제와 주인 구독 조율은 전부 {@link CourseWriter}가 담당한다.
+ * <p>코스 본체의 저장·수정·삭제는 {@link CourseWriter}가, 구독 테이블 쓰기는
+ * {@link CourseSubscriptionWriter}가 담당한다.
  * 이 클래스는 트랜잭션을 열지 않는다 — 쓰기 트랜잭션 안에서 재조회 용도로 불릴 때는
  * 호출자의 트랜잭션에 참여한다. ({@code RunningWriter#saveRun}의 detached 회피 재조회 등)
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CourseQueryService {
+public class CourseReader {
 
     private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
@@ -48,7 +49,7 @@ public class CourseQueryService {
         List<Course> nearbyCourses = courseRepository.findCoursesWithFilters(lat, lng,
                 boundingBox.minLat(), boundingBox.maxLat(), boundingBox.minLng(), boundingBox.maxLng(),
                 filters, sort, memberId);
-        log.info("CourseQueryService::findNearbyCourses() - found {} courses", nearbyCourses.size());
+        log.info("CourseReader::findNearbyCourses() - found {} courses", nearbyCourses.size());
 
         return nearbyCourses.stream()
                 .map(courseMapper::toCoursePreviewDto)

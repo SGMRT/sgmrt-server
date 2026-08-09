@@ -11,11 +11,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
-import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
+import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.member.domain.Member;
 
 import java.util.Optional;
@@ -35,7 +34,7 @@ class CourseWriterUnitTest {
     private CourseRepository courseRepository;
 
     @Mock
-    private CourseSubscriptionRepository subscriptionRepository;
+    private CourseSubscriptionWriter subscriptionWriter;
 
     @Mock
     private CourseReadModelWriter readModelWriter;
@@ -76,155 +75,82 @@ class CourseWriterUnitTest {
         return request;
     }
 
+    /**
+     * 구독 테이블 쓰기 자체(생성·복원·soft delete)는 {@link CourseSubscriptionWriter}의 책임이고
+     * 그 규칙은 CourseSubscriptionWriterUnitTest가 검증한다. (설계 문서 reader-writer-layering §4 D2)
+     *
+     * 여기서 지키는 계약은 두 가지다 —
+     * (1) 코스의 공개 상태 전환과 주인 구독 위임이 <b>함께</b> 일어난다,
+     * (2) 전환이 성립하지 않는 경우(검증 실패·이미 원하는 상태)에는 위임이 <b>일어나지 않는다</b>.
+     */
     @Nested
-    @DisplayName("코스 등록 (isPublic: false → true)")
-    class RegisterCourse {
+    @DisplayName("주인 구독 위임 (공개 여부 전환)")
+    class OwnerSubscriptionDelegation {
 
         @Test
-        @DisplayName("처음 등록하는 경우 CourseSubscription을 새로 생성한다")
-        void registerCourse_CreatesNewSubscription() {
-            // given
-            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
-                    .willReturn(Optional.empty());
-            given(courseRepository.save(any(Course.class))).willReturn(course);
-
+        @DisplayName("비공개→공개 전환은 주인 구독 활성 위임과 코스 공개 전환이 함께 일어난다")
+        void publicize_activatesOwnerSubscriptionAndMakesCoursePublic() {
             // when
             courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
-            then(subscriptionRepository).should().save(any(CourseSubscription.class));
-            then(courseRepository).should().save(course);
+            then(subscriptionWriter).should().activateOwnerSubscription(course);
         }
 
         @Test
-        @DisplayName("재등록하는 경우 (deleted=true) CourseSubscription을 복원한다")
-        void registerCourse_RestoresDeletedSubscription() {
+        @DisplayName("공개→비공개 전환은 주인 구독 해제 위임과 코스 비공개 전환이 함께 일어난다")
+        void privatize_deactivatesOwnerSubscriptionAndMakesCoursePrivate() {
             // given
-            CourseSubscription deletedSubscription = CourseSubscription.create(course, owner);
-            deletedSubscription.unregister(); // deleted = true
-
-            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
-                    .willReturn(Optional.of(deletedSubscription));
-            given(courseRepository.save(any(Course.class))).willReturn(course);
-
-            // when
-            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
-
-            // then
-            assertThat(course.isPublic()).isTrue();
-            assertThat(deletedSubscription.isActive()).isTrue();
-            then(subscriptionRepository).should().save(deletedSubscription);
-            then(courseRepository).should().save(course);
-        }
-
-        @Test
-        @DisplayName("이미 활성화된 CourseSubscription이 있으면 그대로 유지한다")
-        void registerCourse_KeepsActiveSubscription() {
-            // given
-            CourseSubscription activeSubscription = CourseSubscription.create(course, owner);
-
-            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
-                    .willReturn(Optional.of(activeSubscription));
-            given(courseRepository.save(any(Course.class))).willReturn(course);
-
-            // when
-            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
-
-            // then
-            assertThat(course.isPublic()).isTrue();
-            assertThat(activeSubscription.isActive()).isTrue();
-            // 이미 활성 상태이므로 save 호출 안됨
-            then(subscriptionRepository).should(never()).save(activeSubscription);
-            then(courseRepository).should().save(course);
-        }
-    }
-
-    @Nested
-    @DisplayName("코스 등록 해제 (isPublic: true → false)")
-    class UnregisterCourse {
-
-        @BeforeEach
-        void setUpPublicCourse() {
             course.setIsPublic(true);
-        }
-
-        @Test
-        @DisplayName("등록 해제 시 CourseSubscription의 deleted가 true가 된다")
-        void unregisterCourse_SoftDeletesSubscription() {
-            // given
-            CourseSubscription activeSubscription = CourseSubscription.create(course, owner);
-
-            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
-                    .willReturn(Optional.of(activeSubscription));
-            given(courseRepository.save(any(Course.class))).willReturn(course);
 
             // when
             courseWriter.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isFalse();
-            assertThat(activeSubscription.isDeleted()).isTrue();
-            then(subscriptionRepository).should().save(activeSubscription);
-            then(courseRepository).should().save(course);
+            then(subscriptionWriter).should().deactivateOwnerSubscription(course);
         }
 
         @Test
-        @DisplayName("CourseSubscription이 없어도 등록 해제가 정상 동작한다")
-        void unregisterCourse_WithoutSubscription() {
+        @DisplayName("이름 없는 코스는 공개로 전환되지 않으며 주인 구독도 건드리지 않는다 (검증이 활성보다 앞선다)")
+        void publicizeWithoutName_failsBeforeTouchingSubscription() {
             // given
-            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
-                    .willReturn(Optional.empty());
-            given(courseRepository.save(any(Course.class))).willReturn(course);
+            course.setName(null);
+
+            // when & then
+            assertThatThrownBy(() ->
+                    courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid()))
+                    .isInstanceOf(CourseNameNotValidException.class);
+
+            assertThat(course.isPublic()).isFalse();
+            then(subscriptionWriter).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("이미 원하는 공개 상태면 구독 위임 없이 리드모델 동기화만 멱등하게 수행한다")
+        void alreadyPublic_skipsSubscriptionButStillSyncsReadModel() {
+            // given
+            course.setIsPublic(true);
 
             // when
-            courseWriter.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then
-            assertThat(course.isPublic()).isFalse();
-            then(subscriptionRepository).should(never()).save(any(CourseSubscription.class));
-            then(courseRepository).should().save(course);
+            assertThat(course.isPublic()).isTrue();
+            then(subscriptionWriter).shouldHaveNoInteractions();
+            then(readModelWriter).should().syncPublicity(COURSE_ID, true);
         }
-    }
-
-    @Nested
-    @DisplayName("전체 시나리오")
-    class FullScenario {
 
         @Test
-        @DisplayName("등록 → 해제 → 재등록 시나리오가 정상 동작한다")
-        void fullCycle_RegisterUnregisterReregister() {
-            // given
-            given(courseRepository.save(any(Course.class))).willReturn(course);
+        @DisplayName("이름만 바꾸는 요청은 주인 구독을 건드리지 않는다")
+        void nameOnlyUpdate_doesNotTouchSubscription() {
+            // when
+            courseWriter.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());
 
-            // when 1 - 등록
-            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
-                    .willReturn(Optional.empty());
-
-            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
-
-            // then 1
-            assertThat(course.isPublic()).isTrue();
-            then(subscriptionRepository).should(times(1)).save(any(CourseSubscription.class));
-
-            // when 2 - 등록 해제
-            CourseSubscription subscription = CourseSubscription.create(course, owner);
-            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
-                    .willReturn(Optional.of(subscription));
-
-            courseWriter.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
-
-            // then 2
-            assertThat(course.isPublic()).isFalse();
-            assertThat(subscription.isDeleted()).isTrue();
-
-            // when 3 - 재등록
-            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
-
-            // then 3
-            assertThat(course.isPublic()).isTrue();
-            assertThat(subscription.isActive()).isTrue();
-            then(courseRepository).should(times(3)).save(course);
+            // then
+            assertThat(course.getName()).isEqualTo("새로운 이름");
+            then(subscriptionWriter).shouldHaveNoInteractions();
         }
     }
 

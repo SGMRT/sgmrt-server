@@ -5,7 +5,7 @@ import java.util.Collection;
 /**
  * (lat, lng)을 radiusM로 둘러싼 직사각형 경계 좌표.
  *
- * <p>조회 박스(CourseReadModelReader·CourseQueryService)와 셀 커버링({@link GeoCell})은 반드시 같은 공식으로
+ * <p>조회 박스(CourseReadModelReader·CourseReader)와 셀 커버링({@link GeoCell})은 반드시 같은 공식으로
  * 계산되어야 "원 안의 코스가 커버링 밖 셀에 저장되는" 경우가 없다 — 복제 금지, 이 팩토리만 사용한다.</p>
  *
  * <p>이 팩토리의 지구 근사는 거리 필터({@link GeoDistance})와 <b>공유하는 단일 출처</b>다.

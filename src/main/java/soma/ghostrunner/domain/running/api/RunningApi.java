@@ -16,7 +16,7 @@ import soma.ghostrunner.domain.running.application.dto.response.GhostRunDetailIn
 import soma.ghostrunner.domain.running.application.dto.response.RunInfo;
 import soma.ghostrunner.domain.running.application.dto.response.SoloRunDetailInfo;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
-import soma.ghostrunner.domain.running.application.RunningQueryService;
+import soma.ghostrunner.domain.running.application.RunningReader;
 import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
 import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.global.common.validator.enums.EnumValid;
@@ -31,7 +31,7 @@ public class RunningApi {
 
     private final RunningApiMapper mapper;
 
-    private final RunningQueryService runningQueryService;
+    private final RunningReader runningReader;
     private final RunningCommandService runningCommandService;
 
     @GetMapping("/")
@@ -98,21 +98,21 @@ public class RunningApi {
     public String getRunningTelemetries(
             @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long runningId) {
         String memberUuid = userDetails.getUserId();
-        return runningQueryService.findRunningTelemetries(runningId, memberUuid);
+        return runningReader.findRunningTelemetries(runningId, memberUuid);
     }
 
     @GetMapping("/v1/runs/{runningId}")
     public SoloRunDetailInfo getSoloRunInfo(
             @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long runningId) {
         String memberUuid = userDetails.getUserId();
-        return runningQueryService.findSoloRunInfo(runningId, memberUuid);
+        return runningReader.findSoloRunInfo(runningId, memberUuid);
     }
 
     @GetMapping("/v1/runs/{myRunningId}/ghosts/{ghostRunningId}")
     public GhostRunDetailInfo getGhostRunInfo(
             @AuthenticationPrincipal JwtUserDetails userDetails, @PathVariable Long myRunningId, @PathVariable Long ghostRunningId) {
         String memberUuid = userDetails.getUserId();
-        return runningQueryService.findGhostRunInfo(myRunningId, ghostRunningId, memberUuid);
+        return runningReader.findGhostRunInfo(myRunningId, ghostRunningId, memberUuid);
     }
 
     @Deprecated
@@ -143,7 +143,7 @@ public class RunningApi {
             @RequestParam(required = false) Long cursorStartedAt,
             @RequestParam(required = false) String cursorCourseName) {
         String memberUuid = userDetails.getUserId();
-        return runningQueryService.findRunnings(filteredBy,
+        return runningReader.findRunnings(filteredBy,
                 startEpoch, endEpoch,
                 cursorStartedAt,
                 cursorCourseName,
@@ -155,7 +155,7 @@ public class RunningApi {
             @AuthenticationPrincipal JwtUserDetails userDetails,
             @PathVariable Long courseId) {
         String memberUuid = userDetails.getUserId();
-        return runningQueryService.findRunnings(courseId, memberUuid);
+        return runningReader.findRunnings(courseId, memberUuid);
     }
 
     @GetMapping("/v1/runs/monthly/status")
@@ -164,7 +164,7 @@ public class RunningApi {
             @RequestParam @Min(2000) @Max(2100) Integer year,
             @RequestParam @Min(1) @Max(12) Integer month) {
         String memberUuid = userDetails.getUserId();
-        return runningQueryService.findMonthlyDayRunStatus(year, month, memberUuid);
+        return runningReader.findMonthlyDayRunStatus(year, month, memberUuid);
     }
 
 }

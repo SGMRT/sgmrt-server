@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.tuple;
 /**
  * CourseReadModelWriter 통합 테스트
  *
- * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md
+ * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md
  * §0-3(쓰기 플로우), §1-6(runnersCount 정책), §3-1(Writer), §3-2(유즈케이스)
  *
  * 검증 대상은 Writer의 핵심 계약 5가지다.

@@ -9,7 +9,7 @@ import org.mockito.Mock;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.course.application.CourseQueryService;
+import soma.ghostrunner.domain.course.application.CourseReader;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.application.MemberVdotWriter;
@@ -40,8 +40,8 @@ class RunningCommandServiceTest {
     @Mock TelemetryProcessor telemetryProcessor;
     @Mock RunningFileUploader runningFileUploader;
     @Mock PathSimplificationService pathSimplificationService;
-    @Mock RunningQueryService runningQueryService;
-    @Mock CourseQueryService courseQueryService;
+    @Mock RunningReader runningReader;
+    @Mock CourseReader courseReader;
     @Mock MemberService memberService;
     @Mock MemberVdotWriter memberVdotWriter;
     @Mock RunningWriter runningWriter;
@@ -57,7 +57,7 @@ class RunningCommandServiceTest {
     void setUp() {
         sut = new RunningCommandService(
                 mapper, telemetryProcessor, runningFileUploader,
-                pathSimplificationService, runningQueryService, courseQueryService, memberService,
+                pathSimplificationService, runningReader, courseReader, memberService,
                 memberVdotWriter, runningWriter
         );
     }
@@ -90,7 +90,7 @@ class RunningCommandServiceTest {
     private Course givenFoundCourse(long courseId) {
         Course course = mock(Course.class);
         when(course.getId()).thenReturn(courseId);
-        when(courseQueryService.findCourseByIdFetchJoinMember(courseId)).thenReturn(course);
+        when(courseReader.findCourseByIdFetchJoinMember(courseId)).thenReturn(course);
         return course;
     }
 
@@ -178,7 +178,7 @@ class RunningCommandServiceTest {
         verify(runningFileUploader).uploadCheckpoints(anyList(), eq(memberUuid));
 
         // 저장·리드모델·이빅트는 전부 writer 의 트랜잭션 안 책임이다 — 서비스가 직접 하지 않는다
-        verifyNoInteractions(courseQueryService);
+        verifyNoInteractions(courseReader);
     }
 
     /**
@@ -245,7 +245,7 @@ class RunningCommandServiceTest {
 
         // then
         assertThat(id).isEqualTo(100L);
-        verify(runningQueryService, never()).findRunningByRunningId(anyLong());
+        verify(runningReader, never()).findRunningByRunningId(anyLong());
 
         // 업로드가 저장 트랜잭션보다 먼저다 (커넥션을 쥔 채 S3 왕복 금지)
         InOrder inOrder = inOrder(runningFileUploader, runningWriter);
@@ -269,7 +269,7 @@ class RunningCommandServiceTest {
         when(cmd.getGhostRunningId()).thenReturn(999L);
 
         Running ghost = mock(Running.class);
-        when(runningQueryService.findRunningByRunningId(999L)).thenReturn(ghost);
+        when(runningReader.findRunningByRunningId(999L)).thenReturn(ghost);
 
         Running running = savedRunningWithRecord(200L);
         when(runningWriter.saveRun(eq(cmd), eq(member), eq(courseId), eq(stats), any(RunningDataUrlsDto.class)))
@@ -281,7 +281,7 @@ class RunningCommandServiceTest {
         // then
         assertThat(id).isEqualTo(200L);
         verify(ghost).validateBelongsToCourse(courseId);
-        verify(runningQueryService).findRunningByRunningId(999L);
+        verify(runningReader).findRunningByRunningId(999L);
 
         InOrder inOrder = inOrder(ghost, runningFileUploader);
         inOrder.verify(ghost).validateBelongsToCourse(courseId);
@@ -353,6 +353,6 @@ class RunningCommandServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("member not found");
 
-        verifyNoInteractions(courseQueryService, telemetryProcessor, runningFileUploader, mapper, runningWriter);
+        verifyNoInteractions(courseReader, telemetryProcessor, runningFileUploader, mapper, runningWriter);
     }
 }

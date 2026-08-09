@@ -9,7 +9,7 @@ package soma.ghostrunner.domain.course.dto.query;
  *
  * 한 행 = 한 멤버의 해당 코스 최고 기록.
  *
- * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §3-3
+ * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §3-3
  */
 public interface TopRunnerRow {
 

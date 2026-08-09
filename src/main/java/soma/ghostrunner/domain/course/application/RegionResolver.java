@@ -26,12 +26,17 @@ import java.text.Normalizer;
  * 조회 1건 + 삽입 1건뿐이라 원자성으로 묶어야 할 불변식도 없다.
  * NEVER는 이 계약을 주석이 아닌 실행되는 규칙으로 만든다 — 트랜잭션 있는 호출자가 생기면
  * 나중에 호출자 쪽에서 {@code UnexpectedRollbackException}으로 터지는 대신 <b>진입 즉시</b> 실패한다.</p>
+ *
+ * <p><b>Reader도 Writer도 아닌 {@code Resolver}다.</b> 이 저장소의 규칙은 "Writer = 쓰기 트랜잭션 경계"인데,
+ * 위의 NEVER 계약 때문에 이 클래스는 트랜잭션을 열지 않는다 — 즉 Writer 규칙을 적용할 수 없다.
+ * 조회와 등록이 한 멱등 연산으로 섞여 있어 Reader도 아니다. 역할 이름으로 규칙의 예외임을 드러낸다.
+ * 설계 문서: docs/design/reader-writer-layering.md §4 D4</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(propagation = Propagation.NEVER)
-public class RegionService {
+public class RegionResolver {
 
     /** 서비스 영역(대한민국) bbox — 신규 등록 좌표의 1차 방어선. 외부로 노출하지 않는다. */
     private static final double SERVICE_AREA_MIN_LAT = 33.0;
@@ -100,7 +105,7 @@ public class RegionService {
     private Region warnIfCoordinateDrifted(Region region, Double lat, Double lng) {
         double distanceM = distanceInMeters(region.getCenterLat(), region.getCenterLng(), lat, lng);
         if (distanceM > COORDINATE_DRIFT_WARN_M) {
-            log.warn("RegionService::resolve() - request coordinate drifted {}km from region {} center",
+            log.warn("RegionResolver::resolve() - request coordinate drifted {}km from region {} center",
                     Math.round(distanceM / 1000), region.getId());
         }
         return region;

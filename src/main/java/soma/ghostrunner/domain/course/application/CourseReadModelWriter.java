@@ -36,7 +36,7 @@ import java.util.Objects;
  *       비공개 코스처럼 리드모델이 없는 경우 나머지 메서드는 아무 일도 하지 않는다.</li>
  * </ul>
  *
- * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §3-1
+ * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §3-1
  */
 @Slf4j
 @Component

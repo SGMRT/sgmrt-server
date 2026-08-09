@@ -17,7 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 /**
- * RegionService 단위 테스트 — 동시 등록 경쟁.
+ * RegionResolver 단위 테스트 — 동시 등록 경쟁.
  *
  * 설계 문서: docs/refactoring/course-read-model/cache/05-cache-key-design.md §6-3, §8
  *
@@ -26,9 +26,9 @@ import static org.mockito.BDDMockito.given;
  * FE 입장에서 resolve는 언제나 성공해야 하는 멱등 연산이기 때문이다.
  * (실제 경쟁은 재현이 어려워 안전망이 되지 못하므로, 충돌 예외를 주입해 복구 경로만 고정한다)
  */
-@DisplayName("RegionService 단위 테스트 - 동시 등록 경쟁")
+@DisplayName("RegionResolver 단위 테스트 - 동시 등록 경쟁")
 @ExtendWith(MockitoExtension.class)
-class RegionServiceUnitTest {
+class RegionResolverUnitTest {
 
     private static final String REGION_NAME = "서울특별시 강남구 역삼동";
 
@@ -44,7 +44,7 @@ class RegionServiceUnitTest {
     private RegionRepository regionRepository;
 
     @InjectMocks
-    private RegionService regionService;
+    private RegionResolver regionResolver;
 
     @DisplayName("동시 등록 경쟁에서 유니크 충돌이 나면 예외를 흘리지 않고 승자의 행을 반환한다")
     @Test
@@ -59,7 +59,7 @@ class RegionServiceUnitTest {
                 .willThrow(new DataIntegrityViolationException("uk_region_name"));
 
         // when
-        Region resolved = regionService.resolve(REGION_NAME, LOSER_LAT, LOSER_LNG);
+        Region resolved = regionResolver.resolve(REGION_NAME, LOSER_LAT, LOSER_LNG);
 
         // then : 진 쪽도 승자의 행(= 승자가 등록한 대표좌표)을 받는다
         assertThat(resolved).isSameAs(winner);

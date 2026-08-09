@@ -1,47 +1,42 @@
 package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
-import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
 
-import java.util.Optional;
-
 /**
  * 코스 도메인의 <b>DB 쓰기 트랜잭션 경계</b>. (구 {@code CourseService}의 쓰기 절반)
- * 코스 저장·수정·삭제와, 그에 딸린 <b>주인의 구독({@link CourseSubscription}) 조율</b>을 담당한다.
+ * 코스 저장·수정·삭제를 담당하고, 그에 딸린 <b>주인 구독은 {@link CourseSubscriptionWriter}에 위임한다.</b>
  *
  * <p>책임 경계</p>
  * <ul>
  *   <li><b>코스 본체</b> — 코스 저장, 코스명·공개 여부 변경, 코스 삭제.</li>
- *   <li><b>주인 구독 조율</b> — 코스 공개 전환은 곧 "주인이 자기 코스를 구독한 상태"를 뜻하므로, 공개/비공개
- *       전환에 맞춰 주인의 구독을 생성·복원·해제한다. (다른 러너의 구독은 코스를 따라 뛸 때
- *       {@code CourseSubscriptionService}가 만든다.)</li>
+ *   <li><b>주인 구독은 위임</b> — 코스 공개 전환은 곧 "주인이 자기 코스를 구독한 상태"를 뜻한다. 그래서 이 클래스는
+ *       공개/비공개 전환에 맞춰 <b>주인 구독을 언제 활성/해제할지만</b> 정하고, 구독 테이블 쓰기 자체는
+ *       {@link CourseSubscriptionWriter}가 수행한다. 러너 구독까지 포함해 구독 쓰기는 전부 그쪽이 단일 지점이다.
+ *       (설계 문서 reader-writer-layering §4 D2)</li>
  *   <li><b>리드모델은 위임</b> — 리드모델 갱신은 직접 하지 않고 전부 {@link CourseReadModelWriter}에 맡긴다.
  *       (코스명 변경 → rename, 공개 전환 → syncPublicity, 코스 삭제 → delete)</li>
- *   <li><b>조회는 하지 않는다</b> — 읽기 유즈케이스는 {@link CourseQueryService} 담당. 이 안의 조회는
+ *   <li><b>조회는 하지 않는다</b> — 읽기 유즈케이스는 {@link CourseReader} 담당. 이 안의 조회는
  *       수정·삭제 대상을 트랜잭션 안에서 확보하기 위한 재조회뿐이다.</li>
  * </ul>
  *
  * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §3-2
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CourseWriter {
 
     private final CourseRepository courseRepository;
-    private final CourseSubscriptionRepository subscriptionRepository;
+    private final CourseSubscriptionWriter subscriptionWriter;
     private final CourseReadModelWriter readModelWriter;
     private final CourseMapCacheEvictor mapCacheEvictor;
 
@@ -147,66 +142,22 @@ public class CourseWriter {
     }
 
     /**
-     * 코스 등록 — 주인의 구독을 살린 뒤 코스를 공개로 전환한다. (이름이 없으면 등록 불가)
+     * 코스 등록 — 주인 구독 활성을 위임한 뒤 코스를 공개로 전환한다. (이름이 없으면 등록 불가)
      */
     private void registerCourse(Course course) {
         if (!StringUtils.hasText(course.getName())) {
             throw new CourseNameNotValidException(ErrorCode.COURSE_NAME_NOT_VALID);
         }
-        activateOwnerSubscription(course);
+        subscriptionWriter.activateOwnerSubscription(course);
         course.makePublic();
     }
 
     /**
-     * 코스 등록 해제 — 주인의 구독을 해제한 뒤 코스를 비공개로 전환한다.
+     * 코스 등록 해제 — 주인 구독 해제를 위임한 뒤 코스를 비공개로 전환한다.
      */
     private void unregisterCourse(Course course) {
-        deactivateOwnerSubscription(course);
+        subscriptionWriter.deactivateOwnerSubscription(course);
         course.makePrivate();
-    }
-
-    /**
-     * 주인의 구독을 활성 상태로 만든다.
-     * - 구독이 없으면 생성 (최초 등록)
-     * - 해제된 구독이면 복원 (재등록)
-     * - 이미 활성이면 그대로 둔다
-     */
-    private void activateOwnerSubscription(Course course) {
-        Long courseId = course.getId();
-        Long ownerId = course.getMember().getId();
-
-        Optional<CourseSubscription> existingSubscription =
-                subscriptionRepository.findByCourseIdAndMemberId(courseId, ownerId);
-
-        if (existingSubscription.isEmpty()) {
-            subscriptionRepository.save(CourseSubscription.create(course, course.getMember()));
-            log.info("Created new subscription for course={}, member={}", courseId, ownerId);
-            return;
-        }
-
-        CourseSubscription subscription = existingSubscription.get();
-        if (subscription.isDeleted()) {
-            subscription.restore();
-            subscriptionRepository.save(subscription);
-            log.info("Restored subscription for course={}, member={}", courseId, ownerId);
-        } else {
-            log.debug("Subscription already active for course={}, member={}", courseId, ownerId);
-        }
-    }
-
-    /**
-     * 주인의 구독을 해제한다. (구독이 없으면 아무 일도 하지 않는다)
-     */
-    private void deactivateOwnerSubscription(Course course) {
-        Long courseId = course.getId();
-        Long ownerId = course.getMember().getId();
-
-        subscriptionRepository.findByCourseIdAndMemberId(courseId, ownerId)
-                .ifPresent(subscription -> {
-                    subscription.unregister();
-                    subscriptionRepository.save(subscription);
-                    log.info("Unregistered subscription for course={}, member={}", courseId, ownerId);
-                });
     }
 
 }

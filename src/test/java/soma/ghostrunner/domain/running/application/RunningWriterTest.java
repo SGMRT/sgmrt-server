@@ -11,9 +11,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import soma.ghostrunner.domain.course.application.CourseMapCacheEvictor;
-import soma.ghostrunner.domain.course.application.CourseQueryService;
+import soma.ghostrunner.domain.course.application.CourseReader;
 import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
-import soma.ghostrunner.domain.course.application.CourseSubscriptionService;
+import soma.ghostrunner.domain.course.application.CourseSubscriptionWriter;
 import soma.ghostrunner.domain.course.application.CourseWriter;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -55,11 +55,11 @@ class RunningWriterTest {
 
     @Mock RunningApplicationMapper mapper;
     @Mock RunningRepository runningRepository;
-    @Mock RunningQueryService runningQueryService;
+    @Mock RunningReader runningReader;
     @Mock CourseWriter courseWriter;
-    @Mock CourseQueryService courseQueryService;
+    @Mock CourseReader courseReader;
     @Mock CourseReadModelWriter courseReadModelWriter;
-    @Mock CourseSubscriptionService courseSubscriptionService;
+    @Mock CourseSubscriptionWriter courseSubscriptionWriter;
     @Mock CourseMapCacheEvictor courseMapCacheEvictor;
     @Mock ApplicationEventPublisher eventPublisher;
 
@@ -116,7 +116,7 @@ class RunningWriterTest {
         when(member.getId()).thenReturn(memberId);
 
         Course course = mock(Course.class);
-        when(courseQueryService.findCourseByIdFetchJoinMember(courseId)).thenReturn(course);
+        when(courseReader.findCourseByIdFetchJoinMember(courseId)).thenReturn(course);
 
         Running running = mock(Running.class);
         CourseRunEvent event = new CourseRunEvent(courseId, "한강 코스", 9L, 100L, 0L, 1800L, memberId, "러너");
@@ -129,9 +129,9 @@ class RunningWriterTest {
 
         // then
         assertThat(saved).isSameAs(running);
-        verify(courseQueryService).findCourseByIdFetchJoinMember(courseId);
+        verify(courseReader).findCourseByIdFetchJoinMember(courseId);
         verify(courseReadModelWriter, times(1)).applyRun(running);
-        verify(courseSubscriptionService, times(1)).subscribeIfAbsent(courseId, memberId);
+        verify(courseSubscriptionWriter, times(1)).subscribeIfAbsent(courseId, memberId);
         verify(courseMapCacheEvictor, times(1)).evictCourseCellAfterCommit(courseId);
         // AFTER_COMMIT 소비자(PushEventListener)가 있으므로 발행은 반드시 트랜잭션 안이어야 한다
         verify(eventPublisher, times(1)).publishEvent(eq(event));
@@ -144,7 +144,7 @@ class RunningWriterTest {
         long courseId = 77L;
         Member member = mock(Member.class);
         Course course = mock(Course.class);
-        when(courseQueryService.findCourseByIdFetchJoinMember(courseId)).thenReturn(course);
+        when(courseReader.findCourseByIdFetchJoinMember(courseId)).thenReturn(course);
 
         Running pausedRunning = mock(Running.class);
         when(pausedRunning.createCourseRunEvent())
@@ -172,14 +172,14 @@ class RunningWriterTest {
 
         Running running = mock(Running.class);
         when(running.getCourse()).thenReturn(course);
-        when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
+        when(runningReader.findRunningByRunningId(runningId)).thenReturn(running);
 
         // when
         sut.updateName("새 이름", runningId, memberUuid);
 
         // then
-        InOrder inOrder = inOrder(runningQueryService, running);
-        inOrder.verify(runningQueryService).findRunningByRunningId(runningId);
+        InOrder inOrder = inOrder(runningReader, running);
+        inOrder.verify(runningReader).findRunningByRunningId(runningId);
         inOrder.verify(running).verifyMember(memberUuid);
         inOrder.verify(running).updateName("새 이름");
 
@@ -197,14 +197,14 @@ class RunningWriterTest {
 
         Running running = mock(Running.class);
         when(running.getCourse()).thenReturn(course);
-        when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
+        when(runningReader.findRunningByRunningId(runningId)).thenReturn(running);
 
         // when
         sut.updatePublicStatus(runningId, memberUuid);
 
         // then
-        InOrder inOrder = inOrder(runningQueryService, running);
-        inOrder.verify(runningQueryService).findRunningByRunningId(runningId);
+        InOrder inOrder = inOrder(runningReader, running);
+        inOrder.verify(runningReader).findRunningByRunningId(runningId);
         inOrder.verify(running).verifyMember(memberUuid);
         inOrder.verify(running).updatePublicStatus();
 

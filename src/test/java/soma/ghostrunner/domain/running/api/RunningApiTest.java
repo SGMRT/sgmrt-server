@@ -591,7 +591,7 @@ class RunningApiTest extends ApiTestSupport {
                         .with(authentication(new UsernamePasswordAuthenticationToken(principal, "N/A", List.of()))))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(runningQueryService);
+        verifyNoInteractions(runningReader);
     }
 
 }

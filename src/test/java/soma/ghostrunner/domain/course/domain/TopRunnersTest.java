@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.*;
  * TopRunners 순수 단위 테스트 (Spring 컨텍스트/DB 없음)
  *
  * 불변식: 기록 오름차순 정렬 · 최대 4개(MAX_RANK) · 멤버 중복 없음(멤버당 최고 기록 1개만 유지)
- * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §1-3, §1-4, §1-7
+ * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §1-3, §1-4, §1-7
  */
 @DisplayName("TopRunners 단위 테스트")
 class TopRunnersTest {

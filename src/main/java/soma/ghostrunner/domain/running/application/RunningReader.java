@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class RunningQueryService {
+public class RunningReader {
 
     private final RunningRepository runningRepository;
 

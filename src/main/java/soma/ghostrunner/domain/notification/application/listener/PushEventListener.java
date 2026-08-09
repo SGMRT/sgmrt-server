@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-import soma.ghostrunner.domain.course.application.CourseQueryService;
+import soma.ghostrunner.domain.course.application.CourseReader;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -16,7 +16,7 @@ import soma.ghostrunner.domain.notice.domain.event.NoticeActivatedEvent;
 import soma.ghostrunner.domain.notification.application.PushContentAssembler;
 import soma.ghostrunner.domain.notification.application.PushService;
 import soma.ghostrunner.domain.notification.application.dto.PushContent;
-import soma.ghostrunner.domain.running.application.RunningQueryService;
+import soma.ghostrunner.domain.running.application.RunningReader;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.events.CourseRunEvent;
 import soma.ghostrunner.domain.pacemaker.domain.events.PacemakerCreatedEvent;
@@ -35,8 +35,8 @@ public class PushEventListener {
     private final PushContentAssembler pushContentAssembler;
 
     private final MemberService memberService;
-    private final CourseQueryService courseQueryService;
-    private final RunningQueryService runningQueryService;
+    private final CourseReader courseReader;
+    private final RunningReader runningReader;
 
     /** 본인 코스를 다른 러너가 달린 경우 */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -57,7 +57,7 @@ public class PushEventListener {
     public void notifyCourseTopPersonalRecordUpdate(CourseRunEvent runEvent) {
         // 본인의 이전 기록을 조회한다
         Member member = memberService.findMemberById(runEvent.runnerId());
-        Optional<Running> previousBestRun = runningQueryService.findMemberBestRunBefore(runEvent.courseId(), member.getUuid(), runEvent.runStartedAt());
+        Optional<Running> previousBestRun = runningReader.findMemberBestRunBefore(runEvent.courseId(), member.getUuid(), runEvent.runStartedAt());
         // 이번 기록이 첫 기록인 경우 알림을 보내지 않는다
         if(previousBestRun.isEmpty()) return;
         if(topRecordUpdated(previousBestRun, runEvent.runDuration())) {
@@ -115,7 +115,7 @@ public class PushEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePacemakerCreationEvent(PacemakerCreatedEvent event) {
         Member member = memberService.findMemberByUuid(event.memberUuid());
-        Course course = courseQueryService.findCourseById(event.courseId());
+        Course course = courseReader.findCourseById(event.courseId());
         if (course.getName() == null) return; // 이름 없는 코스인 경우 알림을 보내지 않음 (공개 코스 (= 이름 설정 필수)에만 페이스메이커 생성 가능하므로 사실 발생할 일은 거의 없음)
         PushContent pushContent = pushContentAssembler.buildPacemakerCreatedEvent(course);
         log.info("알림 이벤트 전송 - 회원 '{}'에 코스 '{}'에 페이스메이커 '{}' 생성 완료 (event={})",

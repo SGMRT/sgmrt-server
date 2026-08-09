@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(SpringExtension.class)
-class RunningQueryServiceTest {
+class RunningReaderTest {
 
     @Mock
     RunningRepository runningRepository;
@@ -43,11 +43,11 @@ class RunningQueryServiceTest {
     @Mock
     MemberService memberService;
 
-    RunningQueryService sut; // SUT (spy가 필요한 케이스는 별도 생성)
+    RunningReader sut; // SUT (spy가 필요한 케이스는 별도 생성)
 
     @BeforeEach
     void setUp() {
-        sut = new RunningQueryService(runningRepository, mapper, memberService);
+        sut = new RunningReader(runningRepository, mapper, memberService);
     }
 
     // ===== findSoloRunInfo =====
@@ -164,7 +164,7 @@ class RunningQueryServiceTest {
     @DisplayName("findPublicGhostRunsByCourseId: validateSortProperty가 예외를 던지면 그대로 전파")
     void findPublicGhostRunsByCourseId_invalidSort_propagates() {
         // validateSortProperty를 spy로 강제 예외
-        RunningQueryService spy = Mockito.spy(sut);
+        RunningReader spy = Mockito.spy(sut);
         Long courseId = 9L;
         Pageable pageable = PageRequest.of(0, 3, Sort.by("invalidProp"));
 

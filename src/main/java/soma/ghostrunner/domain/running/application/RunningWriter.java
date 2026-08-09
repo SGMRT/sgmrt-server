@@ -5,9 +5,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import soma.ghostrunner.domain.course.application.CourseMapCacheEvictor;
-import soma.ghostrunner.domain.course.application.CourseQueryService;
+import soma.ghostrunner.domain.course.application.CourseReader;
 import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
-import soma.ghostrunner.domain.course.application.CourseSubscriptionService;
+import soma.ghostrunner.domain.course.application.CourseSubscriptionWriter;
 import soma.ghostrunner.domain.course.application.CourseWriter;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
@@ -45,7 +45,7 @@ import java.util.Map;
  *   <li>{@code CourseRunEvent} 발행 — 소비자({@code PushEventListener})가
  *       {@code @TransactionalEventListener(AFTER_COMMIT)}라, 트랜잭션 밖에서 발행하면 이벤트가
  *       <b>조용히 버려져 푸시 알림이 죽는다.</b></li>
- *   <li>{@code CourseSubscriptionService#subscribeIfAbsent} — 자체 트랜잭션이 없어 호출자 트랜잭션에 의존한다.</li>
+ *   <li>{@code CourseSubscriptionWriter#subscribeIfAbsent} — 자체 트랜잭션이 없어 호출자 트랜잭션에 의존한다.</li>
  * </ul>
  *
  * <p><b>밖으로 뺀 것</b> — VDOT 갱신은 자체 트랜잭션으로 분리했다. VDOT 실패가 러닝 저장을 롤백시켜
@@ -57,11 +57,11 @@ public class RunningWriter {
 
     private final RunningApplicationMapper mapper;
     private final RunningRepository runningRepository;
-    private final RunningQueryService runningQueryService;
+    private final RunningReader runningReader;
     private final CourseWriter courseWriter;
-    private final CourseQueryService courseQueryService;
+    private final CourseReader courseReader;
     private final CourseReadModelWriter courseReadModelWriter;
-    private final CourseSubscriptionService courseSubscriptionService;
+    private final CourseSubscriptionWriter courseSubscriptionWriter;
     private final CourseMapCacheEvictor courseMapCacheEvictor;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -90,13 +90,13 @@ public class RunningWriter {
     public Running saveRun(CreateRunCommand command, Member member, Long courseId,
                            TelemetryStatistics telemetryStatistics, RunningDataUrlsDto dataUrls) {
 
-        Course course = courseQueryService.findCourseByIdFetchJoinMember(courseId);
+        Course course = courseReader.findCourseByIdFetchJoinMember(courseId);
 
         Running running = runningRepository.save(
                 mapper.toRunning(command, telemetryStatistics, dataUrls, member, course));
 
         courseReadModelWriter.applyRun(running);
-        courseSubscriptionService.subscribeIfAbsent(courseId, member.getId());
+        courseSubscriptionWriter.subscribeIfAbsent(courseId, member.getId());
         // "완주 직후 지도에서 내 등수를 본다"(설계 §1-2) — 커밋 후 셀 하나를 지우도록 예약한다
         courseMapCacheEvictor.evictCourseCellAfterCommit(courseId);
         publishCourseRunEvent(running);
@@ -162,7 +162,7 @@ public class RunningWriter {
     }
 
     private Running findRunning(Long runningId) {
-        return runningQueryService.findRunningByRunningId(runningId);
+        return runningReader.findRunningByRunningId(runningId);
     }
 
     /** 어느 코스에도 속하지 않은 러닝은 지울 셀이 없다. (식별자 게터라 프록시를 초기화하지 않는다) */

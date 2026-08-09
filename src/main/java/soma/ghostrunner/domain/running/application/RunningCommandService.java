@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.course.application.CourseQueryService;
+import soma.ghostrunner.domain.course.application.CourseReader;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.running.application.RunningWriter.CreatedRun;
 import soma.ghostrunner.domain.running.application.dto.*;
@@ -45,8 +45,8 @@ public class RunningCommandService {
     private final RunningFileUploader runningFileUploader;
 
     private final PathSimplificationService pathSimplificationService;
-    private final RunningQueryService runningQueryService;
-    private final CourseQueryService courseQueryService;
+    private final RunningReader runningReader;
+    private final CourseReader courseReader;
     private final MemberService memberService;
     private final MemberVdotWriter memberVdotWriter;
     private final RunningWriter runningWriter;
@@ -135,12 +135,12 @@ public class RunningCommandService {
     }
 
     private Course findCourse(Long courseId) {
-        return courseQueryService.findCourseByIdFetchJoinMember(courseId);
+        return courseReader.findCourseByIdFetchJoinMember(courseId);
     }
 
     private void validateBelongsToCourseIfGhostMode(CreateRunCommand command, Long courseId) {
         if (command.getMode().equals("GHOST")) {
-            Running ghostRunning = runningQueryService.findRunningByRunningId(command.getGhostRunningId());
+            Running ghostRunning = runningReader.findRunningByRunningId(command.getGhostRunningId());
             ghostRunning.validateBelongsToCourse(courseId);
         }
     }

@@ -20,7 +20,7 @@ public record RegionResolveRequest(
          * 실제 OS 리버스 지오코딩 결과는 한글/영문/숫자/공백을 벗어나지 않는다.
          *
          * <p><b>자모 범위(U+1100~U+11FF)를 반드시 포함한다.</b> 검증은 DTO 바인딩 시점,
-         * 즉 {@code RegionService}의 NFC 정규화 <i>이전</i>에 평가된다. iOS가 보내는 자모 분해형(NFD) 한글은
+         * 즉 {@code RegionResolver}의 NFC 정규화 <i>이전</i>에 평가된다. iOS가 보내는 자모 분해형(NFD) 한글은
          * {@code 가-힣}에 걸리지 않으므로, 자모를 빼면 iOS 등록이 전량 400으로 막힌다.</p>
          */
         @NotBlank

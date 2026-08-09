@@ -8,8 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
+import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseReadModel;
+import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.member.infra.dao.MemberRepository;
@@ -27,7 +29,7 @@ import static soma.ghostrunner.domain.course.dto.request.CoursePatchRequest.Upda
 
 /**
  * 코스 쓰기 트랜잭션 경계({@link CourseWriter})의 통합 테스트 — 수정·삭제와 리드모델 동기화.
- * (구 CourseServiceTest 의 쓰기 절반. 조회는 CourseQueryServiceTest 가 덮는다)
+ * (구 CourseServiceTest 의 쓰기 절반. 조회는 CourseReaderTest 가 덮는다)
  */
 class CourseWriterTest extends IntegrationTestSupport {
 
@@ -36,6 +38,7 @@ class CourseWriterTest extends IntegrationTestSupport {
     @Autowired private MemberRepository memberRepository;
     @Autowired private RunningRepository runningRepository;
     @Autowired private CourseReadModelRepository readModelRepository;
+    @Autowired private CourseSubscriptionRepository subscriptionRepository;
 
     private Member dummyMember;
     private final double LAT = 37.54324;
@@ -141,6 +144,42 @@ class CourseWriterTest extends IntegrationTestSupport {
         // then - 여전히 비공개 상태 유지 (멱등성)
         Course course = courseRepository.findById(id).orElseThrow();
         Assertions.assertThat(course.getIsPublic()).isFalse();
+    }
+
+    /**
+     * 주인 구독의 소프트 delete 복원은 "깨지면 실제로 아픈" 불변식이라 DB 레벨로 못박는다.
+     * 재등록이 복원이 아니라 새 행 삽입으로 바뀌면 유니크 제약(uk_course_member)에 걸려 등록 자체가 막힌다.
+     */
+    @DisplayName("코스를 등록 → 해제 → 재등록해도 주인 구독은 같은 행을 복원해 쓰며 최종 상태는 활성이다.")
+    @Test
+    void ownerSubscription_isRestoredNotDuplicated_onReRegister() {
+        // given
+        Course course = createPrivateCourse("등록 사이클 코스", LAT, LNG);
+        Long id = courseRepository.save(course).getId();
+
+        // when 1 - 등록
+        courseWriter.updateCourse(id, new CoursePatchRequest(null, true, Set.of(IS_PUBLIC)), dummyMember.getUuid());
+
+        // then 1 - 주인 구독이 활성으로 생긴다
+        assertThat(findOwnerSubscription(id).isActive()).isTrue();
+
+        // when 2 - 등록 해제
+        courseWriter.updateCourse(id, new CoursePatchRequest(null, false, Set.of(IS_PUBLIC)), dummyMember.getUuid());
+
+        // then 2 - 행이 지워지는 게 아니라 soft delete 된다
+        assertThat(findOwnerSubscription(id).isDeleted()).isTrue();
+
+        // when 3 - 재등록
+        courseWriter.updateCourse(id, new CoursePatchRequest(null, true, Set.of(IS_PUBLIC)), dummyMember.getUuid());
+
+        // then 3 - 복원되어 활성이고, 새 행을 만들지 않았다
+        assertThat(findOwnerSubscription(id).isActive()).isTrue();
+        assertThat(subscriptionRepository.findAll()).hasSize(1);
+    }
+
+    private CourseSubscription findOwnerSubscription(Long courseId) {
+        return subscriptionRepository.findByCourseIdAndMemberId(courseId, dummyMember.getId())
+                .orElseThrow(() -> new AssertionError("주인의 구독이 존재하지 않습니다."));
     }
 
     @DisplayName("코스의 id를 기반으로 코스를 삭제할 수 있다.")
