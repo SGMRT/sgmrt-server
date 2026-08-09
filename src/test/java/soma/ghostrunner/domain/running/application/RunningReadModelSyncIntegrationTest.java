@@ -50,7 +50,7 @@ import static org.mockito.Mockito.when;
 /**
  * 러닝 쓰기 유즈케이스 ↔ 코스 리드모델 동기화 통합 테스트
  *
- * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §0-3(쓰기 플로우), §3-2(유즈케이스)
+ * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §0-3(쓰기 플로우), §3-2(유즈케이스)
  *
  * 검증 대상은 "러닝 쓰기 트랜잭션이 커밋될 때 리드모델이 정확히 한 번, 정확한 값으로 반영되는가" 다.
  * <ul>

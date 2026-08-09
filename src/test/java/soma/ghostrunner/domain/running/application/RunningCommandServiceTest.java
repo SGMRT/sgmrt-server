@@ -1,20 +1,15 @@
 package soma.ghostrunner.domain.running.application;
 
-import org.hibernate.LazyInitializationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.course.application.CourseMapCacheEvictor;
-import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
-import soma.ghostrunner.domain.course.application.CourseService;
-import soma.ghostrunner.domain.course.domain.Coordinate;
+import soma.ghostrunner.domain.course.application.CourseReader;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.application.MemberVdotWriter;
@@ -26,19 +21,14 @@ import soma.ghostrunner.domain.running.application.support.RunningApplicationMap
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.domain.RunningRecord;
 import soma.ghostrunner.domain.running.domain.path.*;
-import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -47,17 +37,14 @@ import static org.mockito.Mockito.*;
 class RunningCommandServiceTest {
 
     @Mock RunningApplicationMapper mapper;
-    @Mock RunningRepository runningRepository;
     @Mock TelemetryProcessor telemetryProcessor;
     @Mock RunningFileUploader runningFileUploader;
     @Mock PathSimplificationService pathSimplificationService;
-    @Mock RunningQueryService runningQueryService;
-    @Mock CourseService courseService;
+    @Mock RunningReader runningReader;
+    @Mock CourseReader courseReader;
     @Mock MemberService memberService;
-    @Mock CourseReadModelWriter courseReadModelWriter;
     @Mock MemberVdotWriter memberVdotWriter;
-    @Mock CourseMapCacheEvictor courseMapCacheEvictor;
-    @Mock RunningCreationWriter runningCreationWriter;
+    @Mock RunningWriter runningWriter;
 
     RunningCommandService sut;
 
@@ -69,11 +56,9 @@ class RunningCommandServiceTest {
     @BeforeEach
     void setUp() {
         sut = new RunningCommandService(
-                mapper, runningRepository,
-                telemetryProcessor, runningFileUploader,
-                pathSimplificationService, runningQueryService, courseService, memberService,
-                courseReadModelWriter, memberVdotWriter, courseMapCacheEvictor,
-                runningCreationWriter
+                mapper, telemetryProcessor, runningFileUploader,
+                pathSimplificationService, runningReader, courseReader, memberService,
+                memberVdotWriter, runningWriter
         );
     }
 
@@ -105,7 +90,7 @@ class RunningCommandServiceTest {
     private Course givenFoundCourse(long courseId) {
         Course course = mock(Course.class);
         when(course.getId()).thenReturn(courseId);
-        when(courseService.findCourseByIdFetchJoinMember(courseId)).thenReturn(course);
+        when(courseReader.findCourseByIdFetchJoinMember(courseId)).thenReturn(course);
         return course;
     }
 
@@ -129,7 +114,7 @@ class RunningCommandServiceTest {
 
     /**
      * 이 순서가 이 클래스의 존재 이유다 — <b>가공·업로드는 저장 트랜잭션보다 앞, VDOT는 뒤.</b>
-     * 저장 트랜잭션(= {@link RunningCreationWriter})은 DB 커넥션을 쥐고 있으므로, 그 안에서 S3 왕복 5회를
+     * 저장 트랜잭션(= {@link RunningWriter})은 DB 커넥션을 쥐고 있으므로, 그 안에서 S3 왕복 5회를
      * 하면 동시 요청이 늘 때 커넥션 풀이 먼저 마른다. 업로드를 writer 뒤로 옮기면 이 테스트가 빨개진다.
      */
     @Test
@@ -161,8 +146,8 @@ class RunningCommandServiceTest {
 
         Course course = mock(Course.class);
         Running running = savedRunningWithRecord(1L);
-        when(runningCreationWriter.saveRunAndCourse(eq(cmd), eq(member), eq(stats), any(RunningDataUrlsDto.class)))
-                .thenReturn(new RunningCreationWriter.CreatedRun(running, course));
+        when(runningWriter.saveRunAndCourse(eq(cmd), eq(member), eq(stats), any(RunningDataUrlsDto.class)))
+                .thenReturn(new RunningWriter.CreatedRun(running, course));
 
         CreateCourseAndRunResponse response = new CreateCourseAndRunResponse(null, null);
         when(mapper.toResponse(running, course)).thenReturn(response);
@@ -175,14 +160,14 @@ class RunningCommandServiceTest {
         assertThat(result).isSameAs(response);
 
         InOrder inOrder = inOrder(memberService, telemetryProcessor, pathSimplificationService,
-                runningFileUploader, runningCreationWriter, memberVdotWriter, mapper);
+                runningFileUploader, runningWriter, memberVdotWriter, mapper);
 
         inOrder.verify(memberService).findMemberByUuid(memberUuid);
         inOrder.verify(telemetryProcessor).process(any(MultipartFile.class), eq(startedAt));
         inOrder.verify(pathSimplificationService).simplify(stats);
         inOrder.verify(runningFileUploader).uploadRawTelemetry(any(), eq(memberUuid));
         inOrder.verify(runningFileUploader).uploadRunningCaptureImage(any(), eq(memberUuid));
-        inOrder.verify(runningCreationWriter)
+        inOrder.verify(runningWriter)
                 .saveRunAndCourse(eq(cmd), eq(member), eq(stats), any(RunningDataUrlsDto.class));
         // VDOT는 러닝이 커밋된 뒤에 갱신한다 (실패해도 러닝을 롤백시키지 않기 위해)
         inOrder.verify(memberVdotWriter).updateFromRun(eq(memberUuid), any());
@@ -193,7 +178,7 @@ class RunningCommandServiceTest {
         verify(runningFileUploader).uploadCheckpoints(anyList(), eq(memberUuid));
 
         // 저장·리드모델·이빅트는 전부 writer 의 트랜잭션 안 책임이다 — 서비스가 직접 하지 않는다
-        verifyNoInteractions(runningRepository, courseService, courseReadModelWriter, courseMapCacheEvictor);
+        verifyNoInteractions(courseReader);
     }
 
     /**
@@ -214,7 +199,7 @@ class RunningCommandServiceTest {
         when(cmd.getMode()).thenReturn("NORMAL");
 
         Running running = savedRunningWithRecord(100L);
-        when(runningCreationWriter.saveRun(eq(cmd), eq(member), eq(courseId), eq(stats), any(RunningDataUrlsDto.class)))
+        when(runningWriter.saveRun(eq(cmd), eq(member), eq(courseId), eq(stats), any(RunningDataUrlsDto.class)))
                 .thenReturn(running);
         doThrow(new RuntimeException("vdot down"))
                 .when(memberVdotWriter).updateFromRun(eq(memberUuid), any());
@@ -252,7 +237,7 @@ class RunningCommandServiceTest {
         when(cmd.getMode()).thenReturn("NORMAL");
 
         Running running = savedRunningWithRecord(100L);
-        when(runningCreationWriter.saveRun(eq(cmd), eq(member), eq(courseId), eq(stats), any(RunningDataUrlsDto.class)))
+        when(runningWriter.saveRun(eq(cmd), eq(member), eq(courseId), eq(stats), any(RunningDataUrlsDto.class)))
                 .thenReturn(running);
 
         // when
@@ -260,12 +245,12 @@ class RunningCommandServiceTest {
 
         // then
         assertThat(id).isEqualTo(100L);
-        verify(runningQueryService, never()).findRunningByRunningId(anyLong());
+        verify(runningReader, never()).findRunningByRunningId(anyLong());
 
         // 업로드가 저장 트랜잭션보다 먼저다 (커넥션을 쥔 채 S3 왕복 금지)
-        InOrder inOrder = inOrder(runningFileUploader, runningCreationWriter);
+        InOrder inOrder = inOrder(runningFileUploader, runningWriter);
         inOrder.verify(runningFileUploader).uploadRunningCaptureImage(any(), eq(memberUuid));
-        inOrder.verify(runningCreationWriter)
+        inOrder.verify(runningWriter)
                 .saveRun(eq(cmd), eq(member), eq(courseId), eq(stats), any(RunningDataUrlsDto.class));
     }
 
@@ -284,10 +269,10 @@ class RunningCommandServiceTest {
         when(cmd.getGhostRunningId()).thenReturn(999L);
 
         Running ghost = mock(Running.class);
-        when(runningQueryService.findRunningByRunningId(999L)).thenReturn(ghost);
+        when(runningReader.findRunningByRunningId(999L)).thenReturn(ghost);
 
         Running running = savedRunningWithRecord(200L);
-        when(runningCreationWriter.saveRun(eq(cmd), eq(member), eq(courseId), eq(stats), any(RunningDataUrlsDto.class)))
+        when(runningWriter.saveRun(eq(cmd), eq(member), eq(courseId), eq(stats), any(RunningDataUrlsDto.class)))
                 .thenReturn(running);
 
         // when
@@ -296,7 +281,7 @@ class RunningCommandServiceTest {
         // then
         assertThat(id).isEqualTo(200L);
         verify(ghost).validateBelongsToCourse(courseId);
-        verify(runningQueryService).findRunningByRunningId(999L);
+        verify(runningReader).findRunningByRunningId(999L);
 
         InOrder inOrder = inOrder(ghost, runningFileUploader);
         inOrder.verify(ghost).validateBelongsToCourse(courseId);
@@ -312,204 +297,44 @@ class RunningCommandServiceTest {
         return running;
     }
 
-    // ====== 업데이트 계열 ======
+    // ====== 수정·삭제 — Writer 위임 ======
+    // 수정·삭제 트랜잭션의 내부 동작(소유자 검증, 리드모델 재계산, 지도 셀 이빅트)은 쓰기 경계인
+    // RunningWriter 의 책임이라 RunningWriterTest 가 검증한다. 여기서는 위임만 본다.
 
     @Test
-    @DisplayName("updateRunningName: 본인 검증 후 이름을 변경하고, 코스의 지도 셀 이빅트를 예약한다")
-    void updateRunningName_updatesAfterOwnershipCheck() {
-        // given
-        Long runningId = 10L;
-        Course course = mock(Course.class);
-        when(course.getId()).thenReturn(40L);
-
-        Running running = mock(Running.class);
-        when(running.getCourse()).thenReturn(course);
-        when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
-
+    @DisplayName("updateRunningName: RunningWriter 에 그대로 위임한다")
+    void updateRunningName_delegatesToWriter() {
         // when
-        sut.updateRunningName("새 이름", runningId, memberUuid);
+        sut.updateRunningName("새 이름", 10L, memberUuid);
 
         // then
-        InOrder inOrder = inOrder(runningQueryService, running);
-        inOrder.verify(runningQueryService).findRunningByRunningId(runningId);
-        inOrder.verify(running).verifyMember(memberUuid);
-        inOrder.verify(running).updateName("새 이름");
-
-        // 러닝 이름은 지도 카드에 노출되므로 셀 캐시도 커밋 후 지워야 한다
-        verify(courseMapCacheEvictor, times(1)).evictCourseCellAfterCommit(40L);
+        verify(runningWriter).updateName("새 이름", 10L, memberUuid);
+        verifyNoMoreInteractions(runningWriter);
     }
 
     @Test
-    @DisplayName("updateRunningPublicStatus: 본인 검증 후 공개 상태를 토글한다")
-    void updateRunningPublicStatus_togglesAfterOwnershipCheck() {
-        // given
-        Long runningId = 11L;
-        Running running = mock(Running.class);
-        when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
-
+    @DisplayName("updateRunningPublicStatus: RunningWriter 에 그대로 위임한다")
+    void updateRunningPublicStatus_delegatesToWriter() {
         // when
-        sut.updateRunningPublicStatus(runningId, memberUuid);
+        sut.updateRunningPublicStatus(11L, memberUuid);
 
         // then
-        InOrder inOrder = inOrder(runningQueryService, running);
-        inOrder.verify(runningQueryService).findRunningByRunningId(runningId);
-        inOrder.verify(running).verifyMember(memberUuid);
-        inOrder.verify(running).updatePublicStatus();
+        verify(runningWriter).updatePublicStatus(11L, memberUuid);
+        verifyNoMoreInteractions(runningWriter);
     }
 
-    // ====== 삭제 ======
-
     @Test
-    @DisplayName("deleteRunnings: 각 러닝에 대해 소유자 검증 후 일괄 삭제 요청한다")
-    void deleteRunnings_verifiesOwnershipThenDeletes() {
+    @DisplayName("deleteRunnings: RunningWriter 에 그대로 위임한다")
+    void deleteRunnings_delegatesToWriter() {
         // given
         List<Long> ids = List.of(1L, 2L, 3L);
-        Running r1 = mock(Running.class);
-        Running r2 = mock(Running.class);
-        Running r3 = mock(Running.class);
-
-        when(runningRepository.findByIds(ids)).thenReturn(List.of(r1, r2, r3));
 
         // when
         sut.deleteRunnings(ids, memberUuid);
 
         // then
-        verify(r1).verifyMember(memberUuid);
-        verify(r2).verifyMember(memberUuid);
-        verify(r3).verifyMember(memberUuid);
-        verify(runningRepository).deleteInRunningIds(ids);
-    }
-
-    // ====== 코스 리드모델 동기화 ======
-    // 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §0-3, §3-2
-    //
-    // 러닝 "생성" 경로의 리드모델 갱신·구독·지도 이빅트는 저장 트랜잭션 경계인 RunningCreationWriter 의 책임이라
-    // RunningCreationWriterTest 가 검증한다. 여기 남은 것은 수정·삭제 경로다.
-
-    @Test
-    @DisplayName("deleteRunnings: 삭제된 러닝들의 코스를 중복 없이 모아 한 번에 재계산한다")
-    void deleteRunnings_recalculatesDistinctCourses() {
-        // given : 같은 코스의 러닝 2건 + 다른 코스의 러닝 1건
-        List<Long> ids = List.of(1L, 2L, 3L);
-
-        Course courseA = mock(Course.class);
-        when(courseA.getId()).thenReturn(10L);
-        Course courseB = mock(Course.class);
-        when(courseB.getId()).thenReturn(20L);
-
-        givenRunningsOnCourses(ids, courseA, courseA, courseB);
-
-        // when
-        sut.deleteRunnings(ids, memberUuid);
-
-        // then
-        ArgumentCaptor<Collection<Long>> captor = ArgumentCaptor.forClass(Collection.class);
-        verify(courseReadModelWriter, times(1)).recalculate(captor.capture());
-        assertThat(captor.getValue()).containsExactlyInAnyOrder(10L, 20L);
-    }
-
-    /**
-     * 셀 버킷 캐시는 좌표로만 이빅트하므로, 삭제로 TOP4가 바뀐 코스는 좌표와 함께 이빅트를 예약해야 한다(M1).
-     * 좌표 수집은 반드시 벌크 삭제 이전이어야 한다 — deleteInRunningIds 가
-     * {@code @Modifying(clearAutomatically = true)} 라 그 뒤에는 LAZY Course 프록시가
-     * 미초기화 상태로 detach 되어 초기화할 수 없다([R2]). 좌표 추출을 삭제 뒤로 옮기면 이 테스트가 빨개진다.
-     *
-     * 설계 문서: docs/design/course-cell-bucket-cache-design.md §4(경로 e) · [R2] · D5
-     */
-    @Test
-    @DisplayName("deleteRunnings: 영향받은 코스마다 시작점 좌표와 함께 지도 셀 이빅트를 1건씩 예약한다 [R2]")
-    void deleteRunnings_schedulesMapCellEvictionPerDistinctCourse() {
-        // given : 같은 코스의 러닝 2건 + 다른 코스의 러닝 1건 → 이빅트는 코스당 1건씩 총 2건
-        List<Long> ids = List.of(1L, 2L, 3L);
-
-        AtomicBoolean persistenceContextCleared = new AtomicBoolean(false);
-        Course courseA = lazyCourse(10L, 37.5665, 126.9780, persistenceContextCleared);
-        Course courseB = lazyCourse(20L, 35.1796, 129.0756, persistenceContextCleared);
-
-        givenRunningsOnCourses(ids, courseA, courseA, courseB);
-
-        // 벌크 삭제가 영속성 컨텍스트를 비운다 (clearAutomatically = true)
-        doAnswer(invocation -> {
-            persistenceContextCleared.set(true);
-            return null;
-        }).when(runningRepository).deleteInRunningIds(ids);
-
-        // when
-        sut.deleteRunnings(ids, memberUuid);
-
-        // then
-        ArgumentCaptor<Long> courseIdCaptor = ArgumentCaptor.forClass(Long.class);
-        ArgumentCaptor<Double> latCaptor = ArgumentCaptor.forClass(Double.class);
-        ArgumentCaptor<Double> lngCaptor = ArgumentCaptor.forClass(Double.class);
-        verify(courseMapCacheEvictor, times(2))
-                .evictCellAfterCommit(courseIdCaptor.capture(), latCaptor.capture(), lngCaptor.capture());
-
-        assertThat(zip(courseIdCaptor.getAllValues(), latCaptor.getAllValues(), lngCaptor.getAllValues()))
-                .containsExactlyInAnyOrder(
-                        tuple(10L, 37.5665, 126.9780),
-                        tuple(20L, 35.1796, 129.0756));
-    }
-
-    /** 캡터 세 개를 (courseId, lat, lng) 튜플로 맞춰 본다. */
-    private List<org.assertj.core.groups.Tuple> zip(List<Long> courseIds, List<Double> lats, List<Double> lngs) {
-        List<org.assertj.core.groups.Tuple> tuples = new ArrayList<>();
-        for (int i = 0; i < courseIds.size(); i++) {
-            tuples.add(tuple(courseIds.get(i), lats.get(i), lngs.get(i)));
-        }
-        return tuples;
-    }
-
-    /** 삭제 대상 러닝들을 준비한다 — 각 러닝은 인자로 준 코스에 순서대로 매달린다 (같은 코스 반복 가능) */
-    private void givenRunningsOnCourses(List<Long> runningIds, Course... coursesOfEachRunning) {
-        List<Running> runningsToDelete = new ArrayList<>();
-        for (Course course : coursesOfEachRunning) {
-            Running running = mock(Running.class);
-            when(running.getCourse()).thenReturn(course);
-            runningsToDelete.add(running);
-        }
-        when(runningRepository.findByIds(runningIds)).thenReturn(runningsToDelete);
-    }
-
-    /**
-     * LAZY Course 프록시를 흉내 낸다 — 식별자 게터는 초기화 없이 동작하지만,
-     * 영속성 컨텍스트가 비워진 뒤의 초기화(좌표 접근)는 LazyInitializationException 이다.
-     */
-    private Course lazyCourse(long courseId, double startLat, double startLng,
-                              AtomicBoolean persistenceContextCleared) {
-        Course course = mock(Course.class);
-        when(course.getId()).thenReturn(courseId);  // 식별자 게터는 프록시를 초기화하지 않는다
-        when(course.getStartCoordinate()).thenAnswer(invocation -> {
-            if (persistenceContextCleared.get()) {
-                throw new LazyInitializationException(
-                        "could not initialize proxy [Course#" + courseId + "] - no Session");
-            }
-            return Coordinate.of(startLat, startLng);
-        });
-        return course;
-    }
-
-    @Test
-    @DisplayName("updateRunningPublicStatus: 공개 여부가 바뀐 러닝의 코스를 재계산하고, 지도 셀 이빅트를 예약한다")
-    void updateRunningPublicStatus_recalculatesCourse() {
-        // given
-        Long runningId = 11L;
-        Course course = mock(Course.class);
-        when(course.getId()).thenReturn(30L);
-
-        Running running = mock(Running.class);
-        when(running.getCourse()).thenReturn(course);
-        when(runningQueryService.findRunningByRunningId(runningId)).thenReturn(running);
-
-        // when
-        sut.updateRunningPublicStatus(runningId, memberUuid);
-
-        // then
-        ArgumentCaptor<Collection<Long>> captor = ArgumentCaptor.forClass(Collection.class);
-        verify(courseReadModelWriter, times(1)).recalculate(captor.capture());
-        assertThat(captor.getValue()).containsExactly(30L);
-
-        // 지도 셀 이빅트는 직접 호출로 예약된다
-        verify(courseMapCacheEvictor, times(1)).evictCourseCellAfterCommit(30L);
+        verify(runningWriter).deleteRunnings(ids, memberUuid);
+        verifyNoMoreInteractions(runningWriter);
     }
 
     // ====== 예외 가드(한 예시) ======
@@ -528,7 +353,6 @@ class RunningCommandServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("member not found");
 
-        verifyNoInteractions(courseService, telemetryProcessor, runningFileUploader, mapper,
-                runningRepository, runningCreationWriter);
+        verifyNoInteractions(courseReader, telemetryProcessor, runningFileUploader, mapper, runningWriter);
     }
 }

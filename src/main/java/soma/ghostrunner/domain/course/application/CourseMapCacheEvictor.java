@@ -25,7 +25,7 @@ import soma.ghostrunner.domain.course.domain.GeoCell;
  * {@code EntityManager}로 그대로 나간다.</p>
  *
  * <p><b>왜 이벤트가 아니라 직접 호출인가</b> — "지도 데이터가 변경됐다"는 도메인 사건이 아니라 <b>캐시 무효화 명령</b>이고,
- * 발행자와 구독자가 1:1이었다. 호출자({@code CourseService}, {@code RunningCommandService})는 이미
+ * 발행자와 구독자가 1:1이었다. 호출자({@code CourseWriter}, {@code RunningWriter})는 이미
  * 코스 애플리케이션 계층 빈들을 직접 주입받아 쓰고 있었으므로 이벤트가 결합을 줄이는 게 아니라 가리고만 있었다.
  * 이벤트를 걷어내되 커밋 후 타이밍은 {@link TransactionSynchronizationManager}로 그대로 가져온다.
  * (같은 방향의 선행 작업: 동기 이벤트 제거 1단계)</p>

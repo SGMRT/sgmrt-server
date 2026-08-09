@@ -8,6 +8,12 @@
 > 전제: PR-2에서 결과셋 캐시(반올림 키, TTL 60s)가 구현되어 있고, 이번 사이클에서 키 전략을 regionId로 교체한다. FE(sgmrt-app)도 함께 수정한다.
 > 관련: 리드모델 본 설계는 `../core/04-detailed-design.md`, 히트율 시뮬레이션은 `../scripts/cache_hit_sim.py`
 
+> **[2026-08 이후 클래스 개명]** 이 문서의 `RegionService`는 현재 **`RegionResolver`**다 (`RegionServiceTest` → `RegionResolverTest`).
+> Reader/Writer 계층화(설계: [`../../../design/reader-writer-layering.md`](../../../design/reader-writer-layering.md)) 과정에서,
+> `resolve`가 조회+등록이 섞인 멱등 연산이고 §6-3의 **`@Transactional(NEVER)`가 계약**이라
+> "Writer = 쓰기 TX를 연다"는 규칙을 적용할 수 없어 `Resolver`라는 역할 이름으로 예외임을 드러냈다.
+> **NEVER 계약 자체는 그대로이며, 이제 `RegionResolverPropagationTest`가 이를 검증한다** — 개명 중 어노테이션이 유실되면 테스트가 깨진다.
+
 ---
 
 ## 0. 전체 아키텍처

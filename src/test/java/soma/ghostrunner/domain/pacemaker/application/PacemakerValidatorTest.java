@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import soma.ghostrunner.domain.course.application.CourseService;
+import soma.ghostrunner.domain.course.application.CourseReader;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
 import soma.ghostrunner.domain.pacemaker.application.support.PacemakerValidator;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.*;
 class PacemakerValidatorTest {
 
     @Mock
-    CourseService courseService;
+    CourseReader courseReader;
 
     @InjectMocks
     PacemakerValidator validator;
@@ -30,13 +30,13 @@ class PacemakerValidatorTest {
     void validateCreationRequest_success() {
         // given
         Long courseId = 1L;
-        when(courseService.findCourseById(courseId)).thenReturn(mock(Course.class));
+        when(courseReader.findCourseById(courseId)).thenReturn(mock(Course.class));
 
         // when & then
         assertThatCode(() -> validator.validateCreationRequest(courseId))
                 .doesNotThrowAnyException();
 
-        verify(courseService).findCourseById(courseId);
+        verify(courseReader).findCourseById(courseId);
     }
 
     @DisplayName("코스가 존재하지 않으면 예외 발생")
@@ -44,7 +44,7 @@ class PacemakerValidatorTest {
     void validateCreationRequest_courseNotFound_throwsException() {
         // given
         Long courseId = 999L;
-        when(courseService.findCourseById(courseId))
+        when(courseReader.findCourseById(courseId))
                 .thenThrow(new MemberNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "cannot find course"));
 
         // when & then
@@ -52,7 +52,7 @@ class PacemakerValidatorTest {
                 .isInstanceOf(MemberNotFoundException.class)
                 .hasMessageContaining("cannot find course");
 
-        verify(courseService).findCourseById(courseId);
+        verify(courseReader).findCourseById(courseId);
     }
 
 }

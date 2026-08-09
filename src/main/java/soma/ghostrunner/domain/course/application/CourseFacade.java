@@ -13,9 +13,10 @@ import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.enums.CourseSource;
+import soma.ghostrunner.domain.course.enums.GhostSortType;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
-import soma.ghostrunner.domain.running.application.RunningQueryService;
+import soma.ghostrunner.domain.running.application.RunningReader;
 import soma.ghostrunner.domain.running.domain.Running;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
 
@@ -29,8 +30,9 @@ public class CourseFacade {
 
     private static final int MAX_COURSES_PER_MAP_RESPONSE = 10;
 
-    private final CourseService courseService;
-    private final RunningQueryService runningQueryService;
+    private final CourseReader courseReader;
+    private final CourseWriter courseWriter;
+    private final RunningReader runningReader;
     private final CourseReadModelReader courseReadModelReader;
 
     private final CourseMapper courseMapper;
@@ -65,7 +67,7 @@ public class CourseFacade {
 
         // 내 고스트는 뷰어별 개인화 데이터다 — 선별된 코스에 대해서만 조회한다.
         List<Long> selectedCourseIds = selectedCourses.stream().map(CoursePreviewDto::id).toList();
-        Map<Long, Running> memberBestRuns = runningQueryService.findBestRunningRecordsForCourses(selectedCourseIds, viewerUuid);
+        Map<Long, Running> memberBestRuns = runningReader.findBestRunningRecordsForCourses(selectedCourseIds, viewerUuid);
 
         Map<Long, CourseMapDto> candidateCourseById = candidateCourses.stream()
                 .collect(Collectors.toMap(CourseMapDto::courseId, dto -> dto));
@@ -145,10 +147,10 @@ public class CourseFacade {
 
     @Transactional(readOnly = true)
     public CourseDetailedResponse findCourse(Long courseId, String viewerUuid) {
-        Course course = courseService.findCourseById(courseId);
-        CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseId)
+        Course course = courseReader.findCourseById(courseId);
+        CourseRunStatisticsDto courseStatistics = runningReader.findCourseRunStatistics(courseId)
                 .orElse(new CourseRunStatisticsDto());
-        UserPaceStatsDto userPaceStats = runningQueryService.findUserPaceStatistics(courseId, viewerUuid)
+        UserPaceStatsDto userPaceStats = runningReader.findUserPaceStatistics(courseId, viewerUuid)
                 .orElse(new UserPaceStatsDto());
         String telemetryUrl = getTelemetryUrlFromCourse(course);
         CourseGhostResponse ghostForUser = getGhostResponse(courseId, viewerUuid);
@@ -156,43 +158,62 @@ public class CourseFacade {
     }
 
     public void updateCourse(Long courseId, CoursePatchRequest request, String memberUuid) {
-        courseService.updateCourse(courseId, request, memberUuid);
+        courseWriter.updateCourse(courseId, request, memberUuid);
     }
 
     public void deleteCourse(Long courseId, String memberUuid) {
-        courseService.deleteCourse(courseId, memberUuid);
+        courseWriter.deleteCourse(courseId, memberUuid);
     }
 
+    /**
+     * 코스의 공개 고스트 페이징.
+     *
+     * <p>정렬 필드 검증({@link GhostSortType})도 {@link CourseGhostResponse} 매핑도 course 도메인의 규칙이므로
+     * 여기서 한다 — {@link RunningReader}는 {@code Page<Running>}까지만 책임진다.
+     * 매핑이 Reader의 트랜잭션 밖에서 도는데도 안전한 이유는 러너(member)가 fetch join으로 함께 적재되기 때문이다.
+     * (지연 로딩 연관을 새로 읽는 매핑을 추가한다면 이 메서드에 {@code @Transactional(readOnly = true)}가 필요해진다.)
+     */
     public Page<CourseGhostResponse> findPublicGhosts(Long courseId, Pageable pageable) {
-        return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable);
+        validateGhostSortProperty(pageable);
+        return runningReader.findPublicGhostRuns(courseId, pageable)
+                .map(runningApiMapper::toGhostResponse);
+    }
+
+    private void validateGhostSortProperty(Pageable pageable) {
+        pageable.getSort().forEach(order -> {
+            if (!GhostSortType.isValidField(order.getProperty())) {
+                throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
+            }
+        });
     }
 
     @Transactional(readOnly = true)
     public CourseRankingResponse findCourseRankingDetail(Long courseId, String memberUuid) {
-        Running running = runningQueryService.findBestPublicRunForCourse(courseId, memberUuid).orElseThrow(RunningNotFoundException::new);
-        Integer ranking = runningQueryService.findPublicRankForCourse(courseId, running);
+        Running running = runningReader.findBestPublicRunForCourse(courseId, memberUuid).orElseThrow(RunningNotFoundException::new);
+        Integer ranking = runningReader.findPublicRankForCourse(courseId, running);
         return courseMapper.toRankingResponse(running, ranking);
     }
 
     public List<CourseGhostResponse> findTopRankingGhosts(Long courseId, int count) {
         Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.duration");
         Pageable pageable = PageRequest.of(0, count, defaultSort);
-        return runningQueryService.findPublicGhostRunsByCourseId(courseId, pageable)
-                .getContent();
+        return findPublicGhosts(courseId, pageable).getContent();
     }
 
     public List<CourseGhostResponse> findTopPercentageGhosts(Long courseId, double percentage) {
-        Page<CourseGhostResponse> rankedGhostsPage = runningQueryService.findTopPercentageGhostsByCourseId(courseId, percentage);
-        return rankedGhostsPage.getContent();
+        int topNCount = (int) Math.ceil(runningReader.countRunningsInCourse(courseId) * percentage) + 1;
+        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
+        Pageable topNPageable = PageRequest.of(0, topNCount, defaultSort);
+        return findPublicGhosts(courseId, topNPageable).getContent();
     }
 
     @Transactional(readOnly = true)
     public Page<CourseSummaryResponse> findCourseSummariesOfMember(String memberUuid, Pageable pageable) {
-        Page<CourseWithMemberDetailsDto> courseDetails = courseService.findCoursesByMemberUuid(memberUuid, pageable);
+        Page<CourseWithMemberDetailsDto> courseDetails = courseReader.findCoursesByMemberUuid(memberUuid, pageable);
         List<CourseSummaryResponse> results = new ArrayList<>();
 
         for(CourseWithMemberDetailsDto courseDto : courseDetails.getContent()) {
-            CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseDto.getCourseId())
+            CourseRunStatisticsDto courseStatistics = runningReader.findCourseRunStatistics(courseDto.getCourseId())
                     .orElse(new CourseRunStatisticsDto());
             courseStatistics = switchTotalRunsCountToUniqueRunnersCount(courseStatistics);
             CourseGhostResponse ghostForUser = getGhostResponse(courseDto.getCourseId(), memberUuid);
@@ -219,13 +240,13 @@ public class CourseFacade {
     }
 
     public CourseStatisticsResponse findCourseStatistics(Long courseId) {
-        CourseRunStatisticsDto stats = runningQueryService.findCourseRunStatistics(courseId)
+        CourseRunStatisticsDto stats = runningReader.findCourseRunStatistics(courseId)
                 .orElseThrow(() -> new CourseNotFoundException(courseId));
         return courseMapper.toCourseStatisticsResponse(stats);
     }
 
     private CourseGhostResponse getGhostResponse(Long courseId, String viewerUuid) {
-        return runningQueryService.findBestPublicRunForCourse(courseId, viewerUuid)
+        return runningReader.findBestPublicRunForCourse(courseId, viewerUuid)
                 .map(runningApiMapper::toGhostResponse)
                 .orElse(null);
     }
@@ -235,10 +256,10 @@ public class CourseFacade {
             return course.getCourseDataUrls().getRouteUrl();
         }
 
-        return runningQueryService.findFirstRunning(course.getId())
+        return runningReader.findFirstRunning(course.getId())
                 .map(running -> running.getRunningDataUrls().getInterpolatedTelemetryUrl())
                 .orElseGet(() -> {
-                    log.warn("CourseService: No running data found for course id {}", course.getId());
+                    log.warn("CourseFacade: No running data found for course id {}", course.getId());
                     return null;
                 });
     }

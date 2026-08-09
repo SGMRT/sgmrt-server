@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.tuple;
 /**
  * CourseReadModelRepository 재계산/판정 쿼리 통합 테스트
  *
- * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §3-3(재계산 쿼리), §1-6(runnersCount 정책)
+ * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §3-3(재계산 쿼리), §1-6(runnersCount 정책)
  *
  * 집계 공통 필터: is_public = TRUE AND deleted = FALSE AND has_paused = FALSE
  */

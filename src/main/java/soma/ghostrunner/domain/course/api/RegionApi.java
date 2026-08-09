@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import soma.ghostrunner.domain.course.application.RegionService;
+import soma.ghostrunner.domain.course.application.RegionResolver;
 import soma.ghostrunner.domain.course.domain.Region;
 import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.request.RegionResolveRequest;
@@ -25,12 +25,12 @@ import soma.ghostrunner.domain.course.dto.response.RegionResolveResponse;
 @RequestMapping("/v1")
 public class RegionApi {
 
-    private final RegionService regionService;
+    private final RegionResolver regionResolver;
     private final CourseMapper courseMapper;
 
     @PostMapping("/regions")
     public RegionResolveResponse resolveRegion(@Valid @RequestBody RegionResolveRequest request) {
-        Region region = regionService.resolve(request.name(), request.lat(), request.lng());
+        Region region = regionResolver.resolve(request.name(), request.lat(), request.lng());
         return courseMapper.toRegionResolveResponse(region);
     }
 }
