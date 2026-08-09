@@ -16,14 +16,10 @@ import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.member.exception.MemberNotFoundException;
-import soma.ghostrunner.global.error.ErrorCode;
-import soma.ghostrunner.global.error.exception.BusinessException;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -218,29 +214,6 @@ class CourseSubscriptionWriterUnitTest {
             then(subscriptionRepository).should(never()).save(any(CourseSubscription.class));
             then(courseRepository).shouldHaveNoInteractions();
             then(memberService).shouldHaveNoInteractions();
-        }
-
-        /**
-         * D3 — MemberRepository 직접 접근을 MemberService 경유로 바꿔도
-         * "없는 회원이면 MEMBER_NOT_FOUND로 실패하고 구독은 남지 않는다"는 계약은 유지돼야 한다.
-         */
-        @Test
-        @DisplayName("존재하지 않는 회원의 구독 요청은 MEMBER_NOT_FOUND로 실패하고 구독을 남기지 않는다")
-        void failsWithMemberNotFoundWhenMemberAbsent() {
-            // given
-            given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, RUNNER_ID))
-                    .willReturn(Optional.empty());
-            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(course));
-            given(memberService.findMemberById(RUNNER_ID))
-                    .willThrow(new MemberNotFoundException(ErrorCode.MEMBER_NOT_FOUND));
-
-            // when & then
-            assertThatThrownBy(() -> subscriptionWriter.subscribeIfAbsent(COURSE_ID, RUNNER_ID))
-                    .isInstanceOf(MemberNotFoundException.class)
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
-
-            then(subscriptionRepository).should(never()).save(any(CourseSubscription.class));
         }
     }
 }

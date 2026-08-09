@@ -35,7 +35,17 @@ Reader ──► 쓰기            ❌ 금지 (부수효과 없음을 이름으�
 
 1. **Repository를 바라보는 클래스는 Reader와 Writer뿐이다.**
 2. Service/Facade는 Reader/Writer만 바라본다 — 조율(가공·외부 I/O·위임)만 남는다.
-3. `@Transactional`(쓰기)은 Writer에만 존재한다. Reader는 트랜잭션을 열지 않고, 필요 시 호출자 트랜잭션에 참여한다.
+3. **쓰기 `@Transactional`은 Writer에만 존재한다.** Reader는 쓰기 트랜잭션을 열지 않는다.
+
+> **트랜잭션 경계는 이름만으로 판단하지 말 것 — 예외 2건**
+>
+> - **Reader의 `@Transactional(readOnly = true)`는 허용한다** (`RunningReader`). 호출자(Facade/Api)가
+>   트랜잭션을 열지 않는 조회 경로를 Reader가 스스로 감싸야 하기 때문이다. 쓰기 TX 안에서 호출되면
+>   호출자 TX에 그대로 참여한다. `open-in-view: false`이므로 **이 어노테이션을 떼면 지연 로딩이 깨진다** —
+>   해당 경로는 `CourseFacade`의 고스트 페이징·TOP 랭킹·상위 퍼센트·코스 통계 4곳(모두 `@Transactional` 없음).
+>   "Reader니까 트랜잭션이 없어야 한다"를 근거로 제거하지 말 것.
+> - **`CourseSubscriptionWriter`는 이름이 Writer지만 자체 TX를 열지 않는다** — 항상 호출자
+>   (`CourseWriter` / `RunningWriter`)의 TX에 참여한다. (`MANDATORY` 승격은 별도 티켓 — §4 D2)
 
 **규칙의 적용 대상은 애플리케이션 서비스 계층이다.** 다음은 대상이 아니다:
 
