@@ -50,12 +50,12 @@ import static soma.ghostrunner.domain.course.dto.request.CoursePatchRequest.Upda
  * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §3-2(유즈케이스별 흐름)
  *
  * <p>개별 유즈케이스(러닝 종료 증분 · 러닝 삭제 재계산 · 코스 등록 초기화)는 각각
- * {@code RunningReadModelSyncIntegrationTest}, {@code CourseServiceTest}가 이미 덮는다.
+ * {@code RunningReadModelSyncIntegrationTest}, {@code CourseWriterTest}가 이미 덮는다.
  * 여기서 검증하는 것은 <b>여러 유즈케이스가 이어졌을 때도 리드모델이 원본과 계속 일치하는가</b> 다.
  * 증분(applyRun)과 재계산(recalculate)이 번갈아 실행되며 서로의 결과를 덮어쓰기 때문에,
  * 각 단계가 개별적으로 옳아도 이어 붙이면 어긋날 수 있다.</p>
  *
- * <p>두 시나리오 모두 서비스 레이어({@link RunningCommandService}, {@link CourseService})를 통해
+ * <p>두 시나리오 모두 서비스 레이어({@link RunningCommandService}, {@link CourseWriter})를 통해
  * 실제 유즈케이스를 태우고, 각 단계를 <b>실제로 커밋</b>한 뒤 다음 트랜잭션에서 읽어 검증한다.</p>
  */
 @DisplayName("코스 리드모델 쓰기 경로 E2E 시나리오 테스트")
@@ -66,7 +66,7 @@ class CourseReadModelWriteFlowIntegrationTest extends IntegrationTestSupport {
     private RunningCommandService runningCommandService;
 
     @Autowired
-    private CourseService courseService;
+    private CourseWriter courseWriter;
 
     @Autowired
     private CourseReadModelRepository readModelRepository;
@@ -244,12 +244,12 @@ class CourseReadModelWriteFlowIntegrationTest extends IntegrationTestSupport {
 
     private void updateCourse(Long courseId, CoursePatchRequest request, String memberUuid) {
         requiresNewTemplate.executeWithoutResult(status ->
-                courseService.updateCourse(courseId, request, memberUuid));
+                courseWriter.updateCourse(courseId, request, memberUuid));
     }
 
     private void deleteCourse(Long courseId, String memberUuid) {
         requiresNewTemplate.executeWithoutResult(status ->
-                courseService.deleteCourse(courseId, memberUuid));
+                courseWriter.deleteCourse(courseId, memberUuid));
     }
 
     private void deleteRunnings(List<Long> runningIds, String memberUuid) {

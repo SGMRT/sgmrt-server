@@ -10,6 +10,10 @@
 > **이빅트 경로는 이벤트가 아니라 직접 호출이다(D12).** 초안·1차 구현은 `CourseMapDataChangedEvent` + `@TransactionalEventListener`였으나 `CourseMapCacheEvictor` 직접 호출로 전환했다. 커밋 후 실행이라는 타이밍만 `TransactionSynchronizationManager`로 그대로 가져왔다. 판단이 바뀐 이력은 08 §3-6에 남아 있다.
 >
 > **리뷰 반영(R1~R4)**은 §3·§9에 `[R#]`로 표시했다. Architect 설계 원안에 실제 코드와 어긋나는 지점이 있어 검증 단계에서 교정한 항목이며, 12건 확정 의사결정·컴포넌트 분해·레이어 배치는 그대로 유지한다.
+>
+> **[2026-08 이후 클래스 개명]** 이 문서의 클래스명은 작성 시점 기준이다. 이후 쓰기 경계 분리로
+> `CourseService`의 쓰기 절반(`updateCourse`·`deleteCourse`·구독 조율)은 `CourseWriter`로, 조회 절반은 `CourseQueryService`로 나뉘었고,
+> `RunningCreationWriter`는 `RunningCommandService`의 수정·삭제 트랜잭션(`deleteRunnings` 등)을 흡수해 `RunningWriter`가 됐다.
 
 ---
 

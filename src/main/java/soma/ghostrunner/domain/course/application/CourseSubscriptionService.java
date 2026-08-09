@@ -19,7 +19,7 @@ import java.util.Optional;
  * 러너의 코스 구독(중간테이블) 관리.
  *
  * (구) CourseRunEvent 리스너(BEFORE_COMMIT)를 직접 호출로 전환한 것 — 코스 따라 뛰기 완료 시
- * 러닝 저장 트랜잭션 안에서 호출된다. (설계 04 §6. 코스 주인의 구독은 CourseService 가 담당)
+ * 러닝 저장 트랜잭션 안에서 호출된다. (설계 04 §6. 코스 주인의 구독은 CourseWriter 가 담당)
  */
 @Slf4j
 @Service

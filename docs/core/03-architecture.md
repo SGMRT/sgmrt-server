@@ -38,8 +38,14 @@ NoticeService.activate() ─ NoticeActivatedEvent ─► PushEventListener (AFTE
 PacemakerLlmCallbackService ─ PacemakerCreatedEvent ─► PushEventListener (AFTER_COMMIT) 페이스메이커 완성 푸시
 
 [2026-08 리드모델 리팩토링 이후] 리드모델(CourseReadModel) 동기화는 이벤트가 아니라
-RunningCommandService/CourseService → course.CourseReadModelWriter **직접 호출**(같은 TX, X락)로 수행.
+RunningWriter/CourseWriter → course.CourseReadModelWriter **직접 호출**(같은 TX, X락)로 수행.
 구 ReadModelSyncListener는 삭제됨. 상세: docs/refactoring/course-read-model/04-detailed-design.md
+
+[2026-08 Writer 분리 이후] DB 쓰기 트랜잭션 경계는 도메인별 Writer 빈으로 통일 —
+러닝 생성·수정·삭제는 running.RunningWriter(구 RunningCreationWriter), 코스 저장·수정·삭제와
+주인 구독 조율은 course.CourseWriter가 연다. RunningCommandService는 트랜잭션 밖 조율
+(가공·S3 업로드·VDOT)과 Writer 위임만 남았고, 구 CourseService의 조회 절반은
+CourseQueryService로 개명됐다. CourseRunEvent 발행 지점도 RunningWriter다.
 ```
 
 - BEFORE_COMMIT 리스너(VDOT, 구독)는 **원 트랜잭션에 합류** → 강한 정합성, 대신 러닝 생성 TX가 길어짐.
@@ -53,7 +59,7 @@ POST /v1/runs (multipart: 텔레메트리 파일 + 기록)
  → TelemetryProcessor.process        # raw → 보간(interpolated)
  → PathSimplificationService         # PathSimplifier (RDP/VW 알고리즘)
  → S3 업로드 5종                      # raw/interpolated/simplified/checkpoints(jsonl), screenshot(jpg)
- → Course 저장(신규 코스인 경우) + Running 저장
+ → Course 저장(신규 코스인 경우) + Running 저장   # RunningWriter의 저장 TX
  → 도메인 이벤트 발행 (위 흐름)
 ```
 

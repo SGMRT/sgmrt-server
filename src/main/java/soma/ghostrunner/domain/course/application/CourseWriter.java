@@ -2,86 +2,53 @@ package soma.ghostrunner.domain.course.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
-import soma.ghostrunner.domain.course.domain.BoundingBox;
 import soma.ghostrunner.domain.course.domain.Coordinate;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
-import soma.ghostrunner.domain.course.dto.*;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
-import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.exception.CourseNameNotValidException;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.global.error.ErrorCode;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
- * 코스 도메인의 조회·수정·삭제와, 그에 딸린 <b>주인의 구독({@link CourseSubscription}) 조율</b>을 담당한다.
+ * 코스 도메인의 <b>DB 쓰기 트랜잭션 경계</b>. (구 {@code CourseService}의 쓰기 절반)
+ * 코스 저장·수정·삭제와, 그에 딸린 <b>주인의 구독({@link CourseSubscription}) 조율</b>을 담당한다.
  *
  * <p>책임 경계</p>
  * <ul>
- *   <li><b>코스 본체</b> — 코스 조회(주변/회원별/단건), 코스명·공개 여부 변경, 코스 삭제.</li>
+ *   <li><b>코스 본체</b> — 코스 저장, 코스명·공개 여부 변경, 코스 삭제.</li>
  *   <li><b>주인 구독 조율</b> — 코스 공개 전환은 곧 "주인이 자기 코스를 구독한 상태"를 뜻하므로, 공개/비공개
  *       전환에 맞춰 주인의 구독을 생성·복원·해제한다. (다른 러너의 구독은 코스를 따라 뛸 때
- *       {@code CourseSubscriptionEventListener}가 만든다.)</li>
+ *       {@code CourseSubscriptionService}가 만든다.)</li>
  *   <li><b>리드모델은 위임</b> — 리드모델 갱신은 직접 하지 않고 전부 {@link CourseReadModelWriter}에 맡긴다.
  *       (코스명 변경 → rename, 공개 전환 → syncPublicity, 코스 삭제 → delete)</li>
+ *   <li><b>조회는 하지 않는다</b> — 읽기 유즈케이스는 {@link CourseQueryService} 담당. 이 안의 조회는
+ *       수정·삭제 대상을 트랜잭션 안에서 확보하기 위한 재조회뿐이다.</li>
  * </ul>
  *
- * 설계 문서: docs/refactoring/course-read-model/04-detailed-design.md §3-2
+ * 설계 문서: docs/refactoring/course-read-model/core/04-detailed-design.md §3-2
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CourseService {
+public class CourseWriter {
 
-    private final CourseMapper courseMapper;
     private final CourseRepository courseRepository;
     private final CourseSubscriptionRepository subscriptionRepository;
     private final CourseReadModelWriter readModelWriter;
     private final CourseMapCacheEvictor mapCacheEvictor;
 
+    /** 새 코스를 저장한다. 러닝 생성 흐름에서는 {@code RunningWriter}의 저장 트랜잭션에 참여한다. */
+    @Transactional
     public Long save(Course course) {
         return courseRepository.save(course).getId();
-    }
-
-    public Course findCourseById(Long id) {
-        return courseRepository.findById(id)
-                .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
-    }
-
-    public Course findCourseByIdFetchJoinMember(Long id) {
-        return courseRepository.findByIdFetchJoinMember(id)
-                .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
-    }
-
-    public List<CoursePreviewDto> findNearbyCourses(Double lat, Double lng, Integer radiusM, CourseSortType sort,
-                                                    CourseSearchFilterDto filters, Long memberId) {
-        BoundingBox boundingBox = BoundingBox.of(lat, lng, radiusM);
-
-        List<Course> nearbyCourses = courseRepository.findCoursesWithFilters(lat, lng,
-                boundingBox.minLat(), boundingBox.maxLat(), boundingBox.minLng(), boundingBox.maxLng(),
-                filters, sort, memberId);
-        log.info("CourseService::findNearbyCourses() - found {} courses", nearbyCourses.size());
-
-        return nearbyCourses.stream()
-                .map(courseMapper::toCoursePreviewDto)
-                .collect(Collectors.toList());
-    }
-
-    public Page<CourseWithMemberDetailsDto> findCoursesByMemberUuid(
-            String memberUuid, Pageable pageable) {
-        Page<Course> courses = courseRepository.findPublicCoursesFetchJoinMembersByMemberUuidOrderByCreatedAtDesc(memberUuid, pageable);
-        return courses.map(c -> courseMapper.toCourseWithMemberDetailsDto(c, c.getMember()));
     }
 
     @Transactional
@@ -127,6 +94,12 @@ public class CourseService {
         if (courseCardChangeRequested) {
             scheduleMapCellEvict(course);
         }
+    }
+
+    /** 수정·삭제 대상 코스를 트랜잭션 안에서 조회한다. */
+    private Course findCourseById(Long id) {
+        return courseRepository.findById(id)
+                .orElseThrow(() -> new CourseNotFoundException(ErrorCode.COURSE_NOT_FOUND, id));
     }
 
     /**

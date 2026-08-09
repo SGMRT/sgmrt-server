@@ -29,7 +29,8 @@ public class CourseFacade {
 
     private static final int MAX_COURSES_PER_MAP_RESPONSE = 10;
 
-    private final CourseService courseService;
+    private final CourseQueryService courseQueryService;
+    private final CourseWriter courseWriter;
     private final RunningQueryService runningQueryService;
     private final CourseReadModelReader courseReadModelReader;
 
@@ -145,7 +146,7 @@ public class CourseFacade {
 
     @Transactional(readOnly = true)
     public CourseDetailedResponse findCourse(Long courseId, String viewerUuid) {
-        Course course = courseService.findCourseById(courseId);
+        Course course = courseQueryService.findCourseById(courseId);
         CourseRunStatisticsDto courseStatistics = runningQueryService.findCourseRunStatistics(courseId)
                 .orElse(new CourseRunStatisticsDto());
         UserPaceStatsDto userPaceStats = runningQueryService.findUserPaceStatistics(courseId, viewerUuid)
@@ -156,11 +157,11 @@ public class CourseFacade {
     }
 
     public void updateCourse(Long courseId, CoursePatchRequest request, String memberUuid) {
-        courseService.updateCourse(courseId, request, memberUuid);
+        courseWriter.updateCourse(courseId, request, memberUuid);
     }
 
     public void deleteCourse(Long courseId, String memberUuid) {
-        courseService.deleteCourse(courseId, memberUuid);
+        courseWriter.deleteCourse(courseId, memberUuid);
     }
 
     public Page<CourseGhostResponse> findPublicGhosts(Long courseId, Pageable pageable) {
@@ -188,7 +189,7 @@ public class CourseFacade {
 
     @Transactional(readOnly = true)
     public Page<CourseSummaryResponse> findCourseSummariesOfMember(String memberUuid, Pageable pageable) {
-        Page<CourseWithMemberDetailsDto> courseDetails = courseService.findCoursesByMemberUuid(memberUuid, pageable);
+        Page<CourseWithMemberDetailsDto> courseDetails = courseQueryService.findCoursesByMemberUuid(memberUuid, pageable);
         List<CourseSummaryResponse> results = new ArrayList<>();
 
         for(CourseWithMemberDetailsDto courseDto : courseDetails.getContent()) {
@@ -238,7 +239,7 @@ public class CourseFacade {
         return runningQueryService.findFirstRunning(course.getId())
                 .map(running -> running.getRunningDataUrls().getInterpolatedTelemetryUrl())
                 .orElseGet(() -> {
-                    log.warn("CourseService: No running data found for course id {}", course.getId());
+                    log.warn("CourseFacade: No running data found for course id {}", course.getId());
                     return null;
                 });
     }

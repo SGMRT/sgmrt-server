@@ -14,7 +14,6 @@ import soma.ghostrunner.domain.course.dao.CourseRepository;
 import soma.ghostrunner.domain.course.dao.CourseSubscriptionRepository;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.course.domain.CourseSubscription;
-import soma.ghostrunner.domain.course.dto.CourseMapper;
 import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.exception.CourseAccessDeniedException;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -28,9 +27,9 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
-@DisplayName("CourseService 단위 테스트")
+@DisplayName("CourseWriter 단위 테스트")
 @ExtendWith(MockitoExtension.class)
-class CourseServiceUnitTest {
+class CourseWriterUnitTest {
 
     @Mock
     private CourseRepository courseRepository;
@@ -42,13 +41,10 @@ class CourseServiceUnitTest {
     private CourseReadModelWriter readModelWriter;
 
     @Mock
-    private CourseMapper courseMapper;
-
-    @Mock
     private CourseMapCacheEvictor mapCacheEvictor;
 
     @InjectMocks
-    private CourseService courseService;
+    private CourseWriter courseWriter;
 
     private static final Long COURSE_ID = 1L;
     private static final Long MEMBER_ID = 1L;
@@ -93,7 +89,7 @@ class CourseServiceUnitTest {
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
             // when
-            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -113,7 +109,7 @@ class CourseServiceUnitTest {
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
             // when
-            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -133,7 +129,7 @@ class CourseServiceUnitTest {
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
             // when
-            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -164,7 +160,7 @@ class CourseServiceUnitTest {
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
             // when
-            courseService.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isFalse();
@@ -182,7 +178,7 @@ class CourseServiceUnitTest {
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
             // when
-            courseService.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isFalse();
@@ -205,7 +201,7 @@ class CourseServiceUnitTest {
             given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
                     .willReturn(Optional.empty());
 
-            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then 1
             assertThat(course.isPublic()).isTrue();
@@ -216,14 +212,14 @@ class CourseServiceUnitTest {
             given(subscriptionRepository.findByCourseIdAndMemberId(COURSE_ID, MEMBER_ID))
                     .willReturn(Optional.of(subscription));
 
-            courseService.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(false), owner.getUuid());
 
             // then 2
             assertThat(course.isPublic()).isFalse();
             assertThat(subscription.isDeleted()).isTrue();
 
             // when 3 - 재등록
-            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then 3
             assertThat(course.isPublic()).isTrue();
@@ -243,7 +239,7 @@ class CourseServiceUnitTest {
             given(courseRepository.save(any(Course.class))).willReturn(course);
 
             // when
-            courseService.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());
 
             // then
             then(courseRepository).should().save(course);
@@ -257,7 +253,7 @@ class CourseServiceUnitTest {
             String otherMemberUuid = "other-member-uuid";
 
             // when & then
-            assertThatThrownBy(() -> courseService.updateCourse(COURSE_ID, request, otherMemberUuid))
+            assertThatThrownBy(() -> courseWriter.updateCourse(COURSE_ID, request, otherMemberUuid))
                     .isInstanceOf(CourseAccessDeniedException.class)
                     .hasMessageContaining("소유자가 아닙니다");
         }
@@ -269,14 +265,14 @@ class CourseServiceUnitTest {
             String otherMemberUuid = "other-member-uuid";
 
             // when & then
-            assertThatThrownBy(() -> courseService.deleteCourse(COURSE_ID, otherMemberUuid))
+            assertThatThrownBy(() -> courseWriter.deleteCourse(COURSE_ID, otherMemberUuid))
                     .isInstanceOf(CourseAccessDeniedException.class)
                     .hasMessageContaining("소유자가 아닙니다");
         }
     }
 
     /**
-     * 리드모델 조작은 CourseService가 직접 하지 않고 {@link CourseReadModelWriter}에 위임한다.
+     * 리드모델 조작은 CourseWriter가 직접 하지 않고 {@link CourseReadModelWriter}에 위임한다.
      * (설계 문서 §3-2 유즈케이스 표 — 코스명 변경/공개 전환/삭제)
      *
      * 리드모델 자체의 동작(생성·재계산·X락 등)은 CourseReadModelWriterTest가 검증하므로,
@@ -290,7 +286,7 @@ class CourseServiceUnitTest {
         @DisplayName("코스명을 변경하면 Writer에 이름 동기화를 위임한다")
         void updateCourse_name_delegatesRenameToWriter() {
             // when
-            courseService.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());
 
             // then
             assertThat(course.getName()).isEqualTo("새로운 이름");
@@ -302,7 +298,7 @@ class CourseServiceUnitTest {
         @DisplayName("코스 공개 여부를 변경하면 Writer에 공개 상태 동기화를 위임한다")
         void updateCourse_isPublic_delegatesSyncPublicityToWriter() {
             // when
-            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());
 
             // then
             assertThat(course.isPublic()).isTrue();
@@ -314,7 +310,7 @@ class CourseServiceUnitTest {
         @DisplayName("코스를 삭제하면 리드모델 삭제를 Writer에 위임한 뒤 코스를 삭제한다")
         void deleteCourse_delegatesDeleteToWriterBeforeDeletingCourse() {
             // when
-            courseService.deleteCourse(COURSE_ID, owner.getUuid());
+            courseWriter.deleteCourse(COURSE_ID, owner.getUuid());
 
             // then
             InOrder inOrder = inOrder(readModelWriter, courseRepository);
@@ -341,9 +337,9 @@ class CourseServiceUnitTest {
         @DisplayName("코스 삭제와 코스 수정은 코스 시작점 좌표와 함께 지도 셀 이빅트를 예약한다")
         void schedulesEvictionWithStartCoordinate() {
             // when
-            courseService.deleteCourse(COURSE_ID, owner.getUuid());                          // 경로 a
-            courseService.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());  // 경로 b~d (이름)
-            courseService.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());  // 경로 b~d (공개)
+            courseWriter.deleteCourse(COURSE_ID, owner.getUuid());                          // 경로 a
+            courseWriter.updateCourse(COURSE_ID, nameRequest("새로운 이름"), owner.getUuid());  // 경로 b~d (이름)
+            courseWriter.updateCourse(COURSE_ID, publicityRequest(true), owner.getUuid());  // 경로 b~d (공개)
 
             // then : 삭제 후에는 되찾을 수 없는 좌표가 그대로 실려 나가야 한다
             then(mapCacheEvictor).should(times(3))
@@ -360,7 +356,7 @@ class CourseServiceUnitTest {
             request.setIsPublic(true);
 
             // when
-            courseService.updateCourse(COURSE_ID, request, owner.getUuid());
+            courseWriter.updateCourse(COURSE_ID, request, owner.getUuid());
 
             // then
             assertThat(course.getName()).isEqualTo("새로운 이름");

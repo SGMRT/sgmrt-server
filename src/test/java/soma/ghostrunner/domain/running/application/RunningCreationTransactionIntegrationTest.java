@@ -60,7 +60,7 @@ import static org.mockito.Mockito.when;
  * <p>이 클래스의 테스트는 바깥 트랜잭션 없이({@code NOT_SUPPORTED}) 유즈케이스를 그대로 호출한다.
  * 프로덕션에서 컨트롤러에 트랜잭션이 없다는 사실을 그대로 재현하는 것이고, 그래서 두 가지가 한꺼번에 증명된다.
  * <ul>
- *   <li><b>저장 경계는 {@link RunningCreationWriter}가 스스로 연다</b> — 거기서 {@code @Transactional}을 떼면
+ *   <li><b>저장 경계는 {@link RunningWriter}가 스스로 연다</b> — 거기서 {@code @Transactional}을 떼면
  *       MANDATORY 인 {@code CourseReadModelWriter.applyRun}이 즉시 터져 이 테스트가 빨개진다.</li>
  *   <li><b>VDOT는 그 경계 밖이다</b> — VDOT가 실패해도 러닝은 이미 커밋돼 있어야 한다. VDOT 호출을 저장
  *       트랜잭션 안으로 되돌리면 롤백되어 러닝이 사라지고, 아래 단언이 빨개진다.</li>

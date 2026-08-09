@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-import soma.ghostrunner.domain.course.application.CourseService;
+import soma.ghostrunner.domain.course.application.CourseQueryService;
 import soma.ghostrunner.domain.course.domain.Course;
 import soma.ghostrunner.domain.member.application.MemberService;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -35,7 +35,7 @@ public class PushEventListener {
     private final PushContentAssembler pushContentAssembler;
 
     private final MemberService memberService;
-    private final CourseService courseService;
+    private final CourseQueryService courseQueryService;
     private final RunningQueryService runningQueryService;
 
     /** 본인 코스를 다른 러너가 달린 경우 */
@@ -115,7 +115,7 @@ public class PushEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePacemakerCreationEvent(PacemakerCreatedEvent event) {
         Member member = memberService.findMemberByUuid(event.memberUuid());
-        Course course = courseService.findCourseById(event.courseId());
+        Course course = courseQueryService.findCourseById(event.courseId());
         if (course.getName() == null) return; // 이름 없는 코스인 경우 알림을 보내지 않음 (공개 코스 (= 이름 설정 필수)에만 페이스메이커 생성 가능하므로 사실 발생할 일은 거의 없음)
         PushContent pushContent = pushContentAssembler.buildPacemakerCreatedEvent(course);
         log.info("알림 이벤트 전송 - 회원 '{}'에 코스 '{}'에 페이스메이커 '{}' 생성 완료 (event={})",

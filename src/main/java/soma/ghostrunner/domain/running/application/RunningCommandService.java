@@ -3,14 +3,10 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import soma.ghostrunner.domain.course.application.CourseMapCacheEvictor;
-import soma.ghostrunner.domain.course.application.CourseReadModelWriter;
-import soma.ghostrunner.domain.course.application.CourseService;
-import soma.ghostrunner.domain.course.domain.Coordinate;
+import soma.ghostrunner.domain.course.application.CourseQueryService;
 import soma.ghostrunner.domain.course.domain.Course;
-import soma.ghostrunner.domain.running.application.RunningCreationWriter.CreatedRun;
+import soma.ghostrunner.domain.running.application.RunningWriter.CreatedRun;
 import soma.ghostrunner.domain.running.application.dto.*;
 import soma.ghostrunner.domain.running.application.dto.request.CreateRunCommand;
 import soma.ghostrunner.domain.member.domain.Member;
@@ -22,22 +18,21 @@ import soma.ghostrunner.domain.running.domain.path.TelemetryProcessor;
 import soma.ghostrunner.domain.running.domain.path.RunningFileUploader;
 import soma.ghostrunner.domain.running.domain.path.SimplifiedPaths;
 import soma.ghostrunner.domain.running.domain.path.TelemetryStatistics;
-import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * 러닝 쓰기 유즈케이스의 조율자.
+ * 러닝 쓰기 유즈케이스의 조율자. <b>이 클래스는 트랜잭션을 열지 않는다</b> —
+ * DB 쓰기 경계는 전부 {@link RunningWriter}가 갖는다.
  *
- * <p><b>러닝 생성은 트랜잭션을 열지 않는다.</b> 시계열 가공(CPU)과 S3 업로드(네트워크 I/O)를 DB 커넥션을 쥔 채
- * 수행하면 동시 요청이 늘 때 커넥션 풀이 먼저 마르기 때문이다. 순서는 "조회·가공·업로드 → 저장 트랜잭션 → VDOT"이고,
- * DB 쓰기 경계는 {@link RunningCreationWriter}가 단독으로 갖는다.
+ * <p><b>러닝 생성이 조율의 핵심이다.</b> 시계열 가공(CPU)과 S3 업로드(네트워크 I/O)를 DB 커넥션을 쥔 채
+ * 수행하면 동시 요청이 늘 때 커넥션 풀이 먼저 마르기 때문에, 순서는
+ * "조회·가공·업로드 → 저장 트랜잭션 → VDOT"이다.
  *
  * <p>수정·삭제 계열({@code updateRunningName}, {@code updateRunningPublicStatus}, {@code deleteRunnings})은
- * 무거운 외부 I/O가 없으므로 기존대로 이 클래스가 트랜잭션을 연다.
+ * 트랜잭션 밖 조율이 필요 없어 {@link RunningWriter}에 그대로 위임한다. 진입점을 이 클래스로 통일해
+ * API 계층은 Writer의 존재를 모르게 한다.
  */
 @Slf4j
 @Service
@@ -46,19 +41,15 @@ public class RunningCommandService {
 
     private final RunningApplicationMapper mapper;
 
-    private final RunningRepository runningRepository;
-
     private final TelemetryProcessor telemetryProcessor;
     private final RunningFileUploader runningFileUploader;
 
     private final PathSimplificationService pathSimplificationService;
     private final RunningQueryService runningQueryService;
-    private final CourseService courseService;
+    private final CourseQueryService courseQueryService;
     private final MemberService memberService;
-    private final CourseReadModelWriter courseReadModelWriter;
     private final MemberVdotWriter memberVdotWriter;
-    private final CourseMapCacheEvictor courseMapCacheEvictor;
-    private final RunningCreationWriter runningCreationWriter;
+    private final RunningWriter runningWriter;
 
     public CreateCourseAndRunResponse createRunAndCourse(
             CreateRunCommand command, String memberUuid, MultipartFile rawTelemetry, MultipartFile interpolatedTelemetry, MultipartFile screenShotImage) {
@@ -70,7 +61,7 @@ public class RunningCommandService {
         SimplifiedPaths simplifiedPaths = pathSimplificationService.simplify(telemetryStatistics);
         RunningDataUrlsDto dataUrlsDto = upload(rawTelemetry, telemetryStatistics, simplifiedPaths, screenShotImage, member);
 
-        CreatedRun created = runningCreationWriter.saveRunAndCourse(command, member, telemetryStatistics, dataUrlsDto);
+        CreatedRun created = runningWriter.saveRunAndCourse(command, member, telemetryStatistics, dataUrlsDto);
         updateVdotOrAlert(memberUuid, created.running());
         return mapper.toResponse(created.running(), created.course());
     }
@@ -127,7 +118,7 @@ public class RunningCommandService {
         TelemetryStatistics processedTelemetries = telemetryProcessor.process(interpolatedTelemetry, command.getStartedAt());
         RunningDataUrlsDto runningDataUrlsDto = upload(rawTelemetry, processedTelemetries, screenShotImage, member);
 
-        Running running = runningCreationWriter.saveRun(command, member, courseId, processedTelemetries, runningDataUrlsDto);
+        Running running = runningWriter.saveRun(command, member, courseId, processedTelemetries, runningDataUrlsDto);
 
         updateVdotOrAlert(memberUuid, running);
         return running.getId();
@@ -144,111 +135,26 @@ public class RunningCommandService {
     }
 
     private Course findCourse(Long courseId) {
-        return courseService.findCourseByIdFetchJoinMember(courseId);
+        return courseQueryService.findCourseByIdFetchJoinMember(courseId);
     }
 
     private void validateBelongsToCourseIfGhostMode(CreateRunCommand command, Long courseId) {
         if (command.getMode().equals("GHOST")) {
-            Running ghostRunning = findRunning(command.getGhostRunningId());
+            Running ghostRunning = runningQueryService.findRunningByRunningId(command.getGhostRunningId());
             ghostRunning.validateBelongsToCourse(courseId);
         }
     }
 
-    @Transactional
     public void updateRunningName(String name, Long runningId, String memberUuid) {
-        Running running = findRunning(runningId);
-        running.verifyMember(memberUuid);
-        running.updateName(name);
-        // 지도 셀 캐시 이빅트는 직접 호출로 예약한다 (커밋 후 실행)
-        courseMapCacheEvictor.evictCourseCellAfterCommit(courseIdOf(running));
+        runningWriter.updateName(name, runningId, memberUuid);
     }
 
-    @Transactional
     public void updateRunningPublicStatus(Long runningId, String memberUuid) {
-        Running running = findRunning(runningId);
-        running.verifyMember(memberUuid);
-        running.updatePublicStatus();
-        // 지도 셀 캐시 이빅트는 직접 호출로 예약한다 (커밋 후 실행)
-        courseMapCacheEvictor.evictCourseCellAfterCommit(courseIdOf(running));
-
-        // 공개 여부가 바뀌면 집계 모집단이 달라지므로 해당 코스의 리드모델을 다시 계산한다
-        Course course = running.getCourse();
-        if (course != null) {
-            courseReadModelWriter.recalculate(List.of(course.getId()));
-        }
+        runningWriter.updatePublicStatus(runningId, memberUuid);
     }
 
-    private Running findRunning(Long runningId) {
-        return runningQueryService.findRunningByRunningId(runningId);
-    }
-
-    /** 어느 코스에도 속하지 않은 러닝은 지울 셀이 없다. (식별자 게터라 프록시를 초기화하지 않는다) */
-    private Long courseIdOf(Running running) {
-        Course course = running.getCourse();
-        return course != null ? course.getId() : null;
-    }
-
-    /**
-     * 러닝들을 삭제하고 영향받은 코스를 동기화한다. 수집 → 삭제 → 재계산 → 이빅트 예약 순서로 진행한다.
-     *
-     * <p>수집이 반드시 삭제보다 앞서야 한다. {@code deleteInRunningIds}는
-     * {@code @Modifying(clearAutomatically = true)}라 벌크 삭제 직후 영속성 컨텍스트가 비워지고,
-     * LAZY인 {@code Running.course} 프록시는 미초기화 상태로 detach 된다.
-     * 그 뒤에 좌표를 읽으면 {@code LazyInitializationException}이 나 러닝 삭제 API가 항상 500이 된다.
-     * (설계: docs/design/course-cell-bucket-cache-design.md §4 경로 e · [R2] · D5)
-     */
-    @Transactional
     public void deleteRunnings(List<Long> runningIds, String memberUuid) {
-        List<Running> runningsToDelete = runningRepository.findByIds(runningIds);
-        runningsToDelete.forEach(running -> running.verifyMember(memberUuid));
-
-        // 1. 수집 — 삭제하면 알아낼 수 없는 정보(재계산 대상 코스, 지도 이빅트용 시작점 좌표)를 미리 확보한다
-        List<Course> affectedCourses = distinctCoursesOf(runningsToDelete);
-        List<Long> affectedCourseIds = affectedCourses.stream()
-                .map(Course::getId)
-                .toList();
-        List<CourseMapCell> mapCells = affectedCourses.stream()
-                .map(RunningCommandService::mapCellOf)  // LAZY 프록시가 초기화되는 지점 — 아직 영속성 컨텍스트가 살아있어야 한다
-                .toList();
-
-        // 2. 삭제
-        runningRepository.deleteInRunningIds(runningIds);
-
-        // 3. 재계산 — 남은 러닝만으로 코스 집계를 다시 계산한다
-        courseReadModelWriter.recalculate(affectedCourseIds);
-
-        // 4. 이빅트 예약 — 리드모델 최종 상태가 확정된 뒤 예약한다 (실행은 커밋 후)
-        mapCells.forEach(cell ->
-                courseMapCacheEvictor.evictCellAfterCommit(cell.courseId(), cell.startLat(), cell.startLng()));
-    }
-
-    /** 코스의 시작점 좌표를 값으로 뽑아 둔다. 벌크 삭제 이후에는 이 초기화가 불가능하다([R2]). */
-    private static CourseMapCell mapCellOf(Course course) {
-        Coordinate startCoordinate = course.getStartCoordinate();
-        return new CourseMapCell(
-                course.getId(),
-                startCoordinate != null ? startCoordinate.getLatitude() : null,
-                startCoordinate != null ? startCoordinate.getLongitude() : null);
-    }
-
-    /** 이빅트에 필요한 값만 담은 스냅샷. 엔티티를 커밋 후까지 들고 가지 않기 위한 것이다([R2]). */
-    private record CourseMapCell(Long courseId, Double startLat, Double startLng) {
-    }
-
-    /**
-     * 러닝들이 속한 코스를 중복 없이 모은다. 같은 코스의 러닝이 여러 건이어도 코스는 1건이다.
-     * 어느 코스에도 속하지 않은 러닝은 재계산·이빅트 대상이 아니므로 제외한다.
-     */
-    private List<Course> distinctCoursesOf(List<Running> runnings) {
-        Map<Long, Course> coursesById = new LinkedHashMap<>();
-        for (Running running : runnings) {
-            Course course = running.getCourse();
-            if (course == null) {
-                continue;
-            }
-            coursesById.putIfAbsent(course.getId(), course);  // 식별자 게터라 프록시를 초기화하지 않는다
-        }
-        return List.copyOf(coursesById.values());
+        runningWriter.deleteRunnings(runningIds, memberUuid);
     }
 
 }
