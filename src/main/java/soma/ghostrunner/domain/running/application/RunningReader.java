@@ -3,34 +3,39 @@ package soma.ghostrunner.domain.running.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.util.Pair;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.util.Pair;
+import org.springframework.security.access.AccessDeniedException;
 import soma.ghostrunner.domain.course.dto.CourseRunDto;
 import soma.ghostrunner.domain.course.dto.CourseRunStatisticsDto;
 import soma.ghostrunner.domain.course.dto.UserPaceStatsDto;
-import soma.ghostrunner.domain.course.dto.response.CourseGhostResponse;
-import soma.ghostrunner.domain.member.application.MemberService;
-import soma.ghostrunner.domain.member.domain.Member;
-import soma.ghostrunner.domain.course.enums.GhostSortType;
-import soma.ghostrunner.domain.running.api.dto.response.RunMonthlyStatusResponse;
 import soma.ghostrunner.domain.running.application.dto.response.*;
-import soma.ghostrunner.domain.running.application.support.RunningApplicationMapper;
-import soma.ghostrunner.domain.running.application.support.RunningInfoFilter;
-import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.domain.running.domain.Running;
-import soma.ghostrunner.domain.running.exception.InvalidRunningException;
 import soma.ghostrunner.domain.running.exception.RunningNotFoundException;
+import soma.ghostrunner.domain.running.infra.persistence.RunningRepository;
 import soma.ghostrunner.global.error.ErrorCode;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * 러닝 도메인의 <b>조회 전용</b> Reader.
+ *
+ * <p><b>이 클래스가 하는 일은 두 가지뿐이다</b> — {@link RunningRepository} 호출과, 그 결과를
+ * "없으면 예외 / 키로 정규화된 뷰"로 바꾸는 것. 그 이상의 조율(다른 도메인 조회, 응답 DTO 매핑,
+ * 여러 조회의 조합, 요청 파라미터 검증)은 {@link RunningQueryService}나 호출하는 Facade의 몫이다.
+ * 그래야 다른 도메인(CourseFacade·PushEventListener·PacemakerValidator)이 이 Reader를 직접 써도
+ * MemberService나 매퍼가 딸려 들어오지 않는다.
+ *
+ * <p><b>{@code @Transactional(readOnly = true)}는 여기에 둔다.</b> 조회 트랜잭션 경계는 Reader가 갖고,
+ * 상위 Service는 원칙적으로 트랜잭션을 열지 않는다. 쓰기 트랜잭션 안에서 호출되면(예:
+ * {@code RunningWriter#saveRun}의 재조회) 호출자 트랜잭션에 그대로 참여한다.
+ *
+ * <p>쓰기는 {@link RunningWriter}가 담당한다 — 이 클래스에는 부수효과가 없다.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,44 +44,23 @@ public class RunningReader {
 
     private final RunningRepository runningRepository;
 
-    private final RunningApplicationMapper mapper;
-
-    private final MemberService memberService;
-
     public SoloRunDetailInfo findSoloRunInfo(Long runningId, String memberUuid) {
-        return findSoloRunInfoByRunningId(runningId, memberUuid);
-    }
-
-    private SoloRunDetailInfo findSoloRunInfoByRunningId(Long runningId, String memberUuid) {
         return runningRepository.findSoloRunInfoById(runningId, memberUuid)
                 .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
     }
 
-    public GhostRunDetailInfo findGhostRunInfo(Long myRunningId, Long ghostRunningId, String memberUuid) {
-        GhostRunDetailInfo myGhostRunDetailInfo = findGhostRunInfoByRunningId(myRunningId, memberUuid);
-        verifyGhostRunningId(ghostRunningId, myGhostRunDetailInfo);
-        myGhostRunDetailInfo.setGhostRunInfo(findGhostMemberAndRunInfoByRunningId(ghostRunningId));
-        return myGhostRunDetailInfo;
+    public GhostRunDetailInfo findGhostRunInfo(Long runningId, String memberUuid) {
+        return runningRepository.findGhostRunInfoById(runningId, memberUuid)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
     }
 
-    private GhostRunDetailInfo findGhostRunInfoByRunningId(Long myRunningId, String memberUuid) {
-        return runningRepository.findGhostRunInfoById(myRunningId, memberUuid)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, myRunningId));
+    public MemberAndRunRecordInfo findMemberAndRunRecordInfo(Long runningId) {
+        return runningRepository.findMemberAndRunRecordInfoById(runningId)
+                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, runningId));
     }
 
-    private void verifyGhostRunningId(Long ghostRunningId, GhostRunDetailInfo myGhostRunDetailInfo) {
-        if (myGhostRunDetailInfo.getGhostRunId() == null || !myGhostRunDetailInfo.getGhostRunId().equals(ghostRunningId)) {
-            throw new InvalidRunningException(
-                    ErrorCode.INVALID_REQUEST_VALUE, "고스트의 러닝 ID가 Null이거나 실제로 뛴 고스트러닝 ID가 아닌 경우");
-        }
-    }
-
-    private MemberAndRunRecordInfo findGhostMemberAndRunInfoByRunningId(Long ghostRunningId) {
-        return runningRepository.findMemberAndRunRecordInfoById(ghostRunningId)
-                .orElseThrow(() -> new RunningNotFoundException(ErrorCode.ENTITY_NOT_FOUND, ghostRunningId));
-    }
-
-    public String findRunningTelemetries(Long runningId, String memberUuid) {
+    /** 조회되지 않으면 남의 러닝이거나 존재하지 않는 러닝이므로 접근 거부로 응답한다. */
+    public String findInterpolatedTelemetryUrl(Long runningId, String memberUuid) {
         return runningRepository.findInterpolatedTelemetryUrlByIdAndMemberUuid(runningId, memberUuid)
                 .orElseThrow(() -> new AccessDeniedException("접근할 수 없는 러닝 데이터입니다."));
     }
@@ -91,22 +75,12 @@ public class RunningReader {
         return map;
     }
 
-    public Page<CourseGhostResponse> findPublicGhostRunsByCourseId(
-        Long courseId, Pageable pageable) {
-        validateSortProperty(pageable);
-        Page<Running> ghostRuns = runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
-        return ghostRuns.map(mapper::toGhostResponse);
+    /** 코스의 공개 러닝(고스트)을 페이징 조회한다. 러너(member)는 fetch join으로 함께 적재된다. */
+    public Page<Running> findPublicGhostRuns(Long courseId, Pageable pageable) {
+        return runningRepository.findByCourse_IdAndIsPublicTrue(courseId, pageable);
     }
 
-    public Page<CourseGhostResponse> findTopPercentageGhostsByCourseId(
-            Long courseId, Double percentage) {
-        int percentageToCount = (int) Math.ceil(findRunningsCountInCourse(courseId) * percentage) + 1;
-        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
-        Pageable topNPageable = PageRequest.of(0, percentageToCount, defaultSort);
-        return findPublicGhostRunsByCourseId(courseId, topNPageable);
-    }
-
-    private long findRunningsCountInCourse(Long courseId) {
+    public long countRunningsInCourse(Long courseId) {
         return runningRepository.countTotalRunningsCount(courseId);
     }
 
@@ -137,15 +111,6 @@ public class RunningReader {
         return runningRepository.findFirstRunningByCourseId(courseId);
     }
 
-    private void validateSortProperty(Pageable pageable) {
-        pageable.getSort().stream()
-            .forEach(order -> {
-                if(!GhostSortType.isValidField(order.getProperty())){
-                    throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
-                };
-            });
-    }
-
     /** 코스 ID 별로 사용자의 최고기록을 매핑하여 반환한다. (Key: 코스 ID, Value: 최고 러닝 (nullable)) */
     public Map<Long, Running> findBestRunningRecordsForCourses(List<Long> courseIds, String memberUuid) {
 
@@ -167,44 +132,30 @@ public class RunningReader {
         return result;
     }
 
-    public List<RunInfo> findRunnings(String filteredBy,
-                                      Long startEpoch, Long endEpoch,
-                                      Long cursorStartedAt,
-                                      String cursorCourseName,
-                                      Long cursorRunningId,String memberUuid) {
-        Member member = findMember(memberUuid);
-        if (filteredBy.equals(RunningInfoFilter.DATE.name())) {
-            return runningRepository.findRunInfosFilteredByDate(
-                    cursorStartedAt, cursorRunningId,
-                    startEpoch, endEpoch, member.getId());
-        } else if (filteredBy.equals(RunningInfoFilter.COURSE.name())) {
-            return runningRepository.findRunInfosFilteredByCourses(
-                    cursorCourseName, cursorRunningId,
-                    startEpoch, endEpoch, member.getId());
-        }
-        throw new IllegalArgumentException("올바르지 않은 필터 형식이 요청됐습니다.");
+    public List<RunInfo> findRunInfosFilteredByDate(
+            Long cursorStartedAt, Long cursorRunningId, Long startEpoch, Long endEpoch, Long memberId) {
+        return runningRepository.findRunInfosFilteredByDate(
+                cursorStartedAt, cursorRunningId, startEpoch, endEpoch, memberId);
     }
 
-    private Member findMember(String memberUuid) {
-        return memberService.findMemberByUuid(memberUuid);
+    public List<RunInfo> findRunInfosFilteredByCourses(
+            String cursorCourseName, Long cursorRunningId, Long startEpoch, Long endEpoch, Long memberId) {
+        return runningRepository.findRunInfosFilteredByCourses(
+                cursorCourseName, cursorRunningId, startEpoch, endEpoch, memberId);
     }
 
-    public List<RunInfo> findRunnings(Long courseId, String memberUuid) {
-        Member member = findMember(memberUuid);
-        List<Running> runnings = runningRepository.findRunningsByCourseIdAndMemberId(courseId, member.getId());
-        return mapper.toResponse(runnings);
+    public List<Running> findRunningsByCourseAndMember(Long courseId, Long memberId) {
+        return runningRepository.findRunningsByCourseIdAndMemberId(courseId, memberId);
+    }
+
+    public List<DayRunInfo> findDayRunInfos(Integer year, Integer month, Long memberId) {
+        return runningRepository.findDayRunInfosFilteredByDate(year, month, memberId);
     }
 
     public long findPublicRunnersCount(Long courseId) {
         return runningRepository.countPublicRunnersInCourse(courseId);
     }
 
-    public List<RunMonthlyStatusResponse> findMonthlyDayRunStatus(Integer year, Integer month, String memberUuid) {
-        Member member = findMember(memberUuid);
-        List<DayRunInfo> dayRunInfos = runningRepository.findDayRunInfosFilteredByDate(year, month, member.getId());
-        return mapper.toDayRunStatusResponses(dayRunInfos);
-    }
-  
     /** 코스 ID 별로 러너의 수를 매핑하여 반환한다. (Key = 코스 ID, Value = 러너 수) */
     public Map<Long, Long> findPublicRunnersCountByCourseIds(List<Long> courseIds) {
         Map<Long, Long> ret = courseIds.stream()

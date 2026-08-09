@@ -26,7 +26,7 @@ import soma.ghostrunner.domain.running.api.RunningApi;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapperImpl;
 import soma.ghostrunner.domain.running.application.RunningCommandService;
-import soma.ghostrunner.domain.running.application.RunningReader;
+import soma.ghostrunner.domain.running.application.RunningQueryService;
 import soma.ghostrunner.global.clients.aws.s3.GhostRunnerS3PresignUrlClient;
 import soma.ghostrunner.global.common.log.HttpLogger;
 import soma.ghostrunner.global.security.jwt.support.JwtProvider;
@@ -49,7 +49,7 @@ public abstract class ApiTestSupport {
     protected RunningCommandService runningCommandService;
 
     @MockitoBean
-    protected RunningReader runningReader;
+    protected RunningQueryService runningQueryService;
 
     @MockitoBean
     protected AuthService authService;

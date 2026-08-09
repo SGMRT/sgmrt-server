@@ -7,6 +7,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import soma.ghostrunner.IntegrationTestSupport;
 import soma.ghostrunner.domain.course.dao.CourseReadModelRepository;
@@ -294,6 +296,15 @@ class CourseFacadeTest extends IntegrationTestSupport {
                 "Raw Telemetry Mock URL", "Interpolated Mock URL", "screenShot",
                 member, course
         );
+    }
+
+    @DisplayName("고스트 정렬 필드가 화이트리스트(GhostSortType) 밖이면 조회 전에 거절한다")
+    @Test
+    void findPublicGhosts_rejectsUnknownSortField() {
+        // 임의 프로퍼티가 JPA 정렬로 새어 들어가지 않아야 한다 — Reader 호출 전에 막힌다.
+        assertThatThrownBy(() -> courseFacade.findPublicGhosts(
+                1L, PageRequest.of(0, 10, Sort.by("member.uuid"))))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private Member createMember(String nickname) {

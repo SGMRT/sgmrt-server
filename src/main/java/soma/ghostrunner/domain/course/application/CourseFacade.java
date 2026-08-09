@@ -13,6 +13,7 @@ import soma.ghostrunner.domain.course.dto.request.CoursePatchRequest;
 import soma.ghostrunner.domain.course.dto.response.*;
 import soma.ghostrunner.domain.course.enums.CourseSortType;
 import soma.ghostrunner.domain.course.enums.CourseSource;
+import soma.ghostrunner.domain.course.enums.GhostSortType;
 import soma.ghostrunner.domain.course.exception.CourseNotFoundException;
 import soma.ghostrunner.domain.running.api.support.RunningApiMapper;
 import soma.ghostrunner.domain.running.application.RunningReader;
@@ -164,8 +165,26 @@ public class CourseFacade {
         courseWriter.deleteCourse(courseId, memberUuid);
     }
 
+    /**
+     * 코스의 공개 고스트 페이징.
+     *
+     * <p>정렬 필드 검증({@link GhostSortType})도 {@link CourseGhostResponse} 매핑도 course 도메인의 규칙이므로
+     * 여기서 한다 — {@link RunningReader}는 {@code Page<Running>}까지만 책임진다.
+     * 매핑이 Reader의 트랜잭션 밖에서 도는데도 안전한 이유는 러너(member)가 fetch join으로 함께 적재되기 때문이다.
+     * (지연 로딩 연관을 새로 읽는 매핑을 추가한다면 이 메서드에 {@code @Transactional(readOnly = true)}가 필요해진다.)
+     */
     public Page<CourseGhostResponse> findPublicGhosts(Long courseId, Pageable pageable) {
-        return runningReader.findPublicGhostRunsByCourseId(courseId, pageable);
+        validateGhostSortProperty(pageable);
+        return runningReader.findPublicGhostRuns(courseId, pageable)
+                .map(runningApiMapper::toGhostResponse);
+    }
+
+    private void validateGhostSortProperty(Pageable pageable) {
+        pageable.getSort().forEach(order -> {
+            if (!GhostSortType.isValidField(order.getProperty())) {
+                throw new IllegalArgumentException("잘못된 고스트 정렬 필드");
+            }
+        });
     }
 
     @Transactional(readOnly = true)
@@ -178,13 +197,14 @@ public class CourseFacade {
     public List<CourseGhostResponse> findTopRankingGhosts(Long courseId, int count) {
         Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.duration");
         Pageable pageable = PageRequest.of(0, count, defaultSort);
-        return runningReader.findPublicGhostRunsByCourseId(courseId, pageable)
-                .getContent();
+        return findPublicGhosts(courseId, pageable).getContent();
     }
 
     public List<CourseGhostResponse> findTopPercentageGhosts(Long courseId, double percentage) {
-        Page<CourseGhostResponse> rankedGhostsPage = runningReader.findTopPercentageGhostsByCourseId(courseId, percentage);
-        return rankedGhostsPage.getContent();
+        int topNCount = (int) Math.ceil(runningReader.countRunningsInCourse(courseId) * percentage) + 1;
+        Sort defaultSort = Sort.by(Sort.Direction.ASC, "runningRecord.averagePace");
+        Pageable topNPageable = PageRequest.of(0, topNCount, defaultSort);
+        return findPublicGhosts(courseId, topNPageable).getContent();
     }
 
     @Transactional(readOnly = true)
