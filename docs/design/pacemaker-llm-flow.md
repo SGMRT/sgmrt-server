@@ -14,7 +14,7 @@
 | `PATCH /v1/pacemaker/after-running` | UC4. 러닝 후 상태 업데이트 | `PacemakerCommandService` | 명령 |
 | `DELETE /v1/pacemaker/{id}` | UC5. 삭제 (soft delete) | `PacemakerCommandService` | 명령 |
 
-`PacemakerApi`는 Command/Query 서비스를 직접 주입받는다 — Running 도메인(`RunningApi → RunningCommandService + RunningReader`)과 같은 컨벤션.
+`PacemakerApi`는 Command/Query 서비스를 직접 주입받는다 — Running 도메인(`RunningApi → RunningCommandService + RunningQueryService`)과 같은 컨벤션.
 
 ## 2. 구성 요소
 

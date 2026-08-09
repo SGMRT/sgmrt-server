@@ -87,8 +87,11 @@ soma.ghostrunner.global/
 
 - **Reader/Writer 계층 (`running`·`course` 도메인 한정)** — 이 두 도메인은 리포지토리 접근을 Reader/Writer로 격리한다.
   - **Repository를 보는 것은 Reader와 Writer뿐이다.** Service/Facade는 Reader/Writer만 바라보고 조율(외부 I/O·가공·위임)만 담당한다.
-  - **`@Transactional`(쓰기)은 Writer에만 둔다.** 쓰기 진입점은 Service/Facade로 통일하고, 조회는 Reader 직접 호출도 허용한다.
-  - 예외: `CourseMapCacheEvictor`(커밋 후 콜백 캐시 인프라), `RegionResolver`(`@Transactional(NEVER)`가 계약이라 Writer 규칙 적용 불가).
+  - **api 계층은 Service/Facade만 바라본다 — 조회도 예외가 아니다.** Reader/Writer가 코어이고, api가 아는 것은 그 위의 유즈케이스 계층이다 (`RunningApi → RunningQueryService/RunningCommandService`, `CourseApi → CourseFacade`).
+  - **Reader에 두지 않는 것**: 타 도메인 조회(`MemberService`), 응답 DTO 매핑, 여러 조회의 조합·결과 검증, 요청 파라미터 검증. 전부 Service/Facade의 몫이다.
+  - **`@Transactional`은 되도록 Reader/Writer에 둔다** — 쓰기 경계는 Writer, 조회 경계는 Reader. Service에 붙이는 것은 "여러 조회가 한 스냅샷이어야 한다"가 성립할 때 그 메서드에만.
+  - Service가 **타 도메인의 Reader**를 직접 호출하는 것은 허용한다 (`CourseFacade → RunningReader`).
+  - 예외: `CourseMapCacheEvictor`(커밋 후 콜백 캐시 인프라), `RegionResolver`(`@Transactional(NEVER)`가 계약이라 Writer 규칙 적용 불가 — api 직접 호출 허용).
   - **다른 도메인에 기계적으로 복제하지 말 것** — 트랜잭션 경계가 단순한 곳은 Service–Repository로 충분하다.
   - 상세: `docs/design/reader-writer-layering.md`, `docs/core/03-architecture.md`
 - **AWS 서비스**

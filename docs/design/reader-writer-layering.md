@@ -21,29 +21,45 @@ api (Controller)
  │                  ├──► Writer              (모든 쓰기 트랜잭션 경계. repo 접근 허용)
  │                  └──► Reader              (트랜잭션 밖 fail-fast 조회 등)
  │
- └── 조회 요청 ──► Reader 직접 or Facade     (조회는 조립이 필요할 때만 Facade를 끼운다)
+ └── 조회 요청 ──► QueryService / Facade     (조회도 진입점은 Service다 — api는 Reader를 모른다)
                     │
-                    └──► Reader              (조회 전용. repo 접근 허용)
+                    └──► Reader              (조회 전용 + 조회 TX 경계. repo 접근 허용)
 
 Writer ──► Reader        허용 (트랜잭션 안 재조회. Reader는 호출자 TX에 참여)
 Writer ──► 타 도메인 Writer  허용 (같은 TX 참여 — RunningWriter → CourseWriter.save 패턴)
+Service ──► 타 도메인 Reader 허용 (Reader가 코어 — CourseFacade → RunningReader)
+api ──► Reader / Writer         ❌ 금지
 Service/Facade ──► Repository   ❌ 금지
 Reader ──► 쓰기            ❌ 금지 (부수효과 없음을 이름으로 보장)
 ```
 
-**세 줄 요약**
+**네 줄 요약**
 
 1. **Repository를 바라보는 클래스는 Reader와 Writer뿐이다.**
 2. Service/Facade는 Reader/Writer만 바라본다 — 조율(가공·외부 I/O·위임)만 남는다.
-3. **쓰기 `@Transactional`은 Writer에만 존재한다.** Reader는 쓰기 트랜잭션을 열지 않는다.
+3. **api 계층은 Service/Facade만 바라본다** — 쓰기든 조회든 Reader/Writer를 직접 부르지 않는다.
+   Reader/Writer는 도메인 코어이고, api가 아는 것은 그 위의 유즈케이스 계층이다.
+4. **`@Transactional`은 되도록 Reader/Writer에 둔다.** 쓰기 경계는 Writer, 조회 경계는 Reader.
+   Service에 붙이는 것은 "여러 조회가 한 스냅샷이어야 한다"가 성립할 때, 그 메서드에만.
+
+**Reader와 Service의 경계선** — Reader가 하는 일은 두 가지뿐이다: 리포지토리 호출, 그리고 그 결과를
+"없으면 예외 / 키로 정규화된 뷰"로 바꾸는 것. 아래는 Reader가 아니라 Service/Facade의 몫이다.
+
+| Reader에 두지 않는 것 | 이유 | 현재 위치 |
+|---|---|---|
+| 다른 도메인 조회 (`MemberService`) | 타 도메인이 Reader를 재사용할 때 딸려 들어온다 | `RunningQueryService` |
+| 응답 DTO 매핑 | 응답 모양은 유즈케이스의 관심사다 | `RunningQueryService`, `CourseFacade` |
+| 여러 조회의 조합·결과 검증 | 조율이지 조회가 아니다 | `RunningQueryService.findGhostRunInfo` |
+| 요청 파라미터 검증 (정렬 필드 화이트리스트) | 진입점의 관심사 | `CourseFacade.findPublicGhosts` |
 
 > **트랜잭션 경계는 이름만으로 판단하지 말 것 — 예외 3건**
 >
-> - **Reader의 `@Transactional(readOnly = true)`는 허용한다** (`RunningReader`). 호출자(Facade/Api)가
->   트랜잭션을 열지 않는 조회 경로를 Reader가 스스로 감싸야 하기 때문이다. 쓰기 TX 안에서 호출되면
->   호출자 TX에 그대로 참여한다. `open-in-view: false`이므로 **이 어노테이션을 떼면 지연 로딩이 깨진다** —
->   해당 경로는 `CourseFacade`의 고스트 페이징·TOP 랭킹·상위 퍼센트·코스 통계 4곳(모두 `@Transactional` 없음).
+> - **Reader의 `@Transactional(readOnly = true)`는 허용한다** (`RunningReader`). 조회 트랜잭션 경계가
+>   Reader이기 때문이다. 쓰기 TX 안에서 호출되면 호출자 TX에 그대로 참여한다.
 >   "Reader니까 트랜잭션이 없어야 한다"를 근거로 제거하지 말 것.
+>   `open-in-view: false`이므로, **엔티티를 응답으로 매핑하는 코드가 이 트랜잭션 밖에 있다면 그 매핑이
+>   지연 로딩 연관을 건드리지 않아야 한다.** 현재 그런 경로는 `CourseFacade`의 고스트 매핑뿐이고,
+>   러너(`member`)가 fetch join(`RunningRepository#findByCourse_IdAndIsPublicTrue`)으로 함께 적재되어 안전하다.
 > - **`CourseSubscriptionWriter`는 이름이 Writer지만 자체 TX를 열지 않는다** — 항상 호출자
 >   (`CourseWriter` / `RunningWriter`)의 TX에 참여한다. (`MANDATORY` 승격은 별도 티켓 — §4 D2)
 > - **`CourseReadModelWriter`도 자체 경계를 열지 않는다** — `@Transactional(propagation = MANDATORY)`라
@@ -160,11 +176,12 @@ resolve(조회+등록 멱등 연산)는 읽기도 쓰기도 아닌 혼합이고,
 (유니크 충돌 → 재조회 복구가 트랜잭션 오염 없이 동작해야 함, 클래스 javadoc 참조). "Writer = 쓰기 TX를 연다"는
 규칙을 적용하면 이 계약과 정면충돌하므로, Writer로 개명하지 않고 **Resolver**라는 역할 이름으로 예외임을 드러낸다.
 
-### D5. 조회 진입점은 Reader 직접 호출을 허용
+### D5. 조회 진입점은 Reader 직접 호출을 허용 — ❌ **철회됨 (§8 참조)**
 
-쓰기는 반드시 Service/Facade를 거치지만, 조회는 조립이 없으면 api가 Reader를 직접 불러도 된다
-(현행 RunningApi→RunningQueryService 구조 유지). 조회마다 Facade를 강제하면 한 줄 위임 메서드만 늘어난다.
-여러 Reader의 결과를 조립해야 할 때만 Facade를 쓴다(CourseFacade가 그 예).
+> 원안: 쓰기는 반드시 Service/Facade를 거치지만, 조회는 조립이 없으면 api가 Reader를 직접 불러도 된다.
+> 조회마다 Facade를 강제하면 한 줄 위임 메서드만 늘어난다.
+>
+> **이 결정은 §8에서 뒤집혔다.** 판단 근거가 틀렸다 — `RunningReader`는 "조립이 없는" 클래스가 아니었다.
 
 ---
 
@@ -212,7 +229,7 @@ resolve(조회+등록 멱등 연산)는 읽기도 쓰기도 아닌 혼합이고,
 | D2 | `CourseSubscriptionService` → `CourseSubscriptionWriter`. `CourseWriter`의 `activate/deactivateOwnerSubscription`을 이관받아 **구독 테이블 쓰기의 단일 지점**이 됨. `CourseWriter`는 위임만 하고 `CourseSubscriptionRepository` 의존 제거 |
 | D3 | `CourseSubscriptionWriter`의 `MemberRepository` → `MemberService.findMemberById` |
 | D4 | `RegionService` → `RegionResolver`. `@Transactional(NEVER)` 유지 |
-| D5 | 조회 진입점은 Reader 직접 호출 허용 — 현행 유지 |
+| D5 | 조회 진입점은 Reader 직접 호출 허용 — 현행 유지 → **§8에서 철회** |
 
 ### 설계 시점과 달라진 판단
 
@@ -220,3 +237,59 @@ resolve(조회+등록 멱등 연산)는 읽기도 쓰기도 아닌 혼합이고,
 - **통합 검증 1건 추가.** 주인 구독의 소프트delete 복원은 "깨지면 실제로 아픈" 불변식인데 DB 레벨 검증이 0건이었다. 이관 **전에** 회귀 테스트를 먼저 통과시켜 안전망으로 삼았고(`CourseWriterTest.ownerSubscription_isRestoredNotDuplicated_onReRegister`), 이관 후에도 통과하는 것이 동작 변화 0의 판정 기준이 됐다.
 - **NEVER 전파 계약 테스트 신설.** 개명 전에는 이 계약을 검증하는 테스트가 0건이라, 어노테이션이 유실돼도 아무 테스트도 깨지지 않았다. `RegionResolverPropagationTest`가 그 공백을 메운다.
 - **`subscribeIfAbsent`(러너)와 `activateOwnerSubscription`(주인)의 이름은 통일하지 않았다.** 멱등 규칙이 다르기 때문이다 — 러너 구독은 soft delete 상태여도 그대로 두고, 주인 구독은 복원한다. 같은 이유로 두 경로의 `findByCourseIdAndMemberId` 중복도 통합하지 않았다(규칙 차이가 플래그 뒤로 숨는다). 대비되는 javadoc으로 대신했다.
+
+---
+
+## 8. 후속 — D5 철회와 `RunningQueryService` 재도입 (2026-08-09)
+
+### 무엇이 틀렸나
+
+D1에서 `RunningQueryService`를 `RunningReader`로 개명했는데, **그 클래스는 Reader가 아니었다.**
+개명 시점에 이미 아래를 들고 있었다:
+
+- `MemberService` 의존 — uuid→Member 해소 (`findRunnings`, `findMonthlyDayRunStatus`)
+- `RunningApplicationMapper` 의존 — 엔티티 → 응답 DTO 매핑
+- 다중 조회의 조합과 그 결과 검증 (`findGhostRunInfo`: 내 러닝 조회 → 고스트ID 대조 → 고스트 기록 조회)
+- 요청 파라미터 검증 (`validateSortProperty` — 그나마 course 도메인의 `GhostSortType`)
+
+즉 "조립이 없으니 api가 Reader를 직접 불러도 된다"(D5)의 전제부터 성립하지 않았다.
+조립은 있었고, 단지 Reader라는 이름 뒤에 있었을 뿐이다. **개명이 역할을 바꾸지는 않는다.**
+
+### 무엇을 했나
+
+| 구분 | 변경 |
+|---|---|
+| `RunningReader` | 리포지토리 호출 + 예외 변환 + 키 정규화만 남김. `MemberService`·매퍼 의존 **제거**. `@Transactional(readOnly = true)` 유지(조회 TX 경계) |
+| `RunningQueryService` | **신규.** `RunningReader`+`MemberService`+매퍼를 주입받아 조회 유즈케이스를 조율. `RunningCommandService`와 대칭 |
+| `RunningApi` | `RunningReader` → `RunningQueryService` (조회 6개 엔드포인트) |
+| `CourseFacade` | 고스트 조회의 정렬 검증·`CourseGhostResponse` 매핑·상위 퍼센트 계산을 흡수. Reader에서는 `Page<Running>`과 count만 받는다 |
+
+`CourseGhostResponse`도 `GhostSortType`도 **course 도메인의 타입**이다. 이들을 running의 Reader가
+조립하고 있던 것 자체가 방향이 뒤집힌 의존이었고, 이번에 CourseFacade로 제자리를 찾았다.
+
+### 트랜잭션 배치
+
+`@Transactional`은 **Reader/Writer에 두고, Service에는 원칙적으로 두지 않는다.**
+`RunningQueryService`에는 클래스·메서드 어디에도 붙이지 않았다 — 어느 메서드도
+"여러 조회가 한 스냅샷이어야 한다"를 요구하지 않기 때문이다. `findGhostRunInfo`조차
+첫 조회 결과로 검증을 끝낸 뒤 두 번째를 던지므로 순차 실행으로 충분하다.
+
+- **대가**: 조회 1건이 열던 트랜잭션이 (회원 조회 / 러닝 조회) 2개로 쪼개진다.
+  읽기 전용이고 교차 정합성 요구가 없어 의미 있는 동작 변화는 없다.
+- **지켜야 할 전제**: `open-in-view: false`다. Reader 트랜잭션 밖에서 엔티티를 매핑하는 경로는
+  현재 `CourseFacade`의 고스트 매핑뿐이고, `member`가 fetch join으로 적재되어 안전하다.
+  이 전제가 깨지는 매핑을 추가한다면 **그 메서드에만** `@Transactional(readOnly = true)`를 붙인다.
+
+### 하지 않은 것
+
+- **course 도메인 구조 변경 없음.** `CourseApi → CourseFacade → CourseReader/CourseWriter`는 이미 이 규칙을 지키고 있었다.
+- **`CourseQueryService` 재도입 안 함.** 조회 진입점 역할은 `CourseFacade`가 이미 하고 있고, Facade는 쓰기 위임도 겸한다. 이름만 다른 같은 계층을 하나 더 만들 이유가 없다.
+- **`RegionApi → RegionResolver`는 그대로.** Resolver는 Reader/Writer가 아닌 서비스 계층 컴포넌트(§4 D4)이므로 api가 직접 호출해도 규칙 위반이 아니다.
+- **`RunningFacade` 도입 안 함.** 조회는 `RunningQueryService`, 쓰기는 `RunningCommandService`로 이미 대칭이라 그 위에 한 겹 더 얹을 이득이 없다.
+
+### 테스트
+
+`RunningReaderTest`는 리포지토리 위임·예외 변환·키 정규화만 보도록 축소하고,
+조합·매핑·타 도메인 조회 검증은 `RunningQueryServiceTest`로 옮겼다.
+정렬 화이트리스트 검증은 `CourseFacadeTest`로 이동했다 — 기존 테스트는 스파이로 대상 메서드 자체에
+예외를 주입하고 있어 사실상 아무것도 검증하지 않았다.

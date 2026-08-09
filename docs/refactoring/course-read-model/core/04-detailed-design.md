@@ -5,7 +5,8 @@
 >
 > **[2026-08 이후 클래스 개명]** 이 문서의 클래스명은 작성 시점 기준이다. 이후 쓰기 경계 분리와 Reader/Writer 계층화로
 > `CourseService` → `CourseWriter`(쓰기) + `CourseReader`(조회), `RunningCreationWriter` → `RunningWriter`(수정·삭제 트랜잭션 흡수),
-> `RunningQueryService` → `RunningReader`, `CourseSubscriptionService` → `CourseSubscriptionWriter`(코스 주인 구독 조율까지 흡수)로 재편됐다.
+> `RunningQueryService` → `RunningReader`(repo 접근) + `RunningQueryService`(조회 유즈케이스 조율 — 같은 이름으로 재도입, 역할은 축소),
+> `CourseSubscriptionService` → `CourseSubscriptionWriter`(코스 주인 구독 조율까지 흡수)로 재편됐다.
 > 설계: [`../../../design/reader-writer-layering.md`](../../../design/reader-writer-layering.md)
 
 ## 확정 전제 요약

@@ -53,27 +53,44 @@ course.CourseWriter가 연다. RunningCommandService는 트랜잭션 밖 조율
 (설계: `docs/design/reader-writer-layering.md`)
 
 ```
-api ──► Service/Facade ──► Writer ──► Repository     (쓰기: 진입점은 Service/Facade)
-api ──► Reader ──────────────────────► Repository     (조회: 조립이 필요할 때만 Facade 경유)
+api ──► Service/Facade ─┬─► Writer ──► Repository     (쓰기 진입점)
+                        └─► Reader ──► Repository     (조회 진입점)
 
-Writer ──► Reader            허용 (쓰기 TX 안 재조회 — Reader는 호출자 TX에 참여)
-Writer ──► 타 도메인 Writer   허용 (RunningWriter → CourseWriter.save)
+Writer ──► Reader             허용 (쓰기 TX 안 재조회 — Reader는 호출자 TX에 참여)
+Writer ──► 타 도메인 Writer    허용 (RunningWriter → CourseWriter.save)
+Service ──► 타 도메인 Reader   허용 (Reader가 코어 — CourseFacade → RunningReader)
+api ──► Reader                금지 (조회도 Service/Facade를 거친다)
 Service/Facade ──► Repository  금지
-Reader ──► 쓰기               금지
+Reader ──► 쓰기                금지
 ```
 
 - **Repository를 보는 것은 Reader와 Writer뿐이다.** Service/Facade에는 조율만 남는다.
-- 구성: `RunningReader`/`RunningWriter`, `CourseReader`/`CourseWriter`, `CourseSubscriptionWriter`(구독 테이블 쓰기의 단일 지점 — 러너 구독과 코스 주인 구독 모두 담당).
+- **api 계층은 Service/Facade만 바라본다** — 조회도 예외가 아니다. Reader/Writer는 도메인 코어에 해당하고,
+  api는 그 위의 Service(`RunningQueryService`·`RunningCommandService`)와 Facade(`CourseFacade`)만 안다.
+- 구성: `RunningReader`/`RunningWriter` + `RunningQueryService`/`RunningCommandService`,
+  `CourseReader`/`CourseWriter` + `CourseFacade`, `CourseSubscriptionWriter`(구독 테이블 쓰기의 단일 지점 — 러너 구독과 코스 주인 구독 모두 담당).
+- **Service와 Reader의 경계**: Reader는 리포지토리 호출과 "없으면 예외 / 키 기준 정규화"까지만 한다.
+  다른 도메인 조회(`MemberService`), 응답 DTO 매핑, 여러 조회의 조합과 결과 검증은 Service/Facade의 몫이다.
+  그래야 타 도메인이 Reader를 재사용해도 매퍼·타 도메인 서비스가 딸려 들어오지 않는다.
 - **규칙을 적용하지 않는 컴포넌트 2건**: `CourseMapCacheEvictor`(커밋 후 콜백이라는 특수 실행 문맥의 캐시 인프라), `RegionResolver`(`@Transactional(NEVER)`가 계약이라 "Writer = 쓰기 TX를 연다" 규칙을 적용할 수 없어 Resolver로 명명).
 - 다른 도메인(member, notice, device, auth, pacemaker)은 **적용 대상이 아니다** — 트랜잭션 경계가 단순해 Service–Repository로 충분하고, 기계적 복제는 단순함만 잃는다.
 
-**쓰기 `@Transactional`은 Writer에만 있다. 단, 트랜잭션 경계를 클래스 이름만으로 단정하지 말 것** — 아래 3건이 이름과 다르게 동작한다.
+**`@Transactional`은 되도록 Reader/Writer에 둔다.** 쓰기 경계는 Writer, 조회 경계는 Reader다.
+Service/Facade에는 원칙적으로 붙이지 않고, **"이 메서드의 여러 조회가 한 스냅샷이어야 한다"가 성립할 때만
+그 메서드에만** `@Transactional(readOnly = true)`를 붙인다(클래스 단위로 걸지 말 것 — `CourseFacade`가 그 예).
+
+**단, 트랜잭션 경계를 클래스 이름만으로 단정하지 말 것** — 아래 3건이 이름과 다르게 동작한다.
 
 | 클래스 | 이름에서 기대되는 것 | 실제 |
 |---|---|---|
-| `RunningReader` | 트랜잭션 없음 | `@Transactional(readOnly = true)` — 호출자가 TX를 열지 않는 조회 경로(`CourseFacade`의 고스트 페이징·TOP 랭킹·상위 퍼센트·코스 통계)를 스스로 감싼다. `open-in-view: false`라 **떼면 지연 로딩이 깨진다.** 쓰기 TX 안에서는 호출자 TX에 참여 |
+| `RunningReader` | 트랜잭션 없음 | `@Transactional(readOnly = true)` — 조회 트랜잭션 경계가 여기다. 쓰기 TX 안에서는 호출자 TX에 참여 |
 | `CourseSubscriptionWriter` | 자체 쓰기 TX | 어노테이션 없음 — 항상 호출자(`CourseWriter`/`RunningWriter`) TX에 참여 |
 | `CourseReadModelWriter` | 자체 쓰기 TX | `@Transactional(propagation = MANDATORY)` — 활성 TX가 없으면 즉시 예외. 위와 같은 부류이나 계약이 어노테이션으로 강제된다 |
+
+> ⚠️ `open-in-view: false`다. **엔티티를 응답 DTO로 매핑하는 코드가 Reader의 트랜잭션 밖에 있다면, 그 매핑이
+> 지연 로딩 연관을 건드리지 않는지 확인해야 한다.** 현재 그런 경로는 `CourseFacade`의 고스트 매핑뿐이고,
+> 러너(`member`)가 fetch join으로 함께 적재되기 때문에 안전하다. 새 매핑을 추가할 때 이 전제가 깨지면
+> 해당 메서드에만 `@Transactional(readOnly = true)`를 붙인다.
 
 - BEFORE_COMMIT 리스너(VDOT, 구독)는 **원 트랜잭션에 합류** → 강한 정합성, 대신 러닝 생성 TX가 길어짐.
 - AFTER_COMMIT 리스너(캐시, 푸시)는 부수효과로 분리.

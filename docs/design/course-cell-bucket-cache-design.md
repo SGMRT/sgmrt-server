@@ -19,7 +19,7 @@
 > | `CourseService` | 쓰기 → `CourseWriter`, 조회 → `CourseReader` |
 > | `CourseSubscriptionService` | `CourseSubscriptionWriter` (코스 주인 구독 조율도 `CourseWriter`에서 이관받아 구독 쓰기의 단일 지점) |
 > | `RunningCreationWriter` | `RunningWriter` (`RunningCommandService`의 수정·삭제 트랜잭션 흡수) |
-> | `RunningQueryService` | `RunningReader` |
+> | `RunningQueryService` | repo 접근 → `RunningReader`, 조회 유즈케이스 조율 → `RunningQueryService`(같은 이름으로 재도입, 역할은 축소) |
 > | `RegionService` | `RegionResolver` |
 
 ---
