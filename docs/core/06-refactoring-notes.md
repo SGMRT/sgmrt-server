@@ -39,7 +39,7 @@
 - 쓰기: `ReadModelSyncListener`가 `CourseRunEvent`를 **BEFORE_COMMIT**으로 수신 → `findByCourseIdForUpdate`(X락) → 증분 갱신. 러닝 생성 트랜잭션이 그만큼 길어지고 락 경합 지점
 - 읽기: `CourseFacade`(357줄)가 Redis 캐시(`course:{id}`, TTL 60분, MSET/MGET)를 **수동으로** 히트/미스 분기 — 캐시 로직과 비즈니스 로직 혼재
 - 캐시 무효화: `CourseCacheEventListener`(AFTER_COMMIT)가 RunFinished/RunUpdated 시 수동 삭제 — 이 리스너와 두 이벤트는 #168에서 구경로와 함께 제거됐다(아래 참조)
-- 코스 삭제/공개전환 시 읽기모델·구독 동기화가 `CourseService`에 절차적으로 흩어져 있음 (→ 이후 쓰기 절반을 `CourseWriter`로 분리, 조회 절반은 `CourseQueryService`로 개명)
+- 코스 삭제/공개전환 시 읽기모델·구독 동기화가 `CourseService`에 절차적으로 흩어져 있음 (→ 이후 쓰기 절반을 `CourseWriter`로, 조회 절반을 `CourseReader`로 분리. 구독 쓰기는 다시 `CourseSubscriptionWriter` 단일 지점으로 모음)
 
 ### 검토 과제
 - [ ] TOP4 8컬럼 → 정규화(별도 랭킹 테이블) vs 유지 결정. 랭킹 조회 패턴(`/top-ranking`, `/ranking`, `/top-percentage`)과 함께 재설계
@@ -116,7 +116,7 @@
 
 ## TODO/FIXME 핫스팟 (기존 주석, 해당 워크스트림에서 함께 처리)
 
-- `CourseQueryService.java` `findNearbyCourses` — Haversine/공간 타입 전환 → 1번
+- `CourseReader.java` `findNearbyCourses` — Haversine/공간 타입 전환 → 1번
 - `CourseRepository.java:19` — owner 필드 → 1번
 - `PacemakerRateLimitService.java:94` — 보상 실패 알림 → 2번
 - `PushService` — broadcast 페이징 → 3번

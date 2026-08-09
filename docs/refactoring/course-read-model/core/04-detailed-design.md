@@ -3,9 +3,10 @@
 > [02-redesign-options.md](02-redesign-options.md)(방안 A 확정), [03-structure-a-vs-b.md](03-structure-a-vs-b.md)의 후속.
 > 문답으로 챕터를 하나씩 확정하며 채운다: **1. 엔티티 → 2. 캐시 → 3. 핵심 플로우·컴포넌트 → 4. 구현 계획**
 >
-> **[2026-08 이후 클래스 개명]** 이 문서의 클래스명은 작성 시점 기준이다. 이후 쓰기 경계 분리로
-> `CourseService` → `CourseWriter`(쓰기) + `CourseQueryService`(조회), `RunningCreationWriter` → `RunningWriter`
-> (수정·삭제 트랜잭션 흡수)로 재편됐다.
+> **[2026-08 이후 클래스 개명]** 이 문서의 클래스명은 작성 시점 기준이다. 이후 쓰기 경계 분리와 Reader/Writer 계층화로
+> `CourseService` → `CourseWriter`(쓰기) + `CourseReader`(조회), `RunningCreationWriter` → `RunningWriter`(수정·삭제 트랜잭션 흡수),
+> `RunningQueryService` → `RunningReader`, `CourseSubscriptionService` → `CourseSubscriptionWriter`(코스 주인 구독 조율까지 흡수)로 재편됐다.
+> 설계: [`../../../design/reader-writer-layering.md`](../../../design/reader-writer-layering.md)
 
 ## 확정 전제 요약
 

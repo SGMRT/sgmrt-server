@@ -11,9 +11,16 @@
 >
 > **리뷰 반영(R1~R4)**은 §3·§9에 `[R#]`로 표시했다. Architect 설계 원안에 실제 코드와 어긋나는 지점이 있어 검증 단계에서 교정한 항목이며, 12건 확정 의사결정·컴포넌트 분해·레이어 배치는 그대로 유지한다.
 >
-> **[2026-08 이후 클래스 개명]** 이 문서의 클래스명은 작성 시점 기준이다. 이후 쓰기 경계 분리로
-> `CourseService`의 쓰기 절반(`updateCourse`·`deleteCourse`·구독 조율)은 `CourseWriter`로, 조회 절반은 `CourseQueryService`로 나뉘었고,
-> `RunningCreationWriter`는 `RunningCommandService`의 수정·삭제 트랜잭션(`deleteRunnings` 등)을 흡수해 `RunningWriter`가 됐다.
+> **[2026-08 이후 클래스 개명]** 이 문서의 클래스명은 작성 시점 기준이다. 이후 쓰기 경계 분리와 Reader/Writer 계층화로 다음과 같이 재편됐다
+> (설계: [`reader-writer-layering.md`](reader-writer-layering.md)):
+>
+> | 이 문서의 이름 | 현재 |
+> |---|---|
+> | `CourseService` | 쓰기 → `CourseWriter`, 조회 → `CourseReader` |
+> | `CourseSubscriptionService` | `CourseSubscriptionWriter` (코스 주인 구독 조율도 `CourseWriter`에서 이관받아 구독 쓰기의 단일 지점) |
+> | `RunningCreationWriter` | `RunningWriter` (`RunningCommandService`의 수정·삭제 트랜잭션 흡수) |
+> | `RunningQueryService` | `RunningReader` |
+> | `RegionService` | `RegionResolver` |
 
 ---
 

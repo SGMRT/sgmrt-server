@@ -85,6 +85,12 @@ soma.ghostrunner.global/
 
 ### 주요 결정 사항
 
+- **Reader/Writer 계층 (`running`·`course` 도메인 한정)** — 이 두 도메인은 리포지토리 접근을 Reader/Writer로 격리한다.
+  - **Repository를 보는 것은 Reader와 Writer뿐이다.** Service/Facade는 Reader/Writer만 바라보고 조율(외부 I/O·가공·위임)만 담당한다.
+  - **`@Transactional`(쓰기)은 Writer에만 둔다.** 쓰기 진입점은 Service/Facade로 통일하고, 조회는 Reader 직접 호출도 허용한다.
+  - 예외: `CourseMapCacheEvictor`(커밋 후 콜백 캐시 인프라), `RegionResolver`(`@Transactional(NEVER)`가 계약이라 Writer 규칙 적용 불가).
+  - **다른 도메인에 기계적으로 복제하지 말 것** — 트랜잭션 경계가 단순한 곳은 Service–Repository로 충분하다.
+  - 상세: `docs/design/reader-writer-layering.md`, `docs/core/03-architecture.md`
 - **AWS 서비스**
   - S3: GPS 경로 좌표 데이터 및 이미지(코스, 멤버 프로필 등)는 DB가 아닌 S3에 저장
   - SQS: 푸시 알림 이벤트는 SQS를 통해 발행

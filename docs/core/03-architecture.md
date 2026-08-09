@@ -39,14 +39,34 @@ PacemakerLlmCallbackService ─ PacemakerCreatedEvent ─► PushEventListener (
 
 [2026-08 리드모델 리팩토링 이후] 리드모델(CourseReadModel) 동기화는 이벤트가 아니라
 RunningWriter/CourseWriter → course.CourseReadModelWriter **직접 호출**(같은 TX, X락)로 수행.
-구 ReadModelSyncListener는 삭제됨. 상세: docs/refactoring/course-read-model/04-detailed-design.md
+구 ReadModelSyncListener는 삭제됨. 상세: docs/refactoring/course-read-model/core/04-detailed-design.md
 
 [2026-08 Writer 분리 이후] DB 쓰기 트랜잭션 경계는 도메인별 Writer 빈으로 통일 —
-러닝 생성·수정·삭제는 running.RunningWriter(구 RunningCreationWriter), 코스 저장·수정·삭제와
-주인 구독 조율은 course.CourseWriter가 연다. RunningCommandService는 트랜잭션 밖 조율
-(가공·S3 업로드·VDOT)과 Writer 위임만 남았고, 구 CourseService의 조회 절반은
-CourseQueryService로 개명됐다. CourseRunEvent 발행 지점도 RunningWriter다.
+러닝 생성·수정·삭제는 running.RunningWriter(구 RunningCreationWriter), 코스 저장·수정·삭제는
+course.CourseWriter가 연다. RunningCommandService는 트랜잭션 밖 조율
+(가공·S3 업로드·VDOT)과 Writer 위임만 남았다. CourseRunEvent 발행 지점도 RunningWriter다.
 ```
+
+## Reader/Writer 계층 규칙 (running·course 도메인)
+
+2026-08 리팩토링으로 **running·course 두 도메인은 리포지토리 접근을 Reader/Writer로 격리**한다.
+(설계: `docs/design/reader-writer-layering.md`)
+
+```
+api ──► Service/Facade ──► Writer ──► Repository     (쓰기: 진입점은 Service/Facade)
+api ──► Reader ──────────────────────► Repository     (조회: 조립이 필요할 때만 Facade 경유)
+
+Writer ──► Reader            허용 (쓰기 TX 안 재조회 — Reader는 호출자 TX에 참여)
+Writer ──► 타 도메인 Writer   허용 (RunningWriter → CourseWriter.save)
+Service/Facade ──► Repository  금지
+Reader ──► 쓰기               금지
+```
+
+- **Repository를 보는 것은 Reader와 Writer뿐이다.** Service/Facade에는 조율만 남는다.
+- **`@Transactional`(쓰기)은 Writer에만 있다.** 클래스 이름만으로 트랜잭션 경계를 판단할 수 있다.
+- 구성: `RunningReader`/`RunningWriter`, `CourseReader`/`CourseWriter`, `CourseSubscriptionWriter`(구독 테이블 쓰기의 단일 지점 — 러너 구독과 코스 주인 구독 모두 담당).
+- **예외 2건**: `CourseMapCacheEvictor`(커밋 후 콜백이라는 특수 실행 문맥의 캐시 인프라), `RegionResolver`(`@Transactional(NEVER)`가 계약이라 "Writer = 쓰기 TX를 연다" 규칙을 적용할 수 없어 Resolver로 명명).
+- 다른 도메인(member, notice, device, auth, pacemaker)은 **적용 대상이 아니다** — 트랜잭션 경계가 단순해 Service–Repository로 충분하고, 기계적 복제는 단순함만 잃는다.
 
 - BEFORE_COMMIT 리스너(VDOT, 구독)는 **원 트랜잭션에 합류** → 강한 정합성, 대신 러닝 생성 TX가 길어짐.
 - AFTER_COMMIT 리스너(캐시, 푸시)는 부수효과로 분리.
