@@ -37,7 +37,7 @@ Reader ──► 쓰기            ❌ 금지 (부수효과 없음을 이름으�
 2. Service/Facade는 Reader/Writer만 바라본다 — 조율(가공·외부 I/O·위임)만 남는다.
 3. **쓰기 `@Transactional`은 Writer에만 존재한다.** Reader는 쓰기 트랜잭션을 열지 않는다.
 
-> **트랜잭션 경계는 이름만으로 판단하지 말 것 — 예외 2건**
+> **트랜잭션 경계는 이름만으로 판단하지 말 것 — 예외 3건**
 >
 > - **Reader의 `@Transactional(readOnly = true)`는 허용한다** (`RunningReader`). 호출자(Facade/Api)가
 >   트랜잭션을 열지 않는 조회 경로를 Reader가 스스로 감싸야 하기 때문이다. 쓰기 TX 안에서 호출되면
@@ -46,6 +46,10 @@ Reader ──► 쓰기            ❌ 금지 (부수효과 없음을 이름으�
 >   "Reader니까 트랜잭션이 없어야 한다"를 근거로 제거하지 말 것.
 > - **`CourseSubscriptionWriter`는 이름이 Writer지만 자체 TX를 열지 않는다** — 항상 호출자
 >   (`CourseWriter` / `RunningWriter`)의 TX에 참여한다. (`MANDATORY` 승격은 별도 티켓 — §4 D2)
+> - **`CourseReadModelWriter`도 자체 경계를 열지 않는다** — `@Transactional(propagation = MANDATORY)`라
+>   활성 트랜잭션이 없으면 즉시 예외다. 위 `CourseSubscriptionWriter`와 같은 부류이며, 실제로
+>   `RunningWriter.saveRun` 안에서 나란히 호출되는 짝이다. 차이는 계약이 javadoc이 아니라
+>   **어노테이션으로 강제된다**는 것뿐이다.
 
 **규칙의 적용 대상은 애플리케이션 서비스 계층이다.** 다음은 대상이 아니다:
 
@@ -193,7 +197,14 @@ resolve(조회+등록 멱등 연산)는 읽기도 쓰기도 아닌 혼합이고,
 
 ## 7. 구현 결과 (2026-08-09)
 
-전체 빌드·테스트 그린(718 tests, 실패 0). **동작 변화 0** — 트랜잭션 경계·전파·예외 타입 전부 불변.
+전체 빌드·테스트 그린(717 tests, 실패 0). **동작 변화 0** — 트랜잭션 경계·전파·예외 타입·외부 API 전부 불변.
+
+> **단 하나의 예외는 관측이다.** `SentrySpanAspect`의 포인트컷이 클래스 이름 접미사에 의존해,
+> 개명한 클래스들이 APM 계측에서 이탈했다(리뷰 iter1 MAJOR-1). 접미사를 추가해 복구했는데
+> 그 과정에서 계측 대상이 **7개 → 11개**가 됐다 — 복구분 7개에 더해 `CourseWriter`·`RunningWriter`·
+> `CourseReadModelReader`·`CourseReadModelWriter` 4개가 새로 포함됐다. 직전 PR에서 생긴 Writer들까지
+> 규칙에 맞게 계측되는 것이 옳다고 판단했으나, 런타임 동작(스팬 생성)이 늘어난 것은 사실이므로 기록해 둔다.
+> 포인트컷을 이름이 아닌 패키지/스테레오타입 기준으로 재설계하는 것은 별도 티켓(DEFER-2)이다.
 
 | 결정 | 구현 |
 |---|---|

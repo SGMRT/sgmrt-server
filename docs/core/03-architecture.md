@@ -63,12 +63,17 @@ Reader ──► 쓰기               금지
 ```
 
 - **Repository를 보는 것은 Reader와 Writer뿐이다.** Service/Facade에는 조율만 남는다.
-- **쓰기 `@Transactional`은 Writer에만 있다.** Reader는 쓰기 트랜잭션을 열지 않는다. 다만 **트랜잭션 경계를 클래스 이름만으로 단정하지 말 것** — 예외가 2건 있다.
-  - `RunningReader`는 `@Transactional(readOnly = true)`를 갖는다(허용). 호출자가 TX를 열지 않는 조회 경로(`CourseFacade`의 고스트 페이징·TOP 랭킹·상위 퍼센트·코스 통계)를 스스로 감싸기 위함이고, `open-in-view: false`라 **떼면 지연 로딩이 깨진다.** 쓰기 TX 안에서 호출되면 호출자 TX에 참여한다.
-  - `CourseSubscriptionWriter`는 이름이 Writer지만 자체 TX를 열지 않고 호출자(`CourseWriter`/`RunningWriter`) TX에 참여한다.
 - 구성: `RunningReader`/`RunningWriter`, `CourseReader`/`CourseWriter`, `CourseSubscriptionWriter`(구독 테이블 쓰기의 단일 지점 — 러너 구독과 코스 주인 구독 모두 담당).
-- **예외 2건**: `CourseMapCacheEvictor`(커밋 후 콜백이라는 특수 실행 문맥의 캐시 인프라), `RegionResolver`(`@Transactional(NEVER)`가 계약이라 "Writer = 쓰기 TX를 연다" 규칙을 적용할 수 없어 Resolver로 명명).
+- **규칙을 적용하지 않는 컴포넌트 2건**: `CourseMapCacheEvictor`(커밋 후 콜백이라는 특수 실행 문맥의 캐시 인프라), `RegionResolver`(`@Transactional(NEVER)`가 계약이라 "Writer = 쓰기 TX를 연다" 규칙을 적용할 수 없어 Resolver로 명명).
 - 다른 도메인(member, notice, device, auth, pacemaker)은 **적용 대상이 아니다** — 트랜잭션 경계가 단순해 Service–Repository로 충분하고, 기계적 복제는 단순함만 잃는다.
+
+**쓰기 `@Transactional`은 Writer에만 있다. 단, 트랜잭션 경계를 클래스 이름만으로 단정하지 말 것** — 아래 3건이 이름과 다르게 동작한다.
+
+| 클래스 | 이름에서 기대되는 것 | 실제 |
+|---|---|---|
+| `RunningReader` | 트랜잭션 없음 | `@Transactional(readOnly = true)` — 호출자가 TX를 열지 않는 조회 경로(`CourseFacade`의 고스트 페이징·TOP 랭킹·상위 퍼센트·코스 통계)를 스스로 감싼다. `open-in-view: false`라 **떼면 지연 로딩이 깨진다.** 쓰기 TX 안에서는 호출자 TX에 참여 |
+| `CourseSubscriptionWriter` | 자체 쓰기 TX | 어노테이션 없음 — 항상 호출자(`CourseWriter`/`RunningWriter`) TX에 참여 |
+| `CourseReadModelWriter` | 자체 쓰기 TX | `@Transactional(propagation = MANDATORY)` — 활성 TX가 없으면 즉시 예외. 위와 같은 부류이나 계약이 어노테이션으로 강제된다 |
 
 - BEFORE_COMMIT 리스너(VDOT, 구독)는 **원 트랜잭션에 합류** → 강한 정합성, 대신 러닝 생성 TX가 길어짐.
 - AFTER_COMMIT 리스너(캐시, 푸시)는 부수효과로 분리.
