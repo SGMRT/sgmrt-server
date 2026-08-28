@@ -1,0 +1,30 @@
+# GhostRunner systemd 템플릿 유닛 (Blue-Green)
+#   ghostrunner@8080 / ghostrunner@8081 로 인스턴스화. %i = 포트.
+#   설치: sudo cp deploy/ghostrunner@.service /etc/systemd/system/ && sudo systemctl daemon-reload
+[Unit]
+Description=GhostRunner Spring Boot (port %i)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ghostrunner
+
+# %i = 인스턴스 이름(포트). 포트별로 별도 jar(app-<port>.jar)를 실행해 구/신 버전 격리.
+# -Xmx512m: 현재 JVM 기본값(RAM 25%)과 동일 수준 → 정상 운영 무회귀. 겹침 피크는 -Xms256m로 완화.
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -XX:+ExitOnOutOfMemoryError \
+  -jar /home/ubuntu/ghostrunner/app-%i.jar \
+  --server.port=%i --spring.profiles.active=prod
+
+# Spring graceful shutdown: SIGTERM → in-flight 요청 drain(application.yml: timeout-per-shutdown-phase=120s)
+KillSignal=SIGTERM
+# 143 = 128 + SIGTERM(15). graceful 종료를 정상 종료로 인식
+SuccessExitStatus=143
+# graceful 120s + 여유. 이 시간 안에 안 죽으면 systemd가 SIGKILL
+TimeoutStopSec=130
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
