@@ -40,9 +40,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CourseReadModelReader {
 
-    /** 랜덤 선별의 모집단 확보를 위해 응답 개수(10)보다 넉넉히 조회한다. 직행 경로의 DB 안전판이다. */
-    private static final int MAP_QUERY_LIMIT = 50;
-
     /**
      * 캐시를 경유할 수 있는 최대 반경.
      *
@@ -63,10 +60,15 @@ public class CourseReadModelReader {
     private final CourseCellCacheMetrics metrics;
 
     /**
-     * 미스 셀 채움 쿼리의 LIMIT.
+     * 채움 쿼리와 직행 쿼리가 공유하는 LIMIT.
      *
-     * 상수가 아니라 주입값인 이유는 이 경로를 테스트하려고 코스를 수백 개 만들지 않기 위함이다(설계 D8).
-     * 운영 튜닝 레버는 부수 효과다.
+     * <p>두 경로가 <b>같은 상한</b>을 써야 파리티가 성립한다. 직행만 낮은 상한(과거 50)을 두면 반경 안 코스가
+     * 그 수를 넘는 순간 직행은 {@code ORDER BY start_lat}에 잘려 남쪽 코스만 후보가 되고, 같은 요청이
+     * Redis 상태(강등 여부)에 따라 다른 모집단에서 랜덤 선별된다. 광역 요청(3km 초과)은 항상 직행이라
+     * 이 편향이 평소에도 드러난다.</p>
+     *
+     * <p>상수가 아니라 주입값인 이유는 이 경로를 테스트하려고 코스를 수백 개 만들지 않기 위함이다(설계 D8).
+     * 운영 튜닝 레버는 부수 효과다.</p>
      */
     @Value("${course.cache.cell-bucket.fill-limit:500}")
     private int cellFillLimit;
@@ -100,14 +102,14 @@ public class CourseReadModelReader {
     /**
      * 캐시를 경유하지 않는 직행 경로. 강등 3갈래가 전부 여기로 수렴한다.
      *
-     * <p>원 필터를 캐시 경로와 <b>똑같이</b> 적용한다 — 그래야 강등 결과와 캐시 결과가 같다.
+     * <p>원 필터와 LIMIT을 캐시 경로와 <b>똑같이</b> 적용한다 — 그래야 강등 결과와 캐시 결과가 같다.
      * Redis 장애 강등은 요청 중에도 일어날 수 있으므로, 두 경로가 다른 결과를 내면 같은 요청의 응답이
      * Redis 상태에 따라 흔들린다.</p>
      */
     private List<CourseMapDto> queryDirect(double lat, double lng, int radiusM) {
         BoundingBox bounds = BoundingBox.of(lat, lng, radiusM);
         List<CourseMapDto> rows = readModelRepository.findCoursesForMap(
-                bounds.minLat(), bounds.maxLat(), bounds.minLng(), bounds.maxLng(), MAP_QUERY_LIMIT);
+                bounds.minLat(), bounds.maxLat(), bounds.minLng(), bounds.maxLng(), cellFillLimit);
 
         return withinRadius(rows, lat, lng, radiusM);
     }

@@ -58,8 +58,8 @@
 
 | # | 항목 | 결정 |
 |---|---|---|
-| 1 | 거리 필터 | 직행·캐시 두 경로 모두 원(실좌표) 필터. 직행은 LIMIT 50 유지, 캐시 경로는 모집단 상한 없음 |
-| 2 | Redis 장애 | 전체-미스 강등 금지. **요청 단위 직행(LIMIT 50) 강등.** 서킷 없음. putAll/evict는 best-effort |
+| 1 | 거리 필터 | 직행·캐시 두 경로 모두 원(실좌표) 필터. 직행 LIMIT은 채움과 같은 fill-limit(500)을 공유한다(초안의 "직행 LIMIT 50 유지"는 파리티를 깨 철회 — §8-1 참조) |
+| 2 | Redis 장애 | 전체-미스 강등 금지. **요청 단위 직행(LIMIT = fill-limit) 강등.** 서킷 없음. putAll/evict는 best-effort |
 | 3 | 채움 LIMIT 도달 | fill-limit=500(`@Value`). 도달 시 응답은 반환하되 **적재는 전체 스킵** + warn + 메트릭 |
 | 4 | 채움-이빅트 레이스 | putAll을 `executePipelined`로 묶어 창을 최소화한 뒤 수용 (마커 없음) |
 | 5 | Thundering herd | 수용 (분산락 없음) |
@@ -341,11 +341,10 @@ evict(cell):
 `RegionRepository` 의존을 제거한다. 공개 메서드 `findCoursesForMap(double, double, int)`의 **시그니처는 불변**이다. `findCoursesForMapByRegion`·`REGION_MAP_RADIUS_M`은 삭제한다.
 
 ```java
-private static final int MAP_QUERY_LIMIT = 50;          // 직행 DB 안전판 (기존 유지)
 private static final int MAX_CACHEABLE_RADIUS_M = 3000; // 광역 가드 (Facade에서 이동)
 private static final int MAX_COVERING_CELLS = 128;      // 극단 좌표 가드
 
-@Value("${course.cache.cell-bucket.fill-limit:500}") private int cellFillLimit;
+@Value("${course.cache.cell-bucket.fill-limit:500}") private int cellFillLimit;   // 채움·직행 공용 LIMIT
 ```
 
 ```
@@ -364,8 +363,8 @@ findCoursesForMap(lat, lng, radiusM):
 queryDirect(lat, lng, radiusM):
     box = BoundingBox.of(lat, lng, radiusM)
     rows = readModelRepository.findCoursesForMap(box.minLat(), box.maxLat(),
-                                                 box.minLng(), box.maxLng(), MAP_QUERY_LIMIT)
-    return withinRadius(rows, lat, lng, radiusM)      # 원 필터 — 캐시 경로와의 파리티
+                                                 box.minLng(), box.maxLng(), cellFillLimit)
+    return withinRadius(rows, lat, lng, radiusM)      # 원 필터 + 같은 LIMIT — 캐시 경로와의 파리티
 
 fillMissedCells(missed):
     box  = GeoCell.enclosingBox(missed)
@@ -692,7 +691,7 @@ Region 일체(`Region`, `RegionApi`, `RegionService`, `POST /v1/regions`, `regio
 
 - `IntegrationTestSupport`는 클래스 레벨 `@Transactional`이라 테스트 메서드 안에서 커밋이 나지 않는다. 이벤트 시절에는 이 제약 때문에 **핸들러를 직접 호출**해 AFTER_COMMIT을 흉내 냈고, 그래서 "커밋 전에는 지우지 않는다"가 정작 검증되지 않았다. 직접 호출로 바뀌면서 이빅터가 스스로 트랜잭션 동기화에 등록하므로, `PROPAGATION_REQUIRES_NEW` `TransactionTemplate`으로 **진짜 커밋**을 일으켜 그 경로를 그대로 검증한다(픽스처도 같은 방식으로 커밋해야 커밋 후 조회에 보인다).
 - `DatabaseCleanserExtension`은 테이블만 truncate하고 Redis는 건드리지 않는다. `@BeforeEach`에서 `course-cells*` 키를 정리한다(구경로 테스트가 `course:*`를 정리하던 것과 같은 패턴).
-- 테스트 13(파리티)은 **후보 50개 이하 픽스처**를 전제한다. 직행은 LIMIT 50, 캐시 경로는 상한이 없어(결정 1) 그 위에서는 애초에 같을 수 없다. 주석으로 명시한다.
+- 테스트 13(파리티)은 후보 수에 전제가 없다. 직행과 채움이 같은 fill-limit을 쓰므로 모집단 상한이 같다(§8-1 "직행 LIMIT" 항목의 교정). `FillLimitReached.directPath_SharesFillLimit`이 직행이 주입값에 잘리는 것을 fill-limit=2로 확인한다.
 - `@Value` 필드 주입 때문에 Reader 테스트 9~13은 통합 테스트여야 한다. 이는 코드베이스의 기존 `@Value` 관례(`S3RunningFileUploader`, `RefreshTokenService` 등)와 일치한다.
 - 메트릭 검증이 필요한 단위 테스트는 `SimpleMeterRegistry`를 주입한다.
 
@@ -775,7 +774,7 @@ Region 일체(`Region`, `RegionApi`, `RegionService`, `POST /v1/regions`, `regio
 | dev 재배포 후 잔존 카드 | TTL 600s | QA 안내로 충분 (결정 12) |
 | 기존 `course-map::*` 키 | TTL 600s | 자연 소멸. 별도 마이그레이션 불필요 (결정 12) |
 | 캐시 경로 후보 무제한 | 콜드 시 fill-limit 500 | `candidates` DistributionSummary로 감시 (결정 1) |
-| 직행 LIMIT 50 + 원 필터 | 응답이 50개 미만이 될 수 있음 | 최종 응답 상한이 10이라 실질 영향 없음 |
+| ~~직행 LIMIT 50 + 원 필터~~ **철회** | ~~응답이 50개 미만이 될 수 있음~~ | ~~최종 응답 상한이 10이라 실질 영향 없음~~ **근거가 틀렸다.** 응답 개수가 아니라 랜덤 선별의 **모집단**이 달라진다 — 반경 안 코스가 50개를 넘으면 직행은 `ORDER BY start_lat`에 잘려 남쪽 50개만 후보가 되고 북쪽 코스는 확률 0이 된다. 광역 요청(3km 초과)은 항상 직행이라 평소에도 드러난다. 직행 LIMIT을 채움과 같은 fill-limit(500)으로 통일해 해소했다 |
 | fill-limit 도달 시 응답 절단 | 공간 편향(북쪽 누락) | 잘린 500개도 직행 50개보다 넓다. 편향된 값의 **캐시 각인**만 막으면 된다 (결정 3) |
 | `readOnly` 트랜잭션 안에서 Redis I/O | 정상 +~1ms, **장애 시 요청당 최대 ~2.9s(2왕복)**, 그동안 DB 커넥션 보유 | 현행 `@Cacheable`과 동일 구조(왕복 수도 동급). 기존 "+~1ms" 표기는 정상 경로 한정이었다 — 커맨드 타임아웃 도입(`RedisConfig.redisTimeoutCustomizer`)으로 상한이 60s → ~2.9s로 확정됐다(MGET 1.45s + `putAll` 1.45s). HikariCP 풀 산정에는 이 값을 쓴다. 개선은 별도 PR |
 | Redis 재시도 축소(3→1, 1500→200ms) — **영향 반경이 course 도메인 밖** | 순간 블립 시 로그인·페이스메이커 요청 5xx | 이전에도 결과는 5xx였고 소요만 ~7.5s→~1.4s. non-idempotent 커맨드(SET·DEL·EVAL)는 Redisson이 원래 재시도하지 않으므로 **중복 실행 위험 0**(레이트리밋 중복 차감 없음). 잃는 것은 "아직 전송하지 못한 커맨드"의 흡수 창 4,500ms→200ms. 강등 경로가 없는 소비자(`RefreshTokenService`, `PacemakerRateLimitService`)는 5xx 빈도가 늘 수 있다. 관측: auth 5xx 비율 |

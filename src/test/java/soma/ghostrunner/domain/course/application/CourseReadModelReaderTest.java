@@ -197,7 +197,7 @@ class CourseReadModelReaderTest extends IntegrationTestSupport {
     @DisplayName("DB 채움 경로와 캐시 히트 경로의 후보가 같고, 박스 모서리(반경 밖) 코스는 양쪽 모두에서 빠진다")
     @Test
     void cachePathAndDirectPath_YieldTheSameCandidates() {
-        // given : 후보 50개 이하 픽스처 전제(직행 LIMIT 50). 그 위에서는 캐시 경로(모집단 상한 없음)와 애초에 같을 수 없다.
+        // given : 직행과 채움은 같은 LIMIT(fill-limit)을 쓴다 — 후보 수와 무관하게 두 경로의 모집단 상한이 같다
         fixture.savePublicCourse(COURSE_AT_CENTER, SEOUL_LAT, SEOUL_LNG);
         fixture.savePublicCourse(COURSE_NEAR_CENTER, SEOUL_LAT + latOffset(300), SEOUL_LNG);
         // 반경 1km 박스의 모서리 — dy·dx가 각각 900m라 박스 안이지만 중심에서 1,273m라 원 밖이다
@@ -263,6 +263,23 @@ class CourseReadModelReaderTest extends IntegrationTestSupport {
             assertThat(names(courses)).isSubsetOf("코스1", "코스2", "코스3");
 
             // then : 공간적으로 편향된 이 결과가 TTL 600초 동안 각인되는 것만 막으면 된다
+            assertThat(fixture.cellKeys()).isEmpty();
+        }
+
+        @DisplayName("직행 경로도 채움 쿼리와 같은 LIMIT을 쓴다 - 강등 여부에 따라 모집단 상한이 달라지지 않는다")
+        @Test
+        void directPath_SharesFillLimit() {
+            // given : 좁은 영역에 코스 3개 — LIMIT(2)에 걸린다
+            fixture.savePublicCourse("코스1", SEOUL_LAT, SEOUL_LNG);
+            fixture.savePublicCourse("코스2", SEOUL_LAT + latOffset(100), SEOUL_LNG);
+            fixture.savePublicCourse("코스3", SEOUL_LAT + latOffset(200), SEOUL_LNG);
+
+            // when : 광역 가드로 직행 강등
+            List<CourseMapDto> direct = reader.findCoursesForMap(SEOUL_LAT, SEOUL_LNG, MAX_CACHEABLE_RADIUS_M + 1);
+
+            // then : 직행이 별도의 고정 상한(과거 50)이 아니라 주입된 fill-limit에 잘린다
+            assertThat(direct).hasSize(2);
+            assertThat(names(direct)).isSubsetOf("코스1", "코스2", "코스3");
             assertThat(fixture.cellKeys()).isEmpty();
         }
     }
